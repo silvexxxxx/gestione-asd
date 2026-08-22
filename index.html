@@ -751,6 +751,7 @@
         async verifyLicense() {
             const input = document.getElementById('license-key-input').value.trim();
             const errorDiv = document.getElementById('license-error');
+            const btn = document.querySelector('#paywall-overlay button');
             
             if (input.length < 5) {
                 errorDiv.innerText = 'Inserisci una chiave di licenza valida.';
@@ -758,17 +759,37 @@
                 return;
             }
 
-            // TODO (Fase 5): Sostituire con chiamata API reale a Vercel/LemonSqueezy
-            // Chiavi statiche attuali: TEST-1234 (per noi) e SILVERIO-PRO-77X9-2026 (per la tua palestra)
-            if (input === 'TEST-1234' || input === 'SILVERIO-PRO-77X9-2026') {
-                localStorage.setItem('asd_license_key', input);
-                document.getElementById('paywall-overlay').style.display = 'none';
-                app.toast('Licenza attivata con successo!', 'success');
-                // Riavvia il flusso di avvio
-                this.init();
-            } else {
-                errorDiv.innerText = 'Licenza non valida. Usa TEST-1234 per provare.';
+            // UI Feedback
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = 'Verifica in corso...';
+            btn.disabled = true;
+
+            try {
+                // Chiama la Serverless Function su Vercel in modo sicuro
+                const res = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ license_key: input })
+                });
+
+                const data = await res.json();
+
+                if (data.valid) {
+                    localStorage.setItem('asd_license_key', input);
+                    document.getElementById('paywall-overlay').style.display = 'none';
+                    app.toast(data.message || 'Licenza attivata con successo!', 'success');
+                    this.init();
+                } else {
+                    errorDiv.innerText = data.error || 'Licenza non valida.';
+                    errorDiv.style.display = 'block';
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                errorDiv.innerText = 'Errore di connessione al server di verifica.';
                 errorDiv.style.display = 'block';
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
             }
         },
 
