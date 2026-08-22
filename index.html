@@ -793,6 +793,47 @@
             }
         },
 
+        async verifyLicenseBackground(savedKey) {
+            try {
+                // Chiama la Serverless Function in background
+                const res = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ license_key: savedKey })
+                });
+
+                const data = await res.json();
+                if (data.valid) {
+                    // Aggiorna la data dell'ultimo controllo riuscito
+                    localStorage.setItem('asd_license_last_check', Date.now().toString());
+                } else {
+                    // Licenza revocata o trial scaduta!
+                    localStorage.removeItem('asd_license_key');
+                    document.getElementById('paywall-overlay').style.display = 'flex';
+                    const errorDiv = document.getElementById('license-error');
+                    errorDiv.innerText = data.error || 'La tua licenza è scaduta o è stata revocata.';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                // Dispositivo offline o server non raggiungibile
+                const lastCheck = localStorage.getItem('asd_license_last_check');
+                if (lastCheck) {
+                    const daysOffline = (Date.now() - parseInt(lastCheck)) / (1000 * 60 * 60 * 24);
+                    if (daysOffline > 7) {
+                        // Sono passati più di 7 giorni dall'ultimo controllo online
+                        localStorage.removeItem('asd_license_key');
+                        document.getElementById('paywall-overlay').style.display = 'flex';
+                        const errorDiv = document.getElementById('license-error');
+                        errorDiv.innerText = 'Il gestionale è offline da oltre 7 giorni. Connettiti a internet per validare la licenza.';
+                        errorDiv.style.display = 'block';
+                    }
+                } else {
+                    // Primo avvio offline (non dovrebbe mai capitare, ma per sicurezza)
+                    localStorage.setItem('asd_license_last_check', Date.now().toString());
+                }
+            }
+        },
+
         async init() {
         window.addEventListener('message', async (e) => {
             if(e.data && e.data.action === 'saveVerbale') {
@@ -811,6 +852,9 @@
                     // Blocca il caricamento finché non inserisce la licenza
                     return;
                 }
+
+                // Eseguiamo il controllo silenzioso in background senza bloccare l'interfaccia
+                this.verifyLicenseBackground(savedLicense);
 
                 this.cloudSync.init();
                 this.checkAutoSave();
