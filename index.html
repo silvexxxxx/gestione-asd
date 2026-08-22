@@ -4980,10 +4980,6 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <h1>⚙️ Impostazioni</h1>
                                 <p>Configura i dati della tua associazione.</p>
                             </div>
-                            <button class="btn" style="background: #f59e0b; color: white; display: flex; align-items: center; gap: 8px; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="window.location.href='mailto:tuamail@email.it?subject=Suggerimento per ASD Gestionale&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
-                                <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                Invia Suggerimento
-                            </button>
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
                             
@@ -5200,19 +5196,29 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         </div>
 
-                        <!-- Debug Mode -->
-                        <div class="glass-card" style="border-color: rgba(139,92,246,0.3);">
-                            <h3 style="margin-bottom:1rem;">🔐 Modalità Debug</h3>
-                            ${this.state.debugMode ? `
-                                <p style="color:var(--success); margin-bottom:1rem;">✅ Modalità debug attiva e moduli decriptati.</p>
-                                <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
-                                ${this.state.debugUI || ''}
-                            ` : `
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <input type="password" id="debug-password" class="form-control" placeholder="Password Debug" style="max-width:220px;">
-                                    <button class="btn btn-outline" onclick="app.toggleDebugMode(true)">Sblocca</button>
-                                </div>
-                            `}
+                        <!-- Debug Mode & Feedback -->
+                        <div class="glass-card" style="border-color: rgba(139,92,246,0.3); display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h3 style="margin-bottom:1rem;">🔒 Modalità Debug</h3>
+                                ${this.state.debugMode ? `
+                                    <p style="color:var(--success); margin-bottom:1rem;">✓ Modalità debug attiva e moduli decriptati.</p>
+                                    <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
+                                    ${this.state.debugUI || ''}
+                                ` : `
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <input type="password" id="debug-password" class="form-control" placeholder="Password Debug" style="max-width:220px;">
+                                        <button class="btn btn-outline" onclick="app.toggleDebugMode(true)">Sblocca</button>
+                                    </div>
+                                `}
+                            </div>
+                            
+                            <div style="border-left: 1px solid #334155; padding-left: 20px; text-align: center;">
+                                <h3 style="margin-bottom: 0.5rem; color: #f59e0b;">💡 Hai un'idea?</h3>
+                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Aiutaci a migliorare il gestionale.</p>
+                                <button class="btn" style="background: #f59e0b; color: white; display: inline-flex; align-items: center; gap: 8px; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="window.location.href='mailto:silveriopintus@gmail.com?subject=Suggerimento per ASD Gestionale&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
+                                    Invia Suggerimento
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
