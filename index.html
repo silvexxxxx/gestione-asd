@@ -4975,11 +4975,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const metodi = s.metodi_pagamento || [];
             main.innerHTML = `
                     <div class="page-content" style="overflow-y:auto;">
-                        <div class="page-header">
+                        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div class="header-title">
                                 <h1>⚙️ Impostazioni</h1>
                                 <p>Configura i dati della tua associazione.</p>
                             </div>
+                            <button class="btn" style="background: #f59e0b; color: white; display: flex; align-items: center; gap: 8px; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="window.location.href='mailto:tuamail@email.it?subject=Suggerimento per ASD Gestionale&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
+                                <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Invia Suggerimento
+                            </button>
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
                             
@@ -5378,13 +5382,28 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 </div>
             `;
             document.body.appendChild(modal);
+            
+            const performExit = () => {
+                window.close();
+                // Se window.close() è bloccato dal browser (comune nelle normali schede)
+                setTimeout(() => {
+                    document.body.innerHTML = `
+                        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a; color: white; flex-direction: column; font-family: sans-serif;">
+                            <svg style="width: 60px; height: 60px; color: #10b981; margin-bottom: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <h2>Uscita completata</h2>
+                            <p style="color: #94a3b8; text-align: center;">I tuoi dati sono al sicuro.<br><br>Per ragioni di sicurezza il browser ti impedisce di chiudere la finestra in automatico.<br><b>Puoi chiudere questa scheda / app cliccando sulla X in alto.</b></p>
+                        </div>
+                    `;
+                }, 300);
+            };
+
             document.getElementById('btn-save-exit').onclick = () => {
                 this.createSnapshot('exit');
-                window.close();
+                performExit();
             };
             document.getElementById('btn-exit').onclick = () => {
                 this.state.isDirty = false; // Prevents auto-exit snapshot
-                window.close();
+                performExit();
             };
             document.getElementById('btn-cancel').onclick = () => {
                 modal.remove();
@@ -6725,6 +6744,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                 }).catch(err => {
                     console.log('PWA ServiceWorker registrazione fallita:', err);
                 });
+            });
+            // Forza il refresh quando si installa una nuova versione
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                }
             });
         }
 
