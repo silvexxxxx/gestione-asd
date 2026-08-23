@@ -160,6 +160,42 @@
             box-shadow: inset 0 0 0 1px var(--primary);
         }
 
+        .nav-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .nav-dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: rgba(15, 23, 42, 0.98);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 2000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            top: 100%;
+            left: 0;
+            padding: 5px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-dropdown-content .nav-item {
+            border-radius: 0;
+            padding: 10px 16px;
+            color: var(--text-muted);
+        }
+
+        .nav-dropdown-content .nav-item:hover,
+        .nav-dropdown-content .nav-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-dropdown:hover .nav-dropdown-content {
+            display: block;
+        }
+
         /* Main Content */
         main {
             flex: 1;
@@ -637,14 +673,28 @@
                 <div class="nav-item active" data-page="dashboard" onclick="app.showPage('dashboard')" data-guide="Visualizza la panoramica generale della tua ASD: scadenze, statistiche e calendario odierno.">Dashboard</div>
                 <div class="nav-item" data-page="soci" onclick="app.showPage('soci')" data-guide="Gestisci l'anagrafica di tutti gli iscritti. Aggiungi soci, verifica certificati medici e scadenze tesseramento.">Soci</div>
                 <div class="nav-item" data-page="ricevute" onclick="app.showPage('ricevute')" data-guide="Archivio di tutte le ricevute emesse. Puoi scaricarle in PDF, annullarle e visualizzare il totale incassato.">Ricevute</div>
-                <div class="nav-item" data-page="sala-pesi" onclick="app.showPage('sala-pesi')" data-guide="Calendario settimanale completo. Pianifica i corsi, assegna sale e istruttori.">Calendario</div>
-                <div class="nav-item" data-page="corsi" onclick="app.showPage('corsi')" data-guide="Visualizza l'elenco dei corsi in programma e gestisci le iscrizioni.">Corsi</div>
+                
+                <div class="nav-dropdown">
+                    <div class="nav-item" style="cursor:default;">Calendario ▾</div>
+                    <div class="nav-dropdown-content">
+                        <div class="nav-item" data-page="sala-pesi" onclick="app.showPage('sala-pesi')" data-guide="Calendario settimanale completo. Pianifica i corsi, assegna sale e istruttori.">Calendario</div>
+                        <div class="nav-item" data-page="corsi" onclick="app.showPage('corsi')" data-guide="Visualizza l'elenco dei corsi in programma e gestisci le iscrizioni.">Corsi</div>
+                        <div class="nav-item" data-page="eventi" onclick="app.showPage('eventi')" data-guide="Gestisci eventi speciali, sponsorizzazioni e incassi dell'evento.">Eventi</div>
+                    </div>
+                </div>
+
                 <div class="nav-item" data-page="istruttori" onclick="app.showPage('istruttori')" data-guide="Gestisci lo staff: aggiungi istruttori e visualizza il loro compenso in base alle ore lavorate.">Istruttori</div>
-                <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Gestisci i beni di consumo per la palestra.">Magazzino</div>
-                <div class="nav-item" data-page="eventi" onclick="app.showPage('eventi')" data-guide="Gestisci eventi speciali, sponsorizzazioni e incassi dell'evento.">Eventi</div>
-                <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Gestione rimborsi spese per i collaboratori o membri del direttivo.">Rimborsi</div>
                 <div class="nav-item" onclick="app.openSchedeAtleti()" data-guide="Gestione avanzata per schede di allenamento e performance degli atleti.">Schede Atleti</div>
-                <div class="nav-item" data-page="primanota" onclick="app.showPage('primanota')" data-guide="Tieni traccia di tutte le entrate (ricevute) e delle uscite (spese) della tua associazione.">Prima Nota & Cassa</div>
+
+                <div class="nav-dropdown">
+                    <div class="nav-item" style="cursor:default;">Prima Nota & Cassa ▾</div>
+                    <div class="nav-dropdown-content">
+                        <div class="nav-item" data-page="primanota" onclick="app.showPage('primanota')" data-guide="Tieni traccia di tutte le entrate (ricevute) e delle uscite (spese) della tua associazione.">Prima Nota</div>
+                        <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Gestisci i beni di consumo per la palestra.">Magazzino</div>
+                        <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Gestione rimborsi spese per i collaboratori o membri del direttivo.">Rimborsi</div>
+                    </div>
+                </div>
+
                 <div class="nav-item" data-page="database" onclick="app.showPage('database')" data-guide="Configura i dati dell'ASD (per le stampe), crea backup di sicurezza o svuota i dati vecchi.">Impostazioni</div>
             </nav>
 
