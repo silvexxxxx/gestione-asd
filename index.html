@@ -6084,8 +6084,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Build calendar grid
             // Header row
-            let gridHtml = `<div style="display:grid; grid-template-columns:64px repeat(7,1fr); gap:1px; background:var(--border); border-radius:12px; overflow:hidden; font-size:0.78rem;">`;
-            gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted);">Ora</div>`;
+            let gridHtml = `<div style="display:grid; grid-template-columns:64px repeat(7,1fr); gap:0; background:transparent; border-radius:12px; border:1px solid var(--border); overflow:hidden; font-size:0.78rem;">`;
+            gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted); position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">Ora</div>`;
             DAYS.forEach((day, idx) => {
                 const dayNum = idx + 1;
                 const d = weekDays[idx];
@@ -6105,7 +6105,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     colorStyle = 'color: var(--primary);';
                 }
 
-                gridHtml += `<div style="background:${headerBg}; padding:6px 4px; text-align:center; font-weight:700; ${colorStyle}">
+                gridHtml += `<div style="background:${headerBg}; padding:6px 4px; text-align:center; font-weight:700; ${colorStyle} position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">
                         <div>${day} ${isHoliday ? '🎉' : ''}</div><div style="font-size:0.7rem; opacity:0.8;">${dateStr}</div>
                         <div style="display:flex; gap:3px; justify-content:center; margin-top:4px; flex-wrap:wrap;">
                             <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; ${isCopiedSource ? 'background:var(--primary); color:white;' : ''}" title="Copia le attività di ${day}" onclick="event.stopPropagation(); app.copyDay(${dayNum})">📋 Copia</button>
@@ -6118,7 +6118,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             // Time rows
             HOURS.forEach(hour => {
                 // Time label
-                gridHtml += `<div style="background:rgba(30,41,59,0.85); padding:8px; text-align:right; color:var(--text-muted); align-content:start;">${hour}</div>`;
+                gridHtml += `<div style="background:rgba(30,41,59,0.85); padding:8px; text-align:right; color:var(--text-muted); align-content:start; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">${hour}</div>`;
                 // Day cells
                 for (let d = 1; d <= 7; d++) {
                     // corsi in this slot (dayOfWeek: 1=Mon...7=Sun)
@@ -6130,7 +6130,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         return cStart <= hour && cEnd > hour;
                     });
                     const isToday = weekDays[d - 1].toDateString() === new Date().toDateString();
-                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:48px; padding:2px; position:relative; cursor:pointer;" onclick="app.openNewCorsoModal(${d}, '${hour}')">`;
+                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:48px; padding:2px; position:relative; cursor:pointer; border-bottom:1px solid var(--border); border-right:1px solid var(--border);" onclick="app.openNewCorsoModal(${d}, '${hour}')">`;
                     slotCorsi.forEach(c => {
                         const isConflict = conflicts.has(c.id);
                         const istrNome = this.state.istruttori.find(i => i.id == c.istruttore_id)?.nome || '-';
