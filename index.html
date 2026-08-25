@@ -1722,11 +1722,14 @@
                                     <p style="margin-bottom: 2rem;"><strong>Quale versione vuoi utilizzare?</strong> (L'altra verrà sovrascritta)</p>
                                     
                                     <div style="display:flex; flex-direction:column; gap:12px;">
+                                        <button class="btn btn-outline" style="border-color:var(--success); color:white; padding: 12px; background: rgba(16, 185, 129, 0.1);" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.mergeBackup().then(() => app.closeModal());">
+                                            🤝 UNISCI I DATI (Consigliato: fonde Cloud e PC senza perdere nulla)
+                                        </button>
                                         <button class="btn btn-outline" style="border-color:var(--primary); color:white; padding: 12px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.downloadBackup().then(() => app.closeModal());">
-                                            📥 Usa i dati del CLOUD (Cancella dati di questo PC)
+                                            📥 Usa SOLO i dati del CLOUD (Cancella dati di questo PC)
                                         </button>
                                         <button class="btn btn-primary" style="padding: 12px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.uploadBackup().then(() => app.closeModal());">
-                                            📤 Usa i dati di QUESTO PC (Sovrascrivi il Cloud)
+                                            📤 Usa SOLO i dati di QUESTO PC (Sovrascrivi il Cloud)
                                         </button>
                                         <button class="btn btn-outline text-danger" style="padding: 12px;" onclick="app.cloudSync.logout(); app.closeModal();">
                                             ❌ Annulla e rimani Offline
@@ -1745,6 +1748,48 @@
                     app.toast('Errore di sincronizzazione Cloud', 'danger');
                 } finally {
                     this.isExplicitLogin = false;
+                }
+            },
+
+            async mergeBackup() {
+                if (!this.fileId) return;
+                app.toast('Fusione dati in corso...', 'info');
+                try {
+                    const res = await fetch(\`https://www.googleapis.com/drive/v3/files/\${this.fileId}?alt=media\`, {
+                        headers: { 'Authorization': \`Bearer \${this.accessToken}\` }
+                    });
+                    const cloudData = await res.json();
+                    
+                    if (cloudData) {
+                        // Logica di Fusione (Merge)
+                        const mergeArrays = (localArr, cloudArr) => {
+                            const map = new Map();
+                            (cloudArr || []).forEach(item => map.set(item.id, item));
+                            (localArr || []).forEach(item => map.set(item.id, item)); // Locale vince in caso di parità ID
+                            return Array.from(map.values());
+                        };
+                        
+                        app.state.soci = mergeArrays(app.state.soci, cloudData.soci);
+                        app.state.ricevute = mergeArrays(app.state.ricevute, cloudData.ricevute);
+                        app.state.corsi = mergeArrays(app.state.corsi, cloudData.corsi);
+                        app.state.istruttori = mergeArrays(app.state.istruttori, cloudData.istruttori);
+                        app.state.primanota = mergeArrays(app.state.primanota, cloudData.primanota);
+                        
+                        // Per i settings, manteniamo le impostazioni locali ma integriamo le mancanti dal cloud
+                        app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
+                        
+                        await app.idbSet('main_state', app.state);
+                        await this.uploadBackup(); // Carichiamo il risultato unito sul cloud
+                        
+                        app.toast('Dati fusi e salvati con successo!', 'success');
+                        
+                        // Ricarichiamo la pagina corrente per mostrare i dati fusi
+                        const page = localStorage.getItem('asd_current_page') || 'dashboard';
+                        app.showPage(page);
+                    }
+                } catch (e) {
+                    console.error('Merge error', e);
+                    app.toast('Errore durante la fusione dei dati', 'danger');
                 }
             },
 
