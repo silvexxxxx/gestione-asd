@@ -772,8 +772,8 @@
                     pIva: "01234567890",
                     address: "Via Roma 1, 00100 Roma",
                     logo: "",
-                    presidente: "Pintus Silverio",
-                    segretario: "Boccone Serafino",
+                    presidente: "",
+                    segretario: "",
                     vice_presidente: "",
                     metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp"],
                     categorie_entrate: ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"],
@@ -1295,10 +1295,16 @@
 
             openRinnovoDirettivoModal() {
                 const s = this.state.settings;
-                const getSocioOptions = (selectedId) => {
-                    return `<option value="">- Seleziona -</option>` + this.state.soci.map(socio => 
-                        `<option value="${socio.id}" ${socio.id == selectedId || socio.nome == selectedId ? 'selected' : ''}>${socio.nome} (${socio.cf})</option>`
+                const getSocioOptions = (selectedVal) => {
+                    let isCustom = selectedVal && !this.state.soci.find(socio => socio.id == selectedVal);
+                    let opts = `<option value="">- Seleziona dal DB -</option>`;
+                    if (isCustom) {
+                        opts += `<option value="${selectedVal}" selected>${selectedVal} (Inserimento Manuale)</option>`;
+                    }
+                    opts += this.state.soci.map(socio => 
+                        `<option value="${socio.id}" ${socio.id == selectedVal ? 'selected' : ''}>${socio.nome} (${socio.cf})</option>`
                     ).join('');
+                    return opts;
                 };
 
                 const consiglieri = s.consiglieri || [];
@@ -1309,6 +1315,7 @@
                             <select name="consiglieri[]" class="form-control" style="flex:1;">
                                 ${getSocioOptions(c)}
                             </select>
+                            <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️</button>
                             <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>
                         </div>
                     `;
@@ -1318,21 +1325,30 @@
                     <form id="direttivo-form" onsubmit="app.saveNuovoDirettivo(event)">
                         <div class="form-group">
                             <label>Presidente</label>
-                            <select name="presidente" class="form-control" required>
-                                ${getSocioOptions(s.presidente)}
-                            </select>
+                            <div style="display:flex; gap:8px;">
+                                <select name="presidente" class="form-control" style="flex:1;" required>
+                                    ${getSocioOptions(s.presidente)}
+                                </select>
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Vice Presidente</label>
-                            <select name="vice_presidente" class="form-control">
-                                ${getSocioOptions(s.vice_presidente)}
-                            </select>
+                            <div style="display:flex; gap:8px;">
+                                <select name="vice_presidente" class="form-control" style="flex:1;">
+                                    ${getSocioOptions(s.vice_presidente)}
+                                </select>
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Segretario</label>
-                            <select name="segretario" class="form-control">
-                                ${getSocioOptions(s.segretario)}
-                            </select>
+                            <div style="display:flex; gap:8px;">
+                                <select name="segretario" class="form-control" style="flex:1;">
+                                    ${getSocioOptions(s.segretario)}
+                                </select>
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
+                            </div>
                         </div>
                         
                         <hr style="border:none; border-top:1px solid var(--border); margin:1rem 0;">
@@ -1354,11 +1370,34 @@
                     </form>
                 `);
             },
+            switchToManualInput(btn) {
+                const select = btn.previousElementSibling;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = select.name;
+                input.className = 'form-control';
+                input.style.flex = '1';
+                input.placeholder = 'Inserisci nome manuale...';
+                
+                // Se c'era un valore selezionato e non era vuoto, lo mettiamo
+                if (select.value) {
+                    const selectedOpt = select.options[select.selectedIndex];
+                    // Estrae solo il nome (toglie il CF tra parentesi se presente)
+                    let text = selectedOpt.text;
+                    if (text.includes(' (')) text = text.split(' (')[0];
+                    input.value = text;
+                }
+                if (select.hasAttribute('required')) input.setAttribute('required', 'true');
+                
+                select.parentNode.insertBefore(input, select);
+                select.remove();
+                btn.remove();
+            },
 
             addConsigliereField() {
                 const container = document.getElementById('consiglieri-container');
                 const getSocioOptions = () => {
-                    return `<option value="">- Seleziona -</option>` + this.state.soci.map(socio => 
+                    return `<option value="">- Seleziona dal DB -</option>` + this.state.soci.map(socio => 
                         `<option value="${socio.id}">${socio.nome} (${socio.cf})</option>`
                     ).join('');
                 };
@@ -1367,6 +1406,7 @@
                         <select name="consiglieri[]" class="form-control" style="flex:1;">
                             ${getSocioOptions()}
                         </select>
+                        <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️</button>
                         <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>
                     </div>
                 `);
