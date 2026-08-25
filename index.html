@@ -1592,29 +1592,36 @@
                 if(this.state.lastSociScroll) localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
             },
             
-            exitApp() {
+            async exitApp() {
                 // Salva tutto prima di uscire
+                this.toast('💾 Salvataggio dati in corso...', 'info');
                 this.saveAll();
-                this.toast('💾 Dati salvati. Chiusura in corso...', 'success');
+                
+                if (this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
+                    this.toast('☁️ Sincronizzazione Cloud in corso prima della chiusura...', 'info');
+                    await this.cloudSync.uploadBackup();
+                }
+                
+                this.toast('✅ Dati salvati con successo. Chiusura in corso...', 'success');
                 setTimeout(() => {
-                    // window.close() funziona se la finestra è stata aperta tramite script o .bat
+                    // window.close() funziona se la finestra è stata aperta tramite script o PWA standalone
                     window.close();
-                    // Se la finestra non si chiude automaticamente (aperta manualmente nel browser)
-                    // mostriamo un messaggio alternativo
+                    
+                    // Se la finestra non si chiude (browser normale) mostriamo un messaggio
                     setTimeout(() => {
                         if (!document.hidden) {
                             this.openModal('✅ Dati Salvati', `
                                 <div style="text-align:center; padding:1.5rem 0;">
                                     <div style="font-size:3rem; margin-bottom:1rem;">💾</div>
-                                    <p style="font-size:1.1rem; margin-bottom:0.5rem; font-weight:600;">Tutti i dati sono stati salvati.</p>
-                                    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Puoi chiudere questa finestra del browser in modo sicuro.</p>
+                                    <p style="font-size:1.1rem; margin-bottom:0.5rem; font-weight:600;">Tutti i dati sono stati sincronizzati e salvati.</p>
+                                    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Puoi chiudere questa scheda del browser in modo sicuro.</p>
                                     <button class="btn btn-outline" onclick="window.close()" style="margin-right:8px;">Chiudi finestra</button>
                                     <button class="btn btn-primary" onclick="app.closeModal()">Rimani</button>
                                 </div>
                             `);
                         }
                     }, 400);
-                }, 600);
+                }, 1000);
             },
 
         // --- CLOUD SYNC (Google Drive API) ---
