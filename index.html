@@ -5793,15 +5793,29 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted);">Ora</div>`;
             DAYS.forEach((day, idx) => {
                 const dayNum = idx + 1;
-                const dateStr = weekDays[idx].toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-                const isToday = weekDays[idx].toDateString() === new Date().toDateString();
+                const d = weekDays[idx];
+                const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                const isToday = d.toDateString() === new Date().toDateString();
+                const isHoliday = app.isItalianHoliday(d);
                 const isCopiedSource = this.state.copiedDay && this.state.copiedDay.dayOfWeek === dayNum;
                 const isCopied = !!this.state.copiedDay;
-                gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.25)' : 'rgba(30,41,59,0.95)'}; padding:6px 4px; text-align:center; font-weight:700; ${isToday ? 'color:var(--primary);' : ''}">
-                        <div>${day}</div><div style="font-size:0.7rem; color:var(--text-muted);">${dateStr}</div>
-                        <div style="display:flex; gap:3px; justify-content:center; margin-top:4px;">
+                
+                let headerBg = 'rgba(30,41,59,0.95)';
+                let colorStyle = '';
+                if (isHoliday) {
+                    headerBg = 'rgba(239,68,68,0.2)'; // Sfondo rosso chiaro per festività
+                    colorStyle = 'color: #ef4444;';
+                } else if (isToday) {
+                    headerBg = 'rgba(59,130,246,0.25)';
+                    colorStyle = 'color: var(--primary);';
+                }
+
+                gridHtml += `<div style="background:${headerBg}; padding:6px 4px; text-align:center; font-weight:700; ${colorStyle}">
+                        <div>${day} ${isHoliday ? '🎉' : ''}</div><div style="font-size:0.7rem; opacity:0.8;">${dateStr}</div>
+                        <div style="display:flex; gap:3px; justify-content:center; margin-top:4px; flex-wrap:wrap;">
                             <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; ${isCopiedSource ? 'background:var(--primary); color:white;' : ''}" title="Copia le attività di ${day}" onclick="event.stopPropagation(); app.copyDay(${dayNum})">📋 Copia</button>
                             ${isCopied ? `<button class="btn btn-success" style="padding:1px 5px; font-size:0.65rem;" title="Incolla le attività copiate in ${day}" onclick="event.stopPropagation(); app.pasteDay(${dayNum})">📥 Incolla</button>` : ''}
+                            <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; color:#ca8a04; border-color:#ca8a04;" title="Estendi la fine di tutti i corsi di questo giorno" onclick="event.stopPropagation(); app.extendDayCorsi(${dayNum})">🗓️ Estendi</button>
                         </div>
                     </div>`;
             });
@@ -5930,6 +5944,85 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         clearCopiedDay() {
             this.state.copiedDay = null;
+            this.renderSalaPesi();
+        },
+
+        isItalianHoliday(date) {
+            if (!date) return false;
+            const d = date.getDate();
+            const m = date.getMonth() + 1;
+            const y = date.getFullYear();
+
+            // Feste fisse italiane
+            const fixed = [
+                '1-1', '6-1', '25-4', '1-5', '2-6', 
+                '15-8', '1-11', '8-12', '25-12', '26-12'
+            ];
+            const checkStr = `${d}-${m}`;
+            if (fixed.includes(checkStr)) return true;
+
+            // Calcolo Pasqua e Pasquetta (Algoritmo di Gauss)
+            const a = y % 19;
+            const b = y % 4;
+            const c = y % 7;
+            const k = Math.floor(y / 100);
+            const p = Math.floor((13 + 8 * k) / 25);
+            const q = Math.floor(k / 4);
+            const M = (15 - p + k - q) % 30;
+            const N = (4 + k - q) % 7;
+            const d1 = (19 * a + M) % 30;
+            const e = (2 * b + 4 * c + 6 * d1 + N) % 7;
+            let easterDay = 22 + d1 + e;
+            let easterMonth = 3;
+            if (easterDay > 31) {
+                easterDay -= 31;
+                easterMonth = 4;
+            }
+            let pasquettaDay = easterDay + 1;
+            let pasquettaMonth = easterMonth;
+            if (easterMonth === 3 && pasquettaDay === 32) {
+                pasquettaDay = 1;
+                pasquettaMonth = 4;
+            }
+
+            if (d === easterDay && m === easterMonth) return true;
+            if (d === pasquettaDay && m === pasquettaMonth) return true;
+
+            return false;
+        },
+
+        extendDayCorsi(dayOfWeek) {
+            const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+            const targetDayName = DAYS[dayOfWeek - 1];
+            
+            // Trova tutti i corsi attualmente visibili in questo giorno
+            const currentTab = this.state.currentSalaTab || 'all';
+            const weekDays = this.getWeekDates(this.state.currentWeekOffset || 0);
+            const activeCorsi = this.state.corsi.filter(c => this.corsoIsActiveInWeek(c, weekDays));
+            const corsiInDay = (currentTab === 'all' ? activeCorsi : activeCorsi.filter(c => c.sala_id === currentTab))
+                .filter(c => c.dayOfWeek === dayOfWeek);
+
+            if (corsiInDay.length === 0) {
+                this.toast(`Nessun corso programmato di ${targetDayName} da estendere.`, "warning");
+                return;
+            }
+
+            const endDate = prompt(`Estendi tutti i ${corsiInDay.length} corsi di ${targetDayName}.\nInserisci la nuova Data di Fine Validità (formato YYYY-MM-DD):\n(es: 2027-08-31)`);
+            if (!endDate) return;
+
+            // Verifica formato
+            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)) {
+                this.toast("Formato data non valido! Usa AAAA-MM-GG", "danger");
+                return;
+            }
+
+            // Aggiorna i corsi
+            corsiInDay.forEach(c => {
+                c.fine = endDate;
+            });
+
+            this.saveAll();
+            this.toast(`La data di fine di ${corsiInDay.length} corsi è stata impostata al ${endDate}.`, "success");
             this.renderSalaPesi();
         },
 
