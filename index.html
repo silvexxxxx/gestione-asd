@@ -2487,14 +2487,14 @@ closeModal() {
                                 <table id="soci-table" style="margin-top: 0;">
                                     <thead>
                                         <tr>
-                                            <th style="cursor: pointer; padding-left: 1.5rem;" onclick="app.handleSort('cognome')">Cognome ${this.getSortIcon('cognome')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('nome')">Nome ${this.getSortIcon('nome')}</th>
-                                            <th>Residenza / Contatti / Email</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('quota_scadenza')">Scad. Quota ${this.getSortIcon('quota_scadenza')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('certificato_scadenza')">Certificato ${this.getSortIcon('certificato_scadenza')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('tesseramento_data')">Data Tess. Fed. ${this.getSortIcon('tesseramento_data')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('stato')">Stato ${this.getSortIcon('stato')}</th>
-                                            <th style="text-align: right; padding-right: 1.5rem;">Azioni</th>
+                                            <th style="cursor: pointer; padding-left: 1.5rem; width: 12%;" onclick="app.handleSort('cognome')">Cognome ${this.getSortIcon('cognome')}</th>
+                                            <th style="cursor: pointer; width: 12%;" onclick="app.handleSort('nome')">Nome ${this.getSortIcon('nome')}</th>
+                                            <th style="width: 25%;">Residenza / Contatti / Email</th>
+                                            <th style="cursor: pointer; width: 10%;" onclick="app.handleSort('quota_scadenza')">Scad. Quota ${this.getSortIcon('quota_scadenza')}</th>
+                                            <th style="cursor: pointer; width: 10%;" onclick="app.handleSort('certificato_scadenza')">Certificato ${this.getSortIcon('certificato_scadenza')}</th>
+                                            <th style="cursor: pointer; width: 11%;" onclick="app.handleSort('tesseramento_data')">Data Tess. Fed. ${this.getSortIcon('tesseramento_data')}</th>
+                                            <th style="cursor: pointer; width: 5%;" onclick="app.handleSort('stato')">Stato ${this.getSortIcon('stato')}</th>
+                                            <th style="text-align: right; padding-right: 1.5rem; width: 15%; min-width: 160px;">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="soci-tbody"></tbody>
@@ -2550,8 +2550,8 @@ closeModal() {
                             </div>
                         </td>
                         <td><span class="badge badge-${s.stato.toLowerCase()}">${s.stato}</span></td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                        <td style="text-align: right; padding-right: 1.5rem;">
+                            <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap;">
                                 ${s.note 
                                     ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">💬</button>` 
                                     : `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗨️</button>`
