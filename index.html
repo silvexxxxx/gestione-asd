@@ -699,6 +699,11 @@
             </nav>
 
             <div style="display: flex; align-items: center; gap: 12px; min-width: 200px; justify-content: flex-end;">
+                <button id="cloud-indicator-btn" class="btn btn-outline" title="Stato Sincronizzazione" onclick="app.showPage('impostazioni')"
+                    style="padding: 6px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.5); color: var(--danger); display: flex; align-items: center; gap: 4px;">
+                    <span id="cloud-indicator-icon">☁️</span>
+                    <span id="cloud-indicator-label">Offline</span>
+                </button>
                 <button class="btn btn-outline" id="fullscreen-btn" title="Schermo Intero"
                     onclick="app.toggleFullscreen()" style="padding: 6px 10px; font-size: 0.75rem;">⛶</button>
 
@@ -1708,12 +1713,25 @@
 
             updateUIStatus() {
                 const statusEl = document.getElementById('cloud-status-text');
-                if (statusEl) {
-                    if (this.syncEnabled) {
-                        statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>';
-                    } else {
-                        statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Offline (Locale)</span>';
+                const indicatorBtn = document.getElementById('cloud-indicator-btn');
+                const indicatorLabel = document.getElementById('cloud-indicator-label');
+                
+                if (this.syncEnabled) {
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>';
+                    if (indicatorBtn) {
+                        indicatorBtn.style.borderColor = 'var(--success)';
+                        indicatorBtn.style.color = 'var(--success)';
+                        indicatorBtn.style.background = 'rgba(16, 185, 129, 0.1)';
                     }
+                    if (indicatorLabel) indicatorLabel.textContent = 'Online';
+                } else {
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Offline (Locale)</span>';
+                    if (indicatorBtn) {
+                        indicatorBtn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                        indicatorBtn.style.color = 'var(--danger)';
+                        indicatorBtn.style.background = 'transparent';
+                    }
+                    if (indicatorLabel) indicatorLabel.textContent = 'Offline';
                 }
             },
 
