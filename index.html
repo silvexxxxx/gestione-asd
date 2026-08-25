@@ -6072,106 +6072,36 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Build tab HTML
             const tabsHtml = `
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem;">
-                        <button class="btn ${currentTab === 'all' ? 'btn-primary' : 'btn-outline'}" style="font-size:0.8rem; padding:6px 14px;" onclick="app.setCalTab('all')">🌐 Tutte le Sale</button>
-                        ${sale.map(s => `<button class="btn ${currentTab === s.id ? 'btn-primary' : 'btn-outline'}" style="font-size:0.8rem; padding:6px 14px;" onclick="app.setCalTab('${s.id}')">🏠 ${s.nome}</button>`).join('')}
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <button class="btn ${currentTab === 'all' ? 'btn-primary' : 'btn-outline'}" style="font-size:0.75rem; padding:4px 10px;" onclick="app.setCalTab('all')">🌐 Tutte le Sale</button>
+                        ${sale.map(s => `<button class="btn ${currentTab === s.id ? 'btn-primary' : 'btn-outline'}" style="font-size:0.75rem; padding:4px 10px;" onclick="app.setCalTab('${s.id}')">🏠 ${s.nome}</button>`).join('')}
                     </div>
                 `;
 
-            // Determine which corsi to show in the grid
-            const corsiToShow = currentTab === 'all' ? activeCorsi : activeCorsi.filter(c => c.sala_id === currentTab);
-            const conflicts = this.detectConflicts(corsiToShow);
-
-            // Build calendar grid
-            // Header row
-            let gridHtml = `<div style="display:grid; grid-template-columns:64px repeat(7,1fr); gap:0; background:transparent; border-radius:12px; border:1px solid var(--border); font-size:0.78rem;">`;
-            gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted); position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">Ora</div>`;
-            DAYS.forEach((day, idx) => {
-                const dayNum = idx + 1;
-                const d = weekDays[idx];
-                const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-                const isToday = d.toDateString() === new Date().toDateString();
-                const isHoliday = app.isItalianHoliday(d);
-                const isCopiedSource = this.state.copiedDay && this.state.copiedDay.dayOfWeek === dayNum;
-                const isCopied = !!this.state.copiedDay;
-                
-                let headerBg = 'rgba(30,41,59,0.95)';
-                let colorStyle = '';
-                if (isHoliday) {
-                    headerBg = 'rgba(239,68,68,0.2)'; // Sfondo rosso chiaro per festività
-                    colorStyle = 'color: #ef4444;';
-                } else if (isToday) {
-                    headerBg = 'rgba(59,130,246,0.25)';
-                    colorStyle = 'color: var(--primary);';
-                }
-
-                gridHtml += `<div style="background:${headerBg}; padding:6px 4px; text-align:center; font-weight:700; ${colorStyle} position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">
-                        <div>${day} ${isHoliday ? '🎉' : ''}</div><div style="font-size:0.7rem; opacity:0.8;">${dateStr}</div>
-                        <div style="display:flex; gap:3px; justify-content:center; margin-top:4px; flex-wrap:wrap;">
-                            <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; ${isCopiedSource ? 'background:var(--primary); color:white;' : ''}" title="Copia le attività di ${day}" onclick="event.stopPropagation(); app.copyDay(${dayNum})">📋 Copia</button>
-                            ${isCopied ? `<button class="btn btn-success" style="padding:1px 5px; font-size:0.65rem;" title="Incolla le attività copiate in ${day}" onclick="event.stopPropagation(); app.pasteDay(${dayNum})">📥 Incolla</button>` : ''}
-                            <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; color:#ca8a04; border-color:#ca8a04;" title="Estendi la fine di tutti i corsi di questo giorno" onclick="event.stopPropagation(); app.extendDayCorsi(${dayNum})">🗓️ Estendi</button>
-                        </div>
-                    </div>`;
-            });
-
-            // Time rows
-            HOURS.forEach(hour => {
-                // Time label
-                gridHtml += `<div style="background:rgba(30,41,59,0.85); padding:8px; text-align:right; color:var(--text-muted); align-content:start; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">${hour}</div>`;
-                // Day cells
-                for (let d = 1; d <= 7; d++) {
-                    // corsi in this slot (dayOfWeek: 1=Mon...7=Sun)
-                    const slotCorsi = corsiToShow.filter(c => {
-                        const dow = c.dayOfWeek; // 1=Mon, 7=Sun
-                        if (dow !== d) return false;
-                        const cStart = c.startTime || '00:00';
-                        const cEnd = c.endTime || '23:59';
-                        return cStart <= hour && cEnd > hour;
-                    });
-                    const isToday = weekDays[d - 1].toDateString() === new Date().toDateString();
-                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:48px; padding:2px; position:relative; cursor:pointer; border-bottom:1px solid var(--border); border-right:1px solid var(--border);" onclick="app.openNewCorsoModal(${d}, '${hour}')">`;
-                    slotCorsi.forEach(c => {
-                        const isConflict = conflicts.has(c.id);
-                        const istrNome = this.state.istruttori.find(i => i.id == c.istruttore_id)?.nome || '-';
-                        const salaNome = this.state.sale.find(s => s.id === c.sala_id)?.nome || '';
-                        const cNameLower = (c.nome || '').toLowerCase();
-                        let defaultColor = 'var(--primary)';
-                        if (cNameLower.includes('pole')) defaultColor = '#ec4899'; // Rosa
-                        else if (cNameLower.includes('body')) defaultColor = '#ef4444'; // Rosso
-                        const bgCol = isConflict ? 'rgba(239,68,68,0.9)' : ((this.state.corsi_colori && this.state.corsi_colori[c.nome]) || defaultColor);
-                        gridHtml += `<div style="background:${bgCol}; border-radius:4px; padding:3px 6px; font-size:0.68rem; margin-bottom:2px; color:white; cursor:pointer; overflow:hidden;" 
-                                onclick="event.stopPropagation(); app.openCorsoDetail(${c.id})" 
-                                title="Corso: ${c.nome}&#10;Orario: ${c.startTime}-${c.endTime}&#10;Sala: ${salaNome}&#10;Istruttore: ${istrNome}${isConflict ? '&#10;⚠️ SOVRAPPOSIZIONE' : ''}">
-                                ${isConflict ? '⚠️ ' : ''}${c.nome}${currentTab === 'all' && salaNome ? ' <span style="opacity:0.85; font-weight:400; font-size:0.6rem;">(' + salaNome + ')</span>' : ''}
-                                ${istrNome !== '-' ? `<div style="font-size:0.6rem; opacity:0.9; font-weight:400; margin-top:2px;">👤 ${istrNome}</div>` : ''}
-                            </div>`;
-                    });
-                    gridHtml += `</div>`;
-                }
-            });
-            gridHtml += `</div>`;
-
             // Count conflicts
             const conflictCount = conflicts.size;
-            const copiedLabel = this.state.copiedDay ? ` &nbsp;|&nbsp; 📋 Giorno copiato: <strong style="color:var(--primary);">${DAYS[this.state.copiedDay.dayOfWeek - 1]} (${this.state.copiedDay.corsi.length} attività)</strong> <button class="btn btn-outline" style="padding:1px 6px; font-size:0.7rem;" onclick="app.clearCopiedDay()">Annulla</button>` : '';
+            const copiedLabel = this.state.copiedDay ? ` &nbsp;|&nbsp; 📋 ${DAYS[this.state.copiedDay.dayOfWeek - 1]} <span style="cursor:pointer; text-decoration:underline;" onclick="app.clearCopiedDay()">[Annulla]</span>` : '';
 
             main.innerHTML = `
-                    <div class="page-content">
-                        <div class="page-header" style="flex-shrink:0;">
-                            <div class="header-title">
-                                <h1>🏟️ Palestra – Calendario</h1>
-                                <p>${this.formatWeekLabel(weekDays)}${conflictCount > 0 ? ` &nbsp;<span style="color:var(--danger); font-weight:700;">⚠️ ${conflictCount} sovrapposizioni rilevate</span>` : ''}${copiedLabel}</p>
+                    <div class="page-content" style="padding-bottom: 0;">
+                        <div class="page-header" style="flex-shrink:0; margin-bottom:0.5rem; display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+                                <h1 style="font-size: 1.25rem; margin:0; line-height:1;">🏟️ Calendario</h1>
+                                ${tabsHtml}
                             </div>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <button class="btn btn-outline" style="padding:6px 12px;" onclick="app.changeWeek(-1)">‹ Indietro</button>
-                                <button class="btn btn-outline" style="padding:6px 12px;" onclick="app.changeWeek(0)">Oggi</button>
-                                <button class="btn btn-outline" style="padding:6px 12px;" onclick="app.changeWeek(1)">Avanti ›</button>
-                                <button class="btn btn-primary" style="padding:6px 14px;" onclick="app.openNewCorsoModal()" data-guide="Clicca qui per programmare un nuovo corso nel calendario.">+ Aggiungi Attività</button>
+                            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <div style="font-size: 0.75rem; margin-right: 8px; color: var(--text-muted); display:flex; flex-direction:column; align-items:flex-end;">
+                                    <div style="font-weight:600;">${this.formatWeekLabel(weekDays)}</div>
+                                    ${conflictCount > 0 ? `<div style="color:var(--danger); font-weight:700;">⚠️ ${conflictCount} sovrapposizioni</div>` : ''}
+                                    ${copiedLabel}
+                                </div>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="app.changeWeek(-1)">‹</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="app.changeWeek(0)">Oggi</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="app.changeWeek(1)">›</button>
+                                <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem; margin-left:4px;" onclick="app.openNewCorsoModal()">+ Attività</button>
                             </div>
                         </div>
-                        <div style="flex-shrink:0;">${tabsHtml}</div>
-                        <div style="flex:1; overflow:auto; border-radius:12px;">${gridHtml}</div>
+                        <div style="flex:1; overflow:auto; border-radius:12px; margin-bottom:0.5rem; border: 1px solid var(--border);">${gridHtml}</div>
                     </div>
                 `;
         },
