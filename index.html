@@ -2552,6 +2552,10 @@ closeModal() {
                         <td><span class="badge badge-${s.stato.toLowerCase()}">${s.stato}</span></td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                                ${s.note 
+                                    ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">💬</button>` 
+                                    : `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗨️</button>`
+                                }
                                 ${isMinore ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" title="Liberatoria Minori" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
                                 <button class="btn btn-outline" style="padding: 5px; border-color: ${isExpired ? 'var(--danger)' : 'var(--border)'};" title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
                                 <button class="btn btn-outline text-danger" style="padding: 5px; border-color: rgba(239, 68, 68, 0.2);" title="Elimina" onclick="app.deleteSocio(${s.id})">🗑️</button>
@@ -2837,6 +2841,42 @@ closeModal() {
                     const input = form.querySelector(`[name="${key}"]`);
                     if (input) input.value = s[key];
                 });
+            },
+
+            openQuickNoteModal(id) {
+                const s = this.state.soci.find(x => x.id === id);
+                if (!s) return;
+
+                this.openModal('Note Interne: ' + (s.cognome || '') + ' ' + (s.nome || ''), `
+                    <div style="margin-bottom: 1rem;">
+                        <textarea id="quick-note-textarea" class="form-control" rows="5" placeholder="Scrivi una nota qui...">${s.note || ''}</textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <button type="button" class="btn btn-outline text-danger" onclick="app.saveQuickNote(${id}, '')" ${!s.note ? 'style="visibility: hidden;"' : ''}>🗑️ Cancella Nota</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                            <button type="button" class="btn btn-primary" onclick="app.saveQuickNote(${id})">Salva Nota</button>
+                        </div>
+                    </div>
+                `);
+            },
+
+            saveQuickNote(id, explicitText = null) {
+                const s = this.state.soci.find(x => x.id === id);
+                if (!s) return;
+                
+                let newNote = explicitText;
+                if (explicitText === null) {
+                    const textarea = document.getElementById('quick-note-textarea');
+                    if (textarea) newNote = textarea.value;
+                }
+
+                s.note = newNote;
+                s.updated_at = Date.now();
+                this.saveAll();
+                this.closeModal();
+                this.renderSoci();
+                this.toast("Nota aggiornata con successo!");
             },
 
             handleSocioSubmit(e) {
@@ -5126,6 +5166,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         formatDate(d) {
             if (!d) return "-";
             const date = new Date(d);
+            if (isNaN(date.getTime())) return "-"; // Handle Invalid Date gracefully
             return date.toLocaleDateString('it-IT');
         },
 
