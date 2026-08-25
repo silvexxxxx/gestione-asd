@@ -1799,8 +1799,8 @@
                 if (!this.fileId) return;
                 app.toast('Fusione dati in corso...', 'info');
                 try {
-                    const res = await fetch(\`https://www.googleapis.com/drive/v3/files/\${this.fileId}?alt=media\`, {
-                        headers: { 'Authorization': \`Bearer \${this.accessToken}\` }
+                    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
                     });
                     const cloudData = await res.json();
                     
