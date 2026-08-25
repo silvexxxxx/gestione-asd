@@ -6084,7 +6084,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Build calendar grid
             // Header row
-            let gridHtml = `<div style="display:grid; grid-template-columns:64px repeat(7,1fr); gap:0; background:transparent; border-radius:12px; border:1px solid var(--border); overflow:hidden; font-size:0.78rem;">`;
+            let gridHtml = `<div style="display:grid; grid-template-columns:64px repeat(7,1fr); gap:0; background:transparent; border-radius:12px; border:1px solid var(--border); font-size:0.78rem;">`;
             gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted); position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">Ora</div>`;
             DAYS.forEach((day, idx) => {
                 const dayNum = idx + 1;
