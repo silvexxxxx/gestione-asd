@@ -1649,11 +1649,14 @@
                     scope: 'https://www.googleapis.com/auth/drive.file',
                     callback: (tokenResponse) => {
                         if (tokenResponse.error !== undefined) {
-                            app.toast('Errore di autenticazione Google.', 'danger');
+                            app.toast('Errore di ricollegamento Cloud silente (Google richiede autorizzazione manuale).', 'warning');
+                            this.updateUIStatus();
                             return;
                         }
                         this.accessToken = tokenResponse.access_token;
                         localStorage.setItem('asd_cloud_sync', 'true');
+                        localStorage.setItem('asd_gdrive_token', this.accessToken);
+                        localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
                         this.syncEnabled = true;
                         app.toast('Cloud collegato con successo!', 'success');
                         this.updateUIStatus();
@@ -1662,8 +1665,18 @@
                 });
 
                 if (this.syncEnabled) {
-                    this.tokenClient.requestAccessToken({prompt: 'none'});
-                    this.updateUIStatus();
+                    const savedToken = localStorage.getItem('asd_gdrive_token');
+                    const tokenExpiry = localStorage.getItem('asd_gdrive_token_expiry');
+                    if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
+                        // Usa il token ancora valido senza chiamare Google
+                        this.accessToken = savedToken;
+                        this.updateUIStatus();
+                        this.performInitialSync();
+                    } else {
+                        // Prova il login silente (potrebbe fallire per blocchi cookie 3ze parti)
+                        this.tokenClient.requestAccessToken({prompt: 'none'});
+                        this.updateUIStatus();
+                    }
                 }
             },
 
@@ -1687,6 +1700,8 @@
                 this.syncEnabled = false;
                 this.isExplicitLogin = false;
                 localStorage.setItem('asd_cloud_sync', 'false');
+                localStorage.removeItem('asd_gdrive_token');
+                localStorage.removeItem('asd_gdrive_token_expiry');
                 app.toast('Disconnesso dal Cloud. Modalità Offline attiva.', 'warning');
                 this.updateUIStatus();
             },
@@ -2482,7 +2497,8 @@ closeModal() {
 
                 return soci.map(s => {
                     const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
-                    const isExpired = qScad && qScad < now;
+                    const tScad = s.tesseramento_scadenza ? new Date(s.tesseramento_scadenza) : null;
+                    const isExpired = (qScad && qScad < now) || (s.tesserato === 'SI' && tScad && tScad < now);
                     const rowStyle = isExpired ? 'color: var(--danger); font-weight: 500;' : '';
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
@@ -2505,7 +2521,10 @@ closeModal() {
                         </td>
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
-                                <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ${s.tesserato || 'NO'}</span>
+                                ${s.tesserato === 'SI' && s.tesseramento_scadenza && new Date(s.tesseramento_scadenza) < now 
+                                    ? `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">TESS: SCADUTO</span>`
+                                    : `<span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ${s.tesserato || 'NO'}</span>`
+                                }
                                 ${s.tesseramento_data
                             ? `<span class="${this.getCertColor(s.tesseramento_scadenza)}" style="font-size: 0.78rem; font-weight: 600;">Dal: ${this.formatDate(s.tesseramento_data)}</span>`
                             : `<span style="font-size: 0.72rem; color: var(--text-muted);">Data non inserita</span>`
