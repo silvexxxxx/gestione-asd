@@ -1087,7 +1087,21 @@
                 });
             },
 
-            loadData() {
+            async loadData() {
+                // Primo tentativo: Caricamento dal DB Illimitato (IndexedDB)
+                try {
+                    const idbState = await this.idbGet('main_state');
+                    if (idbState) {
+                        this.state = { ...this.state, ...idbState };
+                        this.migrateSoci();
+                        this.migrateIstruttori();
+                        return; // Se ha caricato da IndexedDB, non serve leggere localStorage!
+                    }
+                } catch (e) {
+                    console.warn("Nessun dato in IndexedDB, tento localStorage...");
+                }
+
+                // Fallback: Lettura da vecchi salvataggi localStorage (per migrazione)
                 const storedSoci = localStorage.getItem('asd_soci');
                 const storedRicevute = localStorage.getItem('asd_ricevute');
                 const storedPrimaNota = localStorage.getItem('asd_primanota');
