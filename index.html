@@ -912,6 +912,17 @@
                 // Eseguiamo il controllo silenzioso in background senza bloccare l'interfaccia
                 this.verifyLicenseBackground(savedLicense);
 
+                // --- APP LOCK (PIN) ---
+                const savedPin = localStorage.getItem('asd_app_lock');
+                if (savedPin) {
+                    this.showAppLockScreen(savedPin);
+                    return; // Interrompe l'init, verrà ripreso dopo l'inserimento corretto
+                }
+
+                this.resumeInit();
+            },
+
+            resumeInit() {
                 this.cloudSync.init();
                 this.checkAutoSave();
                 setInterval(() => this.checkAutoSave(), 60000);
@@ -941,6 +952,60 @@
                     window.moveTo(0, 0);
                     window.resizeTo(screen.availWidth, screen.availHeight);
                 } catch(e) {}
+            },
+
+            showAppLockScreen(savedPin) {
+                // Rimuove eventuali lock esistenti
+                const existing = document.getElementById('app-lock-overlay');
+                if (existing) existing.remove();
+
+                const lockOverlay = document.createElement('div');
+                lockOverlay.id = 'app-lock-overlay';
+                lockOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-color); z-index:999999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:"Helvetica Neue", sans-serif;';
+                lockOverlay.innerHTML = `
+                    <div style="background:var(--sidebar-bg); padding:30px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); max-width: 400px; width: 90%;">
+                        <div style="font-size:3rem; margin-bottom:15px;">🔒</div>
+                        <h2 style="margin-bottom:10px;">Gestionale Bloccato</h2>
+                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">Inserisci il PIN o la Password di accesso per continuare.</p>
+                        <form id="app-lock-form" style="display:flex; flex-direction:column; gap:15px;">
+                            <input type="password" id="app-lock-input" class="form-control" placeholder="Inserisci Password..." style="text-align:center; font-size:1.2rem; padding:10px;" required autofocus>
+                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:1.1rem; width:100%;">Sblocca</button>
+                        </form>
+                        <div id="app-lock-error" style="color:var(--danger); margin-top:15px; font-weight:bold; display:none;">Password Errata!</div>
+                    </div>
+                `;
+                document.body.appendChild(lockOverlay);
+
+                document.getElementById('app-lock-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('app-lock-input').value;
+                    if (input === savedPin) {
+                        lockOverlay.remove();
+                        this.resumeInit();
+                    } else {
+                        document.getElementById('app-lock-error').style.display = 'block';
+                        setTimeout(() => { document.getElementById('app-lock-error').style.display = 'none'; }, 3000);
+                        document.getElementById('app-lock-input').value = '';
+                        document.getElementById('app-lock-input').focus();
+                    }
+                });
+            },
+
+            configureAppLock() {
+                const newPin = prompt("Inserisci il nuovo PIN o Password per bloccare il gestionale all'avvio:\n(Lascia vuoto per annullare)");
+                if (newPin && newPin.trim() !== '') {
+                    localStorage.setItem('asd_app_lock', newPin.trim());
+                    this.toast("Blocco App configurato con successo! Verrà richiesto al prossimo riavvio.", "success");
+                    this.renderDatabase(); // refresh UI
+                }
+            },
+
+            removeAppLock() {
+                if (confirm("Sei sicuro di voler rimuovere la richiesta della password all'avvio?")) {
+                    localStorage.removeItem('asd_app_lock');
+                    this.toast("Blocco App rimosso.", "success");
+                    this.renderDatabase(); // refresh UI
+                }
             },
 
             showSplashScreen() {
@@ -5141,6 +5206,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </div>
                                 
                                 <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;">Stato attuale: ${localStorage.getItem('asd_cloud_sync') === 'true' ? '<span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>' : '<span style="color:var(--text-muted);">Offline (Locale)</span>'}</div>
+                            </div>
+
+                            <!-- App Lock / Sicurezza -->
+                            <div class="glass-card" style="grid-column: 1 / -1; border-left: 4px solid #ca8a04;">
+                                <h3 style="margin-bottom:1rem;">🔒 Sicurezza (Blocco App)</h3>
+                                <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Imposta una password o PIN. Verrà richiesto ad ogni apertura del gestionale per proteggere i dati dei tuoi soci da sguardi indiscreti. (La password viene salvata solo su questo dispositivo locale).</p>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <button class="btn btn-primary" style="background:#ca8a04; border:none;" onclick="app.configureAppLock()">Imposta/Modifica PIN di Accesso</button>
+                                    ${localStorage.getItem('asd_app_lock') ? '<button class="btn btn-outline text-danger" onclick="app.removeAppLock()">Rimuovi Blocco App</button>' : ''}
+                                </div>
                             </div>
 
                             <!-- FS Access -->
