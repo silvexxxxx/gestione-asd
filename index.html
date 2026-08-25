@@ -1721,19 +1721,63 @@
                                     <p style="margin-bottom: 1rem;">Ci sono già dei dati salvati sul tuo Cloud, ma questo dispositivo ha dei dati locali.</p>
                                     <p style="margin-bottom: 2rem;"><strong>Quale versione vuoi utilizzare?</strong> (L'altra verrà sovrascritta)</p>
                                     
-                                    <div style="display:flex; flex-direction:column; gap:12px;">
+                                    <div id="cloud-conflict-options" style="display:flex; flex-direction:column; gap:12px;">
                                         <button class="btn btn-outline" style="border-color:var(--success); color:white; padding: 12px; background: rgba(16, 185, 129, 0.1);" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.mergeBackup().then(() => app.closeModal());">
                                             🤝 UNISCI I DATI (Consigliato: fonde Cloud e PC senza perdere nulla)
                                         </button>
-                                        <button class="btn btn-outline" style="border-color:var(--primary); color:white; padding: 12px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.downloadBackup().then(() => app.closeModal());">
+                                        <button class="btn btn-outline" style="border-color:var(--primary); color:white; padding: 12px;" onclick="
+                                            document.getElementById('cloud-conflict-options').style.display='none';
+                                            document.getElementById('cloud-conflict-confirm-download').style.display='block';
+                                        ">
                                             📥 Usa SOLO i dati del CLOUD (Cancella dati di questo PC)
                                         </button>
-                                        <button class="btn btn-primary" style="padding: 12px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.uploadBackup().then(() => app.closeModal());">
+                                        <button class="btn btn-primary" style="padding: 12px;" onclick="
+                                            document.getElementById('cloud-conflict-options').style.display='none';
+                                            document.getElementById('cloud-conflict-confirm-upload').style.display='block';
+                                        ">
                                             📤 Usa SOLO i dati di QUESTO PC (Sovrascrivi il Cloud)
                                         </button>
                                         <button class="btn btn-outline text-danger" style="padding: 12px;" onclick="app.cloudSync.logout(); app.closeModal();">
                                             ❌ Annulla e rimani Offline
                                         </button>
+                                    </div>
+
+                                    <!-- Tripla conferma per DOWNLOAD -->
+                                    <div id="cloud-conflict-confirm-download" style="display:none; text-align:center;">
+                                        <h3 style="color:var(--danger); margin-bottom:1rem;">⚠️ ATTENZIONE (1/3)</h3>
+                                        <p style="margin-bottom:1rem;">Stai per <b>CANCELLARE DEFINITIVAMENTE</b> tutti i dati che hai inserito su questo PC. I dati verranno rimpiazzati da quelli del Cloud.</p>
+                                        <button class="btn btn-outline text-danger" onclick="document.getElementById('download-step-2').style.display='block'; this.style.display='none';">Sì, sono sicuro</button>
+                                        
+                                        <div id="download-step-2" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">🚨 SEI VERAMENTE SICURO? (2/3)</h3>
+                                            <p style="margin-bottom:1rem;">Tutti i soci locali andranno persi. Non potrai tornare indietro a meno di non avere uno snapshot.</p>
+                                            <button class="btn btn-outline text-danger" onclick="document.getElementById('download-step-3').style.display='block'; this.style.display='none';">Sì, ho capito perfettamente</button>
+                                        </div>
+                                        
+                                        <div id="download-step-3" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">💥 ULTIMO AVVISO (3/3)</h3>
+                                            <p style="margin-bottom:1rem;">Procedendo distruggerai i dati locali.</p>
+                                            <button class="btn btn-danger" style="font-weight:bold; padding:10px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.downloadBackup().then(() => app.closeModal());">CONFERMA E SOVRASCRIVI IL PC</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tripla conferma per UPLOAD -->
+                                    <div id="cloud-conflict-confirm-upload" style="display:none; text-align:center;">
+                                        <h3 style="color:var(--danger); margin-bottom:1rem;">⚠️ ATTENZIONE (1/3)</h3>
+                                        <p style="margin-bottom:1rem;">Stai per <b>SOVRASCRIVERE IL CLOUD</b> con i dati attuali del PC. I dati vecchi nel Cloud verranno persi.</p>
+                                        <button class="btn btn-outline text-danger" onclick="document.getElementById('upload-step-2').style.display='block'; this.style.display='none';">Sì, sono sicuro</button>
+                                        
+                                        <div id="upload-step-2" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">🚨 SEI VERAMENTE SICURO? (2/3)</h3>
+                                            <p style="margin-bottom:1rem;">Se altri PC usavano quel backup Cloud, perderanno l'accesso a quei dati e verranno sovrascritti al prossimo riavvio.</p>
+                                            <button class="btn btn-outline text-danger" onclick="document.getElementById('upload-step-3').style.display='block'; this.style.display='none';">Sì, ho capito perfettamente</button>
+                                        </div>
+                                        
+                                        <div id="upload-step-3" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">💥 ULTIMO AVVISO (3/3)</h3>
+                                            <p style="margin-bottom:1rem;">Procedendo distruggerai il vecchio backup Cloud.</p>
+                                            <button class="btn btn-danger" style="font-weight:bold; padding:10px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.uploadBackup().then(() => app.closeModal());">CONFERMA E SOVRASCRIVI IL CLOUD</button>
+                                        </div>
                                     </div>
                                 </div>
                             `);
