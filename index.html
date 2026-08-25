@@ -6302,14 +6302,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 return;
             }
 
-            const endDate = prompt(`Estendi tutti i ${corsiInDay.length} corsi di ${targetDayName}.\nInserisci la nuova Data di Fine Validità (formato YYYY-MM-DD):\n(es: 2027-08-31)`);
-            if (!endDate) return;
+            const endDateInput = prompt(`Estendi tutti i ${corsiInDay.length} corsi di ${targetDayName}.\nInserisci la nuova Data di Fine Validità (formato GG/MM/AA o GG/MM/AAAA):\n(es: 31/08/25 o 31/08/2025)`);
+            if (!endDateInput) return;
 
             // Verifica formato
-            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate)) {
-                this.toast("Formato data non valido! Usa AAAA-MM-GG", "danger");
+            const match = endDateInput.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/);
+            if (!match) {
+                this.toast("Formato data non valido! Usa GG/MM/AA o GG/MM/AAAA", "danger");
                 return;
             }
+
+            let [_, day, month, year] = match;
+            day = day.padStart(2, '0');
+            month = month.padStart(2, '0');
+            if (year.length === 2) {
+                year = '20' + year; // Assumiamo anni 2000
+            }
+            const endDate = `${year}-${month}-${day}`;
 
             // Aggiorna i corsi
             corsiInDay.forEach(c => {
@@ -6317,7 +6326,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             });
 
             this.saveAll();
-            this.toast(`La data di fine di ${corsiInDay.length} corsi è stata impostata al ${endDate}.`, "success");
+            this.toast(`La data di fine di ${corsiInDay.length} corsi è stata impostata al ${day}/${month}/${year}.`, "success");
             this.renderSalaPesi();
         },
 
