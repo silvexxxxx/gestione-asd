@@ -4815,17 +4815,22 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         renderTodaySchedule() {
+            const jsDay = new Date().getDay();
+            const todayAppDay = jsDay === 0 ? 7 : jsDay;
+            
+            const todayCourses = this.state.corsi
+                .filter(c => parseInt(c.dayOfWeek) === todayAppDay)
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
             return `
                     <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 12px; border: 1px dashed var(--primary);">
-                        <p style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--primary); font-weight: 600;">Prossimi Incontri:</p>
-                        ${this.state.corsi.slice(0, 2).map(c => `
+                        <p style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--primary); font-weight: 600;">Oggi in programmazione:</p>
+                        ${todayCourses.length > 0 ? todayCourses.map(c => `
                             <div style="margin-bottom: 8px; font-size: 0.8rem;">
-                                <strong>${c.schedule}</strong> - ${c.nome}
+                                <strong>${c.startTime} - ${c.endTime}</strong> &nbsp;|&nbsp; ${c.nome}
                             </div>
-                        `).join('')}
-                        ${this.state.corsi.length === 0 ? '<p>Nessun corso programmato.</p>' : ''}
+                        `).join('') : '<p style="font-size: 0.85rem; color: var(--text-muted);">Nessun corso programmato per oggi.</p>'}
                     </div>
-
                 `;
         },
 
