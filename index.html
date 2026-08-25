@@ -1671,7 +1671,11 @@
                 this.tokenClient.requestAccessToken({prompt: 'consent'});
             },
 
-            logout() {
+            async logout() {
+                if (this.syncEnabled && this.accessToken) {
+                    app.toast('Sincronizzazione finale in corso...', 'info');
+                    await this.uploadBackup();
+                }
                 this.accessToken = null;
                 this.fileId = null;
                 this.syncEnabled = false;
@@ -1736,35 +1740,49 @@
             async uploadBackup(isCreate = false) {
                 if (!this.accessToken) return;
                 this.isSyncing = true;
-                const metadata = {
-                    name: 'GestioneASD_CloudSync.json',
-                    mimeType: 'application/json'
-                };
                 
                 // Crea snapshot pulito dallo state
                 const clone = JSON.parse(JSON.stringify(app.state));
                 const fileContent = JSON.stringify(clone);
                 
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', new Blob([fileContent], { type: 'application/json' }));
-
-                const url = isCreate 
-                    ? 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
-                    : `https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=multipart`;
-                const method = isCreate ? 'POST' : 'PATCH';
-
                 try {
-                    const res = await fetch(url, {
-                        method: method,
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` },
-                        body: form
-                    });
-                    const data = await res.json();
-                    if (isCreate) this.fileId = data.id;
-                    app.toast('Cloud: Salvataggio aggiornato.', 'success');
+                    let res;
+                    if (isCreate) {
+                        const metadata = {
+                            name: 'GestioneASD_CloudSync.json',
+                            mimeType: 'application/json'
+                        };
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                        form.append('file', new Blob([fileContent], { type: 'application/json' }));
+                        
+                        res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` },
+                            body: form
+                        });
+                        const data = await res.json();
+                        this.fileId = data.id;
+                    } else {
+                        // Per il PATCH, usare uploadType=media è più sicuro ed evita problemi col multipart
+                        res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=media`, {
+                            method: 'PATCH',
+                            headers: { 
+                                'Authorization': `Bearer ${this.accessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: fileContent
+                        });
+                    }
+                    
+                    if (res && res.ok) {
+                        app.toast('Cloud: Salvataggio aggiornato.', 'success');
+                    } else {
+                        throw new Error("HTTP error " + (res ? res.status : "unknown"));
+                    }
                 } catch (e) {
                     console.error('Upload error', e);
+                    app.toast('Errore di sincronizzazione col Cloud', 'danger');
                 } finally {
                     this.isSyncing = false;
                 }
