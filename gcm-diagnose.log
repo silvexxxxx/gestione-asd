@@ -1,0 +1,181 @@
+﻿Diagnose log at 2026-08-22T14:10:47Z
+
+AppPath: C:\Program Files\Git\mingw64\bin\git-credential-manager.exe
+InstallDir: C:\Program Files\Git\mingw64\bin\
+Version: 2.6.1+786ab03440ddc82e807a97c0e540f5247e44cec6
+
+------------
+Diagnostic: Environment
+Skipped: False
+Success: True
+Exception: None
+Log:
+OSType: Windows
+OSVersion: 10.0 (build 26100)
+Reading environment variables... OK
+ Variables:
+HOMEPATH=\Users\Admin
+DriverData=C:\Windows\System32\Drivers\DriverData
+COMPUTERNAME=DESKTOP-56DPF35
+AGY_BROWSER_ACTIVE_PORT_FILE=C:\Users\Admin\AppData\Roaming\Antigravity\DevToolsActivePort
+GIT_TRACE2_PARENT_SID=ebfb8e9a-8b1a-436f-8929-799ea7443dbf
+CommonProgramFiles(x86)=C:\Program Files (x86)\Common Files
+ANTIGRAVITY_CSRF_TOKEN=5fc00686-8dc9-4cbb-81bf-60d9e90983e9
+ChocolateyLastPathUpdate=134095546493412177
+SESSIONNAME=Console
+TMP=C:\Users\Admin\AppData\Local\Temp
+ANTIGRAVITY_TRAJECTORY_ID=5ae24b68-25d5-4276-8907-d1dbbead7f4b
+LC_CTYPE=C.UTF-8
+PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.PY;.PYW;.CPL
+USERNAME=Admin
+GIT_EXEC_PATH=C:/Program Files/Git/mingw64/libexec/git-core
+TEMP=C:\Users\Admin\AppData\Local\Temp
+LOCALAPPDATA=C:\Users\Admin\AppData\Local
+MSYSTEM=MINGW64
+TERM=xterm-256color
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 69 Stepping 1, GenuineIntel
+ProgramData=C:\ProgramData
+USERDOMAIN=DESKTOP-56DPF35
+ANTIGRAVITY_CONVERSATION_ID=ba7ea4a5-c9bc-4f09-8164-da90b11106b6
+ANTIGRAVITY_LS_VERSION=hub-2.9.1
+PROCESSOR_REVISION=4501
+PROCESSOR_LEVEL=6
+NUMBER_OF_PROCESSORS=4
+ProgramW6432=C:\Program Files
+APPDATA=C:\Users\Admin\AppData\Roaming
+CHROME_DEVTOOLS_MCP_JS=C:\Users\Admin\AppData\Local\Programs\antigravity\resources\app.asar.unpacked\node_modules\chrome-devtools-mcp\build\src\bin\chrome-devtools-mcp.js
+ProgramFiles(x86)=C:\Program Files (x86)
+PUBLIC=C:\Users\Public
+FPS_BROWSER_USER_PROFILE_STRING=Default
+CommonProgramFiles=C:\Program Files (x86)\Common Files
+ANTIGRAVITY_LS_ADDRESS=localhost:49688
+PLINK_PROTOCOL=ssh
+COLORTERM=truecolor
+ProgramFiles=C:\Program Files (x86)
+PATH=C:/Program Files/Git/mingw64/libexec/git-core;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Admin\bin;C:/Users/Admin/.gemini/antigravity/bin;C:\Users\Admin\AppData\Roaming\Antigravity\bin;C:\Program Files\Microsoft\jdk-21.0.5.11-hotspot\bin;C:\Python314\Scripts\;C:\Python314\;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\nodejs\;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd;C:\Program Files\Microsoft VS Code\1b6a188127\resources\app\node_modules.asar.unpacked\@vscode\ripgrep-universal\bin\win32-x64;C:\Program Files\Microsoft VS Code\bin;C:\Users\Admin\AppData\Local\Microsoft\WindowsApps;C:\Users\Admin\AppData\Roaming\npm;C:\Users\Admin\AppData\Local\Programs\Ollama;C:\Users\Admin\.lmstudio\bin;C:\Users\Admin\AppData\Local\Programs\Antigravity IDE\bin
+ChocolateyInstall=C:\ProgramData\chocolatey
+TMPDIR=C:\Users\Admin\AppData\Local\Temp
+ANTIGRAVITY_PROJECT_ID=84d48115-643f-45e4-b522-f8ddcb672b69
+ANTIGRAVITY_SOURCE_METADATA={"tool":{"conversationId":"ba7ea4a5-c9bc-4f09-8164-da90b11106b6","stepIndex":395,"toolCall":{"id":"call_2585416","name":"run_command","argumentsJson":"{\"CommandLine\":\"git credential-manager diagnose\",\"Cwd\":\"C:\\\\Users\\\\Admin\\\\Desktop\\\\Gestione ASD\",\"IsDaemon\":false,\"WaitMsBeforeAsync\":5000,\"toolAction\":\"Check git credentials\",\"toolSummary\":\"Check Git credentials\"}","thinkingSignature":"Es4ECssEARFNMg/kfQ4eHOlX16IR3ECX6CabR/M8Ccc8A9v6JlgaYcvKEUh8gl5EXTKMsr5j1XEGtOSWRMo3/WB8eKcNlEim5qnY7EmBAJ0H63aRL2GIiX9ZGxDAYY3iv4EqCXSpWQmZmvNF4fWfbukzlqWyF3jmZtJ3eZ5qv00O+KFLauS97eeyAYHydhgbqVnrLmg9gcEaNe4clvYI7fQJ08SpeSKn1xImnRIsHgowvABdepEj7J/M3QiTCvSdjHwcsPwdHlPZnMzq74mQUMLDtMj3hHehTVRPqWM2H4+zFU5CXIgfyjm3aYRU4DARbzsuqHwI8o88WETR4Co7u998el28MhtnCpw7tI86t5PGE7f+VJ9WZQbpiMu+yAJWkBjItO0f0yb49Pt0DWfJTOSFw92MF7LTmQpmVFiyjEGVEdnGE8RL3cySEEHuzzsGx2Mzh98vZ6QrVdahv0AmlEb78/zLlN+P65zX2iF91/lsbhQSLV4ExfjG9wpEyOYkkQLSYbORQf1evfi6CnrZrH5QsOlGfGA1njo1kjlurYME4/jHXkGzAPcL1D6MhLfXmkcOHTkb5uZsUuR4RkhidtYoASwiHqRu9D23nF8JFrofQsm/FDMsNwln24PRS8EJCMdCFGmy/5XzPAjm19/B+3wJu0rsH8rT71LnnhWPIBXEC2LG8p3TxjWjk/AfhK1RebXnyx5zU+1kvW7mW4IxORhEWT+9VCeAzfIQ5lrWXvnk4ImYFzEe7ou0u4286mQjeH969Xe0F+GV+L0nXJHfJA8="}}}
+HOME=C:\Users\Admin
+ANTIGRAVITY_AGENT=1
+SystemRoot=C:\Windows
+CommonProgramW6432=C:\Program Files\Common Files
+LOGONSERVER=\\DESKTOP-56DPF35
+USERPROFILE=C:\Users\Admin
+USERDOMAIN_ROAMINGPROFILE=DESKTOP-56DPF35
+ANTIGRAVITY_AGENTAPI_EXE=C:\Users\Admin\AppData\Local\Programs\antigravity\resources\bin\language_server.exe
+HOMEDRIVE=C:
+EFC_4580=1
+PSModulePath=C:\Users\Admin\Documents\WindowsPowerShell\Modules;C:\Program Files\WindowsPowerShell\Modules;C:\Windows\system32\WindowsPowerShell\v1.0\Modules
+AGY_BROWSER_WS_URL=ws://127.0.0.1:49685/devtools/browser/d21bfc69-01d6-422b-88a2-d6e995a116e5
+PROCESSOR_ARCHITEW6432=AMD64
+FPS_BROWSER_APP_PROFILE_STRING=Internet Explorer
+PROCESSOR_ARCHITECTURE=x86
+OS=Windows_NT
+ComSpec=C:\Windows\system32\cmd.exe
+SystemDrive=C:
+windir=C:\Windows
+ALLUSERSPROFILE=C:\ProgramData
+
+
+------------
+Diagnostic: File system
+Skipped: False
+Success: True
+Exception: None
+Log:
+Temporary directory is 'C:\Users\Admin\AppData\Local\Temp\'...
+Checking basic file I/O...
+Writing to temporary file 'C:\Users\Admin\AppData\Local\Temp\6810413db9d29418948e34c4'... OK
+Reading from temporary file 'C:\Users\Admin\AppData\Local\Temp\6810413db9d29418948e34c4'... OK
+Deleting temporary file 'C:\Users\Admin\AppData\Local\Temp\6810413db9d29418948e34c4'... OK
+Testing IFileSystem instance...
+UserHomePath: C:\Users\Admin
+UserDataDirectoryPath: C:\Users\Admin\.gcm
+GetCurrentDirectory(): C:\Users\Admin\Desktop\Gestione ASD
+
+------------
+Diagnostic: Networking
+Skipped: False
+Success: True
+Exception: None
+Log:
+Checking networking and HTTP stack...
+Creating HTTP client... OK
+IsNetworkAvailable: True
+Sending HEAD request to http://example.com...Sending HEAD request to https://example.com... OK
+ OK
+Acquiring free TCP port... OK
+Testing local HTTP loopback connections...
+Creating new HTTP listener for http://localhost:64716/... OK
+Waiting for loopback connection... OK
+Writing response... OK
+Waiting for response data... OK
+Loopback connection data OK
+
+------------
+Diagnostic: Git
+Skipped: False
+Success: True
+Exception: None
+Log:
+Getting Git version... OK
+Git version is '2.52.0.windows.1'
+Locating current repository...Not inside a Git repository.
+ OK
+Listing all Git configuration... OK
+Git configuration:
+file:C:/Program Files/Git/etc/gitconfig	diff.astextplain.textconv=astextplain
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.required=true
+file:C:/Program Files/Git/etc/gitconfig	http.sslbackend=schannel
+file:C:/Program Files/Git/etc/gitconfig	core.autocrlf=true
+file:C:/Program Files/Git/etc/gitconfig	core.fscache=true
+file:C:/Program Files/Git/etc/gitconfig	core.symlinks=false
+file:C:/Program Files/Git/etc/gitconfig	core.editor="C:\\Program Files\\Microsoft VS Code\\bin\\code" --wait
+file:C:/Program Files/Git/etc/gitconfig	pull.rebase=false
+file:C:/Program Files/Git/etc/gitconfig	credential.helper=manager
+file:C:/Program Files/Git/etc/gitconfig	credential.https://dev.azure.com.usehttppath=true
+file:C:/Program Files/Git/etc/gitconfig	init.defaultbranch=master
+file:C:/Users/Admin/.gitconfig	user.name=Silverio Pintus
+file:C:/Users/Admin/.gitconfig	user.email=silveriopintus@gmail.com
+
+
+------------
+Diagnostic: Credential storage
+Skipped: False
+Success: True
+Exception: None
+Log:
+ICredentialStore instance is of type: CredentialStore
+Writing test credential... OK
+Reading test credential... OK
+Deleting test credential... OK
+
+------------
+Diagnostic: Microsoft authentication (AAD/MSA)
+Skipped: False
+Success: True
+Exception: None
+Log:
+Broker is not enabled.
+Flow type is: Auto
+Gathering MSAL token cache data... OK
+CacheDirectory: C:\Users\Admin\AppData\Local\.IdentityService
+CacheFileName: msal.cache
+CacheFilePath: C:\Users\Admin\AppData\Local\.IdentityService\msal.cache
+Creating cache helper... OK
+Verifying MSAL token cache persistence... OK
+
+------------
+Diagnostic: GitHub API
+Skipped: False
+Success: True
+Exception: None
+Log:
+Using 'https://github.com/' as API target.
+Querying '/meta' endpoint... OK
+

@@ -1852,6 +1852,20 @@
                         app.state.istruttori = mergeArrays(app.state.istruttori, cloudData.istruttori);
                         app.state.primanota = mergeArrays(app.state.primanota, cloudData.primanota);
                         
+                        // Merge delle immagini localStorage (il locale vince se presente)
+                        if (cloudData._localStorageBackup) {
+                            if (cloudData._localStorageBackup.asd_custom_logo && !localStorage.getItem('asd_custom_logo')) {
+                                localStorage.setItem('asd_custom_logo', cloudData._localStorageBackup.asd_custom_logo);
+                            }
+                            if (cloudData._localStorageBackup.asd_esercizi_images) {
+                                let localImg = localStorage.getItem('asd_esercizi_images');
+                                let localObj = localImg ? JSON.parse(localImg) : {};
+                                let cloudObj = JSON.parse(cloudData._localStorageBackup.asd_esercizi_images);
+                                let mergedImg = { ...cloudObj, ...localObj };
+                                localStorage.setItem('asd_esercizi_images', JSON.stringify(mergedImg));
+                            }
+                        }
+
                         // Per i settings, manteniamo le impostazioni locali ma integriamo le mancanti dal cloud
                         app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
                         
@@ -1861,8 +1875,7 @@
                         app.toast('Dati fusi e salvati con successo!', 'success');
                         
                         // Ricarichiamo la pagina corrente per mostrare i dati fusi
-                        const page = localStorage.getItem('asd_current_page') || 'dashboard';
-                        app.showPage(page);
+                        location.reload();
                     }
                 } catch (e) {
                     console.error('Merge error', e);
@@ -1878,13 +1891,23 @@
                     });
                     const data = await res.json();
                     if (data && data.soci) {
+                        // Ripristino immagini e logo salvati nel cloud
+                        if (data._localStorageBackup) {
+                            if (data._localStorageBackup.asd_custom_logo) {
+                                localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
+                            }
+                            if (data._localStorageBackup.asd_esercizi_images) {
+                                localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
+                            }
+                            delete data._localStorageBackup;
+                        }
+
                         app.state = { ...app.state, ...data };
                         await app.idbSet('main_state', app.state);
                         app.toast('Dati scaricati dal Cloud e applicati!', 'success');
                         
-                        // Ripristina la pagina corrente
-                        const page = localStorage.getItem('asd_current_page') || 'dashboard';
-                        app.showPage(page);
+                        // Ricarica la pagina per applicare il nuovo logo e le immagini
+                        location.reload();
                     }
                 } catch (e) {
                     console.error('Download error', e);
@@ -1898,6 +1921,13 @@
                 
                 // Crea snapshot pulito dallo state
                 const clone = JSON.parse(JSON.stringify(app.state));
+                
+                // Aggiungiamo il salvataggio dei file immagine (salvati in locale) nel JSON
+                clone._localStorageBackup = {
+                    asd_custom_logo: localStorage.getItem('asd_custom_logo'),
+                    asd_esercizi_images: localStorage.getItem('asd_esercizi_images')
+                };
+
                 const fileContent = JSON.stringify(clone);
                 
                 try {
