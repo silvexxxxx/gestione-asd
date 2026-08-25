@@ -1673,6 +1673,7 @@
                     return;
                 }
                 if (!this.tokenClient) return;
+                this.isExplicitLogin = true;
                 this.tokenClient.requestAccessToken({prompt: 'consent'});
             },
 
@@ -1684,6 +1685,7 @@
                 this.accessToken = null;
                 this.fileId = null;
                 this.syncEnabled = false;
+                this.isExplicitLogin = false;
                 localStorage.setItem('asd_cloud_sync', 'false');
                 app.toast('Disconnesso dal Cloud. Modalità Offline attiva.', 'warning');
                 this.updateUIStatus();
@@ -1710,13 +1712,39 @@
                     
                     if (searchData.files && searchData.files.length > 0) {
                         this.fileId = searchData.files[0].id;
-                        await this.downloadBackup();
+                        
+                        const hasLocalData = app.state.soci.length > 0 || app.state.ricevute.length > 0;
+                        if (this.isExplicitLogin && hasLocalData) {
+                            app.openModal('☁️ Sincronizzazione Cloud', `
+                                <div style="text-align: center; max-width: 500px; padding-bottom: 1rem;">
+                                    <h3 style="color:var(--warning); margin-bottom:1rem;">Backup trovato su Google Drive</h3>
+                                    <p style="margin-bottom: 1rem;">Ci sono già dei dati salvati sul tuo Cloud, ma questo dispositivo ha dei dati locali.</p>
+                                    <p style="margin-bottom: 2rem;"><strong>Quale versione vuoi utilizzare?</strong> (L'altra verrà sovrascritta)</p>
+                                    
+                                    <div style="display:flex; flex-direction:column; gap:12px;">
+                                        <button class="btn btn-outline" style="border-color:var(--primary); color:white; padding: 12px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.downloadBackup().then(() => app.closeModal());">
+                                            📥 Usa i dati del CLOUD (Cancella dati di questo PC)
+                                        </button>
+                                        <button class="btn btn-primary" style="padding: 12px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.uploadBackup().then(() => app.closeModal());">
+                                            📤 Usa i dati di QUESTO PC (Sovrascrivi il Cloud)
+                                        </button>
+                                        <button class="btn btn-outline text-danger" style="padding: 12px;" onclick="app.cloudSync.logout(); app.closeModal();">
+                                            ❌ Annulla e rimani Offline
+                                        </button>
+                                    </div>
+                                </div>
+                            `);
+                        } else {
+                            await this.downloadBackup();
+                        }
                     } else {
                         await this.uploadBackup(true);
                     }
                 } catch (e) {
                     console.error('Cloud Sync Error', e);
                     app.toast('Errore di sincronizzazione Cloud', 'danger');
+                } finally {
+                    this.isExplicitLogin = false;
                 }
             },
 
