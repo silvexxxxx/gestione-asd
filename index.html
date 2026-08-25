@@ -7611,32 +7611,36 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         }
 
         let deferredPrompt;
-        const installBtn = document.getElementById('pwa-install-btn');
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            const installBtn = document.getElementById('pwa-install-btn');
             if (!isLocalhost && installBtn) {
                 installBtn.style.display = 'flex';
             }
         });
 
-        if (installBtn) {
-            installBtn.addEventListener('click', async () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        console.log('App installata');
+        window.addEventListener('DOMContentLoaded', () => {
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            console.log('App installata');
+                        }
+                        deferredPrompt = null;
+                        installBtn.style.display = 'none';
                     }
-                    deferredPrompt = null;
-                    installBtn.style.display = 'none';
-                }
-            });
-        }
+                });
+            }
+        });
 
         window.addEventListener('appinstalled', () => {
+            const installBtn = document.getElementById('pwa-install-btn');
             if (installBtn) installBtn.style.display = 'none';
             deferredPrompt = null;
         });
