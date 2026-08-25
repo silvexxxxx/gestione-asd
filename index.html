@@ -2618,8 +2618,8 @@ closeModal() {
             },
 
             getSortIcon(key) {
-                if (this.state.sortConfig.key !== key) return '<span style="opacity: 0.3; font-size: 0.7rem;">↕️</span>';
-                return this.state.sortConfig.direction === 'asc' ? '<span style="font-size: 0.7rem;">🔼</span>' : '<span style="font-size: 0.7rem;">🔽</span>';
+                if (this.state.sortConfig.key !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+                return this.state.sortConfig.direction === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
             },
 
             autoCalcolaCF() {
