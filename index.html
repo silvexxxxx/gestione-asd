@@ -3062,7 +3062,37 @@ closeModal() {
                 document.getElementById('receipts-tbody').innerHTML = this.renderRicevuteRows(filtered);
             },
 
-            
+            // Parses Italian date strings (dd/mm/yy, dd/mm/yyyy, yyyy-mm-dd) → 'yyyy-mm-dd'
+        parseItDate(s) {
+            if (!s) return '';
+            s = s.trim();
+            // Already ISO format yyyy-mm-dd
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                // still fix 2-digit years stored as 0025
+                let parts = s.split('-');
+                let y = parseInt(parts[0], 10);
+                if (y >= 0 && y < 100) parts[0] = (y + 2000).toString().padStart(4,'0');
+                return parts.join('-');
+            }
+            // Italian format dd/mm/yyyy or dd/mm/yy  (also accepts dd-mm-yyyy)
+            let m = s.replace(/-/g, '/').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+            if (m) {
+                let d = m[1].padStart(2,'0');
+                let mo = m[2].padStart(2,'0');
+                let y = parseInt(m[3], 10);
+                if (y < 100) y += 2000;
+                return `${y}-${mo}-${d}`;
+            }
+            return s; // return as-is if unknown format
+        },
+        // Formats ISO date 'yyyy-mm-dd' → 'dd/mm/yyyy' for display in text inputs
+        toItDateInput(isoStr) {
+            if (!isoStr) return '';
+            let parts = isoStr.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return isoStr;
+        },
+
         openFastEntryModal() {
             try {
                 console.log('openFastEntryModal called');
@@ -3078,8 +3108,9 @@ closeModal() {
                 });
             }
             
-            if(!document.getElementById('fe-data').value) {
-                document.getElementById('fe-data').value = new Date().toISOString().split('T')[0];
+            const dataInput = document.getElementById('fe-data');
+            if(dataInput && !dataInput.value) {
+                dataInput.value = this.toItDateInput(new Date().toISOString().split('T')[0]);
             }
             
             // Auto calculate next number if empty
@@ -3089,7 +3120,6 @@ closeModal() {
                 document.getElementById('fe-numero').value = lastNum + 1;
             }
             
-            const dataInput = document.getElementById('fe-data');
             const inizioInput = document.getElementById('fe-inizio-quota');
             if(inizioInput && dataInput) {
                 if(!inizioInput.value || inizioInput.dataset.synced === "true") {
@@ -3097,13 +3127,13 @@ closeModal() {
                     inizioInput.dataset.synced = "true";
                 }
                 
-                dataInput.onchange = (e) => {
+                dataInput.oninput = (e) => {
                     if(!inizioInput.value || inizioInput.dataset.synced === "true") {
                         inizioInput.value = e.target.value;
                         inizioInput.dataset.synced = "true";
                     }
                 };
-                inizioInput.onchange = () => {
+                inizioInput.oninput = () => {
                     inizioInput.dataset.synced = "false";
                 };
             }
@@ -3124,15 +3154,21 @@ closeModal() {
         },
         saveFastEntry(e) {
             e.preventDefault();
-            const data = document.getElementById('fe-data').value;
+            
+            // Parse Italian dates (dd/mm/yy, dd/mm/yyyy, or yyyy-mm-dd with 2-digit year fix)
+            let data = this.parseItDate(document.getElementById('fe-data').value);
+            if (!data) { alert('Data emissione non valida. Usa il formato gg/mm/aaaa'); return; }
+
             const num = parseInt(document.getElementById('fe-numero').value);
             const socioNome = document.getElementById('fe-socio-nome').value.trim();
-            const importo = parseFloat(document.getElementById('fe-importo').value);
-            const inizioQuota = document.getElementById('fe-inizio-quota') ? document.getElementById('fe-inizio-quota').value : null;
+            const importo = Math.round(parseFloat(document.getElementById('fe-importo').value) * 100) / 100;
+            
+            let inizioQuota = this.parseItDate(document.getElementById('fe-inizio-quota') ? document.getElementById('fe-inizio-quota').value : '');
+            
             const durata = document.getElementById('fe-durata') ? document.getElementById('fe-durata').value : null;
             const pagamento = document.getElementById('fe-pagamento').value;
-            const quota = parseFloat(document.getElementById('fe-quota').value) || 0;
-            const tess = parseFloat(document.getElementById('fe-tess').value) || 0;
+            const quota = Math.round((parseFloat(document.getElementById('fe-quota').value) || 0) * 100) / 100;
+            const tess = Math.round((parseFloat(document.getElementById('fe-tess').value) || 0) * 100) / 100;
 
             let socio = this.state.soci.find(s => `${s.cognome} ${s.nome}`.toLowerCase() === socioNome.toLowerCase());
             if (!socio) {
@@ -4027,7 +4063,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Data Emissione</label>
-                        <input type="date" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+                        <input type="text" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="gg/mm/aaaa" required>
                     </div>
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">N° Cartaceo</label>
@@ -4056,7 +4092,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Inizio Validita</label>
-                            <input type="date" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;">
+                            <input type="text" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;" placeholder="gg/mm/aaaa">
                         </div>
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Durata / Scadenza</label>
@@ -4192,7 +4228,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Data Emissione</label>
-                        <input type="date" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+                        <input type="text" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="gg/mm/aaaa" required>
                     </div>
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">N° Cartaceo</label>
@@ -4221,7 +4257,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Inizio Validita</label>
-                            <input type="date" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;">
+                            <input type="text" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;" placeholder="gg/mm/aaaa">
                         </div>
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Durata / Scadenza</label>
@@ -7388,7 +7424,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                 <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Data Emissione</label>
-                        <input type="date" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+                        <input type="text" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="gg/mm/aaaa" required>
                     </div>
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">N° Cartaceo</label>
@@ -7417,7 +7453,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Inizio Validita</label>
-                            <input type="date" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;">
+                            <input type="text" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;" placeholder="gg/mm/aaaa">
                         </div>
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Durata / Scadenza</label>
@@ -8444,7 +8480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Data Emissione</label>
-                        <input type="date" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+                        <input type="text" id="fe-data" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="gg/mm/aaaa" required>
                     </div>
                     <div class="form-group">
                         <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">N° Cartaceo</label>
@@ -8473,7 +8509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Inizio Validita</label>
-                            <input type="date" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;">
+                            <input type="text" id="fe-inizio-quota" class="form-control" style="width:100%; padding:8px; border:1px solid #bae6fd; border-radius:4px;" placeholder="gg/mm/aaaa">
                         </div>
                         <div class="form-group">
                             <label style="display:block; margin-bottom:5px; font-size:0.85rem; color:#0369a1;">Durata / Scadenza</label>
@@ -8523,6 +8559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Installa App
     </button>
+
 
 </body>
 
