@@ -3153,6 +3153,17 @@ closeModal() {
         closeFastEntryModal() {
             document.getElementById('fast-entry-modal').style.display = 'none';
         },
+        onFePagamentoChange(val) {
+            const row = document.getElementById('fe-commissioni-row');
+            if (!row) return;
+            if (val && val !== 'Contanti') {
+                row.style.display = 'block';
+            } else {
+                row.style.display = 'none';
+                const feComm = document.getElementById('fe-commissioni');
+                if (feComm) feComm.value = '';
+            }
+        },
         saveFastEntry(e) {
             e.preventDefault();
             
@@ -3170,6 +3181,7 @@ closeModal() {
             const pagamento = document.getElementById('fe-pagamento').value;
             const quota = Math.round((parseFloat(document.getElementById('fe-quota').value) || 0) * 100) / 100;
             const tess = Math.round((parseFloat(document.getElementById('fe-tess').value) || 0) * 100) / 100;
+            const commissioni = Math.round((parseFloat(document.getElementById('fe-commissioni') ? document.getElementById('fe-commissioni').value : '0') || 0) * 100) / 100;
 
             let socio = this.state.soci.find(s => `${s.cognome} ${s.nome}`.toLowerCase() === socioNome.toLowerCase());
             if (!socio) {
@@ -3213,12 +3225,32 @@ closeModal() {
                 data: data,
                 tipo: causale,
                 pagamento: pagamento,
+                metodo_pagamento: pagamento,
+                commissioni: commissioni,
                 numero: num,
                 anno: new Date(data).getFullYear(),
                 cartacea: true
             };
             
             this.state.ricevute.push(receipt);
+
+            // Sincronizza Prima Nota
+            this.syncPrimaNotaFromRicevuta(receipt);
+
+            // Se metodo digitale con commissioni → aggiunge uscita separata per commissioni
+            if (pagamento !== 'Contanti' && commissioni > 0) {
+                this.state.primanota.push({
+                    id: 'txn_comm_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    data: data,
+                    tipo: 'Uscita',
+                    metodo: pagamento,
+                    categoria: 'Commissioni Pagamento Digitale',
+                    descrizione: `Commissioni ${pagamento} su Ric. N.${num}/${receipt.anno} - ${socio.cognome} ${socio.nome} (lordo: €${importo.toFixed(2)})`,
+                    importo: commissioni,
+                    riferimento: 'COMM_RICEVUTA_' + receipt.id
+                });
+            }
+
             this.saveAll();
 
             const status = document.getElementById('fe-status');
@@ -3230,6 +3262,7 @@ closeModal() {
             document.getElementById('fe-quota').value = '';
             document.getElementById('fe-tess').value = '';
             document.getElementById('fe-numero').value = num + 1;
+            if (document.getElementById('fe-commissioni')) document.getElementById('fe-commissioni').value = '';
             
             const inizioInput = document.getElementById('fe-inizio-quota');
             if(inizioInput && inizioInput.dataset.synced === "true") {
@@ -3351,24 +3384,34 @@ openAddRicevutaModal() {
                 let txnIndex = this.state.primanota.findIndex(t => t.riferimento === ref);
                 
                 let soc = this.state.soci.find(s => s.id == ricevuta.socio_id);
-                let nomeSocio = soc ? (soc.cognome + ' ' + soc.nome) : '';
+                let nomeSocio = soc ? (soc.cognome + ' ' + soc.nome) : (ricevuta.socio_nome || '');
+                const metodo = ricevuta.metodo_pagamento || ricevuta.pagamento || 'Contanti';
+                const commissioni = parseFloat(ricevuta.commissioni) || 0;
+                const importoLordo = parseFloat(ricevuta.importo);
+                const importoNetto = metodo !== 'Contanti' && commissioni > 0 
+                    ? Math.round((importoLordo - commissioni) * 100) / 100
+                    : importoLordo;
+                let descBase = 'Ricevuta N.' + ricevuta.numero + '/' + ricevuta.anno + ' - ' + nomeSocio;
+                let descrizione = metodo !== 'Contanti' && commissioni > 0
+                    ? descBase + ` [lordo: €${importoLordo.toFixed(2)}, comm. ${metodo}: -€${commissioni.toFixed(2)}]`
+                    : descBase;
 
                 if (txnIndex >= 0) {
                     // Aggiorna
                     this.state.primanota[txnIndex].data = ricevuta.data;
-                    this.state.primanota[txnIndex].importo = parseFloat(ricevuta.importo);
-                    this.state.primanota[txnIndex].metodo = ricevuta.metodo_pagamento || 'Contanti';
-                    this.state.primanota[txnIndex].descrizione = 'Ricevuta N.' + ricevuta.numero + '/' + ricevuta.anno + ' - ' + nomeSocio;
+                    this.state.primanota[txnIndex].importo = importoNetto;
+                    this.state.primanota[txnIndex].metodo = metodo;
+                    this.state.primanota[txnIndex].descrizione = descrizione;
                 } else {
                     // Inserisci nuova
                     this.state.primanota.push({
                         id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
                         data: ricevuta.data,
                         tipo: 'Entrata',
-                        metodo: ricevuta.metodo_pagamento || 'Contanti',
+                        metodo: metodo,
                         categoria: 'Quote Associative',
-                        descrizione: 'Ricevuta N.' + ricevuta.numero + '/' + ricevuta.anno + ' - ' + nomeSocio,
-                        importo: parseFloat(ricevuta.importo),
+                        descrizione: descrizione,
+                        importo: importoNetto,
                         riferimento: ref
                     });
                 }
@@ -4078,14 +4121,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <datalist id="fe-soci-list"></datalist>
                 </div>
                 
-                <div class="form-group" style="margin-bottom:20px;">
+                <div class="form-group" style="margin-bottom:10px;">
                     <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Metodo di Pagamento</label>
-                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
-                        <option value="Contanti">Contanti</option>
-                        <option value="Bonifico">Bonifico</option>
-                        <option value="POS">POS/Carta</option>
-                        <option value="Assegno">Assegno</option>
+                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required onchange="app.onFePagamentoChange(this.value)">
+                        <option value="Contanti">&#x1F4B5; Contanti &#x2192; Cassa</option>
+                        <option value="SumUp">&#x1F4F1; SumUp &#x2192; Banca</option>
+                        <option value="POS">&#x1F4B3; POS/Carta &#x2192; Banca</option>
+                        <option value="Bonifico">&#x1F3E6; Bonifico &#x2192; Banca</option>
+                        <option value="Assegno">&#x1F4C4; Assegno &#x2192; Banca</option>
                     </select>
+                </div>
+                <div id="fe-commissioni-row" style="display:none; margin-bottom:20px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:10px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:#c2410c;">&#x1F4B8; Commissioni trattenute dal gestore (&euro;)</label>
+                    <input type="number" step="0.01" min="0" id="fe-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
+                    <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L&apos;importo netto (lordo &minus; commissioni) andr&agrave; in Banca. Le commissioni saranno registrate come Uscita separata.</p>
                 </div>
                 
                 <div style="background:#e0f2fe; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bae6fd;">
@@ -4243,14 +4292,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <datalist id="fe-soci-list"></datalist>
                 </div>
                 
-                <div class="form-group" style="margin-bottom:20px;">
+                <div class="form-group" style="margin-bottom:10px;">
                     <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Metodo di Pagamento</label>
-                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
-                        <option value="Contanti">Contanti</option>
-                        <option value="Bonifico">Bonifico</option>
-                        <option value="POS">POS/Carta</option>
-                        <option value="Assegno">Assegno</option>
+                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required onchange="app.onFePagamentoChange(this.value)">
+                        <option value="Contanti">&#x1F4B5; Contanti &#x2192; Cassa</option>
+                        <option value="SumUp">&#x1F4F1; SumUp &#x2192; Banca</option>
+                        <option value="POS">&#x1F4B3; POS/Carta &#x2192; Banca</option>
+                        <option value="Bonifico">&#x1F3E6; Bonifico &#x2192; Banca</option>
+                        <option value="Assegno">&#x1F4C4; Assegno &#x2192; Banca</option>
                     </select>
+                </div>
+                <div id="fe-commissioni-row" style="display:none; margin-bottom:20px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:10px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:#c2410c;">&#x1F4B8; Commissioni trattenute dal gestore (&euro;)</label>
+                    <input type="number" step="0.01" min="0" id="fe-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
+                    <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L&apos;importo netto (lordo &minus; commissioni) andr&agrave; in Banca. Le commissioni saranno registrate come Uscita separata.</p>
                 </div>
                 
                 <div style="background:#e0f2fe; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bae6fd;">
@@ -7439,14 +7494,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                     <datalist id="fe-soci-list"></datalist>
                 </div>
                 
-                <div class="form-group" style="margin-bottom:20px;">
+                <div class="form-group" style="margin-bottom:10px;">
                     <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Metodo di Pagamento</label>
-                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
-                        <option value="Contanti">Contanti</option>
-                        <option value="Bonifico">Bonifico</option>
-                        <option value="POS">POS/Carta</option>
-                        <option value="Assegno">Assegno</option>
+                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required onchange="app.onFePagamentoChange(this.value)">
+                        <option value="Contanti">&#x1F4B5; Contanti &#x2192; Cassa</option>
+                        <option value="SumUp">&#x1F4F1; SumUp &#x2192; Banca</option>
+                        <option value="POS">&#x1F4B3; POS/Carta &#x2192; Banca</option>
+                        <option value="Bonifico">&#x1F3E6; Bonifico &#x2192; Banca</option>
+                        <option value="Assegno">&#x1F4C4; Assegno &#x2192; Banca</option>
                     </select>
+                </div>
+                <div id="fe-commissioni-row" style="display:none; margin-bottom:20px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:10px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:#c2410c;">&#x1F4B8; Commissioni trattenute dal gestore (&euro;)</label>
+                    <input type="number" step="0.01" min="0" id="fe-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
+                    <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L&apos;importo netto (lordo &minus; commissioni) andr&agrave; in Banca. Le commissioni saranno registrate come Uscita separata.</p>
                 </div>
                 
                 <div style="background:#e0f2fe; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bae6fd;">
@@ -8495,14 +8556,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     <datalist id="fe-soci-list"></datalist>
                 </div>
                 
-                <div class="form-group" style="margin-bottom:20px;">
+                <div class="form-group" style="margin-bottom:10px;">
                     <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600;">Metodo di Pagamento</label>
-                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
-                        <option value="Contanti">Contanti</option>
-                        <option value="Bonifico">Bonifico</option>
-                        <option value="POS">POS/Carta</option>
-                        <option value="Assegno">Assegno</option>
+                    <select id="fe-pagamento" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required onchange="app.onFePagamentoChange(this.value)">
+                        <option value="Contanti">&#x1F4B5; Contanti &#x2192; Cassa</option>
+                        <option value="SumUp">&#x1F4F1; SumUp &#x2192; Banca</option>
+                        <option value="POS">&#x1F4B3; POS/Carta &#x2192; Banca</option>
+                        <option value="Bonifico">&#x1F3E6; Bonifico &#x2192; Banca</option>
+                        <option value="Assegno">&#x1F4C4; Assegno &#x2192; Banca</option>
                     </select>
+                </div>
+                <div id="fe-commissioni-row" style="display:none; margin-bottom:20px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:10px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:#c2410c;">&#x1F4B8; Commissioni trattenute dal gestore (&euro;)</label>
+                    <input type="number" step="0.01" min="0" id="fe-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
+                    <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L&apos;importo netto (lordo &minus; commissioni) andr&agrave; in Banca. Le commissioni saranno registrate come Uscita separata.</p>
                 </div>
                 
                 <div style="background:#e0f2fe; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bae6fd;">
