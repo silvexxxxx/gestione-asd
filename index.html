@@ -3025,7 +3025,8 @@ closeModal() {
             renderRicevuteRows(receipts) {
                 if (receipts.length === 0) return `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
 
-                return receipts.map(r => `
+                const sorted = [...receipts].sort((a, b) => (a.anno - b.anno) || (a.numero - b.numero));
+                return sorted.map(r => `
                     <tr>
                         <td>${r.numero}/${r.anno} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
