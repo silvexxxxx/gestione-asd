@@ -934,14 +934,24 @@
                     const seen = new Set();
                     let duplicatesRemoved = 0;
                     
+                    // Raggruppa corsi con stessa firma (ignora date) e fonde le date
+                    const groupedCorsi = {};
                     this.state.corsi.forEach(c => {
-                        // Creiamo un'impronta digitale del corso. Ignoriamo l'ID perché copia/incolla genera nuovi ID.
-                        const fingerprint = `${c.nome}|${c.dayOfWeek}|${c.startTime}|${c.endTime}|${c.sala_id}|${c.istruttore_id}|${c.inizio}|${c.fine}`;
-                        if (seen.has(fingerprint)) {
-                            duplicatesRemoved++;
+                        const fp = (c.nome||'') + '|' + c.dayOfWeek + '|' + (c.startTime||'') + '|' + (c.endTime||'') + '|' + (c.sala_id||'') + '|' + (c.istruttore_id||'');
+                        if (!groupedCorsi[fp]) groupedCorsi[fp] = [];
+                        groupedCorsi[fp].push(c);
+                    });
+                    Object.values(groupedCorsi).forEach(group => {
+                        if (group.length === 1) {
+                            uniqueCorsi.push(group[0]);
                         } else {
-                            seen.add(fingerprint);
-                            uniqueCorsi.push(c);
+                            let ei = group[0].inizio, lf = group[0].fine;
+                            group.forEach(c => {
+                                if (c.inizio && (!ei || c.inizio < ei)) ei = c.inizio;
+                                if (c.fine && (!lf || c.fine > lf)) lf = c.fine;
+                            });
+                            uniqueCorsi.push(Object.assign({}, group[0], { inizio: ei, fine: lf }));
+                            duplicatesRemoved += (group.length - 1);
                         }
                     });
                     
@@ -6129,8 +6139,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     colorStyle = 'color: var(--primary);';
                 }
 
-                gridHtml += `<div style="background:${headerBg}; padding:6px 4px; text-align:center; font-weight:700; ${colorStyle} position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">
-                        <div>${day} ${isHoliday ? '🎉' : ''}</div><div style="font-size:0.7rem; opacity:0.8;">${dateStr}</div>
+                const isNewSportsYear = d.getMonth() === 8 && d.getDate() === 1;
+                const leftBorderStyle = isNewSportsYear ? 'border-left:3px solid #39ff14;' : '';
+                const annoSportivoLabel = isNewSportsYear ? '<div style="background:#39ff14;color:black;font-size:0.55rem;margin-top:3px;padding:1px 3px;border-radius:3px;font-weight:bold;">ANNO ' + d.getFullYear().toString().slice(-2) + '/' + (d.getFullYear()+1).toString().slice(-2) + '</div>' : '';
+
+                gridHtml += `<div style="background:${headerBg}; ${leftBorderStyle} padding:6px 4px; text-align:center; font-weight:700; ${colorStyle} position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">
+                        <div>${day} ${isHoliday ? '🎉' : ''}</div><div style="font-size:0.7rem; opacity:0.8;">${dateStr}</div>${annoSportivoLabel}
                         <div style="display:flex; gap:3px; justify-content:center; margin-top:4px; flex-wrap:wrap;">
                             <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; ${isCopiedSource ? 'background:var(--primary); color:white;' : ''}" title="Copia le attività di ${day}" onclick="event.stopPropagation(); app.copyDay(${dayNum})">📋 Copia</button>
                             ${isCopied ? `<button class="btn btn-success" style="padding:1px 5px; font-size:0.65rem;" title="Incolla le attività copiate in ${day}" onclick="event.stopPropagation(); app.pasteDay(${dayNum})">📥 Incolla</button>` : ''}
