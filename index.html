@@ -994,7 +994,15 @@
             if (changed) { this.saveAll(); }
         },
 
-        async init() {
+        async 
+        trackDeletion(id) {
+            if (!this.state.deletedIds) this.state.deletedIds = [];
+            if (id && !this.state.deletedIds.includes(id)) {
+                this.state.deletedIds.push(id);
+            }
+        },
+
+        init() {
         window.addEventListener('message', async (e) => {
             if(e.data && e.data.action === 'saveVerbale') {
                 const yearStr = app.getSportsYear(new Date());
@@ -1747,7 +1755,15 @@
             syncEnabled: localStorage.getItem('asd_cloud_sync') === 'true',
             clientId: '961700483511-vg2k314pthheku37adm3vlniothabuae.apps.googleusercontent.com',
 
-            init() {
+            
+        trackDeletion(id) {
+            if (!this.state.deletedIds) this.state.deletedIds = [];
+            if (id && !this.state.deletedIds.includes(id)) {
+                this.state.deletedIds.push(id);
+            }
+        },
+
+        init() {
                 if (typeof google === 'undefined' || !google.accounts) {
                     setTimeout(() => this.init(), 1000);
                     return;
@@ -1895,11 +1911,19 @@
                         // Logica di Fusione (Merge)
                         const mergeArrays = (localArr, cloudArr) => {
                             const map = new Map();
-                            // ID più vecchi prima, se c'è un conflitto vince l'ultimo inserito nel map
-                            (cloudArr || []).forEach(item => map.set(item.id, item));
-                            (localArr || []).forEach(item => map.set(item.id, item)); // Locale vince in caso di parità ID
+                            const deleted = new Set(app.state.deletedIds || []);
+                            if (cloudData.deletedIds) cloudData.deletedIds.forEach(id => deleted.add(id));
+                            
+                            (cloudArr || []).forEach(item => {
+                                if (item.id && !deleted.has(item.id)) map.set(item.id, item);
+                            });
+                            (localArr || []).forEach(item => {
+                                if (item.id && !deleted.has(item.id)) map.set(item.id, item);
+                            }); 
                             return Array.from(map.values());
                         };
+                        
+                        app.state.deletedIds = Array.from(new Set([...(app.state.deletedIds || []), ...(cloudData.deletedIds || [])]));
                         
                         app.state.soci = mergeArrays(app.state.soci, cloudData.soci);
                         app.state.ricevute = mergeArrays(app.state.ricevute, cloudData.ricevute);
@@ -3024,6 +3048,7 @@ closeModal() {
             deleteSocio(id) {
                 if (confirm("Sei sicuro di voler eliminare questo socio? Questa operazione non è reversibile.")) {
                     this.state.soci = this.state.soci.filter(s => s.id !== id);
+                    this.trackDeletion(id);
                     this.saveAll();
                     this.renderSoci();
                     this.toast("Socio eliminato.", "danger");
@@ -3676,6 +3701,7 @@ openAddRicevutaModal() {
             if (confirm("ATTENZIONE: Stai per eliminare DEFINITIVAMENTE questa ricevuta. Questa azione è riservata alla manutenzione tecnica. Procedere?")) {
                 this.stornoPrimaNotaFromRicevuta(id);
                 this.state.ricevute = this.state.ricevute.filter(r => r.id !== id);
+                    this.trackDeletion(id);
                 this.saveAll();
                 this.renderRicevute();
                 this.toast("Ricevuta eliminata definitivamente dal database.", "danger");
@@ -4181,6 +4207,7 @@ openAddRicevutaModal() {
                 }
             }
             this.state.sale = this.state.sale.filter(s => s.id !== id);
+                    this.trackDeletion(id);
             this.saveAll();
             this.toast("Sala eliminata.", "danger");
             this.renderDatabase();
@@ -4808,6 +4835,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             deletePrimaNota(id) {
                 if(confirm("Sei sicuro di voler eliminare questo movimento manuale?")) {
                     this.state.primanota = this.state.primanota.filter(t => t.id !== id);
+                    this.trackDeletion(id);
                     this.saveAll();
                     this.renderPrimaNota();
                     this.showToast('Movimento eliminato', 'success');
@@ -5578,6 +5606,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         deleteIstruttore(id) {
             if (confirm('Eliminare questo istruttore? I corsi associati rimarranno.')) {
                 this.state.istruttori = this.state.istruttori.filter(i => i.id !== id);
+                    this.trackDeletion(id);
                 this.saveAll();
                 this.toast('Istruttore rimosso.', 'danger');
                 if (this.state.currentPage === 'istruttori') {
@@ -5999,6 +6028,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             if (!sala) return;
             if (confirm(`Eliminare la sala "${sala.nome}"? Le attività associate potrebbero non apparire più correttamente.`)) {
                 this.state.sale = this.state.sale.filter(s => s.id !== id);
+                    this.trackDeletion(id);
                 this.saveAll();
                 this.toast(`Sala rimossa.`, 'danger');
                 this.renderDatabase();
@@ -6899,6 +6929,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             if (mode === 'all') {
                 this.state.corsi.splice(cIndex, 1);
+                this.trackDeletion(id);
                 this.saveAll();
                 this.toast('Corso eliminato definitivamente.');
                 if (this.state.currentPage === 'corsi') this.renderCorsi();
@@ -6928,6 +6959,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 if (c.inizio > c.fine) {
                     // Se la data di inizio era successiva alla fine (es. hanno cancellato la primissima occorrenza)
                     this.state.corsi.splice(cIndex, 1);
+                this.trackDeletion(id);
                 }
 
                 this.saveAll();
@@ -7824,6 +7856,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         deleteMagazzinoItem(id) {
             if(confirm("Eliminare l'articolo?")) {
                 this.state.magazzino = this.state.magazzino.filter(x => x.id !== id);
+                    this.trackDeletion(id);
                 localStorage.setItem('asd_magazzino', JSON.stringify(this.state.magazzino));
                 this.saveAll();
                 this.renderMagazzino();
@@ -7957,6 +7990,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         deleteEvento(id) {
             if(confirm("Eliminare l'evento e tutti i suoi dati?")) {
                 this.state.eventi = this.state.eventi.filter(x => x.id !== id);
+                    this.trackDeletion(id);
                 localStorage.setItem('asd_eventi', JSON.stringify(this.state.eventi));
                 this.saveAll();
                 this.renderEventi();
@@ -8235,6 +8269,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         deleteRimborso(id) {
             if(confirm("Eliminare la richiesta di rimborso?")) {
                 this.state.rimborsi = this.state.rimborsi.filter(x => x.id !== id);
+                    this.trackDeletion(id);
                 localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
                 this.saveAll();
                 this.renderRimborsi();
