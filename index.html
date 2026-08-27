@@ -1089,13 +1089,7 @@
                 setInterval(() => this.checkAutoSave(), 60000);
                 this.updateStorageIndicator();
 
-                // Gestione Splash Screen all'avvio
-                const hideSplash = localStorage.getItem('hide_splash_screen') === 'true';
-                if (hideSplash) {
-                    this.showPage(this.state.currentPage || 'dashboard');
-                } else {
-                    this.showSplashScreen();
-                }
+                this.showPage(this.state.currentPage || 'dashboard');
 
                 // Close modal on click outside
                 document.getElementById('modal-overlay').addEventListener('click', (e) => {
@@ -1169,53 +1163,7 @@
                 }
             },
 
-            showSplashScreen() {
-                const splashHTML = `
-                <div id="splash-screen-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-                    <div class="glass-card" style="max-width: 500px; text-align: center; padding: 2.5rem; animation: slideDown 0.3s ease-out;">
-                        <h2 style="color: var(--accent); margin-bottom: 1rem; font-size: 2rem;">Benvenuto in Gestionale ASD</h2>
-                        <p style="margin-bottom: 2rem; color: var(--text-muted); font-size: 1.1rem;">Software professionale per associazioni.</p>
-                        
-                        <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
-                            <div style="flex: 1; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)';" onclick="app.closeSplashScreen(false)">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
-                                <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: white;">Avvia Gestionale</h3>
-                                <p style="font-size: 0.9rem; color: var(--text-muted);">Accedi ai dati locali o sincronizzati in Cloud.</p>
-                            </div>
-                        </div>
-
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                            <input type="checkbox" id="hide-splash-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
-                            <label for="hide-splash-checkbox" style="color: var(--text-muted); cursor: pointer; user-select: none;">Non mostrare più all'avvio</label>
-                        </div>
-                    </div>
-                </div>`;
-                document.body.insertAdjacentHTML('beforeend', splashHTML);
-            },
-
-            closeSplashScreen() {
-                const checkbox = document.getElementById('hide-splash-checkbox');
-                if (checkbox && checkbox.checked) {
-                    localStorage.setItem('hide_splash_screen', 'true');
-                    this.toast("Preferenza salvata. Il gestionale si avvierà direttamente.");
-                } else {
-                    localStorage.setItem('hide_splash_screen', 'false');
-                }
-                
-                const splash = document.getElementById('splash-screen-overlay');
-                if (splash) {
-                    splash.style.opacity = '0';
-                    splash.style.transition = 'opacity 0.3s ease';
-                    setTimeout(() => splash.remove(), 300);
-                }
-                
-                this.showPage(this.state.currentPage || 'dashboard');
-            },
-
-            resetSplashScreen() {
-                localStorage.setItem('hide_splash_screen', 'false');
-                this.toast("Schermata iniziale riattivata! Apparirà al prossimo avvio.", "success");
-            },
+            
 
             setupGuideTooltips() {
                 const tooltip = document.getElementById('global-guide-tooltip');
@@ -5787,9 +5735,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <h3 style="margin-bottom:1rem;">🚀 Modalità di Avvio e Cloud</h3>
                                 <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale e la schermata di benvenuto.</p>
                                 
-                                <div style="display:flex; gap:10px; align-items:center; margin-bottom: 1rem;">
-                                    <button class="btn btn-outline" onclick="app.resetSplashScreen()">🔄 Riattiva Splash Screen all'avvio</button>
-                                </div>
+                                
                                 
                                 <div style="display:flex; gap:10px; align-items:center;">
                                     <button class="btn btn-outline" style="color: var(--text-muted); border-color: var(--text-muted);" onclick="app.cloudSync.logout()">Passa a Modalità Offline</button>

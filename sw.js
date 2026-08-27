@@ -1,4 +1,4 @@
-const CACHE_NAME = "gestione-asd-v37";
+const CACHE_NAME = "gestione-asd-v38";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
