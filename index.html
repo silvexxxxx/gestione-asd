@@ -3121,6 +3121,60 @@ closeModal() {
             },
 
             
+        
+        handleAutocompleteKeydown(e, listId, searchId, hiddenId) {
+            const list = document.getElementById(listId);
+            if (!list || list.style.display === 'none') {
+                if (e.key === 'Enter') {
+                    // Prevent form submission if the user just pressed enter to select an item?
+                    // No, if list is closed, enter should submit. But wait, if they press enter in input, let's just allow default.
+                }
+                return;
+            }
+            
+            const items = list.querySelectorAll('.autocomplete-item');
+            if (!items.length) return;
+
+            let activeIndex = -1;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].classList.contains('active-item')) {
+                    activeIndex = i;
+                    break;
+                }
+            }
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIndex++;
+                if (activeIndex >= items.length) activeIndex = 0;
+                this.setAutocompleteActive(items, activeIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex--;
+                if (activeIndex < 0) activeIndex = items.length - 1;
+                this.setAutocompleteActive(items, activeIndex);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeIndex > -1) {
+                    items[activeIndex].click();
+                } else {
+                    // If none selected, select first
+                    items[0].click();
+                }
+            }
+        },
+
+        setAutocompleteActive(items, index) {
+            items.forEach(item => {
+                item.classList.remove('active-item');
+                item.style.background = 'transparent';
+            });
+            if (index > -1 && items[index]) {
+                items[index].classList.add('active-item');
+                items[index].style.background = 'rgba(255,255,255,0.1)';
+                items[index].scrollIntoView({ block: "nearest" });
+            }
+        },
         filterSociDropdown(val, searchId='receipt-socio-search', listId='soci-autocomplete-list', hiddenId='receipt-socio-id') {
             const list = document.getElementById(listId);
             if (!list) return;
@@ -3135,7 +3189,7 @@ closeModal() {
             
             list.innerHTML = filtered.map(s => {
                 const safeName = (s.cognome + ' ' + s.nome).replace(/'/g, "\\'");
-                return `<div style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main);" 
+                return `<div class="autocomplete-item" style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main);" 
                         onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
                         onmouseout="this.style.background='transparent'" 
                         onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; app.updateReceiptSocioInfo('${s.id}'); document.getElementById('${listId}').style.display='none';">
@@ -3187,7 +3241,8 @@ openAddRicevutaModal() {
                         <div style="position:relative;">
                             <input type="text" id="receipt-socio-search" class="form-control" placeholder="Inizia a digitare il nome..." autocomplete="off" 
                                 oninput="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
-                                onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
+                                onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')"
+                                onkeydown="app.handleAutocompleteKeydown(event, 'soci-autocomplete-list', 'receipt-socio-search', 'receipt-socio-id')" 
                                 onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required>
                             <input type="hidden" name="socio_id" id="receipt-socio-id" required>
                             <div id="soci-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
