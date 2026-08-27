@@ -910,6 +910,34 @@
             }
         },
 
+        
+        sanitizeDates() {
+            let changed = false;
+            const fixDate = (str) => {
+                if (typeof str === 'string' && str.match(/^00\d{2}-\d{2}-\d{2}$/)) {
+                    changed = true;
+                    return '20' + str.substring(2);
+                }
+                return str;
+            };
+
+            this.state.ricevute.forEach(r => { r.data = fixDate(r.data); });
+            this.state.primanota.forEach(t => { t.data = fixDate(t.data); });
+            this.state.soci.forEach(s => {
+                if (s.data_nascita) s.data_nascita = fixDate(s.data_nascita);
+                if (s.scadenza_medica) s.scadenza_medica = fixDate(s.scadenza_medica);
+                if (s.quota_scadenza) s.quota_scadenza = fixDate(s.quota_scadenza);
+                if (s.certificato_scadenza) s.certificato_scadenza = fixDate(s.certificato_scadenza);
+                if (s.tesseramento_data) s.tesseramento_data = fixDate(s.tesseramento_data);
+            });
+            this.state.istruttori.forEach(i => {
+                if (i.data_nascita) i.data_nascita = fixDate(i.data_nascita);
+                if (i.certificato_scadenza) i.certificato_scadenza = fixDate(i.certificato_scadenza);
+                if (i.scadenza_contratto) i.scadenza_contratto = fixDate(i.scadenza_contratto);
+            });
+            if (changed) { this.saveAll(); }
+        },
+
         async init() {
         window.addEventListener('message', async (e) => {
             if(e.data && e.data.action === 'saveVerbale') {
@@ -920,6 +948,7 @@
         });
 
                 await this.loadData();
+                this.sanitizeDates();
                 
                                 // --- PAYWALL / LICENZA / TRIAL ---
                 let installDate = localStorage.getItem('asd_install_date');
@@ -3005,6 +3034,11 @@ closeModal() {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
+            Object.keys(data).forEach(k => {
+                if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
+                    data[k] = '20' + data[k].substring(2);
+                }
+            });
                 const editId = parseInt(e.target.dataset.editId);
                 data.updated_at = Date.now();
 
@@ -3478,6 +3512,11 @@ openAddRicevutaModal() {
             const form = e.target;
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
+            Object.keys(data).forEach(k => {
+                if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
+                    data[k] = '20' + data[k].substring(2);
+                }
+            });
 
             const editId = form.dataset.editId;
 
@@ -3664,6 +3703,11 @@ openAddRicevutaModal() {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
+            Object.keys(data).forEach(k => {
+                if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
+                    data[k] = '20' + data[k].substring(2);
+                }
+            });
                 const idx = this.state.ricevute.findIndex(x => x.id === id);
                 if (idx < 0) return;
 
