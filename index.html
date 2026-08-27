@@ -8162,6 +8162,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         window.addEventListener('beforeunload', (e) => {
             if (app.state.isDirty) {
                 app.createSnapshot('auto-exit');
+                // Sincronizzazione di emergenza in chiusura tramite keepalive
+                if (app.cloudSync && app.cloudSync.syncEnabled && app.cloudSync.accessToken && app.cloudSync.fileId) {
+                    const clone = JSON.parse(JSON.stringify(app.state));
+                    clone._localStorageBackup = {
+                        asd_custom_logo: localStorage.getItem('asd_custom_logo'),
+                        asd_esercizi_images: localStorage.getItem('asd_esercizi_images')
+                    };
+                    fetch(`https://www.googleapis.com/upload/drive/v3/files/${app.cloudSync.fileId}?uploadType=media`, {
+                        method: 'PATCH',
+                        headers: { 
+                            'Authorization': `Bearer ${app.cloudSync.accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(clone),
+                        keepalive: true
+                    }).catch(() => {});
+                }
             }
         });
     </script>
