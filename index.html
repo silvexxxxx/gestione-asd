@@ -1926,13 +1926,13 @@
                             app.toast('Dati fusi e salvati con successo!', 'success');
                             
                             // Aggiorniamo le viste anziché ricaricare violentemente la pagina
-                            app.initViews();
-                            app.goTo(app.state.currentPage || 'dashboard');
+                            
+                            app.showPage(app.state.currentPage || 'dashboard');
                         } else {
                             // Se non ci sono modali aperti (l'utente non sta editando niente di bloccante), aggiorniamo in modo trasparente
                             if (!document.querySelector('.modal')) {
-                                app.initViews();
-                                app.goTo(app.state.currentPage || 'dashboard');
+                                
+                                app.showPage(app.state.currentPage || 'dashboard');
                             }
                         }
                     }
@@ -1959,8 +1959,8 @@
                         }
                         await app.idbSet('main_state', app.state);
                         app.toast('Cloud: Dati scaricati con successo.', 'success');
-                        app.initViews();
-                        app.goTo(app.state.currentPage || 'dashboard');
+                        
+                        app.showPage(app.state.currentPage || 'dashboard');
                     }
                 } catch (e) {
                     console.error('Download error', e);
