@@ -4465,16 +4465,17 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                         <!-- Cards Totali -->
                         <div class="stats-row">
-                            <div class="glass-card stat-card stat-card-clickable">
+                            <div class="glass-card stat-card stat-card-clickable" style="${this.pnMetodoFilter === 'cassa' ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('cassa')">
                                 <span class="label">Cassa Reale (Contanti)</span>
                                 <span class="value" style="color: ${cassaReale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${cassaReale.toFixed(2)}</span>
                             </div>
-                            <div class="glass-card stat-card stat-card-clickable">
+                            <div class="glass-card stat-card stat-card-clickable" style="${this.pnMetodoFilter === 'banca' ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('banca')">
                                 <span class="label">Banca / Digitale</span>
                                 <span class="value" style="color: ${bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${bancaDigitale.toFixed(2)}</span>
+                                <small style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:5px; line-height:1.1;">Valori consultativi.<br>Far fede all'estratto conto.</small>
                             </div>
-                            <div class="glass-card stat-card stat-card-clickable">
-                                <span class="label">Totale Complessivo ASD</span>
+                            <div class="glass-card stat-card stat-card-clickable" style="${(!this.pnMetodoFilter || this.pnMetodoFilter === 'all') ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('all')">
+                                <span class="label">Tutti i Movimenti (Totale)</span>
                                 <span class="value" style="color: var(--primary);">€ ${totale.toFixed(2)}</span>
                             </div>
                             <div class="glass-card stat-card stat-card-clickable" onclick="app.mostraRendiconto()">
@@ -4566,6 +4567,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 return { cassaReale, bancaDigitale, totale: cassaReale + bancaDigitale };
             },
 
+            
+            setPnMetodoFilter(metodo) {
+                this.pnMetodoFilter = metodo;
+                this.renderPrimaNota();
+            },
+            
             getFilteredPrimaNota() {
                 let currentD = new Date();
                 let currentAS = currentD.getMonth() >= 8 ? currentD.getFullYear() + "/" + (currentD.getFullYear() + 1) : (currentD.getFullYear() - 1) + "/" + currentD.getFullYear();
@@ -4593,6 +4600,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                     // Tipo
                     if (tipo !== 'all' && t.tipo !== tipo) return false;
+                    
+                    // Metodo
+                    let metodoFilter = this.pnMetodoFilter || 'all';
+                    if (metodoFilter === 'cassa' && t.metodo !== 'Contanti') return false;
+                    if (metodoFilter === 'banca' && t.metodo === 'Contanti') return false;
 
                     // Ricerca
                     if (search) {
