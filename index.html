@@ -871,7 +871,6 @@
 
         async verifyLicenseBackground(savedKey) {
             try {
-                // Chiama la Serverless Function in background
                 const res = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -880,37 +879,93 @@
 
                 const data = await res.json();
                 if (data.valid) {
-                    // Aggiorna la data dell'ultimo controllo riuscito
                     localStorage.setItem('asd_license_last_check', Date.now().toString());
+                    
+                    if (data.expires_at === null) {
+                         localStorage.setItem('asd_license_expires_at', 'null');
+                    } else if (data.expires_at && !localStorage.getItem('asd_license_expires_at')) {
+                         localStorage.setItem('asd_license_expires_at', data.expires_at);
+                    }
+
+                    this.updateLicenseUI();
+                    this.checkLicenseWarnings();
                 } else {
-                    // Licenza revocata o trial scaduta!
                     localStorage.removeItem('asd_license_key');
+                    localStorage.removeItem('asd_license_expires_at');
                     document.getElementById('paywall-overlay').style.display = 'flex';
                     const errorDiv = document.getElementById('license-error');
                     errorDiv.innerText = data.error || 'La tua licenza è scaduta o è stata revocata.';
                     errorDiv.style.display = 'block';
                 }
             } catch (err) {
-                // Dispositivo offline o server non raggiungibile
                 const lastCheck = localStorage.getItem('asd_license_last_check');
                 if (lastCheck) {
                     const daysOffline = (Date.now() - parseInt(lastCheck)) / (1000 * 60 * 60 * 24);
                     if (daysOffline > 7) {
-                        // Sono passati più di 7 giorni dall'ultimo controllo online
-                        localStorage.removeItem('asd_license_key');
                         document.getElementById('paywall-overlay').style.display = 'flex';
                         const errorDiv = document.getElementById('license-error');
-                        errorDiv.innerText = 'Il gestionale è offline da oltre 7 giorni. Connettiti a internet per validare la licenza.';
+                        errorDiv.innerText = 'Dispositivo offline da troppo tempo. Connettiti ad internet per validare la licenza.';
                         errorDiv.style.display = 'block';
+                    } else {
+                        this.updateLicenseUI();
+                        this.checkLicenseWarnings();
                     }
-                } else {
-                    // Primo avvio offline (non dovrebbe mai capitare, ma per sicurezza)
-                    localStorage.setItem('asd_license_last_check', Date.now().toString());
                 }
             }
         },
 
-        
+        updateLicenseUI() {
+            const btn = document.getElementById('license-btn');
+            if (!btn) return;
+            
+            const expires = localStorage.getItem('asd_license_expires_at');
+            if (expires === 'null') {
+                btn.innerHTML = '👑 Licenza PRO (Permanente)';
+                btn.style.color = '#10b981';
+                btn.style.borderColor = '#10b981';
+            } else if (expires) {
+                const daysLeft = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                if (daysLeft > 30) {
+                    btn.innerHTML = `🔑 Licenza Attiva (${daysLeft} gg rimasti)`;
+                    btn.style.color = '#10b981';
+                    btn.style.borderColor = '#10b981';
+                } else if (daysLeft > 0) {
+                    btn.innerHTML = `⚠️ Licenza in Scadenza (${daysLeft} gg)`;
+                    btn.style.color = '#f59e0b';
+                    btn.style.borderColor = '#f59e0b';
+                } else {
+                    btn.innerHTML = `❌ Licenza Scaduta`;
+                    btn.style.color = '#ef4444';
+                    btn.style.borderColor = '#ef4444';
+                }
+            }
+        },
+
+        checkLicenseWarnings() {
+            const expires = localStorage.getItem('asd_license_expires_at');
+            if (!expires || expires === 'null') return;
+            
+            const daysLeft = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+            if (daysLeft <= 0) return; // Se scaduta ci pensa il paywall
+
+            const lastWarning = localStorage.getItem('asd_license_last_warning');
+            const now = Date.now();
+            
+            if (daysLeft <= 10) {
+                // Negli ultimi 10 giorni, avviso ogni giorno (24 ore = 86400000 ms)
+                if (!lastWarning || (now - parseInt(lastWarning) > 86400000)) {
+                    app.toast(`⚠️ ATTENZIONE: Mancano solo ${daysLeft} giorni alla scadenza della licenza! Rinnova ora, non perderai alcun dato.`, 'warning', 10000);
+                    localStorage.setItem('asd_license_last_warning', now.toString());
+                }
+            } else if (daysLeft <= 30) {
+                // Tra 30 e 11 giorni, avviso ogni 5 giorni (5 * 24h = 432000000 ms)
+                if (!lastWarning || (now - parseInt(lastWarning) > 432000000)) {
+                    app.toast(`ℹ️ Promemoria: La tua licenza scadrà tra ${daysLeft} giorni.`, 'info', 8000);
+                    localStorage.setItem('asd_license_last_warning', now.toString());
+                }
+            }
+        },
+
         sanitizeDates() {
             let changed = false;
             const fixDate = (str) => {
@@ -5703,7 +5758,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <p>Configura i dati della tua associazione.</p>
                             </div>
                             <div style="display:flex; gap:10px; flex-direction:column; align-items:flex-end;">
-                                <button class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6;" onclick="document.getElementById('paywall-overlay').style.display='flex'">
+                                <button id="license-btn" class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6;" onclick="document.getElementById('paywall-overlay').style.display='flex'">
                                     🔑 Inserisci/Cambia Licenza
                                 </button>
                                 <button class="btn btn-outline" onclick="app.editAsdDati()">Modifica Dati ASD</button>

@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const TEST_KEY = 'TEST-1234';
 
     if (license_key === MASTER_KEY || license_key === TEST_KEY) {
-        return res.status(200).json({ valid: true, message: 'Licenza speciale attivata con successo.' });
+        return res.status(200).json({ valid: true, message: 'Licenza speciale attivata con successo.', expires_at: null });
     }
 
     // Integrazione Lemon Squeezy
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
         const data = await lsResponse.json();
         
         if (data.valid) {
-            return res.status(200).json({ valid: true, message: 'Abbonamento valido!' });
+            return res.status(200).json({ valid: true, message: 'Abbonamento valido!', expires_at: data.license_key ? data.license_key.expires_at : null });
         } else {
             return res.status(401).json({ valid: false, error: data.error || 'Licenza non valida o scaduta.' });
         }
