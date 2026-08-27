@@ -3202,7 +3202,8 @@ closeModal() {
             }
         },
 openAddRicevutaModal() {
-            const currentYear = new Date().getFullYear();
+            const today = new Date();
+            const currentYear = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
             const lastNum = this.state.ricevute.filter(r => r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
             
             this.openModal('Emissione Ricevuta', `
