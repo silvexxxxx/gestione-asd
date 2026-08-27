@@ -3085,7 +3085,7 @@ closeModal() {
                 const sorted = [...receipts].sort((a, b) => (a.anno - b.anno) || (a.numero - b.numero));
                 return sorted.map(r => `
                     <tr>
-                        <td>${r.numero}/${r.anno} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
+                        <td>${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
                         <td>${this.formatDate(r.data)}</td>
                         <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">${r.tipo}</span></td>
@@ -3111,7 +3111,7 @@ closeModal() {
                 const end = document.getElementById('receipt-date-end').value;
 
                 const filtered = this.state.ricevute.filter(r => {
-                    const matchSearch = r.socio_nome.toLowerCase().includes(search) || `${r.numero}/${r.anno}`.includes(search);
+                    const matchSearch = r.socio_nome.toLowerCase().includes(search) || `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
                     const matchStart = !start || r.data >= start;
                     const matchEnd = !end || r.data <= end;
                     return matchSearch && matchStart && matchEnd;
@@ -3175,7 +3175,9 @@ openAddRicevutaModal() {
                             <label>N. Ricevuta / Anno</label>
                             <div style="display:flex; gap:0.5rem;">
                                 <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:60%" value="${lastNum + 1}" required readonly>
-                                <input type="number" name="anno" class="form-control" style="width:40%" value="${currentYear}" required>
+                                <select name="anno" class="form-control" style="width:45%" required>
+                                    ${[currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${app.formatAnno(y)}</option>`).join('')}
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -3326,7 +3328,7 @@ openAddRicevutaModal() {
             const importoNetto = metodo !== 'Contanti' && commissioni > 0 
                 ? Math.round((importoLordo - commissioni) * 100) / 100
                 : importoLordo;
-            let descBase = 'Ricevuta N.' + ricevuta.numero + '/' + ricevuta.anno + ' - ' + nomeSocio;
+            let descBase = 'Ricevuta N.' + ricevuta.numero + '/' + app.formatAnno(ricevuta.anno) + ' - ' + nomeSocio;
             let descrizione = metodo !== 'Contanti' && commissioni > 0
                 ? descBase + ` [lordo: €${importoLordo.toFixed(2)}, comm. ${metodo}: -€${commissioni.toFixed(2)}]`
                 : descBase;
@@ -3437,7 +3439,7 @@ openAddRicevutaModal() {
                     tipo: 'Uscita',
                     metodo: pagamento,
                     categoria: 'Commissioni Pagamento Digitale',
-                    descrizione: `Commissioni ${pagamento} su Ric. N.${receipt.numero}/${receipt.anno} - ${receipt.socio_nome} (lordo: €${importo.toFixed(2)})`,
+                    descrizione: `Commissioni ${pagamento} su Ric. N.${receipt.numero}/${app.formatAnno(receipt.anno)} - ${receipt.socio_nome} (lordo: €${importo.toFixed(2)})`,
                     importo: commissioni,
                     riferimento: 'COMM_RICEVUTA_' + receipt.id
                 });
@@ -3498,7 +3500,7 @@ openAddRicevutaModal() {
             this.openAddRicevutaModal();
             const form = document.getElementById('receipt-form');
             form.dataset.editId = id;
-            document.querySelector('.modal h2').textContent = `Modifica Ricevuta n. ${r.numero}/${r.anno}`;
+            document.querySelector('.modal h2').textContent = `Modifica Ricevuta n. ${r.numero}/${app.formatAnno(r.anno)}`;
 
             // Hide multiple checkbox in edit
             const multiCb = document.getElementById('receipt-multiplo');
@@ -4077,7 +4079,7 @@ openAddRicevutaModal() {
 
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text(`RICEVUTA N. ${r.numero}/${r.anno}`, 20, 60);
+            doc.text(`RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}`, 20, 60);
             doc.setFontSize(12);
             doc.text(`Data: ${this.formatDate(r.data)}`, 150, 60);
 
@@ -4136,7 +4138,7 @@ openAddRicevutaModal() {
             const sportsYear = this.getSportsYear(r.anno);
             const pw = window.open('', '_blank', 'width=800,height=700');
             pw.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-<title>Ricevuta N. ${r.numero}/${r.anno}</title><style>
+<title>Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)}</title><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-size:12pt;}
 .header{border-bottom:3px solid #2563eb;padding-bottom:12px;margin-bottom:20px;}
@@ -4164,7 +4166,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 </div>
 <div>
   <div class="date-right">Data: ${this.formatDate(r.data)}</div>
-  <div class="title">RICEVUTA N. ${r.numero}/${r.anno}</div>
+  <div class="title">RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}</div>
 </div>
 <div class="info-box">
   <div class="info-label">Ricevuto da:</div>
@@ -5194,7 +5196,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <tbody>
                             ${receipts.map(r => `
                                 <tr>
-                                    <td>${r.numero}/${r.anno} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
+                                    <td>${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
                                     <td>${r.socio_nome}</td>
                                     <td class="text-success">€ ${parseFloat(r.importo).toFixed(2)}</td>
                                 </tr>
