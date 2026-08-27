@@ -3107,7 +3107,34 @@ closeModal() {
                 document.getElementById('receipts-tbody').innerHTML = this.renderRicevuteRows(filtered);
             },
 
-            openAddRicevutaModal() {
+            
+        filterSociDropdown(val, searchId='receipt-socio-search', listId='soci-autocomplete-list', hiddenId='receipt-socio-id') {
+            const list = document.getElementById(listId);
+            if (!list) return;
+            
+            list.style.display = 'block';
+            const soci = this.state.soci;
+            
+            const filtered = soci.filter(s => {
+                const fullName = (s.cognome + ' ' + s.nome).toLowerCase();
+                return fullName.includes((val||'').toLowerCase());
+            });
+            
+            list.innerHTML = filtered.map(s => {
+                const safeName = (s.cognome + ' ' + s.nome).replace(/'/g, "\\'");
+                return `<div style="padding:10px; cursor:pointer; border-bottom:1px solid #eee; color:#111;" 
+                        onmouseover="this.style.background='#f0f9ff'" 
+                        onmouseout="this.style.background='white'" 
+                        onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; app.updateReceiptSocioInfo('${s.id}'); document.getElementById('${listId}').style.display='none';">
+                        ${s.cognome} ${s.nome}
+                        </div>`;
+            }).join('');
+            
+            if(filtered.length === 0) {
+                list.innerHTML = `<div style="padding:10px; color:#666;">Nessun socio trovato</div>`;
+            }
+        },
+openAddRicevutaModal() {
             const currentYear = new Date().getFullYear();
             const lastNum = this.state.ricevute.filter(r => r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
             
@@ -3142,10 +3169,14 @@ closeModal() {
 
                     <div class="form-group">
                         <label>Destinatario (Socio)</label>
-                        <select name="socio_id" class="form-control" required onchange="app.updateReceiptSocioInfo(this.value)">
-                            <option value="">-- Seleziona --</option>
-                            ${this.state.soci.sort((a,b)=>a.cognome.localeCompare(b.cognome)).map(s => `<option value="${s.id}">${s.cognome} ${s.nome}</option>`).join('')}
-                        </select>
+                        <div style="position:relative;">
+                            <input type="text" id="receipt-socio-search" class="form-control" placeholder="Inizia a digitare il nome..." autocomplete="off" 
+                                oninput="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
+                                onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
+                                onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required>
+                            <input type="hidden" name="socio_id" id="receipt-socio-id" required>
+                            <div id="soci-autocomplete-list" style="display:none; position:absolute; background:white; border:1px solid #ccc; max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                        </div>
                         <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:#f8fafc; border-radius:4px; border-left:3px solid #3b82f6;"></div>
                     </div>
 
@@ -3410,6 +3441,8 @@ closeModal() {
                     const el = form.querySelector(`[name="${name}"]`);
                     if (el) el.value = '';
                 });
+                const searchInput = document.getElementById('receipt-socio-search');
+                if (searchInput) searchInput.value = '';
                 const preview = document.getElementById('receipt-socio-preview');
                 if (preview) preview.style.display = 'none';
                 const commRow = document.getElementById('receipt-commissioni-row');
@@ -3478,6 +3511,13 @@ closeModal() {
                 const input = form.querySelector(`[name="${key}"]`);
                 if (input && fieldMap[key] !== undefined) input.value = fieldMap[key];
             });
+            
+            // Popola l'autocomplete testo del socio
+            const searchInput = document.getElementById('receipt-socio-search');
+            if(searchInput && r.socio_id) {
+                const s = this.state.soci.find(x => x.id == r.socio_id);
+                if(s) searchInput.value = s.cognome + ' ' + s.nome;
+            }
 
             // Se ricevuta cartacea, abilita numero editabile e spunta checkbox
             if (r.cartacea) {
@@ -5522,21 +5562,21 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:1rem;">
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Presidente</div>
-                                        <div style="font-weight:600;">${s.presidente ? (app.state.soci.find(x => x.id == s.presidente)?.nome || s.presidente) : 'Non definito'}</div>
+                                        <div style="font-weight:600;">${s.presidente ? (this.state.soci.find(x => x.id == s.presidente)?.nome || s.presidente) : 'Non definito'}</div>
                                     </div>
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Vice Presidente</div>
-                                        <div style="font-weight:600;">${s.vice_presidente ? (app.state.soci.find(x => x.id == s.vice_presidente)?.nome || s.vice_presidente) : 'Non definito'}</div>
+                                        <div style="font-weight:600;">${s.vice_presidente ? (this.state.soci.find(x => x.id == s.vice_presidente)?.nome || s.vice_presidente) : 'Non definito'}</div>
                                     </div>
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Segretario</div>
-                                        <div style="font-weight:600;">${s.segretario ? (app.state.soci.find(x => x.id == s.segretario)?.nome || s.segretario) : 'Non definito'}</div>
+                                        <div style="font-weight:600;">${s.segretario ? (this.state.soci.find(x => x.id == s.segretario)?.nome || s.segretario) : 'Non definito'}</div>
                                     </div>
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Consiglieri</div>
                                         <div style="font-weight:600;">
                                             ${(s.consiglieri || []).length > 0 
-                                                ? s.consiglieri.map(c => app.state.soci.find(x => x.id == c)?.nome || c).join('<br>') 
+                                                ? s.consiglieri.map(c => this.state.soci.find(x => x.id == c)?.nome || c).join('<br>') 
                                                 : '<span style="color:var(--text-muted); font-weight:normal;">Nessun consigliere</span>'}
                                         </div>
                                     </div>
