@@ -1002,7 +1002,7 @@
             }
         },
 
-        init() {
+        async init() {
         window.addEventListener('message', async (e) => {
             if(e.data && e.data.action === 'saveVerbale') {
                 const yearStr = app.getSportsYear(new Date());
