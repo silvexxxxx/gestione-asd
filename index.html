@@ -1863,90 +1863,24 @@
                         this.fileId = searchData.files[0].id;
                         
                         const hasLocalData = app.state.soci.length > 0 || app.state.ricevute.length > 0;
-                        if (this.isExplicitLogin && hasLocalData) {
-                            app.openModal('☁️ Sincronizzazione Cloud', `
-                                <div style="text-align: center; max-width: 500px; padding-bottom: 1rem;">
-                                    <h3 style="color:var(--warning); margin-bottom:1rem;">Backup trovato su Google Drive</h3>
-                                    <p style="margin-bottom: 1rem;">Ci sono già dei dati salvati sul tuo Cloud, ma questo dispositivo ha dei dati locali.</p>
-                                    <p style="margin-bottom: 2rem;"><strong>Quale versione vuoi utilizzare?</strong> (L'altra verrà sovrascritta)</p>
-                                    
-                                    <div id="cloud-conflict-options" style="display:flex; flex-direction:column; gap:12px;">
-                                        <button class="btn btn-outline" style="border-color:var(--success); color:white; padding: 12px; background: rgba(16, 185, 129, 0.1);" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.mergeBackup().then(() => app.closeModal());">
-                                            🤝 UNISCI I DATI (Consigliato: fonde Cloud e PC senza perdere nulla)
-                                        </button>
-                                        <button class="btn btn-outline" style="border-color:var(--primary); color:white; padding: 12px;" onclick="
-                                            document.getElementById('cloud-conflict-options').style.display='none';
-                                            document.getElementById('cloud-conflict-confirm-download').style.display='block';
-                                        ">
-                                            📥 Usa SOLO i dati del CLOUD (Cancella dati di questo PC)
-                                        </button>
-                                        <button class="btn btn-primary" style="padding: 12px;" onclick="
-                                            document.getElementById('cloud-conflict-options').style.display='none';
-                                            document.getElementById('cloud-conflict-confirm-upload').style.display='block';
-                                        ">
-                                            📤 Usa SOLO i dati di QUESTO PC (Sovrascrivi il Cloud)
-                                        </button>
-                                        <button class="btn btn-outline text-danger" style="padding: 12px;" onclick="app.cloudSync.logout(); app.closeModal();">
-                                            ❌ Annulla e rimani Offline
-                                        </button>
-                                    </div>
-
-                                    <!-- Tripla conferma per DOWNLOAD -->
-                                    <div id="cloud-conflict-confirm-download" style="display:none; text-align:center;">
-                                        <h3 style="color:var(--danger); margin-bottom:1rem;">⚠️ ATTENZIONE (1/3)</h3>
-                                        <p style="margin-bottom:1rem;">Stai per <b>CANCELLARE DEFINITIVAMENTE</b> tutti i dati che hai inserito su questo PC. I dati verranno rimpiazzati da quelli del Cloud.</p>
-                                        <button class="btn btn-outline text-danger" onclick="document.getElementById('download-step-2').style.display='block'; this.style.display='none';">Sì, sono sicuro</button>
-                                        
-                                        <div id="download-step-2" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
-                                            <h3 style="color:var(--danger); margin-bottom:1rem;">🚨 SEI VERAMENTE SICURO? (2/3)</h3>
-                                            <p style="margin-bottom:1rem;">Tutti i soci locali andranno persi. Non potrai tornare indietro a meno di non avere uno snapshot.</p>
-                                            <button class="btn btn-outline text-danger" onclick="document.getElementById('download-step-3').style.display='block'; this.style.display='none';">Sì, ho capito perfettamente</button>
-                                        </div>
-                                        
-                                        <div id="download-step-3" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
-                                            <h3 style="color:var(--danger); margin-bottom:1rem;">💥 ULTIMO AVVISO (3/3)</h3>
-                                            <p style="margin-bottom:1rem;">Procedendo distruggerai i dati locali.</p>
-                                            <button class="btn btn-danger" style="font-weight:bold; padding:10px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.downloadBackup().then(() => app.closeModal());">CONFERMA E SOVRASCRIVI IL PC</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Tripla conferma per UPLOAD -->
-                                    <div id="cloud-conflict-confirm-upload" style="display:none; text-align:center;">
-                                        <h3 style="color:var(--danger); margin-bottom:1rem;">⚠️ ATTENZIONE (1/3)</h3>
-                                        <p style="margin-bottom:1rem;">Stai per <b>SOVRASCRIVERE IL CLOUD</b> con i dati attuali del PC. I dati vecchi nel Cloud verranno persi.</p>
-                                        <button class="btn btn-outline text-danger" onclick="document.getElementById('upload-step-2').style.display='block'; this.style.display='none';">Sì, sono sicuro</button>
-                                        
-                                        <div id="upload-step-2" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
-                                            <h3 style="color:var(--danger); margin-bottom:1rem;">🚨 SEI VERAMENTE SICURO? (2/3)</h3>
-                                            <p style="margin-bottom:1rem;">Se altri PC usavano quel backup Cloud, perderanno l'accesso a quei dati e verranno sovrascritti al prossimo riavvio.</p>
-                                            <button class="btn btn-outline text-danger" onclick="document.getElementById('upload-step-3').style.display='block'; this.style.display='none';">Sì, ho capito perfettamente</button>
-                                        </div>
-                                        
-                                        <div id="upload-step-3" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
-                                            <h3 style="color:var(--danger); margin-bottom:1rem;">💥 ULTIMO AVVISO (3/3)</h3>
-                                            <p style="margin-bottom:1rem;">Procedendo distruggerai il vecchio backup Cloud.</p>
-                                            <button class="btn btn-danger" style="font-weight:bold; padding:10px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.uploadBackup().then(() => app.closeModal());">CONFERMA E SOVRASCRIVI IL CLOUD</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `);
+                        if (hasLocalData) {
+                            // SILENT AUTO-MERGE: unisce automaticamente senza far scegliere l'utente e rischiare perdite
+                            await this.mergeBackup(false);
                         } else {
                             await this.downloadBackup();
                         }
                     } else {
-                        await this.uploadBackup(true);
+                        await this.uploadBackup(true, true);
                     }
                 } catch (e) {
                     console.error('Cloud Sync Error', e);
                     app.toast('Errore di sincronizzazione Cloud', 'danger');
-                } finally {
-                    this.isExplicitLogin = false;
                 }
             },
 
-            async mergeBackup() {
+            async mergeBackup(silent = false) {
                 if (!this.fileId) return;
-                app.toast('Fusione dati in corso...', 'info');
+                if (!silent) app.toast('Fusione dati in corso...', 'info');
                 try {
                     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
                         headers: { 'Authorization': `Bearer ${this.accessToken}` }
@@ -1957,6 +1891,7 @@
                         // Logica di Fusione (Merge)
                         const mergeArrays = (localArr, cloudArr) => {
                             const map = new Map();
+                            // ID più vecchi prima, se c'è un conflitto vince l'ultimo inserito nel map
                             (cloudArr || []).forEach(item => map.set(item.id, item));
                             (localArr || []).forEach(item => map.set(item.id, item)); // Locale vince in caso di parità ID
                             return Array.from(map.values());
@@ -1982,62 +1917,72 @@
                             }
                         }
 
-                        // Per i settings, manteniamo le impostazioni locali ma integriamo le mancanti dal cloud
                         app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
                         
                         await app.idbSet('main_state', app.state);
-                        await this.uploadBackup(); // Carichiamo il risultato unito sul cloud
                         
-                        app.toast('Dati fusi e salvati con successo!', 'success');
-                        
-                        // Ricarichiamo la pagina corrente per mostrare i dati fusi
-                        location.reload();
+                        if (!silent) {
+                            await this.uploadBackup(false, true); // skipMerge = true
+                            app.toast('Dati fusi e salvati con successo!', 'success');
+                            
+                            // Aggiorniamo le viste anziché ricaricare violentemente la pagina
+                            app.initViews();
+                            app.goTo(app.state.currentPage || 'dashboard');
+                        } else {
+                            // Se non ci sono modali aperti (l'utente non sta editando niente di bloccante), aggiorniamo in modo trasparente
+                            if (!document.querySelector('.modal')) {
+                                app.initViews();
+                                app.goTo(app.state.currentPage || 'dashboard');
+                            }
+                        }
                     }
                 } catch (e) {
                     console.error('Merge error', e);
-                    app.toast('Errore durante la fusione dei dati', 'danger');
+                    if (!silent) app.toast('Errore durante la fusione dei dati', 'danger');
                 }
             },
 
             async downloadBackup() {
                 if (!this.fileId) return;
+                this.isSyncing = true;
                 try {
                     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
                         headers: { 'Authorization': `Bearer ${this.accessToken}` }
                     });
                     const data = await res.json();
-                    if (data && data.soci) {
-                        // Ripristino immagini e logo salvati nel cloud
+                    
+                    if (data) {
+                        app.state = data;
                         if (data._localStorageBackup) {
-                            if (data._localStorageBackup.asd_custom_logo) {
-                                localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
-                            }
-                            if (data._localStorageBackup.asd_esercizi_images) {
-                                localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
-                            }
-                            delete data._localStorageBackup;
+                            if (data._localStorageBackup.asd_custom_logo) localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
+                            if (data._localStorageBackup.asd_esercizi_images) localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
                         }
-
-                        app.state = { ...app.state, ...data };
                         await app.idbSet('main_state', app.state);
-                        app.toast('Dati scaricati dal Cloud e applicati!', 'success');
-                        
-                        // Ricarica la pagina per applicare il nuovo logo e le immagini
-                        location.reload();
+                        app.toast('Cloud: Dati scaricati con successo.', 'success');
+                        app.initViews();
+                        app.goTo(app.state.currentPage || 'dashboard');
                     }
                 } catch (e) {
                     console.error('Download error', e);
                     app.toast('Errore nel download dal Cloud', 'danger');
+                } finally {
+                    this.isSyncing = false;
                 }
             },
 
-            async uploadBackup(isCreate = false) {
+            async uploadBackup(isCreate = false, skipMerge = false) {
                 if (!this.accessToken) {
                     if (this.syncEnabled) {
                         app.toast('⚠️ Connessione a Google persa. Ricollegati in Impostazioni!', 'warning');
                     }
                     return;
                 }
+                
+                // AUTO-MERGE PRIMA DELL'UPLOAD PER EVITARE SOVRASCRITTURE DISTRUTTIVE (se non siamo in fase di isCreate o se non esplicitamente skippato)
+                if (!isCreate && this.fileId && !skipMerge) {
+                    await this.mergeBackup(true); 
+                }
+                
                 this.isSyncing = true;
                 
                 // Crea snapshot pulito dallo state
@@ -2082,6 +2027,8 @@
                     }
                     
                     if (res && res.ok) {
+                        // Nascondiamo il toast success se era un autosalvataggio silenzioso per non spammare l'utente ogni 3 secondi, 
+                        // ma va bene lasciarlo o metterne uno discreto. Per ora lasciamo il success.
                         app.toast('Cloud: Salvataggio aggiornato.', 'success');
                     } else {
                         throw new Error("HTTP error " + (res ? res.status : "unknown"));
