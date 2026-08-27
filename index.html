@@ -806,6 +806,7 @@
                 dismissed_quotes: [], // Array of socio IDs whose expired quote alert was dismissed
                 sortConfig: { key: 'cognome', direction: 'asc' },
                 lastSociScroll: 0,
+                sociVisibleCount: 50,
                 debugMode: false,
                 currentWeekOffset: 0, // Navigazione settimane calendario
                 currentSalaTab: 'all', // Tab sala attiva ('all' o id sala)
@@ -2625,8 +2626,8 @@ closeModal() {
 
                         <div class="glass-card member-card">
                             <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0;">
-                                <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.filterSoci()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
-                                <select id="socio-filter-status" class="form-control" style="width: 150px;" onchange="app.filterSoci()" data-guide="Filtra i soci per stato. Scegli 'Quote Scadute' per vedere chi deve rinnovare l'abbonamento.">
+                                <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.state.sociVisibleCount = 50; app.filterSoci()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
+                                <select id="socio-filter-status" class="form-control" style="width: 150px;" onchange="app.state.sociVisibleCount = 50; app.filterSoci()" data-guide="Filtra i soci per stato. Scegli 'Quote Scadute' per vedere chi deve rinnovare l'abbonamento.">
                                     <option value="ALL">Tutti gli stati</option>
                                     <option value="ATTIVO">Attivi</option>
                                     <option value="MOROSO">Morosi</option>
@@ -2780,7 +2781,13 @@ closeModal() {
                 });
 
                 const tbody = document.getElementById('soci-tbody');
-                if (tbody) tbody.innerHTML = this.renderSociRows(filtered);
+                if (tbody) {
+                    const toRender = filtered.slice(0, this.state.sociVisibleCount);
+                    tbody.innerHTML = this.renderSociRows(toRender);
+                    if (filtered.length > this.state.sociVisibleCount) {
+                        tbody.innerHTML += `<tr><td colspan="8" style="text-align:center; padding: 2rem;"><button class="btn btn-outline" style="width:100%; font-weight:bold; max-width:300px;" onclick="app.state.sociVisibleCount += 50; app.filterSoci();">👇 Carica altri (mostrati ${this.state.sociVisibleCount} su ${filtered.length})</button></td></tr>`;
+                    }
+                }
             },
 
             handleSort(key) {
