@@ -1734,9 +1734,13 @@
                         localStorage.setItem('asd_gdrive_token', this.accessToken);
                         localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
                         this.syncEnabled = true;
-                        app.toast('Cloud collegato con successo!', 'success');
                         this.updateUIStatus();
-                        this.performInitialSync();
+                        app.toast('Cloud ricollegato (Background)!', 'success');
+                        
+                        if (this.isExplicitLogin || !sessionStorage.getItem('asd_cloud_sync_done')) {
+                            sessionStorage.setItem('asd_cloud_sync_done', 'true');
+                            this.performInitialSync();
+                        }
                     },
                 });
 
@@ -1747,7 +1751,11 @@
                         // Usa il token ancora valido senza chiamare Google
                         this.accessToken = savedToken;
                         this.updateUIStatus();
-                        this.performInitialSync();
+                        
+                        if (!sessionStorage.getItem('asd_cloud_sync_done')) {
+                            sessionStorage.setItem('asd_cloud_sync_done', 'true');
+                            this.performInitialSync();
+                        }
                     } else {
                         // Prova il login silente (potrebbe fallire per blocchi cookie 3ze parti)
                         this.tokenClient.requestAccessToken({prompt: 'none'});
