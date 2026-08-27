@@ -714,7 +714,7 @@
             </nav>
 
             <div style="display: flex; align-items: center; gap: 12px; min-width: 200px; justify-content: flex-end;">
-                <button id="cloud-indicator-btn" class="btn btn-outline" title="Stato Sincronizzazione" onclick="app.showPage('database')"
+                <button id="cloud-indicator-btn" class="btn btn-outline" title="Stato Sincronizzazione" onclick="app.cloudSync.syncEnabled && !app.cloudSync.accessToken ? app.cloudSync.login() : app.showPage('database')"
                     style="padding: 6px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.5); color: var(--danger); display: flex; align-items: center; gap: 4px;">
                     <span id="cloud-indicator-icon">☁️</span>
                     <span id="cloud-indicator-label">Offline</span>
