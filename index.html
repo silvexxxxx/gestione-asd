@@ -3095,11 +3095,13 @@ closeModal() {
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Numero</th>
-                                            <th>Socio</th>
-                                            <th>Data</th>
-                                            <th>Tipo</th>
-                                            <th>Importo</th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'numero\')">Numero <span id="sort-ricevute-numero">${this.ricevuteSortKey === \'numero\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'socio_nome\')">Socio <span id="sort-ricevute-socio_nome">${this.ricevuteSortKey === \'socio_nome\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'data\')">Data <span id="sort-ricevute-data">${this.ricevuteSortKey === \'data\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'tipo\')">Tipo <span id="sort-ricevute-tipo">${this.ricevuteSortKey === \'tipo\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'importo\')">Importo <span id="sort-ricevute-importo">${this.ricevuteSortKey === \'importo\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'metodo\')">Metodo <span id="sort-ricevute-metodo">${this.ricevuteSortKey === \'metodo\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute(\'cartacea\')">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === \'cartacea\' ? (this.ricevuteSortDir === \'asc\' ? \' 🔼\' : \' 🔽\') : \'\'}</span></th>
                                             <th style="text-align: right;">Azioni</th>
                                         </tr>
                                     </thead>
@@ -3113,28 +3115,92 @@ closeModal() {
                 `;
             },
 
-            renderRicevuteRows(receipts) {
-                if (receipts.length === 0) return `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
+            sortRicevute(key) {
+                if (this.ricevuteSortKey === key) {
+                    this.ricevuteSortDir = this.ricevuteSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.ricevuteSortKey = key;
+                    this.ricevuteSortDir = 'desc'; // Usually desc is better first, but let's say asc
+                }
+                
+                // Update headers UI
+                ['numero', 'socio_nome', 'data', 'tipo', 'importo', 'metodo', 'cartacea'].forEach(k => {
+                    const el = document.getElementById('sort-ricevute-' + k);
+                    if (el) el.innerHTML = '';
+                });
+                
+                const el = document.getElementById('sort-ricevute-' + key);
+                if (el) el.innerHTML = this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽';
+                
+                this.filterRicevute();
+            },
 
-                const sorted = [...receipts].sort((a, b) => (a.anno - b.anno) || (a.numero - b.numero));
+            renderRicevuteRows(receipts) {
+                if (receipts.length === 0) return `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
+
+                let sorted = [...receipts];
+                
+                if (this.ricevuteSortKey) {
+                    const k = this.ricevuteSortKey;
+                    const dir = this.ricevuteSortDir === 'asc' ? 1 : -1;
+                    sorted.sort((a, b) => {
+                        let valA, valB;
+                        if (k === 'numero') {
+                            if (a.anno !== b.anno) return (a.anno - b.anno) * dir;
+                            return (a.numero - b.numero) * dir;
+                        } else if (k === 'socio_nome') {
+                            valA = (a.socio_nome || '').toLowerCase();
+                            valB = (b.socio_nome || '').toLowerCase();
+                        } else if (k === 'data') {
+                            valA = new Date(a.data).getTime() || 0;
+                            valB = new Date(b.data).getTime() || 0;
+                        } else if (k === 'tipo') {
+                            valA = (a.tipo || '').toLowerCase();
+                            valB = (b.tipo || '').toLowerCase();
+                        } else if (k === 'importo') {
+                            valA = parseFloat(a.importo) || 0;
+                            valB = parseFloat(b.importo) || 0;
+                        } else if (k === 'metodo') {
+                            valA = (a.metodo_pagamento || a.pagamento || 'Contanti').toLowerCase();
+                            valB = (b.metodo_pagamento || b.pagamento || 'Contanti').toLowerCase();
+                        } else if (k === 'cartacea') {
+                            valA = a.cartacea ? 1 : 0;
+                            valB = b.cartacea ? 1 : 0;
+                        }
+                        
+                        if (valA < valB) return -1 * dir;
+                        if (valA > valB) return 1 * dir;
+                        return 0;
+                    });
+                } else {
+                    sorted.sort((a, b) => (b.anno - a.anno) || (b.numero - a.numero));
+                }
+
                 return sorted.map(r => {
                     let iconaMetodo = '';
                     let metodo = r.metodo_pagamento || r.pagamento || 'Contanti';
+                    let displayMetodo = metodo;
                     if (metodo !== 'Contanti') {
                         let icon = '💳';
                         let lower = metodo.toLowerCase();
                         if (lower.includes('bonifico')) icon = '🏦';
                         else if (lower.includes('satispay') || lower.includes('app')) icon = '📱';
                         
-                        iconaMetodo = `<span title="Pagamento: ${metodo}" style="margin-left: 5px; cursor: help; font-size: 1.1em;">${icon}</span>`;
+                        iconaMetodo = `<span title="Pagamento: ${metodo}" style="margin-right: 5px;">${icon}</span>`;
+                        displayMetodo = `${iconaMetodo} ${metodo}`;
+                    } else {
+                        displayMetodo = `💵 Contanti`;
                     }
+                    
                     return `
                     <tr>
-                        <td>${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
+                        <td>${r.numero}/${app.formatAnno(r.anno)}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
                         <td>${this.formatDate(r.data)}</td>
                         <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">${r.tipo}</span></td>
-                        <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)}${iconaMetodo} ${r.annullata ? '(ANNULLATA)' : ''}</td>
+                        <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
+                        <td>${displayMetodo}</td>
+                        <td><span style="color: ${r.cartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${r.cartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;">
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF(${r.id})" ${r.annullata ? 'disabled' : ''} title="Salva PDF">💾 PDF</button>
