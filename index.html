@@ -3117,13 +3117,24 @@ closeModal() {
                 if (receipts.length === 0) return `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
 
                 const sorted = [...receipts].sort((a, b) => (a.anno - b.anno) || (a.numero - b.numero));
-                return sorted.map(r => `
+                return sorted.map(r => {
+                    let iconaMetodo = '';
+                    let metodo = r.metodo_pagamento || r.pagamento || 'Contanti';
+                    if (metodo !== 'Contanti') {
+                        let icon = '💳';
+                        let lower = metodo.toLowerCase();
+                        if (lower.includes('bonifico')) icon = '🏦';
+                        else if (lower.includes('satispay') || lower.includes('app')) icon = '📱';
+                        
+                        iconaMetodo = `<span title="Pagamento: ${metodo}" style="margin-left: 5px; cursor: help; font-size: 1.1em;">${icon}</span>`;
+                    }
+                    return `
                     <tr>
                         <td>${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
                         <td>${this.formatDate(r.data)}</td>
                         <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">${r.tipo}</span></td>
-                        <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
+                        <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)}${iconaMetodo} ${r.annullata ? '(ANNULLATA)' : ''}</td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;">
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF(${r.id})" ${r.annullata ? 'disabled' : ''} title="Salva PDF">💾 PDF</button>
@@ -3136,7 +3147,7 @@ closeModal() {
                             </div>
                         </td>
                     </tr>
-                `).join('');
+                `; }).join('');
             },
 
             filterRicevute() {
