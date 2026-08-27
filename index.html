@@ -3122,16 +3122,16 @@ closeModal() {
             
             list.innerHTML = filtered.map(s => {
                 const safeName = (s.cognome + ' ' + s.nome).replace(/'/g, "\\'");
-                return `<div style="padding:10px; cursor:pointer; border-bottom:1px solid #eee; color:#111;" 
-                        onmouseover="this.style.background='#f0f9ff'" 
-                        onmouseout="this.style.background='white'" 
+                return `<div style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main);" 
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+                        onmouseout="this.style.background='transparent'" 
                         onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; app.updateReceiptSocioInfo('${s.id}'); document.getElementById('${listId}').style.display='none';">
                         ${s.cognome} ${s.nome}
                         </div>`;
             }).join('');
             
             if(filtered.length === 0) {
-                list.innerHTML = `<div style="padding:10px; color:#666;">Nessun socio trovato</div>`;
+                list.innerHTML = `<div style="padding:10px; color:var(--text-muted);">Nessun socio trovato</div>`;
             }
         },
 openAddRicevutaModal() {
@@ -3142,12 +3142,12 @@ openAddRicevutaModal() {
                 <form id="receipt-form" onsubmit="app.handleRicevutaSubmit(event)">
 
                     <!-- Intestazione opzioni: Da Cartaceo + Inserimento Multiplo -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #e2e8f0;">
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#475569;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid var(--border);">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:var(--text-main);">
                             <input type="checkbox" name="cartacea" id="receipt-cartacea" onchange="app.onReceiptCartaceaChange(this.checked)" style="width:18px; height:18px;">
                             📋 Da Cartaceo
                         </label>
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#0f172a;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:var(--text-main);">
                             <input type="checkbox" name="multiplo" id="receipt-multiplo" style="width:18px; height:18px;">
                             ⚡ Inserimento Multiplo
                         </label>
@@ -3175,17 +3175,17 @@ openAddRicevutaModal() {
                                 onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
                                 onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required>
                             <input type="hidden" name="socio_id" id="receipt-socio-id" required>
-                            <div id="soci-autocomplete-list" style="display:none; position:absolute; background:white; border:1px solid #ccc; max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                            <div id="soci-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
                         </div>
-                        <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:#f8fafc; border-radius:4px; border-left:3px solid #3b82f6;"></div>
+                        <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(59, 130, 246, 0.1); border-radius:4px; border-left:3px solid #3b82f6; color:var(--text-main);"></div>
                     </div>
 
-                    <div class="glass-card" style="margin: 1.5rem 0; padding: 1.5rem; background: #f8fafc;">
+                    <div class="glass-card" style="margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card);">
                         <div class="form-group" style="margin-bottom: 1rem;">
-                            <label style="font-weight:600; color:#0f172a;">Importo Totale (€)</label>
+                            <label style="font-weight:600; color:var(--text-main);">Importo Totale (€)</label>
                             <input type="number" step="0.01" id="receipt-amount" name="importo" class="form-control" required placeholder="0.00" style="font-size:1.4rem; font-weight:700; height:48px;">
                         </div>
-                        <p style="font-size:0.8rem; color:#555; margin-bottom:0.5rem;">Opzionale: Ripartizione importo (verrà inclusa nella causale)</p>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Opzionale: Ripartizione importo (verrà inclusa nella causale)</p>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                             <div class="form-group">
                                 <label style="font-size:0.85rem;">Di cui Quota/Corso (€)</label>
@@ -3205,8 +3205,8 @@ openAddRicevutaModal() {
                         </select>
                     </div>
 
-                    <div id="receipt-commissioni-row" style="display:none; margin-bottom:15px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:10px;">
-                        <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:#c2410c;">💸 Commissioni trattenute dal gestore (€)</label>
+                    <div id="receipt-commissioni-row" style="display:none; margin-bottom:15px; background:rgba(245, 158, 11, 0.1); border:1px solid var(--warning); border-radius:6px; padding:10px;">
+                        <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:var(--warning);">💸 Commissioni trattenute dal gestore (€)</label>
                         <input type="number" step="0.01" min="0" name="commissioni" id="receipt-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
                         <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L'importo netto andrà in Banca. Le commissioni saranno un'Uscita separata.</p>
                     </div>
