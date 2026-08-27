@@ -5226,6 +5226,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 `;
         },
 
+        
+        formatAnno(year) {
+            const y = parseInt(year);
+            if (isNaN(y)) return year;
+            return (y % 100) + '/' + ((y + 1) % 100);
+        },
         formatDate(d) {
             if (!d) return "-";
             const date = new Date(d);
