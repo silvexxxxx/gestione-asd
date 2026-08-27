@@ -649,6 +649,21 @@
                 <svg style="width: 18px; height: 18px; margin-right: 5px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Verifica Licenza
             </button>
+            <button class="btn btn-outline" id="paywall-close-btn" style="width:100%; justify-content:center; padding:12px; margin-top:10px; display:none;" onclick="document.getElementById('paywall-overlay').style.display='none'">
+                Chiudi (Versione di Prova)
+            </button>
+            <script>
+                // Show close button only if trial is active and no license saved
+                (function() {
+                    let id = localStorage.getItem('asd_install_date');
+                    if(id) {
+                        const days = (Date.now() - parseInt(id)) / (1000 * 60 * 60 * 24);
+                        if(days <= 15 && !localStorage.getItem('asd_license_key')) {
+                            document.getElementById('paywall-close-btn').style.display = 'flex';
+                        }
+                    }
+                })();
+            </script>
             <div id="license-error" style="color: #ef4444; font-size: 0.85rem; margin-top: 15px; display: none;">Chiave non valida o scaduta.</div>
         </div>
     </div>
@@ -906,16 +921,37 @@
 
                 await this.loadData();
                 
-                // --- PAYWALL / LICENZA ---
-                const savedLicense = localStorage.getItem('asd_license_key');
-                if (!savedLicense) {
-                    document.getElementById('paywall-overlay').style.display = 'flex';
-                    // Blocca il caricamento finché non inserisce la licenza
-                    return;
+                                // --- PAYWALL / LICENZA / TRIAL ---
+                let installDate = localStorage.getItem('asd_install_date');
+                if (!installDate) {
+                    installDate = Date.now().toString();
+                    localStorage.setItem('asd_install_date', installDate);
                 }
 
-                // Eseguiamo il controllo silenzioso in background senza bloccare l'interfaccia
-                this.verifyLicenseBackground(savedLicense);
+                const savedLicense = localStorage.getItem('asd_license_key');
+                if (savedLicense) {
+                    // Eseguiamo il controllo silenzioso in background senza bloccare l'interfaccia
+                    this.verifyLicenseBackground(savedLicense);
+                } else {
+                    // Controllo Trial (15 giorni)
+                    const daysPassed = (Date.now() - parseInt(installDate)) / (1000 * 60 * 60 * 24);
+                    const daysLeft = 15 - Math.floor(daysPassed);
+                    
+                    if (daysPassed > 15) {
+                        document.getElementById('paywall-overlay').style.display = 'flex';
+                        const err = document.getElementById('license-error');
+                        if(err) {
+                            err.innerText = 'Il periodo di prova di 15 giorni è terminato. Inserisci una licenza valida per continuare.';
+                            err.style.display = 'block';
+                        }
+                        return; // Blocca se scaduto
+                    } else {
+                        // Trial attivo
+                        setTimeout(() => {
+                            app.toast(`Versione di Prova: mancano ${daysLeft} giorni.`, 'warning');
+                        }, 2500);
+                    }
+                }
 
                 // --- APP LOCK (PIN) ---
                 const savedPin = localStorage.getItem('asd_app_lock');
@@ -5404,9 +5440,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             main.innerHTML = `
                     <div class="page-content" style="overflow-y:auto;">
                         <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div class="header-title">
+                            
                                 <h1>⚙️ Impostazioni</h1>
                                 <p>Configura i dati della tua associazione.</p>
+                            </div>
+                            <div style="display:flex; gap:10px; flex-direction:column; align-items:flex-end;">
+                                <button class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6;" onclick="document.getElementById('paywall-overlay').style.display='flex'">
+                                    🔑 Inserisci/Cambia Licenza
+                                </button>
+                                <button class="btn btn-outline" onclick="app.editAsdDati()">Modifica Dati ASD</button>
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
