@@ -1795,7 +1795,7 @@
                 const indicatorBtn = document.getElementById('cloud-indicator-btn');
                 const indicatorLabel = document.getElementById('cloud-indicator-label');
                 
-                if (this.syncEnabled) {
+                if (this.syncEnabled && this.accessToken) {
                     if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>';
                     if (indicatorBtn) {
                         indicatorBtn.style.borderColor = 'var(--success)';
@@ -1803,6 +1803,14 @@
                         indicatorBtn.style.background = 'rgba(16, 185, 129, 0.1)';
                     }
                     if (indicatorLabel) indicatorLabel.textContent = 'Online';
+                } else if (this.syncEnabled && !this.accessToken) {
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--warning);">Errore Cloud: Ri-eseguire Login</span>';
+                    if (indicatorBtn) {
+                        indicatorBtn.style.borderColor = 'var(--warning)';
+                        indicatorBtn.style.color = 'var(--warning)';
+                        indicatorBtn.style.background = 'rgba(245, 158, 11, 0.1)';
+                    }
+                    if (indicatorLabel) indicatorLabel.textContent = 'Auth Persa';
                 } else {
                     if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Offline (Locale)</span>';
                     if (indicatorBtn) {
@@ -1995,7 +2003,12 @@
             },
 
             async uploadBackup(isCreate = false) {
-                if (!this.accessToken) return;
+                if (!this.accessToken) {
+                    if (this.syncEnabled) {
+                        app.toast('⚠️ Connessione a Google persa. Ricollegati in Impostazioni!', 'warning');
+                    }
+                    return;
+                }
                 this.isSyncing = true;
                 
                 // Crea snapshot pulito dallo state
