@@ -2988,6 +2988,7 @@ closeModal() {
                             </div>
                             <div class="header-actions" style="display:flex; gap:8px;">
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta la tabella delle ricevute in formato Excel.">Esporta Excel</button>
+                                
                                 <button class="btn btn-primary" onclick="app.openAddRicevutaModal()">+ Nuova Ricevuta</button>
                             </div>
                         </div>
@@ -3062,274 +3063,407 @@ closeModal() {
                 document.getElementById('receipts-tbody').innerHTML = this.renderRicevuteRows(filtered);
             },
 
-        openAddRicevutaModal() {
-                const currentYear = new Date().getFullYear();
-                const lastNum = this.state.ricevute.filter(r => r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
-                const nextNum = lastNum + 1;
-                const today = new Date().toISOString().split('T')[0];
+            openAddRicevutaModal() {
+            const currentYear = new Date().getFullYear();
+            const lastNum = this.state.ricevute.filter(r => r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
+            
+            this.openModal('Emissione Ricevuta', `
+                <form id="receipt-form" onsubmit="app.handleRicevutaSubmit(event)">
 
-                this.openModal('Emissione Ricevuta', `
-                    <form id="receipt-form" onsubmit="app.handleRicevutaSubmit(event)">
+                    <!-- Intestazione opzioni: Da Cartaceo + Inserimento Multiplo -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid #e2e8f0;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#475569;">
+                            <input type="checkbox" name="cartacea" id="receipt-cartacea" onchange="app.onReceiptCartaceaChange(this.checked)" style="width:18px; height:18px;">
+                            📋 Da Cartaceo
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#0f172a;">
+                            <input type="checkbox" name="multiplo" id="receipt-multiplo" style="width:18px; height:18px;">
+                            ⚡ Inserimento Multiplo
+                        </label>
+                    </div>
 
-                        <!-- Intestazione opzioni: Da Cartaceo + Inserimento Multiplo -->
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(59,130,246,0.07); border-radius:10px; margin-bottom:1.2rem; border:1px solid rgba(59,130,246,0.15);">
-                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:0.9rem;">
-                                <input type="checkbox" id="receipt-cartacea" name="cartacea" onchange="app.onReceiptCartaceaChange(this.checked)" style="width:16px;height:16px;cursor:pointer;">
-                                📋 Da Cartaceo
-                                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">(numero manuale, campi aggiuntivi)</span>
-                            </label>
-                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:0.9rem;">
-                                <input type="checkbox" id="receipt-multiplo" name="multiplo" style="width:16px;height:16px;cursor:pointer;">
-                                ⚡ Inserimento Multiplo
-                                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">(non chiude dopo salvataggio)</span>
-                            </label>
-                        </div>
-
-                        <!-- Socio -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                         <div class="form-group">
-                            <label>Seleziona Socio*</label>
-                            <select name="socio_id" class="form-control" required onchange="app.updateReceiptSocioInfo(this.value)">
-                                <option value="">-- Scegli Socio --</option>
-                                ${this.state.soci.map(s => `<option value="${s.id}">${s.cognome} ${s.nome} (${s.cf})</option>`).join('')}
-                            </select>
+                            <label>Data</label>
+                            <input type="date" name="data" id="receipt-data" class="form-control" required>
                         </div>
-
-                        <!-- Preset -->
-                        <div class="form-group" style="padding: 0.8rem 1rem; background: rgba(59, 130, 246, 0.05); border-radius: 10px; border: 1px solid rgba(59, 130, 246, 0.2);">
-                            <label style="color: var(--primary);">Scegli Pacchetto Preimpostato (Opzionale)</label>
-                            <select class="form-control" onchange="app.applyPreset(this.value)">
-                                <option value="">-- Inserimento manuale --</option>
-                                ${this.state.quote_presets.map(p => `<option value="${p.id}">${p.nome} (€ ${p.importo})</option>`).join('')}
-                            </select>
-                        </div>
-
-                        <!-- Numero / Anno / Data -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>Numero Ricevuta</label>
-                                <input type="number" name="numero" id="receipt-numero" class="form-control" value="${nextNum}" readonly>
-                            </div>
-                            <div class="form-group">
-                                <label>Anno</label>
-                                <input type="number" name="anno" class="form-control" value="${currentYear}" readonly>
-                            </div>
-                            <div class="form-group">
-                                <label>Data*</label>
-                                <input type="date" name="data" id="receipt-data" class="form-control" value="${today}" required>
+                        <div class="form-group">
+                            <label>N. Ricevuta / Anno</label>
+                            <div style="display:flex; gap:0.5rem;">
+                                <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:60%" value="${lastNum + 1}" required readonly>
+                                <input type="number" name="anno" class="form-control" style="width:40%" value="${currentYear}" required>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Tipo / Metodo Pagamento -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Destinatario (Socio)</label>
+                        <select name="socio_id" class="form-control" required onchange="app.updateReceiptSocioInfo(this.value)">
+                            <option value="">-- Seleziona --</option>
+                            ${this.state.soci.sort((a,b)=>a.cognome.localeCompare(b.cognome)).map(s => `<option value="${s.id}">${s.cognome} ${s.nome}</option>`).join('')}
+                        </select>
+                        <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:#f8fafc; border-radius:4px; border-left:3px solid #3b82f6;"></div>
+                    </div>
+
+                    <div class="glass-card" style="margin: 1.5rem 0; padding: 1.5rem; background: #f8fafc;">
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label style="font-weight:600; color:#0f172a;">Importo Totale (€)</label>
+                            <input type="number" step="0.01" id="receipt-amount" name="importo" class="form-control" required placeholder="0.00" style="font-size:1.4rem; font-weight:700; height:48px;">
+                        </div>
+                        <p style="font-size:0.8rem; color:#555; margin-bottom:0.5rem;">Opzionale: Ripartizione importo (verrà inclusa nella causale)</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                             <div class="form-group">
-                                <label>Tipo Ricevuta</label>
-                                <select name="tipo" class="form-control">
-                                    <option value="Quota Associativa">Quota Associativa</option>
-                                    <option value="Abbonamento">Abbonamento</option>
-                                    <option value="Corso">Corso</option>
-                                    <option value="Altro">Altro</option>
+                                <label style="font-size:0.85rem;">Di cui Quota/Corso (€)</label>
+                                <input type="number" step="0.01" name="quota" id="receipt-quota" class="form-control" placeholder="Es. 45.00">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:0.85rem;">Di cui Tesseramento (€)</label>
+                                <input type="number" step="0.01" name="tess" id="receipt-tess" class="form-control" placeholder="Es. 15.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Metodo di Pagamento</label>
+                        <select name="pagamento" class="form-control" onchange="app.onReceiptPagamentoChange(this.value)">
+                            ${this.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <div id="receipt-commissioni-row" style="display:none; margin-bottom:15px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:10px;">
+                        <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:#c2410c;">💸 Commissioni trattenute dal gestore (€)</label>
+                        <input type="number" step="0.01" min="0" name="commissioni" id="receipt-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
+                        <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L'importo netto andrà in Banca. Le commissioni saranno un'Uscita separata.</p>
+                    </div>
+
+                    <div style="background:#e0f2fe; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #bae6fd;">
+                        <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Validità Quota (Aggiorna anagrafica socio)</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                            <div class="form-group">
+                                <label style="font-size:0.85rem; color:#0369a1;">Inizio Validità</label>
+                                <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" style="padding:8px; font-size:0.85rem;">
+                                <p style="font-size:0.7rem; color:#0284c7; margin-top:2px; margin-bottom:0;">Se vuoto, usa la data ricevuta</p>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:0.85rem; color:#0369a1;">Durata (Mesi)</label>
+                                <select name="durata" id="receipt-durata" class="form-control" style="padding:8px; font-size:0.85rem;">
+                                    <option value="">Non aggiornare</option>
+                                    <option value="1">1 Mese</option>
+                                    <option value="2">2 Mesi</option>
+                                    <option value="3">3 Mesi (Trimestrale)</option>
+                                    <option value="4">4 Mesi</option>
+                                    <option value="6">6 Mesi (Semestrale)</option>
+                                    <option value="9">9 Mesi</option>
+                                    <option value="12">12 Mesi (Annuale)</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Metodo di Pagamento</label>
-                                <select name="pagamento" class="form-control" onchange="app.onReceiptPagamentoChange(this.value)">
-                                    ${this.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
-                                </select>
-                            </div>
                         </div>
+                    </div>
 
-                        <!-- Commissioni (visibile se non Contanti) -->
-                        <div id="receipt-commissioni-row" style="display:none; padding:0.75rem 1rem; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; margin-bottom:0.5rem;">
-                            <label style="font-size:0.85rem; font-weight:600; color:#c2410c; display:block; margin-bottom:4px;">💸 Commissioni trattenute dal gestore (€)</label>
-                            <input type="number" step="0.01" min="0" name="commissioni" id="receipt-commissioni" class="form-control" placeholder="Es. 0.75">
-                            <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L'importo netto (lordo − commissioni) andrà in Banca. Le commissioni saranno registrate come Uscita separata.</p>
-                        </div>
+                    <div class="form-group">
+                        <label>Note Causale (Opzionale)</label>
+                        <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota mensile Giugno">
+                    </div>
 
-                        <!-- Preview socio -->
-                        <div id="receipt-socio-preview" style="padding: 0.75rem 1rem; background: rgba(59, 130, 246, 0.05); border-radius: 10px; margin-bottom: 0.5rem; font-size: 0.85rem; display: none;"></div>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-success">Genera e Salva</button>
+                    </div>
+                </form>
+            `);
+            
+            document.getElementById('receipt-data').value = new Date().toISOString().split('T')[0];
+        },
 
-                        <!-- Importo + Ripartizione -->
-                        <div style="background:#f3f4f6; padding:1rem; border-radius:10px; margin-bottom:0.75rem;">
-                            <div class="form-group" style="margin-bottom:0.75rem;">
-                                <label style="color:#059669; font-weight:700; font-size:1rem;">Importo Totale (€)*</label>
-                                <input type="number" step="0.01" id="receipt-amount" name="importo" class="form-control" required placeholder="0.00" style="font-size:1.4rem; font-weight:700; height:48px;">
-                            </div>
-                            <p style="font-size:0.8rem; color:#555; margin-bottom:0.5rem;">Opzionale: Ripartizione importo (verrà inclusa nella causale)</p>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                                <div class="form-group">
-                                    <label style="font-size:0.85rem;">Di cui Quota/Corso (€)</label>
-                                    <input type="number" step="0.01" name="quota" id="receipt-quota" class="form-control" placeholder="Es. 45.00">
-                                </div>
-                                <div class="form-group">
-                                    <label style="font-size:0.85rem;">Di cui Tesseramento (€)</label>
-                                    <input type="number" step="0.01" name="tess" id="receipt-tess" class="form-control" placeholder="Es. 25.00">
-                                </div>
-                            </div>
-                        </div>
+        applyPreset(presetId) {
+            if (!presetId) return;
+            const p = this.state.quote_presets.find(x => x.id == presetId);
+            if (!p) return;
 
-                        <!-- Sezione Validità Quota -->
-                        <div style="background:#e0f2fe; padding:0.8rem 1rem; border-radius:10px; margin-bottom:0.75rem; border:1px solid #bae6fd;">
-                            <p style="font-size:0.82rem; color:#0369a1; margin-bottom:0.6rem; font-weight:700;">📅 Validità Quota (aggiorna anagrafica socio — opzionale)</p>
-                            <p style="font-size:0.75rem; color:#0369a1; margin-bottom:0.6rem;">Se non compilato, la data ricevuta sarà usata come inizio validità.</p>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                                <div class="form-group">
-                                    <label style="font-size:0.85rem; color:#0369a1;">Inizio Validità</label>
-                                    <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label style="font-size:0.85rem; color:#0369a1;">Durata</label>
-                                    <select name="durata" id="receipt-durata" class="form-control">
-                                        <option value="">-- Non aggiornare --</option>
-                                        <option value="1">1 Mese (Mensile)</option>
-                                        <option value="2">2 Mesi (Bimestrale)</option>
-                                        <option value="3">3 Mesi (Trimestrale)</option>
-                                        <option value="6">6 Mesi (Semestrale)</option>
-                                        <option value="12">12 Mesi (Annuale)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
+            document.getElementById('receipt-amount').value = p.importo;
+            document.getElementById('receipt-note').value = p.note;
+            this.toast(`Applicato pacchetto: ${p.nome}`);
+        },
 
-                        <!-- Note -->
-                        <div class="form-group">
-                            <label>Note / Descrizione (Libera)</label>
-                            <input type="text" id="receipt-note" name="note" class="form-control" placeholder="Es: Quota mensile Giugno 2026">
-                        </div>
+        updateReceiptSocioInfo(val) {
+            const preview = document.getElementById('receipt-socio-preview');
+            if (!val) {
+                preview.style.display = 'none';
+                return;
+            }
+            const s = this.state.soci.find(x => x.id == val);
+            preview.style.display = 'block';
+            preview.innerHTML = `
+                <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
+                <strong>Status Certificato:</strong> <span class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</span>
+            `;
+        },
 
-                        <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                            <button type="submit" class="btn btn-success">Genera e Salva</button>
-                        </div>
-                    </form>
-                `);
-            },
+        onReceiptPagamentoChange(val) {
+            const row = document.getElementById('receipt-commissioni-row');
+            if (!row) return;
+            if (val && val !== 'Contanti') {
+                row.style.display = 'block';
+            } else {
+                row.style.display = 'none';
+                const comm = document.getElementById('receipt-commissioni');
+                if (comm) comm.value = '';
+            }
+        },
 
-            applyPreset(presetId) {
-                if (!presetId) return;
-                const p = this.state.quote_presets.find(x => x.id == presetId);
-                if (!p) return;
+        onReceiptCartaceaChange(checked) {
+            const numInput = document.getElementById('receipt-numero');
+            if (!numInput) return;
+            if (checked) {
+                numInput.removeAttribute('readonly');
+                numInput.style.borderColor = '#ca8a04';
+                numInput.title = 'Inserisci il numero della ricevuta cartacea';
+            } else {
+                numInput.setAttribute('readonly', true);
+                numInput.style.borderColor = '';
+                numInput.title = '';
+            }
+        },
+        
+        syncPrimaNotaFromRicevuta(ricevuta) {
+            // Trova se esiste già
+            const ref = 'RICEVUTA_' + ricevuta.id;
+            let txnIndex = this.state.primanota.findIndex(t => t.riferimento === ref);
+            
+            let soc = this.state.soci.find(s => s.id == ricevuta.socio_id);
+            let nomeSocio = soc ? (soc.cognome + ' ' + soc.nome) : (ricevuta.socio_nome || '');
+            const metodo = ricevuta.metodo_pagamento || ricevuta.pagamento || 'Contanti';
+            const commissioni = parseFloat(ricevuta.commissioni) || 0;
+            const importoLordo = parseFloat(ricevuta.importo);
+            const importoNetto = metodo !== 'Contanti' && commissioni > 0 
+                ? Math.round((importoLordo - commissioni) * 100) / 100
+                : importoLordo;
+            let descBase = 'Ricevuta N.' + ricevuta.numero + '/' + ricevuta.anno + ' - ' + nomeSocio;
+            let descrizione = metodo !== 'Contanti' && commissioni > 0
+                ? descBase + ` [lordo: €${importoLordo.toFixed(2)}, comm. ${metodo}: -€${commissioni.toFixed(2)}]`
+                : descBase;
 
-                document.getElementById('receipt-amount').value = p.importo;
-                document.getElementById('receipt-note').value = p.note;
-                this.toast(`Applicato pacchetto: ${p.nome}`);
-            },
+            if (txnIndex >= 0) {
+                // Aggiorna
+                this.state.primanota[txnIndex].data = ricevuta.data;
+                this.state.primanota[txnIndex].importo = importoNetto;
+                this.state.primanota[txnIndex].metodo = metodo;
+                this.state.primanota[txnIndex].descrizione = descrizione;
+            } else {
+                // Inserisci nuova
+                this.state.primanota.push({
+                    id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    data: ricevuta.data,
+                    tipo: 'Entrata',
+                    metodo: metodo,
+                    categoria: 'Quote Associative',
+                    descrizione: descrizione,
+                    importo: importoNetto,
+                    riferimento: ref
+                });
+            }
+        },
+        
+        stornoPrimaNotaFromRicevuta(id) {
+            const ref = 'RICEVUTA_' + id;
+            const txn = this.state.primanota.find(t => t.riferimento === ref);
+            if (txn) {
+                // Genera storno
+                this.state.primanota.push({
+                    id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    data: new Date().toISOString().split('T')[0],
+                    tipo: 'Uscita',
+                    metodo: txn.metodo,
+                    categoria: 'Storno',
+                    descrizione: 'STORNO ' + txn.descrizione,
+                    importo: parseFloat(txn.importo),
+                    riferimento: 'STORNO_' + ref
+                });
+            }
+        },
 
-            updateReceiptSocioInfo(val) {
-                const preview = document.getElementById('receipt-socio-preview');
-                if (!val) {
-                    preview.style.display = 'none';
-                    return;
-                }
-                const s = this.state.soci.find(x => x.id == val);
-                preview.style.display = 'block';
-                preview.innerHTML = `
-                    <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
-                    <strong>Status Certificato:</strong> <span class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</span>
-                `;
-            },
+        handleRicevutaSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
 
-            onReceiptPagamentoChange(val) {
-                const row = document.getElementById('receipt-commissioni-row');
-                if (!row) return;
-                if (val && val !== 'Contanti') {
-                    row.style.display = 'block';
-                } else {
-                    row.style.display = 'none';
-                    const comm = document.getElementById('receipt-commissioni');
-                    if (comm) comm.value = '';
-                }
-            },
+            // Flags
+            const isCartacea = !!data.cartacea;
+            const isMultiplo = !!data.multiplo;
 
-            onReceiptCartaceaChange(checked) {
+            // Numeric fields
+            const socio = this.state.soci.find(s => s.id == data.socio_id);
+            const importo = Math.round(parseFloat(data.importo) * 100) / 100;
+            const quota = Math.round((parseFloat(data.quota) || 0) * 100) / 100;
+            const tess = Math.round((parseFloat(data.tess) || 0) * 100) / 100;
+            const commissioni = Math.round((parseFloat(data.commissioni) || 0) * 100) / 100;
+            const pagamento = data.pagamento || 'Contanti';
+
+            // Build causale from ripartizione
+            let tipoCausale = data.tipo || 'Quota Associativa';
+            if (quota > 0 || tess > 0) {
+                const parts = [];
+                if (tess > 0) parts.push(`Tesseramento: €${tess.toFixed(2)}`);
+                if (quota > 0) parts.push(`Quota/Corso: €${quota.toFixed(2)}`);
+                tipoCausale = parts.join(' + ');
+            }
+
+            const receipt = {
+                id: Date.now() + Math.random(),
+                socio_id: data.socio_id,
+                socio_nome: socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto',
+                importo: importo,
+                data: data.data,
+                tipo: tipoCausale,
+                pagamento: pagamento,
+                metodo_pagamento: pagamento,
+                commissioni: commissioni,
+                numero: parseInt(data.numero),
+                anno: parseInt(data.anno),
+                note: data.note || '',
+                quota: quota || undefined,
+                tess: tess || undefined,
+                cartacea: isCartacea || undefined,
+            };
+
+            this.state.ricevute.push(receipt);
+
+            // Aggiorna validità quota in anagrafica socio
+            const inizio = data.inizio_validita || data.data;
+            const durata = data.durata;
+            if (durata && socio) {
+                const date = new Date(inizio);
+                date.setMonth(date.getMonth() + parseInt(durata));
+                socio.quota_scadenza = date.toISOString().split('T')[0];
+            }
+
+            // Sincronizza Prima Nota
+            this.syncPrimaNotaFromRicevuta(receipt);
+
+            // Commissioni come uscita separata se pagamento digitale
+            if (pagamento !== 'Contanti' && commissioni > 0) {
+                this.state.primanota.push({
+                    id: 'txn_comm_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    data: receipt.data,
+                    tipo: 'Uscita',
+                    metodo: pagamento,
+                    categoria: 'Commissioni Pagamento Digitale',
+                    descrizione: `Commissioni ${pagamento} su Ric. N.${receipt.numero}/${receipt.anno} - ${receipt.socio_nome} (lordo: €${importo.toFixed(2)})`,
+                    importo: commissioni,
+                    riferimento: 'COMM_RICEVUTA_' + receipt.id
+                });
+            }
+
+            this.saveAll();
+            this.renderRicevute();
+
+            if (isMultiplo) {
+                this.toast(`✅ Ricevuta n.${receipt.numero} salvata! Puoi inserire la prossima.`, 'success');
                 const numInput = document.getElementById('receipt-numero');
-                if (!numInput) return;
-                if (checked) {
-                    numInput.removeAttribute('readonly');
-                    numInput.style.borderColor = '#ca8a04';
-                    numInput.title = 'Inserisci il numero della ricevuta cartacea';
-                } else {
-                    numInput.setAttribute('readonly', true);
-                    numInput.style.borderColor = '';
-                    numInput.title = '';
-                }
-            },
-            
-            syncPrimaNotaFromRicevuta(ricevuta) {
-                // Trova se esiste già
-                const ref = 'RICEVUTA_' + ricevuta.id;
-                let txnIndex = this.state.primanota.findIndex(t => t.riferimento === ref);
-                
-                let soc = this.state.soci.find(s => s.id == ricevuta.socio_id);
-                let nomeSocio = soc ? (soc.cognome + ' ' + soc.nome) : (ricevuta.socio_nome || '');
-                const metodo = ricevuta.metodo_pagamento || ricevuta.pagamento || 'Contanti';
-                const commissioni = parseFloat(ricevuta.commissioni) || 0;
-                const importoLordo = parseFloat(ricevuta.importo);
-                const importoNetto = metodo !== 'Contanti' && commissioni > 0 
-                    ? Math.round((importoLordo - commissioni) * 100) / 100
-                    : importoLordo;
-                let descBase = 'Ricevuta N.' + ricevuta.numero + '/' + ricevuta.anno + ' - ' + nomeSocio;
-                let descrizione = metodo !== 'Contanti' && commissioni > 0
-                    ? descBase + ` [lordo: €${importoLordo.toFixed(2)}, comm. ${metodo}: -€${commissioni.toFixed(2)}]`
-                    : descBase;
+                if (numInput) numInput.value = receipt.numero + 1;
+                ['socio_id', 'importo', 'quota', 'tess', 'commissioni', 'note'].forEach(name => {
+                    const el = form.querySelector(`[name="${name}"]`);
+                    if (el) el.value = '';
+                });
+                const preview = document.getElementById('receipt-socio-preview');
+                if (preview) preview.style.display = 'none';
+                const commRow = document.getElementById('receipt-commissioni-row');
+                if (commRow) commRow.style.display = 'none';
+                const socioSel = form.querySelector('[name="socio_id"]');
+                if (socioSel) socioSel.focus();
+            } else {
+                this.generatePDF(receipt.id);
+                this.closeModal();
+                this.toast('Ricevuta emessa correttamente!');
+            }
+        },
 
-                if (txnIndex >= 0) {
-                    // Aggiorna
-                    this.state.primanota[txnIndex].data = ricevuta.data;
-                    this.state.primanota[txnIndex].importo = importoNetto;
-                    this.state.primanota[txnIndex].metodo = metodo;
-                    this.state.primanota[txnIndex].descrizione = descrizione;
-                } else {
-                    // Inserisci nuova
-                    this.state.primanota.push({
-                        id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                        data: ricevuta.data,
-                        tipo: 'Entrata',
-                        metodo: metodo,
-                        categoria: 'Quote Associative',
-                        descrizione: descrizione,
-                        importo: importoNetto,
-                        riferimento: ref
-                    });
+        annullaRicevuta(id) {
+            if (confirm("Sei sicuro di voler ANNULLARE questa ricevuta? Rimarrà visibile in archivio ma non verrà conteggiata nei totali.")) {
+                const r = this.state.ricevute.find(x => x.id === id);
+                if (r) {
+                    r.annullata = true;
+                    this.saveAll();
+                    this.renderRicevute();
+                    this.toast("Ricevuta annullata correttamente.", "warning");
                 }
-            },
-            
-            stornoPrimaNotaFromRicevuta(id) {
-                const ref = 'RICEVUTA_' + id;
-                const txn = this.state.primanota.find(t => t.riferimento === ref);
-                if (txn) {
-                    // Genera storno
-                    this.state.primanota.push({
-                        id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                        data: new Date().toISOString().split('T')[0],
-                        tipo: 'Uscita',
-                        metodo: txn.metodo,
-                        categoria: 'Storno',
-                        descrizione: 'STORNO ' + txn.descrizione,
-                        importo: parseFloat(txn.importo),
-                        riferimento: 'STORNO_' + ref
-                    });
-                }
-            },
+            }
+        },
 
-            handleRicevutaSubmit(e) {
+        permanentlyDeleteRicevuta(id) {
+            if (confirm("ATTENZIONE: Stai per eliminare DEFINITIVAMENTE questa ricevuta. Questa azione è riservata alla manutenzione tecnica. Procedere?")) {
+                this.stornoPrimaNotaFromRicevuta(id);
+                this.state.ricevute = this.state.ricevute.filter(r => r.id !== id);
+                this.saveAll();
+                this.renderRicevute();
+                this.toast("Ricevuta eliminata definitivamente dal database.", "danger");
+            }
+        },
+
+        openEditRicevutaModal(id) {
+            const r = this.state.ricevute.find(x => x.id === id);
+            if (!r) return;
+
+            this.openAddRicevutaModal();
+            const form = document.getElementById('receipt-form');
+            form.dataset.editId = id;
+            document.querySelector('.modal h2').textContent = `Modifica Ricevuta n. ${r.numero}/${r.anno}`;
+
+            // Hide multiple checkbox in edit
+            const multiCb = document.getElementById('receipt-multiplo');
+            if (multiCb && multiCb.parentElement) multiCb.parentElement.style.display = 'none';
+
+            // Popola tutti i campi standard e quelli nuovi
+            const fieldMap = {
+                'socio_id': r.socio_id,
+                'numero': r.numero,
+                'anno': r.anno,
+                'data': r.data,
+                'importo': r.importo,
+                'tipo': r.tipo,
+                'pagamento': r.pagamento || r.metodo_pagamento,
+                'commissioni': r.commissioni || '',
+                'note': r.note || '',
+                'quota': r.quota || '',
+                'tess': r.tess || '',
+                'inizio_validita': r.inizio_validita || '',
+                'durata': r.durata || '',
+            };
+            Object.keys(fieldMap).forEach(key => {
+                const input = form.querySelector(`[name="${key}"]`);
+                if (input && fieldMap[key] !== undefined) input.value = fieldMap[key];
+            });
+
+            // Se ricevuta cartacea, abilita numero editabile e spunta checkbox
+            if (r.cartacea) {
+                const cb = document.getElementById('receipt-cartacea');
+                if (cb) { cb.checked = true; this.onReceiptCartaceaChange(true); }
+            }
+
+            // Se pagamento non Contanti, mostra commissioni
+            const pag = r.pagamento || r.metodo_pagamento || '';
+            if (pag && pag !== 'Contanti') {
+                this.onReceiptPagamentoChange(pag);
+            }
+
+            // Mostra info socio
+            this.updateReceiptSocioInfo(r.socio_id);
+
+            // Aggiorna pulsante submit
+            form.querySelector('.btn-success').textContent = "Aggiorna Ricevuta";
+            form.onsubmit = (e) => {
                 e.preventDefault();
-                const form = e.target;
-                const formData = new FormData(form);
+                const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
+                const idx = this.state.ricevute.findIndex(x => x.id === id);
+                if (idx < 0) return;
 
-                // Flags
-                const isCartacea = !!data.cartacea;
-                const isMultiplo = !!data.multiplo;
-
-                // Numeric fields
-                const socio = this.state.soci.find(s => s.id == data.socio_id);
-                const importo = Math.round(parseFloat(data.importo) * 100) / 100;
                 const quota = Math.round((parseFloat(data.quota) || 0) * 100) / 100;
                 const tess = Math.round((parseFloat(data.tess) || 0) * 100) / 100;
                 const commissioni = Math.round((parseFloat(data.commissioni) || 0) * 100) / 100;
                 const pagamento = data.pagamento || 'Contanti';
 
-                // Build causale from ripartizione
                 let tipoCausale = data.tipo || 'Quota Associativa';
                 if (quota > 0 || tess > 0) {
                     const parts = [];
@@ -3338,11 +3472,11 @@ closeModal() {
                     tipoCausale = parts.join(' + ');
                 }
 
-                const receipt = {
-                    id: Date.now() + Math.random(),
+                this.state.ricevute[idx] = {
+                    ...this.state.ricevute[idx],
                     socio_id: data.socio_id,
-                    socio_nome: socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto',
-                    importo: importo,
+                    socio_nome: (this.state.soci.find(s => s.id == data.socio_id) || { cognome: '', nome: '' }).cognome + ' ' + (this.state.soci.find(s => s.id == data.socio_id) || { nome: '' }).nome,
+                    importo: parseFloat(data.importo),
                     data: data.data,
                     tipo: tipoCausale,
                     pagamento: pagamento,
@@ -3353,188 +3487,29 @@ closeModal() {
                     note: data.note || '',
                     quota: quota || undefined,
                     tess: tess || undefined,
-                    cartacea: isCartacea || undefined,
+                    cartacea: !!data.cartacea || undefined,
+                    inizio_validita: data.inizio_validita || undefined,
+                    durata: data.durata || undefined,
                 };
 
-                this.state.ricevute.push(receipt);
-
-                // Aggiorna validità quota in anagrafica socio
+                // Aggiorna validità quota in anagrafica
+                const socio = this.state.soci.find(s => s.id == data.socio_id);
                 const inizio = data.inizio_validita || data.data;
-                const durata = data.durata;
-                if (durata && socio) {
+                if (data.durata && socio) {
                     const date = new Date(inizio);
-                    date.setMonth(date.getMonth() + parseInt(durata));
+                    date.setMonth(date.getMonth() + parseInt(data.durata));
                     socio.quota_scadenza = date.toISOString().split('T')[0];
                 }
 
-                // Sincronizza Prima Nota
-                this.syncPrimaNotaFromRicevuta(receipt);
-
-                // Commissioni come uscita separata se pagamento digitale
-                if (pagamento !== 'Contanti' && commissioni > 0) {
-                    this.state.primanota.push({
-                        id: 'txn_comm_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                        data: receipt.data,
-                        tipo: 'Uscita',
-                        metodo: pagamento,
-                        categoria: 'Commissioni Pagamento Digitale',
-                        descrizione: `Commissioni ${pagamento} su Ric. N.${receipt.numero}/${receipt.anno} - ${receipt.socio_nome} (lordo: €${importo.toFixed(2)})`,
-                        importo: commissioni,
-                        riferimento: 'COMM_RICEVUTA_' + receipt.id
-                    });
-                }
-
+                this.syncPrimaNotaFromRicevuta(this.state.ricevute[idx]);
                 this.saveAll();
+                this.toast("Ricevuta aggiornata!");
+                this.closeModal();
                 this.renderRicevute();
+            };
+        },
 
-                if (isMultiplo) {
-                    this.toast('Ricevuta n.' + receipt.numero + ' salvata! Inserisci la prossima.', 'success');
-                    var numInput = document.getElementById('receipt-numero');
-                    if (numInput) numInput.value = receipt.numero + 1;
-                    ['socio_id', 'importo', 'quota', 'tess', 'commissioni', 'note'].forEach(function(name) {
-                        var el = form.querySelector('[name="' + name + '"]');
-                        if (el) el.value = '';
-                    });
-                    var preview = document.getElementById('receipt-socio-preview');
-                    if (preview) preview.style.display = 'none';
-                    var commRow = document.getElementById('receipt-commissioni-row');
-                    if (commRow) commRow.style.display = 'none';
-                    var socioSel = form.querySelector('[name="socio_id"]');
-                    if (socioSel) socioSel.focus();
-                } else {
-                    this.generatePDF(receipt.id);
-                    this.closeModal();
-                    this.toast('Ricevuta emessa correttamente!');
-                }
-            },
-
-            annullaRicevuta(id) {
-                if (confirm("Sei sicuro di voler ANNULLARE questa ricevuta? Rimarrà visibile in archivio ma non verrà conteggiata nei totali.")) {
-                    const r = this.state.ricevute.find(x => x.id === id);
-                    if (r) {
-                        r.annullata = true;
-                        this.saveAll();
-                        this.renderRicevute();
-                        this.toast("Ricevuta annullata correttamente.", "warning");
-                    }
-                }
-            },
-
-            permanentlyDeleteRicevuta(id) {
-                if (confirm("ATTENZIONE: Stai per eliminare DEFINITIVAMENTE questa ricevuta. Questa azione è riservata alla manutenzione tecnica. Procedere?")) {
-                    this.stornoPrimaNotaFromRicevuta(id);
-                this.state.ricevute = this.state.ricevute.filter(r => r.id !== id);
-                    this.saveAll();
-                    this.renderRicevute();
-                    this.toast("Ricevuta eliminata definitivamente dal database.", "danger");
-                }
-            },
-
-            openEditRicevutaModal(id) {
-                const r = this.state.ricevute.find(x => x.id === id);
-                if (!r) return;
-
-                this.openAddRicevutaModal();
-                const form = document.getElementById('receipt-form');
-                form.dataset.editId = id;
-                document.querySelector('.modal h2').textContent = `Modifica Ricevuta n. ${r.numero}/${r.anno}`;
-
-                // Popola tutti i campi standard e quelli nuovi
-                const fieldMap = {
-                    'socio_id': r.socio_id,
-                    'numero': r.numero,
-                    'anno': r.anno,
-                    'data': r.data,
-                    'importo': r.importo,
-                    'tipo': r.tipo,
-                    'pagamento': r.pagamento || r.metodo_pagamento,
-                    'commissioni': r.commissioni || '',
-                    'note': r.note || '',
-                    'quota': r.quota || '',
-                    'tess': r.tess || '',
-                    'inizio_validita': r.inizio_validita || '',
-                    'durata': r.durata || '',
-                };
-                Object.keys(fieldMap).forEach(key => {
-                    const input = form.querySelector(`[name="${key}"]`);
-                    if (input && fieldMap[key] !== undefined) input.value = fieldMap[key];
-                });
-
-                // Se ricevuta cartacea, abilita numero editabile e spunta checkbox
-                if (r.cartacea) {
-                    const cb = document.getElementById('receipt-cartacea');
-                    if (cb) { cb.checked = true; this.onReceiptCartaceaChange(true); }
-                }
-
-                // Se pagamento non Contanti, mostra commissioni
-                const pag = r.pagamento || r.metodo_pagamento || '';
-                if (pag && pag !== 'Contanti') {
-                    this.onReceiptPagamentoChange(pag);
-                }
-
-                // Mostra info socio
-                this.updateReceiptSocioInfo(r.socio_id);
-
-                // Aggiorna pulsante submit
-                form.querySelector('.btn-success').textContent = "Aggiorna Ricevuta";
-                form.onsubmit = (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    const data = Object.fromEntries(formData.entries());
-                    const idx = this.state.ricevute.findIndex(x => x.id === id);
-                    if (idx < 0) return;
-
-                    const quota = Math.round((parseFloat(data.quota) || 0) * 100) / 100;
-                    const tess = Math.round((parseFloat(data.tess) || 0) * 100) / 100;
-                    const commissioni = Math.round((parseFloat(data.commissioni) || 0) * 100) / 100;
-                    const pagamento = data.pagamento || 'Contanti';
-
-                    let tipoCausale = data.tipo || 'Quota Associativa';
-                    if (quota > 0 || tess > 0) {
-                        const parts = [];
-                        if (tess > 0) parts.push(`Tesseramento: €${tess.toFixed(2)}`);
-                        if (quota > 0) parts.push(`Quota/Corso: €${quota.toFixed(2)}`);
-                        tipoCausale = parts.join(' + ');
-                    }
-
-                    this.state.ricevute[idx] = {
-                        ...this.state.ricevute[idx],
-                        socio_id: data.socio_id,
-                        socio_nome: (this.state.soci.find(s => s.id == data.socio_id) || { cognome: '', nome: '' }).cognome + ' ' + (this.state.soci.find(s => s.id == data.socio_id) || { nome: '' }).nome,
-                        importo: parseFloat(data.importo),
-                        data: data.data,
-                        tipo: tipoCausale,
-                        pagamento: pagamento,
-                        metodo_pagamento: pagamento,
-                        commissioni: commissioni,
-                        numero: parseInt(data.numero),
-                        anno: parseInt(data.anno),
-                        note: data.note || '',
-                        quota: quota || undefined,
-                        tess: tess || undefined,
-                        cartacea: !!data.cartacea || undefined,
-                        inizio_validita: data.inizio_validita || undefined,
-                        durata: data.durata || undefined,
-                    };
-
-                    // Aggiorna validità quota in anagrafica
-                    const socio = this.state.soci.find(s => s.id == data.socio_id);
-                    const inizio = data.inizio_validita || data.data;
-                    if (data.durata && socio) {
-                        const date = new Date(inizio);
-                        date.setMonth(date.getMonth() + parseInt(data.durata));
-                        socio.quota_scadenza = date.toISOString().split('T')[0];
-                    }
-
-                    this.syncPrimaNotaFromRicevuta(this.state.ricevute[idx]);
-                    this.saveAll();
-                    this.toast("Ricevuta aggiornata!");
-                    this.closeModal();
-                    this.renderRicevute();
-                };
-            },
-
-            importSociExcel(event) {
+        importSociExcel(event) {
                 const fileInput = event.target;
                 if (!fileInput || !fileInput.files || !fileInput.files.length) {
                     this.toast("Seleziona prima il file Excel!", "warning");
@@ -4113,8 +4088,84 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 <div class="legal">Documento non fiscale emesso in conformità alle norme vigenti per le ASD (art. 143 c.3 TUIR e D.Lgs. 460/1997).</div>
 <br><br>
 <button onclick="window.print();setTimeout(()=>window.close(),500);" style="padding:10px 24px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-size:10pt;">🖨️ Stampa</button>
+</body></html>`);
+            pw.document.close();
+            pw.focus();
+            setTimeout(() => pw.print(), 600);
+        },
 
-                
+        toggleFullscreen() {
+            const btn = document.getElementById('fullscreen-btn');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().then(() => {
+                    localStorage.setItem('asd_fullscreen', 'true');
+                    if (btn) { btn.title = 'Esci da Schermo Intero'; btn.textContent = '✕⛶'; }
+                }).catch(() => this.toast('Schermo intero non disponibile nel browser.', 'warning'));
+            } else {
+                document.exitFullscreen().then(() => {
+                    localStorage.setItem('asd_fullscreen', 'false');
+                    if (btn) { btn.title = 'Schermo Intero'; btn.textContent = '⛶'; }
+                });
+            }
+        },
+
+        exportRicevuteExcel() {
+            const worksheet = XLSX.utils.json_to_sheet(this.state.ricevute);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Ricevute");
+            XLSX.writeFile(workbook, "export_ricevute_asd.xlsx");
+            this.toast("Excel esportato!");
+        },
+
+        generateMobileViewer() {
+            const dataStr = JSON.stringify(this.state);
+            const viewerHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASD Mobile Viewer</title>
+    <style>
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 10px; }
+        .card { background: #1e293b; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #334155; }
+        .name { font-weight: bold; color: #3b82f6; font-size: 1.1rem; }
+        .meta { font-size: 0.8rem; color: #94a3b8; margin-top: 5px; }
+        .status { float: right; padding: 2px 8px; border-radius: 5px; font-size: 0.7rem; font-weight: bold; }
+        .ATTIVO { background: #065f46; color: #34d399; }
+        .MOROSO { background: #7f1d1d; color: #f87171; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 5px; border: none; }
+    </style>
+</head>
+<body>
+
+
+
+    <h2>ASD Mobile View</h2>
+    <input type="text" id="search" placeholder="Cerca socio..." oninput="search()">
+    <div id="list"></div>
+    <script>
+        const data = ${dataStr};
+        function render(soci) {
+            document.getElementById('list').innerHTML = soci.map(s => \`
+                <div class="card">
+                    <span class="status \${s.stato}">\${s.stato}</span>
+                    <div class="name">\${s.nome}</div>
+                    <div class="meta">
+                        CF: \${s.cf}<br>
+                        Tel: \${s.tel}<br>
+                        Residenza: \${s.residenza || '-'}<br>
+                        Scad. Certificato: \${s.certificato_scadenza || '-'}
+                    </div>
+                </div>
+            \`).join('');
+        }
+        function search() {
+            const q = document.getElementById('search').value.toLowerCase();
+            render(data.soci.filter(s => s.nome.toLowerCase().includes(q)));
+        }
+        render(data.soci);
+    <\/script>
 </body>
 </html>`;
 
@@ -7224,9 +7275,976 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
 
 <br>
 <button onclick="window.print();setTimeout(()=>window.close(),500);" style="padding:10px 24px;background:#1e3a8a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:10pt;">🖨️ Stampa / Salva PDF</button>
+</body></html>`);
+            pw.document.close();
+            pw.focus();
+        },
 
+
+
+        // --- LIBERATORIA MINORI ---
+        calcolaEta(dataNascitaStr) {
+            if(!dataNascitaStr) return 99;
+            const dob = new Date(dataNascitaStr);
+            const diff_ms = Date.now() - dob.getTime();
+            const age_dt = new Date(diff_ms);
+            return Math.abs(age_dt.getUTCFullYear() - 1970);
+        },
+        gestisciLiberatoria(id) {
+            const s = this.state.soci.find(x => x.id === id);
+            if(!s) return;
+            const html = `
+                <div style="text-align:center; padding:20px 0;">
+                    <h3 style="margin-top:0; color:var(--primary);">Liberatoria per Minori</h3>
+                    <p>Socio: <strong>${s.cognome} ${s.nome}</strong> (Età: ${this.calcolaEta(s.data_nascita)})</p>
+                    
+                    <div style="margin: 30px 0; display:flex; flex-direction:column; gap:15px; align-items:center;">
+                        <button class="btn btn-outline" style="width:80%; font-size:1.1rem; padding:12px;" onclick="app.stampaLiberatoriaMinore(${id})">
+                            🖨️ Stampa Modulo (PDF)
+                        </button>
+                        
+                        ${!s.liberatoria_consegnata ? `
+                            <button class="btn btn-primary" style="width:80%; font-size:1.1rem; padding:12px; background:var(--success);" onclick="app.toggleLiberatoria(${id})">
+                                ✅ Segna come Acquisita/Consegnata
+                            </button>
+                        ` : `
+                            <div style="color:var(--success); font-weight:bold; font-size:1.1rem;">✅ Liberatoria Acquisita in archivio</div>
+                            <button class="btn btn-outline" style="width:80%; font-size:0.9rem; padding:8px; margin-top:10px; color:var(--danger); border-color:var(--danger);" onclick="app.toggleLiberatoria(${id})">
+                                ❌ Revoca Acquisizione
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+            this.openModal('Gestione Liberatoria', html);
+        },
+        toggleLiberatoria(id) {
+            const s = this.state.soci.find(x => x.id === id);
+            if(!s) return;
+            s.liberatoria_consegnata = !s.liberatoria_consegnata;
+            localStorage.setItem('asd_soci', JSON.stringify(this.state.soci));
+            this.saveAll();
+            this.renderSoci();
+            this.closeModal();
+            this.toast(s.liberatoria_consegnata ? 'Liberatoria acquisita con successo!' : 'Liberatoria revocata.');
+        },
+        stampaLiberatoriaMinore(id) {
+            const s = this.state.soci.find(x => x.id === id);
+            if(!s) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Intestazione Palestra
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(this.state.settings.asdName.toUpperCase(), 20, 20);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(this.state.settings.address, 20, 26);
+            doc.text("C.F. / P.IVA: " + this.state.settings.pIva, 20, 31);
+            
+            // Titolo
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("MODULO DI ISCRIZIONE E LIBERATORIA MINORI", 105, 45, null, null, "center");
+            
+            // Dati Genitore (Vuoti)
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.text("Il/La sottoscritto/a Cognome e Nome: ______________________________________________________", 20, 60);
+            doc.text("Nato/a a: __________________________________________ il: ______/______/_________________", 20, 68);
+            doc.text("Residente in: _________________________________________ Prov: _______ CAP: ____________", 20, 76);
+            doc.text("Codice Fiscale: ________________________________________________________________________", 20, 84);
+            doc.text("Telefono: ____________________________ Email: __________________________________________", 20, 92);
+            
+            doc.setFont("helvetica", "bold");
+            doc.text("IN QUALITÀ DI GENITORE / ESERCENTE LA RESPONSABILITÀ GENITORIALE DEL MINORE:", 20, 105);
+            doc.setFont("helvetica", "normal");
+            
+            // Dati Minore (Precompilati)
+            doc.setFont("helvetica", "bold");
+            doc.text("Cognome e Nome: " + s.cognome + " " + s.nome, 20, 115);
+            doc.text("Luogo di Nascita: " + (s.luogo_nascita || "__________________") + "  Data Nascita: " + this.formatDate(s.data_nascita), 20, 123);
+            doc.text("Codice Fiscale: " + (s.cf || "________________________________"), 20, 131);
+            doc.text("Residenza: " + (s.residenza || "______________________________________________________"), 20, 139);
+            doc.setFont("helvetica", "normal");
+            
+            // Dichiarazioni
+            let y = 155;
+            doc.setFontSize(10);
+            const lineSpace = 6;
+            
+            doc.setFont("helvetica", "bold");
+            doc.text("AUTORIZZA E DICHIARA", 20, y); y += lineSpace + 2;
+            doc.setFont("helvetica", "normal");
+            
+            const p1 = "1) Autorizzo mio/a figlio/a a partecipare alle attività sportive e ricreative organizzate dall'associazione.";
+            const p2 = "2) Dichiaro di aver preso visione dello Statuto e del Regolamento interno e di accettarli integralmente.";
+            const p3 = "3) Dichiaro che il minore è in stato di buona salute e mi impegno a presentare e rinnovare il certificato medico per l'idoneità alla pratica sportiva.";
+            const p4 = "4) Sollevo l'associazione e i suoi dirigenti/istruttori da ogni responsabilità civile e penale per infortuni subiti dal minore o danni arrecati a terzi, nei limiti della normativa vigente.";
+            const p5 = "5) Consenso Privacy (GDPR 2016/679): Presto il consenso al trattamento dei dati personali del minore per le finalità istituzionali e amministrative dell'associazione.";
+            const p6 = "6) Uso Immagini: Autorizzo l'uso a titolo gratuito di foto/video ritraenti il minore per scopi promozionali dell'associazione sui propri canali, senza pregiudizio per il decoro dello stesso.";
+            
+            const paragraphs = [p1, p2, p3, p4, p5, p6];
+            paragraphs.forEach(p => {
+                const lines = doc.splitTextToSize(p, 170);
+                doc.text(lines, 20, y);
+                y += (lines.length * lineSpace) + 2;
+            });
+            
+            y += 10;
+            doc.text("Luogo e Data: _____________________________", 20, y);
+            
+            y += 20;
+            doc.text("Firma di entrambi i genitori (o del genitore firmatario consapevole del consenso dell'altro):", 20, y);
+            y += 15;
+            doc.text("Firma 1 ________________________________", 20, y);
+            doc.text("Firma 2 ________________________________", 110, y);
+            
+            doc.save(`Liberatoria_Minori_${s.cognome}_${s.nome}.pdf`);
+        },
+
+        // --- MODULO MAGAZZINO ---
+        renderMagazzino() {
+            const main = document.getElementById('main-content');
+            let html = `
+                <div class="page-content" style="overflow-y:auto;">
+                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h1>📦 Magazzino Consumabili</h1>
+                            <p style="color:var(--text-muted); font-size:0.9rem;">Gestione beni di consumo e scorte.</p>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-outline" onclick="app.stampaMagazzino()">🖨️ Stampa Lista</button>
+                            <button class="btn btn-primary" onclick="app.openMagazzinoModal()">+ Nuovo Articolo</button>
+                        </div>
+                    </div>
+                    <div class="glass-card" style="padding:0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Articolo</th>
+                                    <th>Quantità</th>
+                                    <th>Scorta Minima</th>
+                                    <th style="text-align:right;">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            if(this.state.magazzino.length === 0) {
+                html += `<tr><td colspan="4" style="text-align:center; padding:2rem;">Nessun articolo in magazzino.</td></tr>`;
+            } else {
+                this.state.magazzino.forEach(m => {
+                    const isLow = m.quantita <= m.scorta_minima;
+                    html += `
+                        <tr style="${isLow ? 'background: rgba(239, 68, 68, 0.05);' : ''}">
+                            <td style="font-weight:600;">${m.nome} ${isLow ? '<span style="color:#ef4444; font-size:0.8rem;">(In esaurimento)</span>' : ''}</td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <button class="btn btn-outline" style="padding:2px 8px;" onclick="app.updateMagazzinoQty(${m.id}, -1)">-</button>
+                                    <span style="font-weight:bold; min-width:30px; text-align:center;">${m.quantita}</span>
+                                    <button class="btn btn-outline" style="padding:2px 8px;" onclick="app.updateMagazzinoQty(${m.id}, 1)">+</button>
+                                </div>
+                            </td>
+                            <td>${m.scorta_minima}</td>
+                            <td style="text-align:right;">
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.deleteMagazzinoItem(${m.id})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            html += `</tbody></table></div></div>`;
+            main.innerHTML = html;
+        },
+        openMagazzinoModal() {
+            const html = `
+                <form onsubmit="app.saveMagazzinoItem(event)">
+                    <div style="margin-bottom:15px;">
+                        <label>Nome Articolo</label>
+                        <input type="text" id="mag-nome" class="form-control" required placeholder="Es. Carta Igienica, Detersivo...">
+                    </div>
+                    <div style="display:flex; gap:15px; margin-bottom:20px;">
+                        <div style="flex:1;">
+                            <label>Quantità Iniziale</label>
+                            <input type="number" id="mag-qty" class="form-control" required value="0" min="0">
+                        </div>
+                        <div style="flex:1;">
+                            <label>Scorta Minima (Allarme)</label>
+                            <input type="number" id="mag-min" class="form-control" required value="2" min="0">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Salva Articolo</button>
+                </form>
+            `;
+            this.openModal('Nuovo Articolo', html);
+        },
+        saveMagazzinoItem(e) {
+            e.preventDefault();
+            const nome = document.getElementById('mag-nome').value;
+            const qty = parseInt(document.getElementById('mag-qty').value);
+            const min = parseInt(document.getElementById('mag-min').value);
+            this.state.magazzino.push({
+                id: Date.now(),
+                nome,
+                quantita: qty,
+                scorta_minima: min
+            });
+            localStorage.setItem('asd_magazzino', JSON.stringify(this.state.magazzino));
+            this.saveAll();
+            this.closeModal();
+            this.renderMagazzino();
+            this.toast('Articolo aggiunto');
+        },
+        updateMagazzinoQty(id, diff) {
+            const m = this.state.magazzino.find(x => x.id === id);
+            if(m) {
+                m.quantita = Math.max(0, m.quantita + diff);
+                localStorage.setItem('asd_magazzino', JSON.stringify(this.state.magazzino));
+                this.saveAll();
+                this.renderMagazzino();
+            }
+        },
+        deleteMagazzinoItem(id) {
+            if(confirm("Eliminare l'articolo?")) {
+                this.state.magazzino = this.state.magazzino.filter(x => x.id !== id);
+                localStorage.setItem('asd_magazzino', JSON.stringify(this.state.magazzino));
+                this.saveAll();
+                this.renderMagazzino();
+            }
+        },
+        stampaMagazzino() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(this.state.settings.asdName.toUpperCase(), 20, 20);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(this.state.settings.address, 20, 26);
+            doc.text("C.F. / P.IVA: " + this.state.settings.pIva, 20, 31);
+            
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("LISTA MAGAZZINO E DA ACQUISTARE", 20, 45);
+            doc.setFontSize(10);
+            doc.text("Data: " + this.formatDate(new Date()), 150, 45);
+            
+            let y = 60;
+            doc.text("Articolo", 20, y);
+            doc.text("Giacenza", 120, y);
+            doc.text("Scorta Min", 150, y);
+            doc.text("Stato", 180, y);
+            y += 5;
+            doc.line(20, y, 190, y);
+            y += 8;
+            
+            doc.setFont("helvetica", "normal");
+            this.state.magazzino.forEach(m => {
+                const isLow = m.quantita <= m.scorta_minima;
+                doc.text(m.nome, 20, y);
+                doc.text(m.quantita.toString(), 120, y);
+                doc.text(m.scorta_minima.toString(), 150, y);
+                if (isLow) {
+                    doc.setTextColor(200, 0, 0);
+                    doc.text("DA COMPRARE", 180, y);
+                    doc.setTextColor(0, 0, 0);
+                } else {
+                    doc.text("OK", 180, y);
+                }
+                y += 8;
+                if(y > 280) { doc.addPage(); y = 20; }
+            });
+            doc.save("Magazzino.pdf");
+        },
+
+        // --- MODULO EVENTI E SPONSOR ---
+        renderEventi() {
+            const main = document.getElementById('main-content');
+            let html = `
+                <div class="page-content" style="overflow-y:auto;">
+                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h1>🎪 Eventi e Sponsor</h1>
+                            <p style="color:var(--text-muted); font-size:0.9rem;">Organizzazione eventi speciali e bilancio evento.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="app.openEventoModal()">+ Nuovo Evento</button>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:15px; padding-bottom:30px;">
+            `;
+            if(this.state.eventi.length === 0) {
+                html += `<div class="glass-card" style="text-align:center; padding:2rem;">Nessun evento registrato.</div>`;
+            } else {
+                [...this.state.eventi].sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(ev => {
+                    const totEntrate = (ev.entrate||[]).reduce((sum, e) => sum + e.importo, 0);
+                    const totUscite = (ev.uscite||[]).reduce((sum, u) => sum + u.importo, 0);
+                    const utile = totEntrate - totUscite;
+                    const utileColor = utile >= 0 ? 'var(--success)' : 'var(--danger)';
+                    html += `
+                        <div class="glass-card" style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:1.1rem; font-weight:bold; margin-bottom:5px;">${ev.nome}</div>
+                                <div style="font-size:0.85rem; color:var(--text-muted);">
+                                    📅 ${this.formatDate(ev.data)} | 👤 Sponsor: ${(ev.sponsor||[]).length} | 📝 ${ev.descrizione||'Nessuna descrizione'}
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.85rem;">Entrate: €${totEntrate.toFixed(2)} | Uscite: €${totUscite.toFixed(2)}</div>
+                                <div style="font-weight:bold; color:${utileColor}; margin-bottom:10px;">Bilancio: €${utile.toFixed(2)}</div>
+                                <button class="btn btn-outline" onclick="app.openEventoDetail(${ev.id})">Gestisci Evento</button>
+                                <button class="btn btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="app.deleteEvento(${ev.id})">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            html += `</div></div>`;
+            main.innerHTML = html;
+        },
+        openEventoModal() {
+            const html = `
+                <form onsubmit="app.saveEvento(event)">
+                    <div style="margin-bottom:15px;">
+                        <label>Nome Evento</label>
+                        <input type="text" id="ev-nome" class="form-control" required placeholder="Es. Gara di Fine Anno">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label>Data</label>
+                        <input type="date" id="ev-data" class="form-control" required value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <label>Descrizione Breve</label>
+                        <input type="text" id="ev-desc" class="form-control" placeholder="Es. Gara estiva con esibizione">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Crea Evento</button>
+                </form>
+            `;
+            this.openModal('Nuovo Evento', html);
+        },
+        saveEvento(e) {
+            e.preventDefault();
+            this.state.eventi.push({
+                id: Date.now(),
+                nome: document.getElementById('ev-nome').value,
+                data: document.getElementById('ev-data').value,
+                descrizione: document.getElementById('ev-desc').value,
+                sponsor: [],
+                entrate: [],
+                uscite: []
+            });
+            localStorage.setItem('asd_eventi', JSON.stringify(this.state.eventi));
+            this.saveAll();
+            this.closeModal();
+            this.renderEventi();
+            this.toast('Evento creato');
+        },
+        deleteEvento(id) {
+            if(confirm("Eliminare l'evento e tutti i suoi dati?")) {
+                this.state.eventi = this.state.eventi.filter(x => x.id !== id);
+                localStorage.setItem('asd_eventi', JSON.stringify(this.state.eventi));
+                this.saveAll();
+                this.renderEventi();
+            }
+        },
+        openEventoDetail(id) {
+            const ev = this.state.eventi.find(x => x.id === id);
+            if(!ev) return;
+            const html = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="margin:0;">Dettagli: ${ev.nome}</h3>
+                    <button class="btn btn-outline" onclick="app.stampaReportEvento(${id})">🖨️ Stampa Report</button>
+                </div>
                 
-    <button id="pwa-install-btn" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; background-color: #10b981; color: white; border: none; border-radius: 50px; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); align-items: center; gap: 8px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <!-- SPONSOR & ENTRATE -->
+                    <div class="glass-card" style="padding:15px;">
+                        <h4 style="margin-top:0;">🤝 Sponsor & Entrate</h4>
+                        <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; font-size:0.85rem;">
+                            ${(ev.entrate||[]).map((e, idx) => `
+                                <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                                    <span>${e.descrizione}</span>
+                                    <span style="color:var(--success);">+€${e.importo.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <form onsubmit="app.addEventoEntrata(event, ${id})">
+                            <input type="text" id="ev-in-desc" class="form-control" style="margin-bottom:5px; font-size:0.85rem;" placeholder="Nome Sponsor o Entrata" required>
+                            <input type="number" id="ev-in-imp" class="form-control" style="margin-bottom:5px; font-size:0.85rem;" step="0.01" min="0.01" placeholder="Importo €" required>
+                            <label style="font-size:0.75rem; display:flex; align-items:center; gap:5px; margin-bottom:10px;">
+                                <input type="checkbox" id="ev-in-pn" checked> Riversa anche in Prima Nota
+                            </label>
+                            <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem; padding:6px;">Aggiungi Entrata</button>
+                        </form>
+                    </div>
+                    
+                    <!-- USCITE -->
+                    <div class="glass-card" style="padding:15px;">
+                        <h4 style="margin-top:0;">💸 Spese Evento</h4>
+                        <div style="max-height:200px; overflow-y:auto; margin-bottom:15px; font-size:0.85rem;">
+                            ${(ev.uscite||[]).map((u, idx) => `
+                                <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                                    <span>${u.descrizione}</span>
+                                    <span style="color:var(--danger);">-€${u.importo.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <form onsubmit="app.addEventoUscita(event, ${id})">
+                            <input type="text" id="ev-out-desc" class="form-control" style="margin-bottom:5px; font-size:0.85rem;" placeholder="Spesa (es. Coppe, Service)" required>
+                            <input type="number" id="ev-out-imp" class="form-control" style="margin-bottom:5px; font-size:0.85rem;" step="0.01" min="0.01" placeholder="Importo €" required>
+                            <label style="font-size:0.75rem; display:flex; align-items:center; gap:5px; margin-bottom:10px;">
+                                <input type="checkbox" id="ev-out-pn" checked> Riversa anche in Prima Nota
+                            </label>
+                            <button type="submit" class="btn btn-outline" style="width:100%; font-size:0.8rem; padding:6px; color:var(--danger); border-color:var(--danger);">Aggiungi Spesa</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            this.openModal('Gestione Evento', html);
+        },
+        addEventoEntrata(e, id) {
+            e.preventDefault();
+            const ev = this.state.eventi.find(x => x.id === id);
+            if(!ev) return;
+            const desc = document.getElementById('ev-in-desc').value;
+            const imp = parseFloat(document.getElementById('ev-in-imp').value);
+            const inPN = document.getElementById('ev-in-pn').checked;
+            
+            if(!ev.entrate) ev.entrate = [];
+            ev.entrate.push({ descrizione: desc, importo: imp, data: new Date().toISOString().split('T')[0] });
+            
+            if(inPN) {
+                this.state.primanota.push({
+                    id: Date.now(),
+                    data: new Date().toISOString().split('T')[0],
+                    tipo: 'Entrata',
+                    importo: imp,
+                    categoria: 'Altre Entrate',
+                    descrizione: `Sponsor/Entrata Evento: ${ev.nome} - ${desc}`,
+                    metodo: 'Bonifico'
+                });
+                localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
+            }
+            
+            localStorage.setItem('asd_eventi', JSON.stringify(this.state.eventi));
+            this.saveAll();
+            this.openEventoDetail(id);
+            this.renderEventi();
+        },
+        addEventoUscita(e, id) {
+            e.preventDefault();
+            const ev = this.state.eventi.find(x => x.id === id);
+            if(!ev) return;
+            const desc = document.getElementById('ev-out-desc').value;
+            const imp = parseFloat(document.getElementById('ev-out-imp').value);
+            const inPN = document.getElementById('ev-out-pn').checked;
+            
+            if(!ev.uscite) ev.uscite = [];
+            ev.uscite.push({ descrizione: desc, importo: imp, data: new Date().toISOString().split('T')[0] });
+            
+            if(inPN) {
+                this.state.primanota.push({
+                    id: Date.now(),
+                    data: new Date().toISOString().split('T')[0],
+                    tipo: 'Uscita',
+                    importo: imp,
+                    categoria: 'Manutenzioni Ordinarie', // Generico
+                    descrizione: `Spesa Evento: ${ev.nome} - ${desc}`,
+                    metodo: 'Contanti'
+                });
+                localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
+            }
+            
+            localStorage.setItem('asd_eventi', JSON.stringify(this.state.eventi));
+            this.saveAll();
+            this.openEventoDetail(id);
+            this.renderEventi();
+        },
+        stampaReportEvento(id) {
+            const ev = this.state.eventi.find(x => x.id === id);
+            if(!ev) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(this.state.settings.asdName.toUpperCase(), 20, 20);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(this.state.settings.address, 20, 26);
+            doc.text("C.F. / P.IVA: " + this.state.settings.pIva, 20, 31);
+            
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("REPORT BILANCIO EVENTO", 20, 45);
+            doc.setFontSize(11);
+            doc.text("Evento: " + ev.nome, 20, 55);
+            doc.setFont("helvetica", "normal");
+            doc.text("Data Evento: " + this.formatDate(ev.data), 20, 62);
+            doc.text("Descrizione: " + (ev.descrizione||''), 20, 69);
+            
+            let y = 85;
+            doc.setFont("helvetica", "bold");
+            doc.text("ENTRATE / SPONSOR", 20, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            let totEntrate = 0;
+            (ev.entrate||[]).forEach(e => {
+                doc.text(e.descrizione, 25, y);
+                doc.text("+ E " + e.importo.toFixed(2), 160, y);
+                totEntrate += e.importo;
+                y += 6;
+            });
+            if((ev.entrate||[]).length === 0) { doc.text("Nessuna entrata", 25, y); y += 6; }
+            y += 2;
+            doc.setFont("helvetica", "bold");
+            doc.text("Totale Entrate: E " + totEntrate.toFixed(2), 120, y);
+            
+            y += 15;
+            doc.text("USCITE / SPESE", 20, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            let totUscite = 0;
+            (ev.uscite||[]).forEach(u => {
+                doc.text(u.descrizione, 25, y);
+                doc.text("- E " + u.importo.toFixed(2), 160, y);
+                totUscite += u.importo;
+                y += 6;
+            });
+            if((ev.uscite||[]).length === 0) { doc.text("Nessuna spesa", 25, y); y += 6; }
+            y += 2;
+            doc.setFont("helvetica", "bold");
+            doc.text("Totale Uscite: E " + totUscite.toFixed(2), 120, y);
+            
+            y += 20;
+            const utile = totEntrate - totUscite;
+            doc.setFontSize(14);
+            doc.text("BILANCIO NETTO: E " + utile.toFixed(2), 20, y);
+            
+            doc.save(`Report_Evento_${ev.nome.replace(/\s+/g,'_')}.pdf`);
+        },
+
+        // --- MODULO RIMBORSI ---
+        renderRimborsi() {
+            const main = document.getElementById('main-content');
+            let html = `
+                <div class="page-content" style="overflow-y:auto;">
+                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h1>💸 Rimborsi Spese</h1>
+                            <p style="color:var(--text-muted); font-size:0.9rem;">Gestione rimborsi per collaboratori e dirigenti.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="app.openRimborsoModal()">+ Nuovo Rimborso</button>
+                    </div>
+                    <div class="glass-card" style="padding:0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Richiedente</th>
+                                    <th>Motivo Spesa</th>
+                                    <th>Importo</th>
+                                    <th>Stato</th>
+                                    <th style="text-align:right;">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            if(this.state.rimborsi.length === 0) {
+                html += `<tr><td colspan="6" style="text-align:center; padding:2rem;">Nessuna richiesta di rimborso.</td></tr>`;
+            } else {
+                [...this.state.rimborsi].sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(r => {
+                    html += `
+                        <tr style="${r.pagato ? 'opacity:0.7;' : 'background: rgba(234, 179, 8, 0.05);'}">
+                            <td>${this.formatDate(r.data)}</td>
+                            <td style="font-weight:bold;">${r.richiedente}</td>
+                            <td>${r.descrizione}</td>
+                            <td style="font-weight:bold;">€${r.importo.toFixed(2)}</td>
+                            <td>
+                                ${r.pagato 
+                                    ? '<span class="badge badge-active">PAGATO</span>' 
+                                    : '<span class="badge" style="background:#ca8a04; color:white;">DA PAGARE</span>'}
+                            </td>
+                            <td style="text-align:right;">
+                                ${!r.pagato ? `<button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.segnaRimborsoPagato(${r.id})" title="Segna come pagato (Riversa in Prima Nota)">✅ Pagato</button>` : ''}
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id})" title="Stampa Modulo Rimborso">🖨️ Stampa</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.deleteRimborso(${r.id})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            html += `</tbody></table></div></div>`;
+            main.innerHTML = html;
+        },
+        openRimborsoModal() {
+            const html = `
+                <form onsubmit="app.saveRimborso(event)">
+                    <div style="margin-bottom:15px;">
+                        <label>Data Spesa</label>
+                        <input type="date" id="rim-data" class="form-control" required value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label>Nome Richiedente (Collaboratore/Socio)</label>
+                        <input type="text" id="rim-nome" class="form-control" required placeholder="Es. Mario Rossi">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label>Motivo Spesa (Allegare Scontrini)</label>
+                        <input type="text" id="rim-desc" class="form-control" required placeholder="Es. Acquisto stampante e cancelleria">
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <label>Importo Anticipato (€)</label>
+                        <input type="number" id="rim-imp" class="form-control" step="0.01" min="0.01" required placeholder="0.00">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Salva Richiesta</button>
+                </form>
+            `;
+            this.openModal('Nuova Richiesta Rimborso', html);
+        },
+        saveRimborso(e) {
+            e.preventDefault();
+            this.state.rimborsi.push({
+                id: Date.now(),
+                data: document.getElementById('rim-data').value,
+                richiedente: document.getElementById('rim-nome').value,
+                descrizione: document.getElementById('rim-desc').value,
+                importo: parseFloat(document.getElementById('rim-imp').value),
+                pagato: false
+            });
+            localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+            this.saveAll();
+            this.closeModal();
+            this.renderRimborsi();
+            this.toast('Richiesta salvata');
+        },
+        deleteRimborso(id) {
+            if(confirm("Eliminare la richiesta di rimborso?")) {
+                this.state.rimborsi = this.state.rimborsi.filter(x => x.id !== id);
+                localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+                this.saveAll();
+                this.renderRimborsi();
+            }
+        },
+        segnaRimborsoPagato(id) {
+            if(confirm("Vuoi segnare il rimborso come pagato e riversare l'uscita in Prima Nota?")) {
+                const r = this.state.rimborsi.find(x => x.id === id);
+                if(!r) return;
+                r.pagato = true;
+                
+                // Riversa in prima nota
+                this.state.primanota.push({
+                    id: Date.now(),
+                    data: new Date().toISOString().split('T')[0],
+                    tipo: 'Uscita',
+                    importo: r.importo,
+                    categoria: 'Manutenzioni Ordinarie', // Voce generica, l'utente può cambiarla dalla prima nota
+                    descrizione: `Rimborso Spese a ${r.richiedente}: ${r.descrizione}`,
+                    metodo: 'Bonifico'
+                });
+                localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
+                
+                localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+                this.saveAll();
+                this.renderRimborsi();
+                this.toast('Rimborso pagato e registrato in Prima Nota');
+            }
+        },
+        stampaModuloRimborso(id) {
+            const r = this.state.rimborsi.find(x => x.id === id);
+            if(!r) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Intestazione Palestra
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(this.state.settings.asdName.toUpperCase(), 20, 20);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(this.state.settings.address, 20, 26);
+            doc.text("C.F. / P.IVA: " + this.state.settings.pIva, 20, 31);
+            
+            // Titolo Documento
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("MODULO RICHIESTA RIMBORSO SPESE", 105, 50, null, null, "center");
+            
+            // Corpo Documento
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.text("Il sottoscritto/a " + r.richiedente, 20, 70);
+            doc.text("richiede il rimborso per le spese anticipate per conto e nell'interesse", 20, 77);
+            doc.text("dell'associazione in oggetto, per il seguente motivo:", 20, 84);
+            
+            doc.setFont("helvetica", "bold");
+            doc.text(r.descrizione, 20, 95);
+            doc.setFont("helvetica", "normal");
+            
+            doc.text("Data della spesa: " + this.formatDate(r.data), 20, 105);
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("IMPORTO TOTALE DA RIMBORSARE: E " + r.importo.toFixed(2), 20, 120);
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Si allegano alla presente i giustificativi di spesa (scontrini, ricevute o fatture).", 20, 135);
+            
+            doc.text("Data: " + this.formatDate(new Date()), 20, 170);
+            
+            doc.text("Firma del Richiedente", 40, 190);
+            doc.line(30, 210, 80, 210); // Linea firma
+            
+            doc.text("Visto per Approvazione (Il Presidente)", 120, 190);
+            doc.line(110, 210, 180, 210); // Linea firma
+            
+            doc.save(`Modulo_Rimborso_${r.richiedente.replace(/\s+/g,'_')}.pdf`);
+        }
+
+        };
+
+        window.addEventListener('message', function(e) {
+            if (e.data === 'close-schede') {
+                const iframe = document.getElementById('schede-atleti-iframe');
+                if (iframe) iframe.remove();
+            }
+            if (e.data === 'close-verbali') {
+                const iframe = document.getElementById('verbali-iframe');
+                if (iframe) iframe.remove();
+            }
+        });
+
+        // Initialize app
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('PWA ServiceWorker registrato con successo.', reg.scope);
+                }).catch(err => {
+                    console.log('PWA ServiceWorker registrazione fallita:', err);
+                });
+            });
+            // Forza il refresh quando si installa una nuova versione
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                }
+            });
+        }
+
+        let deferredPrompt;
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (!isLocalhost && installBtn) {
+                installBtn.style.display = 'flex';
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            console.log('App installata');
+                        }
+                        deferredPrompt = null;
+                        installBtn.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.style.display = 'none';
+            deferredPrompt = null;
+        });
+
+        window.onload = () => app.init();
+        
+        window.addEventListener('beforeunload', (e) => {
+            if (app.state.isDirty) {
+                app.createSnapshot('auto-exit');
+            }
+        });
+    </script>
+    <script>
+// logo_custom.js
+// Gestione Logo Personalizzato per ASD Gestionale
+
+function initAppLogo() {
+    const logoArea = document.querySelector('.logo-area');
+    if (!logoArea) return;
+
+    // Rimuovi SVG originale per fare spazio al nuovo logo/placeholder
+    const svgIcon = logoArea.querySelector('svg');
+    if (svgIcon) svgIcon.style.display = 'none';
+
+    // Rimuovi stili di click generali che avevamo messo sul contenitore
+    logoArea.style.cursor = 'default';
+    logoArea.title = '';
+
+    // 1. Aggiungi input nascosto
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.id = 'appLogoUploadInput';
+    document.body.appendChild(fileInput);
+
+    // 2. Crea Placeholder "ASD LOGO" quadrato e grande
+    const placeholder = document.createElement('div');
+    placeholder.id = 'appLogoPlaceholder';
+    placeholder.style.width = '100px';
+    placeholder.style.height = '100px';
+    placeholder.style.border = '2px dashed var(--border, #475569)';
+    placeholder.style.borderRadius = '8px';
+    placeholder.style.display = 'flex';
+    placeholder.style.alignItems = 'center';
+    placeholder.style.justifyContent = 'center';
+    placeholder.style.color = 'var(--text-muted, #94a3b8)';
+    placeholder.style.fontSize = '0.9rem';
+    placeholder.style.fontWeight = 'bold';
+    placeholder.style.cursor = 'pointer';
+    placeholder.style.textAlign = 'center';
+    placeholder.style.backgroundColor = 'rgba(255,255,255,0.03)';
+    placeholder.style.transition = 'all 0.2s';
+    placeholder.innerHTML = 'ASD<br>LOGO';
+    placeholder.title = 'Clicca per caricare il logo della palestra';
+    
+    // Effetto hover sul placeholder
+    placeholder.onmouseover = () => {
+        placeholder.style.borderColor = 'var(--primary, #3b82f6)';
+        placeholder.style.color = 'var(--primary, #3b82f6)';
+        placeholder.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+    };
+    placeholder.onmouseout = () => {
+        placeholder.style.borderColor = 'var(--border, #475569)';
+        placeholder.style.color = 'var(--text-muted, #94a3b8)';
+        placeholder.style.backgroundColor = 'rgba(255,255,255,0.03)';
+    };
+
+    // 3. Crea tag img per il logo personalizzato
+    const imgEl = document.createElement('img');
+    imgEl.id = 'customAppLogoImg';
+    imgEl.style.display = 'none';
+    imgEl.style.maxHeight = '100px'; // 4x rispetto all'originale
+    imgEl.style.maxWidth = '250px';
+    imgEl.style.objectFit = 'contain';
+    imgEl.style.borderRadius = '6px';
+    imgEl.style.cursor = 'pointer';
+    imgEl.title = 'Clicca per cambiare il logo';
+
+    // Inserisci prima dell'eventuale testo "ASD Gestionale"
+    logoArea.prepend(placeholder);
+    logoArea.prepend(imgEl);
+
+    // 4. Gestione click
+    placeholder.addEventListener('click', () => fileInput.click());
+    imgEl.addEventListener('click', () => fileInput.click());
+
+    // 5. Carica logo salvato all'avvio
+    loadAndApplyLogo(placeholder, imgEl);
+
+    // 6. Gestione caricamento immagine e ridimensionamento
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e_read) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Ridimensionamento mantenendo proporzioni
+                const maxWidth = 500; // Incrementato per maggiore qualità
+                const maxHeight = 500;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height *= maxWidth / width));
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width *= maxHeight / height));
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const base64Image = canvas.toDataURL('image/png');
+                localStorage.setItem('asd_custom_logo', base64Image);
+                
+                loadAndApplyLogo(placeholder, imgEl);
+                
+                if (typeof showToast === 'function') {
+                    showToast("Logo personalizzato aggiornato!", "success");
+                } else if (typeof app !== 'undefined' && app.toast) {
+                    app.toast("Logo personalizzato aggiornato!", "success");
+                } else {
+                    alert("Logo aggiornato con successo!");
+                }
+            };
+            img.src = e_read.target.result;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    });
+}
+
+// Funzione globale accessibile per aggiornare l'UI
+window.loadAndApplyLogo = function(placeholder, imgEl) {
+    if (!placeholder) placeholder = document.getElementById('appLogoPlaceholder');
+    if (!imgEl) imgEl = document.getElementById('customAppLogoImg');
+
+    const savedLogo = localStorage.getItem('asd_custom_logo');
+    
+    // Aggiorna Sidebar Logo
+    if (savedLogo) {
+        if(placeholder) placeholder.style.display = 'none';
+        if(imgEl) {
+            imgEl.src = savedLogo;
+            imgEl.style.display = 'inline-block';
+        }
+    } else {
+        if(placeholder) placeholder.style.display = 'flex';
+        if(imgEl) imgEl.style.display = 'none';
+    }
+
+    // Aggiorna Print Logo (se siamo in schede_atleti.html)
+    const printLogo = document.getElementById('printAppLogo');
+    if (printLogo) {
+        if (savedLogo) {
+            printLogo.src = savedLogo;
+            printLogo.style.display = 'block';
+        } else {
+            printLogo.style.display = 'none';
+        }
+    }
+};
+
+// Auto-inizializzazione
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initAppLogo, 100);
+});
+
+</script>
+<button id="pwa-install-btn" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; background-color: #10b981; color: white; border: none; border-radius: 50px; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); align-items: center; gap: 8px;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Installa App
     </button>
