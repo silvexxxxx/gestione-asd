@@ -6088,12 +6088,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         createSnapshot(type = 'manual') {
-            const data = {
-                soci: this.state.soci, ricevute: this.state.ricevute, corsi: this.state.corsi,
-                corsi_disponibili: this.state.corsi_disponibili, sale: this.state.sale,
-                istruttori: this.state.istruttori, settings: this.state.settings,
-                quote_presets: this.state.quote_presets, primanota: this.state.primanota
-            };
+            const data = JSON.parse(JSON.stringify(this.state));
             let snapshots = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
             const max = parseInt(this.state.settings.maxSnapshots || 5);
             const now = new Date();
@@ -6117,15 +6112,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const snapshots = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
             const snap = snapshots.find(s => s.id === id);
             if(snap) {
-                this.state.soci = snap.data.soci || [];
-                this.state.ricevute = snap.data.ricevute || [];
-                this.state.corsi = snap.data.corsi || [];
-                this.state.corsi_disponibili = snap.data.corsi_disponibili || [];
-                this.state.sale = snap.data.sale || [];
-                this.state.istruttori = snap.data.istruttori || [];
-                this.state.settings = snap.data.settings || this.state.settings;
-                this.state.quote_presets = snap.data.quote_presets || [];
-                this.state.primanota = snap.data.primanota || [];
+                Object.assign(this.state, snap.data);
                 this.saveAll();
                 this.toast('Stato ripristinato con successo.', 'success');
                 this.renderDatabase();
