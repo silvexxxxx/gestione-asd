@@ -19,8 +19,8 @@
                     pIva: "01234567890",
                     address: "Via Roma 1, 00100 Roma",
                     logo: "",
-                    presidente: "Pintus Silverio",
-                    segretario: "Boccone Serafino",
+                    presidente: "",
+                    segretario: "",
                     vice_presidente: "",
                     metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp"],
                     categorie_entrate: ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"],
@@ -159,6 +159,52 @@
                 // Eseguiamo il controllo silenzioso in background senza bloccare l'interfaccia
                 this.verifyLicenseBackground(savedLicense);
 
+                // --- APP LOCK (PIN) ---
+                const savedPin = localStorage.getItem('asd_app_lock');
+                if (savedPin) {
+                    this.showAppLockScreen(savedPin);
+                    return; // Interrompe l'init, verrà ripreso dopo l'inserimento corretto
+                }
+
+                this.resumeInit();
+            },
+
+            resumeInit() {
+                // --- FIX CORSI DUPLICATI (PULIZIA AUTOMATICA) ---
+                if (this.state.corsi && this.state.corsi.length > 0) {
+                    const uniqueCorsi = [];
+                    const seen = new Set();
+                    let duplicatesRemoved = 0;
+                    
+                    // Raggruppa corsi con stessa firma (ignora date) e fonde le date
+                    const groupedCorsi = {};
+                    this.state.corsi.forEach(c => {
+                        const fp = (c.nome||'') + '|' + c.dayOfWeek + '|' + (c.startTime||'') + '|' + (c.endTime||'') + '|' + (c.sala_id||'') + '|' + (c.istruttore_id||'');
+                        if (!groupedCorsi[fp]) groupedCorsi[fp] = [];
+                        groupedCorsi[fp].push(c);
+                    });
+                    Object.values(groupedCorsi).forEach(group => {
+                        if (group.length === 1) {
+                            uniqueCorsi.push(group[0]);
+                        } else {
+                            let ei = group[0].inizio, lf = group[0].fine;
+                            group.forEach(c => {
+                                if (c.inizio && (!ei || c.inizio < ei)) ei = c.inizio;
+                                if (c.fine && (!lf || c.fine > lf)) lf = c.fine;
+                            });
+                            uniqueCorsi.push(Object.assign({}, group[0], { inizio: ei, fine: lf }));
+                            duplicatesRemoved += (group.length - 1);
+                        }
+                    });
+                    
+                    if (duplicatesRemoved > 0) {
+                        console.log(`[Auto-Fix] Rimosse ${duplicatesRemoved} attività duplicate nel calendario!`);
+                        this.state.corsi = uniqueCorsi;
+                        this.saveAll();
+                        this.toast(`Ho rimosso ${duplicatesRemoved} corsi duplicati dal calendario per velocizzare l'app!`, 'success');
+                    }
+                }
+                // --- FINE FIX ---
                 this.cloudSync.init();
                 this.checkAutoSave();
                 setInterval(() => this.checkAutoSave(), 60000);
@@ -190,36 +236,85 @@
                 } catch(e) {}
             },
 
+            showAppLockScreen(savedPin) {
+                // Rimuove eventuali lock esistenti
+                const existing = document.getElementById('app-lock-overlay');
+                if (existing) existing.remove();
+
+                const lockOverlay = document.createElement('div');
+                lockOverlay.id = 'app-lock-overlay';
+                lockOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-color); z-index:999999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:"Helvetica Neue", sans-serif;';
+                lockOverlay.innerHTML = `
+                    <div style="background:var(--sidebar-bg); padding:30px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); max-width: 400px; width: 90%;">
+                        <div style="font-size:3rem; margin-bottom:15px;">🔒</div>
+                        <h2 style="margin-bottom:10px;">Gestionale Bloccato</h2>
+                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">Inserisci il PIN o la Password di accesso per continuare.</p>
+                        <form id="app-lock-form" style="display:flex; flex-direction:column; gap:15px;">
+                            <input type="password" id="app-lock-input" class="form-control" placeholder="Inserisci Password..." style="text-align:center; font-size:1.2rem; padding:10px;" required autofocus>
+                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:1.1rem; width:100%;">Sblocca</button>
+                        </form>
+                        <div id="app-lock-error" style="color:var(--danger); margin-top:15px; font-weight:bold; display:none;">Password Errata!</div>
+                    </div>
+                `;
+                document.body.appendChild(lockOverlay);
+
+                document.getElementById('app-lock-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('app-lock-input').value;
+                    if (input === savedPin) {
+                        lockOverlay.remove();
+                        this.resumeInit();
+                    } else {
+                        document.getElementById('app-lock-error').style.display = 'block';
+                        setTimeout(() => { document.getElementById('app-lock-error').style.display = 'none'; }, 3000);
+                        document.getElementById('app-lock-input').value = '';
+                        document.getElementById('app-lock-input').focus();
+                    }
+                });
+            },
+
+            configureAppLock() {
+                const newPin = prompt("Inserisci il nuovo PIN o Password per bloccare il gestionale all'avvio:\n(Lascia vuoto per annullare)");
+                if (newPin && newPin.trim() !== '') {
+                    localStorage.setItem('asd_app_lock', newPin.trim());
+                    this.toast("Blocco App configurato con successo! Verrà richiesto al prossimo riavvio.", "success");
+                    this.renderDatabase(); // refresh UI
+                }
+            },
+
+            removeAppLock() {
+                if (confirm("Sei sicuro di voler rimuovere la richiesta della password all'avvio?")) {
+                    localStorage.removeItem('asd_app_lock');
+                    this.toast("Blocco App rimosso.", "success");
+                    this.renderDatabase(); // refresh UI
+                }
+            },
+
             showSplashScreen() {
                 const splashHTML = `
                 <div id="splash-screen-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-                    <div class="glass-card" style="max-width: 600px; text-align: center; padding: 2.5rem; animation: slideDown 0.3s ease-out;">
+                    <div class="glass-card" style="max-width: 500px; text-align: center; padding: 2.5rem; animation: slideDown 0.3s ease-out;">
                         <h2 style="color: var(--accent); margin-bottom: 1rem; font-size: 2rem;">Benvenuto in Gestionale ASD</h2>
-                        <p style="margin-bottom: 2rem; color: var(--text-muted); font-size: 1.1rem;">Scegli come desideri utilizzare il software:</p>
+                        <p style="margin-bottom: 2rem; color: var(--text-muted); font-size: 1.1rem;">Software professionale per associazioni.</p>
                         
-                        <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
+                        <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
                             <div style="flex: 1; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)';" onclick="app.closeSplashScreen(false)">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">🖥️</div>
-                                <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: white;">Modalità Offline</h3>
-                                <p style="font-size: 0.9rem; color: var(--text-muted);">Usa il gestionale solo su questo dispositivo. Massima privacy, i dati non lasciano mai questa macchina.</p>
-                            </div>
-                            <div style="flex: 1; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)';" onclick="app.closeSplashScreen(true)">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">☁️</div>
-                                <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: white;">Modalità Cloud</h3>
-                                <p style="font-size: 0.9rem; color: var(--text-muted);">Condividi i dati con altri PC o Tablet sfruttando Google Drive. <br><small style="color: var(--accent);">(In arrivo con le prossime fasi)</small></p>
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
+                                <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: white;">Avvia Gestionale</h3>
+                                <p style="font-size: 0.9rem; color: var(--text-muted);">Accedi ai dati locali o sincronizzati in Cloud.</p>
                             </div>
                         </div>
 
                         <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                             <input type="checkbox" id="hide-splash-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
-                            <label for="hide-splash-checkbox" style="color: var(--text-muted); cursor: pointer; user-select: none;">Non mostrare più questa schermata all'avvio</label>
+                            <label for="hide-splash-checkbox" style="color: var(--text-muted); cursor: pointer; user-select: none;">Non mostrare più all'avvio</label>
                         </div>
                     </div>
                 </div>`;
                 document.body.insertAdjacentHTML('beforeend', splashHTML);
             },
 
-            closeSplashScreen(wantsCloud) {
+            closeSplashScreen() {
                 const checkbox = document.getElementById('hide-splash-checkbox');
                 if (checkbox && checkbox.checked) {
                     localStorage.setItem('hide_splash_screen', 'true');
@@ -233,10 +328,6 @@
                     splash.style.opacity = '0';
                     splash.style.transition = 'opacity 0.3s ease';
                     setTimeout(() => splash.remove(), 300);
-                }
-                
-                if (wantsCloud) {
-                    this.toast("La modalità Cloud pura (API) sarà attivata nelle prossime fasi dello sviluppo!", "info");
                 }
                 
                 this.showPage(this.state.currentPage || 'dashboard');
@@ -269,7 +360,21 @@
                 });
             },
 
-            loadData() {
+            async loadData() {
+                // Primo tentativo: Caricamento dal DB Illimitato (IndexedDB)
+                try {
+                    const idbState = await this.idbGet('main_state');
+                    if (idbState) {
+                        this.state = { ...this.state, ...idbState };
+                        this.migrateSoci();
+                        this.migrateIstruttori();
+                        return; // Se ha caricato da IndexedDB, non serve leggere localStorage!
+                    }
+                } catch (e) {
+                    console.warn("Nessun dato in IndexedDB, tento localStorage...");
+                }
+
+                // Fallback: Lettura da vecchi salvataggi localStorage (per migrazione)
                 const storedSoci = localStorage.getItem('asd_soci');
                 const storedRicevute = localStorage.getItem('asd_ricevute');
                 const storedPrimaNota = localStorage.getItem('asd_primanota');
@@ -477,10 +582,16 @@
 
             openRinnovoDirettivoModal() {
                 const s = this.state.settings;
-                const getSocioOptions = (selectedId) => {
-                    return `<option value="">- Seleziona -</option>` + this.state.soci.map(socio => 
-                        `<option value="${socio.id}" ${socio.id == selectedId || socio.nome == selectedId ? 'selected' : ''}>${socio.nome} (${socio.cf})</option>`
+                const getSocioOptions = (selectedVal) => {
+                    let isCustom = selectedVal && !this.state.soci.find(socio => socio.id == selectedVal);
+                    let opts = `<option value="">- Seleziona dal DB -</option>`;
+                    if (isCustom) {
+                        opts += `<option value="${selectedVal}" selected>${selectedVal} (Inserimento Manuale)</option>`;
+                    }
+                    opts += this.state.soci.map(socio => 
+                        `<option value="${socio.id}" ${socio.id == selectedVal ? 'selected' : ''}>${socio.nome} (${socio.cf})</option>`
                     ).join('');
+                    return opts;
                 };
 
                 const consiglieri = s.consiglieri || [];
@@ -491,6 +602,7 @@
                             <select name="consiglieri[]" class="form-control" style="flex:1;">
                                 ${getSocioOptions(c)}
                             </select>
+                            <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️</button>
                             <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>
                         </div>
                     `;
@@ -500,21 +612,30 @@
                     <form id="direttivo-form" onsubmit="app.saveNuovoDirettivo(event)">
                         <div class="form-group">
                             <label>Presidente</label>
-                            <select name="presidente" class="form-control" required>
-                                ${getSocioOptions(s.presidente)}
-                            </select>
+                            <div style="display:flex; gap:8px;">
+                                <select name="presidente" class="form-control" style="flex:1;" required>
+                                    ${getSocioOptions(s.presidente)}
+                                </select>
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Vice Presidente</label>
-                            <select name="vice_presidente" class="form-control">
-                                ${getSocioOptions(s.vice_presidente)}
-                            </select>
+                            <div style="display:flex; gap:8px;">
+                                <select name="vice_presidente" class="form-control" style="flex:1;">
+                                    ${getSocioOptions(s.vice_presidente)}
+                                </select>
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Segretario</label>
-                            <select name="segretario" class="form-control">
-                                ${getSocioOptions(s.segretario)}
-                            </select>
+                            <div style="display:flex; gap:8px;">
+                                <select name="segretario" class="form-control" style="flex:1;">
+                                    ${getSocioOptions(s.segretario)}
+                                </select>
+                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
+                            </div>
                         </div>
                         
                         <hr style="border:none; border-top:1px solid var(--border); margin:1rem 0;">
@@ -536,11 +657,34 @@
                     </form>
                 `);
             },
+            switchToManualInput(btn) {
+                const select = btn.previousElementSibling;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = select.name;
+                input.className = 'form-control';
+                input.style.flex = '1';
+                input.placeholder = 'Inserisci nome manuale...';
+                
+                // Se c'era un valore selezionato e non era vuoto, lo mettiamo
+                if (select.value) {
+                    const selectedOpt = select.options[select.selectedIndex];
+                    // Estrae solo il nome (toglie il CF tra parentesi se presente)
+                    let text = selectedOpt.text;
+                    if (text.includes(' (')) text = text.split(' (')[0];
+                    input.value = text;
+                }
+                if (select.hasAttribute('required')) input.setAttribute('required', 'true');
+                
+                select.parentNode.insertBefore(input, select);
+                select.remove();
+                btn.remove();
+            },
 
             addConsigliereField() {
                 const container = document.getElementById('consiglieri-container');
                 const getSocioOptions = () => {
-                    return `<option value="">- Seleziona -</option>` + this.state.soci.map(socio => 
+                    return `<option value="">- Seleziona dal DB -</option>` + this.state.soci.map(socio => 
                         `<option value="${socio.id}">${socio.nome} (${socio.cf})</option>`
                     ).join('');
                 };
@@ -549,6 +693,7 @@
                         <select name="consiglieri[]" class="form-control" style="flex:1;">
                             ${getSocioOptions()}
                         </select>
+                        <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️</button>
                         <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>
                     </div>
                 `);
@@ -734,29 +879,36 @@
                 if(this.state.lastSociScroll) localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
             },
             
-            exitApp() {
+            async exitApp() {
                 // Salva tutto prima di uscire
+                this.toast('💾 Salvataggio dati in corso...', 'info');
                 this.saveAll();
-                this.toast('💾 Dati salvati. Chiusura in corso...', 'success');
+                
+                if (this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
+                    this.toast('☁️ Sincronizzazione Cloud in corso prima della chiusura...', 'info');
+                    await this.cloudSync.uploadBackup();
+                }
+                
+                this.toast('✅ Dati salvati con successo. Chiusura in corso...', 'success');
                 setTimeout(() => {
-                    // window.close() funziona se la finestra è stata aperta tramite script o .bat
+                    // window.close() funziona se la finestra è stata aperta tramite script o PWA standalone
                     window.close();
-                    // Se la finestra non si chiude automaticamente (aperta manualmente nel browser)
-                    // mostriamo un messaggio alternativo
+                    
+                    // Se la finestra non si chiude (browser normale) mostriamo un messaggio
                     setTimeout(() => {
                         if (!document.hidden) {
                             this.openModal('✅ Dati Salvati', `
                                 <div style="text-align:center; padding:1.5rem 0;">
                                     <div style="font-size:3rem; margin-bottom:1rem;">💾</div>
-                                    <p style="font-size:1.1rem; margin-bottom:0.5rem; font-weight:600;">Tutti i dati sono stati salvati.</p>
-                                    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Puoi chiudere questa finestra del browser in modo sicuro.</p>
+                                    <p style="font-size:1.1rem; margin-bottom:0.5rem; font-weight:600;">Tutti i dati sono stati sincronizzati e salvati.</p>
+                                    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Puoi chiudere questa scheda del browser in modo sicuro.</p>
                                     <button class="btn btn-outline" onclick="window.close()" style="margin-right:8px;">Chiudi finestra</button>
                                     <button class="btn btn-primary" onclick="app.closeModal()">Rimani</button>
                                 </div>
                             `);
                         }
                     }, 400);
-                }, 600);
+                }, 1000);
             },
 
         // --- CLOUD SYNC (Google Drive API) ---
@@ -779,11 +931,14 @@
                     scope: 'https://www.googleapis.com/auth/drive.file',
                     callback: (tokenResponse) => {
                         if (tokenResponse.error !== undefined) {
-                            app.toast('Errore di autenticazione Google.', 'danger');
+                            app.toast('Errore di ricollegamento Cloud silente (Google richiede autorizzazione manuale).', 'warning');
+                            this.updateUIStatus();
                             return;
                         }
                         this.accessToken = tokenResponse.access_token;
                         localStorage.setItem('asd_cloud_sync', 'true');
+                        localStorage.setItem('asd_gdrive_token', this.accessToken);
+                        localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
                         this.syncEnabled = true;
                         app.toast('Cloud collegato con successo!', 'success');
                         this.updateUIStatus();
@@ -792,8 +947,18 @@
                 });
 
                 if (this.syncEnabled) {
-                    this.tokenClient.requestAccessToken({prompt: 'none'});
-                    this.updateUIStatus();
+                    const savedToken = localStorage.getItem('asd_gdrive_token');
+                    const tokenExpiry = localStorage.getItem('asd_gdrive_token_expiry');
+                    if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
+                        // Usa il token ancora valido senza chiamare Google
+                        this.accessToken = savedToken;
+                        this.updateUIStatus();
+                        this.performInitialSync();
+                    } else {
+                        // Prova il login silente (potrebbe fallire per blocchi cookie 3ze parti)
+                        this.tokenClient.requestAccessToken({prompt: 'none'});
+                        this.updateUIStatus();
+                    }
                 }
             },
 
@@ -803,26 +968,47 @@
                     return;
                 }
                 if (!this.tokenClient) return;
+                this.isExplicitLogin = true;
                 this.tokenClient.requestAccessToken({prompt: 'consent'});
             },
 
-            logout() {
+            async logout() {
+                if (this.syncEnabled && this.accessToken) {
+                    app.toast('Sincronizzazione finale in corso...', 'info');
+                    await this.uploadBackup();
+                }
                 this.accessToken = null;
                 this.fileId = null;
                 this.syncEnabled = false;
+                this.isExplicitLogin = false;
                 localStorage.setItem('asd_cloud_sync', 'false');
+                localStorage.removeItem('asd_gdrive_token');
+                localStorage.removeItem('asd_gdrive_token_expiry');
                 app.toast('Disconnesso dal Cloud. Modalità Offline attiva.', 'warning');
                 this.updateUIStatus();
             },
 
             updateUIStatus() {
                 const statusEl = document.getElementById('cloud-status-text');
-                if (statusEl) {
-                    if (this.syncEnabled) {
-                        statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>';
-                    } else {
-                        statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Offline (Locale)</span>';
+                const indicatorBtn = document.getElementById('cloud-indicator-btn');
+                const indicatorLabel = document.getElementById('cloud-indicator-label');
+                
+                if (this.syncEnabled) {
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>';
+                    if (indicatorBtn) {
+                        indicatorBtn.style.borderColor = 'var(--success)';
+                        indicatorBtn.style.color = 'var(--success)';
+                        indicatorBtn.style.background = 'rgba(16, 185, 129, 0.1)';
                     }
+                    if (indicatorLabel) indicatorLabel.textContent = 'Online';
+                } else {
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Offline (Locale)</span>';
+                    if (indicatorBtn) {
+                        indicatorBtn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                        indicatorBtn.style.color = 'var(--danger)';
+                        indicatorBtn.style.background = 'transparent';
+                    }
+                    if (indicatorLabel) indicatorLabel.textContent = 'Offline';
                 }
             },
 
@@ -836,13 +1022,141 @@
                     
                     if (searchData.files && searchData.files.length > 0) {
                         this.fileId = searchData.files[0].id;
-                        await this.downloadBackup();
+                        
+                        const hasLocalData = app.state.soci.length > 0 || app.state.ricevute.length > 0;
+                        if (this.isExplicitLogin && hasLocalData) {
+                            app.openModal('☁️ Sincronizzazione Cloud', `
+                                <div style="text-align: center; max-width: 500px; padding-bottom: 1rem;">
+                                    <h3 style="color:var(--warning); margin-bottom:1rem;">Backup trovato su Google Drive</h3>
+                                    <p style="margin-bottom: 1rem;">Ci sono già dei dati salvati sul tuo Cloud, ma questo dispositivo ha dei dati locali.</p>
+                                    <p style="margin-bottom: 2rem;"><strong>Quale versione vuoi utilizzare?</strong> (L'altra verrà sovrascritta)</p>
+                                    
+                                    <div id="cloud-conflict-options" style="display:flex; flex-direction:column; gap:12px;">
+                                        <button class="btn btn-outline" style="border-color:var(--success); color:white; padding: 12px; background: rgba(16, 185, 129, 0.1);" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.mergeBackup().then(() => app.closeModal());">
+                                            🤝 UNISCI I DATI (Consigliato: fonde Cloud e PC senza perdere nulla)
+                                        </button>
+                                        <button class="btn btn-outline" style="border-color:var(--primary); color:white; padding: 12px;" onclick="
+                                            document.getElementById('cloud-conflict-options').style.display='none';
+                                            document.getElementById('cloud-conflict-confirm-download').style.display='block';
+                                        ">
+                                            📥 Usa SOLO i dati del CLOUD (Cancella dati di questo PC)
+                                        </button>
+                                        <button class="btn btn-primary" style="padding: 12px;" onclick="
+                                            document.getElementById('cloud-conflict-options').style.display='none';
+                                            document.getElementById('cloud-conflict-confirm-upload').style.display='block';
+                                        ">
+                                            📤 Usa SOLO i dati di QUESTO PC (Sovrascrivi il Cloud)
+                                        </button>
+                                        <button class="btn btn-outline text-danger" style="padding: 12px;" onclick="app.cloudSync.logout(); app.closeModal();">
+                                            ❌ Annulla e rimani Offline
+                                        </button>
+                                    </div>
+
+                                    <!-- Tripla conferma per DOWNLOAD -->
+                                    <div id="cloud-conflict-confirm-download" style="display:none; text-align:center;">
+                                        <h3 style="color:var(--danger); margin-bottom:1rem;">⚠️ ATTENZIONE (1/3)</h3>
+                                        <p style="margin-bottom:1rem;">Stai per <b>CANCELLARE DEFINITIVAMENTE</b> tutti i dati che hai inserito su questo PC. I dati verranno rimpiazzati da quelli del Cloud.</p>
+                                        <button class="btn btn-outline text-danger" onclick="document.getElementById('download-step-2').style.display='block'; this.style.display='none';">Sì, sono sicuro</button>
+                                        
+                                        <div id="download-step-2" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">🚨 SEI VERAMENTE SICURO? (2/3)</h3>
+                                            <p style="margin-bottom:1rem;">Tutti i soci locali andranno persi. Non potrai tornare indietro a meno di non avere uno snapshot.</p>
+                                            <button class="btn btn-outline text-danger" onclick="document.getElementById('download-step-3').style.display='block'; this.style.display='none';">Sì, ho capito perfettamente</button>
+                                        </div>
+                                        
+                                        <div id="download-step-3" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">💥 ULTIMO AVVISO (3/3)</h3>
+                                            <p style="margin-bottom:1rem;">Procedendo distruggerai i dati locali.</p>
+                                            <button class="btn btn-danger" style="font-weight:bold; padding:10px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.downloadBackup().then(() => app.closeModal());">CONFERMA E SOVRASCRIVI IL PC</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tripla conferma per UPLOAD -->
+                                    <div id="cloud-conflict-confirm-upload" style="display:none; text-align:center;">
+                                        <h3 style="color:var(--danger); margin-bottom:1rem;">⚠️ ATTENZIONE (1/3)</h3>
+                                        <p style="margin-bottom:1rem;">Stai per <b>SOVRASCRIVERE IL CLOUD</b> con i dati attuali del PC. I dati vecchi nel Cloud verranno persi.</p>
+                                        <button class="btn btn-outline text-danger" onclick="document.getElementById('upload-step-2').style.display='block'; this.style.display='none';">Sì, sono sicuro</button>
+                                        
+                                        <div id="upload-step-2" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">🚨 SEI VERAMENTE SICURO? (2/3)</h3>
+                                            <p style="margin-bottom:1rem;">Se altri PC usavano quel backup Cloud, perderanno l'accesso a quei dati e verranno sovrascritti al prossimo riavvio.</p>
+                                            <button class="btn btn-outline text-danger" onclick="document.getElementById('upload-step-3').style.display='block'; this.style.display='none';">Sì, ho capito perfettamente</button>
+                                        </div>
+                                        
+                                        <div id="upload-step-3" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(239,68,68,0.2);">
+                                            <h3 style="color:var(--danger); margin-bottom:1rem;">💥 ULTIMO AVVISO (3/3)</h3>
+                                            <p style="margin-bottom:1rem;">Procedendo distruggerai il vecchio backup Cloud.</p>
+                                            <button class="btn btn-danger" style="font-weight:bold; padding:10px;" onclick="app.cloudSync.isExplicitLogin = false; app.cloudSync.uploadBackup().then(() => app.closeModal());">CONFERMA E SOVRASCRIVI IL CLOUD</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        } else {
+                            await this.downloadBackup();
+                        }
                     } else {
                         await this.uploadBackup(true);
                     }
                 } catch (e) {
                     console.error('Cloud Sync Error', e);
                     app.toast('Errore di sincronizzazione Cloud', 'danger');
+                } finally {
+                    this.isExplicitLogin = false;
+                }
+            },
+
+            async mergeBackup() {
+                if (!this.fileId) return;
+                app.toast('Fusione dati in corso...', 'info');
+                try {
+                    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                    });
+                    const cloudData = await res.json();
+                    
+                    if (cloudData) {
+                        // Logica di Fusione (Merge)
+                        const mergeArrays = (localArr, cloudArr) => {
+                            const map = new Map();
+                            (cloudArr || []).forEach(item => map.set(item.id, item));
+                            (localArr || []).forEach(item => map.set(item.id, item)); // Locale vince in caso di parità ID
+                            return Array.from(map.values());
+                        };
+                        
+                        app.state.soci = mergeArrays(app.state.soci, cloudData.soci);
+                        app.state.ricevute = mergeArrays(app.state.ricevute, cloudData.ricevute);
+                        app.state.corsi = mergeArrays(app.state.corsi, cloudData.corsi);
+                        app.state.istruttori = mergeArrays(app.state.istruttori, cloudData.istruttori);
+                        app.state.primanota = mergeArrays(app.state.primanota, cloudData.primanota);
+                        
+                        // Merge delle immagini localStorage (il locale vince se presente)
+                        if (cloudData._localStorageBackup) {
+                            if (cloudData._localStorageBackup.asd_custom_logo && !localStorage.getItem('asd_custom_logo')) {
+                                localStorage.setItem('asd_custom_logo', cloudData._localStorageBackup.asd_custom_logo);
+                            }
+                            if (cloudData._localStorageBackup.asd_esercizi_images) {
+                                let localImg = localStorage.getItem('asd_esercizi_images');
+                                let localObj = localImg ? JSON.parse(localImg) : {};
+                                let cloudObj = JSON.parse(cloudData._localStorageBackup.asd_esercizi_images);
+                                let mergedImg = { ...cloudObj, ...localObj };
+                                localStorage.setItem('asd_esercizi_images', JSON.stringify(mergedImg));
+                            }
+                        }
+
+                        // Per i settings, manteniamo le impostazioni locali ma integriamo le mancanti dal cloud
+                        app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
+                        
+                        await app.idbSet('main_state', app.state);
+                        await this.uploadBackup(); // Carichiamo il risultato unito sul cloud
+                        
+                        app.toast('Dati fusi e salvati con successo!', 'success');
+                        
+                        // Ricarichiamo la pagina corrente per mostrare i dati fusi
+                        location.reload();
+                    }
+                } catch (e) {
+                    console.error('Merge error', e);
+                    app.toast('Errore durante la fusione dei dati', 'danger');
                 }
             },
 
@@ -854,13 +1168,23 @@
                     });
                     const data = await res.json();
                     if (data && data.soci) {
+                        // Ripristino immagini e logo salvati nel cloud
+                        if (data._localStorageBackup) {
+                            if (data._localStorageBackup.asd_custom_logo) {
+                                localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
+                            }
+                            if (data._localStorageBackup.asd_esercizi_images) {
+                                localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
+                            }
+                            delete data._localStorageBackup;
+                        }
+
                         app.state = { ...app.state, ...data };
                         await app.idbSet('main_state', app.state);
                         app.toast('Dati scaricati dal Cloud e applicati!', 'success');
                         
-                        // Ripristina la pagina corrente
-                        const page = localStorage.getItem('asd_current_page') || 'dashboard';
-                        app.showPage(page);
+                        // Ricarica la pagina per applicare il nuovo logo e le immagini
+                        location.reload();
                     }
                 } catch (e) {
                     console.error('Download error', e);
@@ -871,35 +1195,56 @@
             async uploadBackup(isCreate = false) {
                 if (!this.accessToken) return;
                 this.isSyncing = true;
-                const metadata = {
-                    name: 'GestioneASD_CloudSync.json',
-                    mimeType: 'application/json'
-                };
                 
                 // Crea snapshot pulito dallo state
                 const clone = JSON.parse(JSON.stringify(app.state));
+                
+                // Aggiungiamo il salvataggio dei file immagine (salvati in locale) nel JSON
+                clone._localStorageBackup = {
+                    asd_custom_logo: localStorage.getItem('asd_custom_logo'),
+                    asd_esercizi_images: localStorage.getItem('asd_esercizi_images')
+                };
+
                 const fileContent = JSON.stringify(clone);
                 
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', new Blob([fileContent], { type: 'application/json' }));
-
-                const url = isCreate 
-                    ? 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
-                    : `https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=multipart`;
-                const method = isCreate ? 'POST' : 'PATCH';
-
                 try {
-                    const res = await fetch(url, {
-                        method: method,
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` },
-                        body: form
-                    });
-                    const data = await res.json();
-                    if (isCreate) this.fileId = data.id;
-                    app.toast('Cloud: Salvataggio aggiornato.', 'success');
+                    let res;
+                    if (isCreate) {
+                        const metadata = {
+                            name: 'GestioneASD_CloudSync.json',
+                            mimeType: 'application/json'
+                        };
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                        form.append('file', new Blob([fileContent], { type: 'application/json' }));
+                        
+                        res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` },
+                            body: form
+                        });
+                        const data = await res.json();
+                        this.fileId = data.id;
+                    } else {
+                        // Per il PATCH, usare uploadType=media è più sicuro ed evita problemi col multipart
+                        res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=media`, {
+                            method: 'PATCH',
+                            headers: { 
+                                'Authorization': `Bearer ${this.accessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: fileContent
+                        });
+                    }
+                    
+                    if (res && res.ok) {
+                        app.toast('Cloud: Salvataggio aggiornato.', 'success');
+                    } else {
+                        throw new Error("HTTP error " + (res ? res.status : "unknown"));
+                    }
                 } catch (e) {
                     console.error('Upload error', e);
+                    app.toast('Errore di sincronizzazione col Cloud', 'danger');
                 } finally {
                     this.isSyncing = false;
                 }
@@ -1449,14 +1794,14 @@ closeModal() {
                                 <table id="soci-table" style="margin-top: 0;">
                                     <thead>
                                         <tr>
-                                            <th style="cursor: pointer; padding-left: 1.5rem;" onclick="app.handleSort('cognome')">Cognome ${this.getSortIcon('cognome')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('nome')">Nome ${this.getSortIcon('nome')}</th>
-                                            <th>Residenza / Contatti / Email</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('quota_scadenza')">Scad. Quota ${this.getSortIcon('quota_scadenza')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('certificato_scadenza')">Certificato ${this.getSortIcon('certificato_scadenza')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('tesseramento_data')">Data Tess. Fed. ${this.getSortIcon('tesseramento_data')}</th>
-                                            <th style="cursor: pointer;" onclick="app.handleSort('stato')">Stato ${this.getSortIcon('stato')}</th>
-                                            <th style="text-align: right; padding-right: 1.5rem;">Azioni</th>
+                                            <th style="cursor: pointer; padding-left: 1.5rem; width: 12%;" onclick="app.handleSort('cognome')">Cognome ${this.getSortIcon('cognome')}</th>
+                                            <th style="cursor: pointer; width: 12%;" onclick="app.handleSort('nome')">Nome ${this.getSortIcon('nome')}</th>
+                                            <th style="width: 25%;">Residenza / Contatti / Email</th>
+                                            <th style="cursor: pointer; width: 10%;" onclick="app.handleSort('quota_scadenza')">Scad. Quota ${this.getSortIcon('quota_scadenza')}</th>
+                                            <th style="cursor: pointer; width: 10%;" onclick="app.handleSort('certificato_scadenza')">Certificato ${this.getSortIcon('certificato_scadenza')}</th>
+                                            <th style="cursor: pointer; width: 11%;" onclick="app.handleSort('tesseramento_data')">Data Tess. Fed. ${this.getSortIcon('tesseramento_data')}</th>
+                                            <th style="cursor: pointer; width: 5%;" onclick="app.handleSort('stato')">Stato ${this.getSortIcon('stato')}</th>
+                                            <th style="text-align: right; padding-right: 1.5rem; width: 15%; min-width: 160px;">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="soci-tbody"></tbody>
@@ -1477,7 +1822,8 @@ closeModal() {
 
                 return soci.map(s => {
                     const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
-                    const isExpired = qScad && qScad < now;
+                    const tScad = s.tesseramento_scadenza ? new Date(s.tesseramento_scadenza) : null;
+                    const isExpired = (qScad && qScad < now) || (s.tesserato === 'SI' && tScad && tScad < now);
                     const rowStyle = isExpired ? 'color: var(--danger); font-weight: 500;' : '';
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
@@ -1500,7 +1846,10 @@ closeModal() {
                         </td>
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
-                                <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ${s.tesserato || 'NO'}</span>
+                                ${s.tesserato === 'SI' && s.tesseramento_scadenza && new Date(s.tesseramento_scadenza) < now 
+                                    ? `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">TESS: SCADUTO</span>`
+                                    : `<span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ${s.tesserato || 'NO'}</span>`
+                                }
                                 ${s.tesseramento_data
                             ? `<span class="${this.getCertColor(s.tesseramento_scadenza)}" style="font-size: 0.78rem; font-weight: 600;">Dal: ${this.formatDate(s.tesseramento_data)}</span>`
                             : `<span style="font-size: 0.72rem; color: var(--text-muted);">Data non inserita</span>`
@@ -1508,8 +1857,12 @@ closeModal() {
                             </div>
                         </td>
                         <td><span class="badge badge-${s.stato.toLowerCase()}">${s.stato}</span></td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                        <td style="text-align: right; padding-right: 1.5rem;">
+                            <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap;">
+                                ${s.note 
+                                    ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">💬</button>` 
+                                    : `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗨️</button>`
+                                }
                                 ${isMinore ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" title="Liberatoria Minori" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
                                 <button class="btn btn-outline" style="padding: 5px; border-color: ${isExpired ? 'var(--danger)' : 'var(--border)'};" title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
                                 <button class="btn btn-outline text-danger" style="padding: 5px; border-color: rgba(239, 68, 68, 0.2);" title="Elimina" onclick="app.deleteSocio(${s.id})">🗑️</button>
@@ -1613,8 +1966,8 @@ closeModal() {
             },
 
             getSortIcon(key) {
-                if (this.state.sortConfig.key !== key) return '<span style="opacity: 0.3; font-size: 0.7rem;">↕️</span>';
-                return this.state.sortConfig.direction === 'asc' ? '<span style="font-size: 0.7rem;">🔼</span>' : '<span style="font-size: 0.7rem;">🔽</span>';
+                if (this.state.sortConfig.key !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+                return this.state.sortConfig.direction === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
             },
 
             autoCalcolaCF() {
@@ -1795,6 +2148,42 @@ closeModal() {
                     const input = form.querySelector(`[name="${key}"]`);
                     if (input) input.value = s[key];
                 });
+            },
+
+            openQuickNoteModal(id) {
+                const s = this.state.soci.find(x => x.id === id);
+                if (!s) return;
+
+                this.openModal('Note Interne: ' + (s.cognome || '') + ' ' + (s.nome || ''), `
+                    <div style="margin-bottom: 1rem;">
+                        <textarea id="quick-note-textarea" class="form-control" rows="5" placeholder="Scrivi una nota qui...">${s.note || ''}</textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <button type="button" class="btn btn-outline text-danger" onclick="app.saveQuickNote(${id}, '')" ${!s.note ? 'style="visibility: hidden;"' : ''}>🗑️ Cancella Nota</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                            <button type="button" class="btn btn-primary" onclick="app.saveQuickNote(${id})">Salva Nota</button>
+                        </div>
+                    </div>
+                `);
+            },
+
+            saveQuickNote(id, explicitText = null) {
+                const s = this.state.soci.find(x => x.id === id);
+                if (!s) return;
+                
+                let newNote = explicitText;
+                if (explicitText === null) {
+                    const textarea = document.getElementById('quick-note-textarea');
+                    if (textarea) newNote = textarea.value;
+                }
+
+                s.note = newNote;
+                s.updated_at = Date.now();
+                this.saveAll();
+                this.closeModal();
+                this.renderSoci();
+                this.toast("Nota aggiornata con successo!");
             },
 
             handleSocioSubmit(e) {
@@ -4062,23 +4451,29 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         renderTodaySchedule() {
+            const jsDay = new Date().getDay();
+            const todayAppDay = jsDay === 0 ? 7 : jsDay;
+            
+            const todayCourses = this.state.corsi
+                .filter(c => parseInt(c.dayOfWeek) === todayAppDay)
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
             return `
                     <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 12px; border: 1px dashed var(--primary);">
-                        <p style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--primary); font-weight: 600;">Prossimi Incontri:</p>
-                        ${this.state.corsi.slice(0, 2).map(c => `
+                        <p style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--primary); font-weight: 600;">Oggi in programmazione:</p>
+                        ${todayCourses.length > 0 ? todayCourses.map(c => `
                             <div style="margin-bottom: 8px; font-size: 0.8rem;">
-                                <strong>${c.schedule}</strong> - ${c.nome}
+                                <strong>${c.startTime} - ${c.endTime}</strong> &nbsp;|&nbsp; ${c.nome}
                             </div>
-                        `).join('')}
-                        ${this.state.corsi.length === 0 ? '<p>Nessun corso programmato.</p>' : ''}
+                        `).join('') : '<p style="font-size: 0.85rem; color: var(--text-muted);">Nessun corso programmato per oggi.</p>'}
                     </div>
-
                 `;
         },
 
         formatDate(d) {
             if (!d) return "-";
             const date = new Date(d);
+            if (isNaN(date.getTime())) return "-"; // Handle Invalid Date gracefully
             return date.toLocaleDateString('it-IT');
         },
 
@@ -4383,6 +4778,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </div>
                                 
                                 <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;">Stato attuale: ${localStorage.getItem('asd_cloud_sync') === 'true' ? '<span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>' : '<span style="color:var(--text-muted);">Offline (Locale)</span>'}</div>
+                            </div>
+
+                            <!-- App Lock / Sicurezza -->
+                            <div class="glass-card" style="grid-column: 1 / -1; border-left: 4px solid #ca8a04;">
+                                <h3 style="margin-bottom:1rem;">🔒 Sicurezza (Blocco App)</h3>
+                                <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Imposta una password o PIN. Verrà richiesto ad ogni apertura del gestionale per proteggere i dati dei tuoi soci da sguardi indiscreti. (La password viene salvata solo su questo dispositivo locale).</p>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <button class="btn btn-primary" style="background:#ca8a04; border:none;" onclick="app.configureAppLock()">Imposta/Modifica PIN di Accesso</button>
+                                    ${localStorage.getItem('asd_app_lock') ? '<button class="btn btn-outline text-danger" onclick="app.removeAppLock()">Rimuovi Blocco App</button>' : ''}
+                                </div>
                             </div>
 
                             <!-- FS Access -->
@@ -4944,31 +5349,48 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Build tab HTML
             const tabsHtml = `
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem;">
-                        <button class="btn ${currentTab === 'all' ? 'btn-primary' : 'btn-outline'}" style="font-size:0.8rem; padding:6px 14px;" onclick="app.setCalTab('all')">🌐 Tutte le Sale</button>
-                        ${sale.map(s => `<button class="btn ${currentTab === s.id ? 'btn-primary' : 'btn-outline'}" style="font-size:0.8rem; padding:6px 14px;" onclick="app.setCalTab('${s.id}')">🏠 ${s.nome}</button>`).join('')}
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                        <button class="btn ${currentTab === 'all' ? 'btn-primary' : 'btn-outline'}" style="font-size:0.75rem; padding:4px 10px;" onclick="app.setCalTab('all')">🌐 Tutte le Sale</button>
+                        ${sale.map(s => `<button class="btn ${currentTab === s.id ? 'btn-primary' : 'btn-outline'}" style="font-size:0.75rem; padding:4px 10px;" onclick="app.setCalTab('${s.id}')">🏠 ${s.nome}</button>`).join('')}
                     </div>
                 `;
 
-            // Determine which corsi to show in the grid
             const corsiToShow = currentTab === 'all' ? activeCorsi : activeCorsi.filter(c => c.sala_id === currentTab);
             const conflicts = this.detectConflicts(corsiToShow);
 
             // Build calendar grid
             // Header row
-            let gridHtml = `<div style="display:grid; grid-template-columns:64px repeat(7,1fr); gap:1px; background:var(--border); border-radius:12px; overflow:hidden; font-size:0.78rem;">`;
-            gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted);">Ora</div>`;
+            let gridHtml = `<div style="display:grid; grid-template-columns:50px repeat(7,minmax(130px,1fr)); min-width:960px; gap:0; background:transparent; border-radius:12px; border:1px solid var(--border); font-size:0.78rem;">`;
+            gridHtml += `<div style="background:rgba(30,41,59,0.95); padding:8px; text-align:center; font-weight:700; color:var(--text-muted); position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">Ora</div>`;
             DAYS.forEach((day, idx) => {
                 const dayNum = idx + 1;
-                const dateStr = weekDays[idx].toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-                const isToday = weekDays[idx].toDateString() === new Date().toDateString();
+                const d = weekDays[idx];
+                const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                const isToday = d.toDateString() === new Date().toDateString();
+                const isHoliday = app.isItalianHoliday(d);
                 const isCopiedSource = this.state.copiedDay && this.state.copiedDay.dayOfWeek === dayNum;
                 const isCopied = !!this.state.copiedDay;
-                gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.25)' : 'rgba(30,41,59,0.95)'}; padding:6px 4px; text-align:center; font-weight:700; ${isToday ? 'color:var(--primary);' : ''}">
-                        <div>${day}</div><div style="font-size:0.7rem; color:var(--text-muted);">${dateStr}</div>
-                        <div style="display:flex; gap:3px; justify-content:center; margin-top:4px;">
+                
+                let headerBg = 'rgba(30,41,59,0.95)';
+                let colorStyle = '';
+                if (isHoliday) {
+                    headerBg = 'rgba(239,68,68,0.2)'; // Sfondo rosso chiaro per festività
+                    colorStyle = 'color: #ef4444;';
+                } else if (isToday) {
+                    headerBg = 'rgba(59,130,246,0.25)';
+                    colorStyle = 'color: var(--primary);';
+                }
+
+                const isNewSportsYear = d.getMonth() === 8 && d.getDate() === 1;
+                const leftBorderStyle = isNewSportsYear ? 'border-left:3px solid #39ff14;' : '';
+                const annoSportivoLabel = isNewSportsYear ? '<div style="background:#39ff14;color:black;font-size:0.55rem;margin-top:3px;padding:1px 3px;border-radius:3px;font-weight:bold;">ANNO ' + d.getFullYear().toString().slice(-2) + '/' + (d.getFullYear()+1).toString().slice(-2) + '</div>' : '';
+
+                gridHtml += `<div style="background:${headerBg}; ${leftBorderStyle} padding:6px 4px; text-align:center; font-weight:700; ${colorStyle} position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">
+                        <div>${day} ${isHoliday ? '🎉' : ''}</div><div style="font-size:0.7rem; opacity:0.8;">${dateStr}</div>${annoSportivoLabel}
+                        <div style="display:flex; gap:3px; justify-content:center; margin-top:4px; flex-wrap:wrap;">
                             <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; ${isCopiedSource ? 'background:var(--primary); color:white;' : ''}" title="Copia le attività di ${day}" onclick="event.stopPropagation(); app.copyDay(${dayNum})">📋 Copia</button>
                             ${isCopied ? `<button class="btn btn-success" style="padding:1px 5px; font-size:0.65rem;" title="Incolla le attività copiate in ${day}" onclick="event.stopPropagation(); app.pasteDay(${dayNum})">📥 Incolla</button>` : ''}
+                            <button class="btn btn-outline" style="padding:1px 5px; font-size:0.65rem; color:#ca8a04; border-color:#ca8a04;" title="Estendi la fine di tutti i corsi di questo giorno" onclick="event.stopPropagation(); app.extendDayCorsi(${dayNum})">🗓️ Estendi</button>
                         </div>
                     </div>`;
             });
@@ -4976,7 +5398,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             // Time rows
             HOURS.forEach(hour => {
                 // Time label
-                gridHtml += `<div style="background:rgba(30,41,59,0.85); padding:8px; text-align:right; color:var(--text-muted); align-content:start;">${hour}</div>`;
+                gridHtml += `<div style="background:rgba(30,41,59,0.85); padding:4px 6px; text-align:right; color:var(--text-muted); align-content:start; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">${hour}</div>`;
                 // Day cells
                 for (let d = 1; d <= 7; d++) {
                     // corsi in this slot (dayOfWeek: 1=Mon...7=Sun)
@@ -4988,7 +5410,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         return cStart <= hour && cEnd > hour;
                     });
                     const isToday = weekDays[d - 1].toDateString() === new Date().toDateString();
-                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:48px; padding:2px; position:relative; cursor:pointer;" onclick="app.openNewCorsoModal(${d}, '${hour}')">`;
+                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:36px; padding:2px; position:relative; cursor:pointer; border-bottom:1px solid var(--border); border-right:1px solid var(--border);" onclick="app.openNewCorsoModal(${d}, '${hour}')">`;
                     slotCorsi.forEach(c => {
                         const isConflict = conflicts.has(c.id);
                         const istrNome = this.state.istruttori.find(i => i.id == c.istruttore_id)?.nome || '-';
@@ -5012,24 +5434,28 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Count conflicts
             const conflictCount = conflicts.size;
-            const copiedLabel = this.state.copiedDay ? ` &nbsp;|&nbsp; 📋 Giorno copiato: <strong style="color:var(--primary);">${DAYS[this.state.copiedDay.dayOfWeek - 1]} (${this.state.copiedDay.corsi.length} attività)</strong> <button class="btn btn-outline" style="padding:1px 6px; font-size:0.7rem;" onclick="app.clearCopiedDay()">Annulla</button>` : '';
+            const copiedLabel = this.state.copiedDay ? `<div style="background:var(--accent); color:white; padding:2px 8px; border-radius:12px; margin-top:4px; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; font-weight:600;">📋 In memoria: ${DAYS[this.state.copiedDay.dayOfWeek - 1]} <span style="cursor:pointer; opacity:0.8; font-size:0.8rem;" title="Annulla Copia" onclick="app.clearCopiedDay()">✖</span></div>` : '';
 
             main.innerHTML = `
-                    <div class="page-content">
-                        <div class="page-header" style="flex-shrink:0;">
-                            <div class="header-title">
-                                <h1>🏟️ Palestra – Calendario</h1>
-                                <p>${this.formatWeekLabel(weekDays)}${conflictCount > 0 ? ` &nbsp;<span style="color:var(--danger); font-weight:700;">⚠️ ${conflictCount} sovrapposizioni rilevate</span>` : ''}${copiedLabel}</p>
+                    <div class="page-content" style="padding-bottom: 0;">
+                        <div class="page-header" style="flex-shrink:0; margin-bottom:0.5rem; display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+                                <h1 style="font-size: 1.25rem; margin:0; line-height:1;">🏟️ Calendario</h1>
+                                ${tabsHtml}
                             </div>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <button class="btn btn-outline" style="padding:6px 12px;" onclick="app.changeWeek(-1)">‹ Indietro</button>
-                                <button class="btn btn-outline" style="padding:6px 12px;" onclick="app.changeWeek(0)">Oggi</button>
-                                <button class="btn btn-outline" style="padding:6px 12px;" onclick="app.changeWeek(1)">Avanti ›</button>
-                                <button class="btn btn-primary" style="padding:6px 14px;" onclick="app.openNewCorsoModal()" data-guide="Clicca qui per programmare un nuovo corso nel calendario.">+ Aggiungi Attività</button>
+                            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <div style="font-size: 0.75rem; margin-right: 8px; color: var(--text-muted); display:flex; flex-direction:column; align-items:flex-end;">
+                                    <div style="font-weight:600;">${this.formatWeekLabel(weekDays)}</div>
+                                    ${conflictCount > 0 ? `<div style="color:var(--danger); font-weight:700;">⚠️ ${conflictCount} sovrapposizioni</div>` : ''}
+                                    ${copiedLabel}
+                                </div>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="app.changeWeek(-1)">‹</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="app.changeWeek(0)">Oggi</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="app.changeWeek(1)">›</button>
+                                <button class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem; margin-left:4px;" onclick="app.openNewCorsoModal()">+ Attività</button>
                             </div>
                         </div>
-                        <div style="flex-shrink:0;">${tabsHtml}</div>
-                        <div style="flex:1; overflow:auto; border-radius:12px;">${gridHtml}</div>
+                        <div style="flex:1; overflow:auto; border-radius:12px; margin-bottom:0.5rem; border: 1px solid var(--border);">${gridHtml}</div>
                     </div>
                 `;
         },
@@ -5071,11 +5497,33 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             }
 
             const count = this.state.copiedDay.corsi.length;
-            if (!confirm(`Vuoi incollare le ${count} attività di ${srcDayName} sopra ${targetDayName}?`)) {
-                return;
-            }
+            const weekDaysForPaste = this.getWeekDates(this.state.currentWeekOffset || 0);
+            const targetDateStr = weekDaysForPaste[targetDayOfWeek - 1].toISOString().split('T')[0];
 
+            this.openModal('Opzioni Incolla', `
+                <p>Stai incollando <strong>${count} attività</strong> da ${srcDayName} a ${targetDayName}.</p>
+                <p>Come vuoi gestire la <strong>validità temporale</strong> di questi nuovi corsi?</p>
+                <div style="display:flex; flex-direction:column; gap:12px; margin-top:20px;">
+                    <button class="btn" style="background:var(--card-bg); border:1px solid var(--border); color:var(--text); text-align:left; padding:12px; display:flex; flex-direction:column; gap:4px;" onclick="app.executePasteDay(${targetDayOfWeek}, true)">
+                        <div style="font-weight:600; font-size:1rem; color:var(--primary);">🗓️ Mantieni l'intero periodo originale</div>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">I nuovi corsi avranno esattamente la stessa data di "Inizio" e "Fine" di quelli che hai copiato.</span>
+                    </button>
+                    
+                    <button class="btn" style="background:var(--card-bg); border:1px solid var(--border); color:var(--text); text-align:left; padding:12px; display:flex; flex-direction:column; gap:4px;" onclick="app.executePasteDay(${targetDayOfWeek}, false)">
+                        <div style="font-weight:600; font-size:1rem; color:var(--success);">📍 Incolla SOLO per questa data</div>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">La validità sarà limitata ad un solo giorno (<strong>${this.formatDate(targetDateStr)}</strong>). Potrai usare "Estendi" in seguito se serve.</span>
+                    </button>
+                </div>
+            `);
+        },
+
+        executePasteDay(targetDayOfWeek, keepPeriod) {
+            this.closeModal();
             const giorniShort = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Gio', 5: 'Ven', 6: 'Sab', 7: 'Dom' };
+            const targetDayName = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'][targetDayOfWeek - 1];
+            
+            const weekDaysForPaste = this.getWeekDates(this.state.currentWeekOffset || 0);
+            const targetDateStr = weekDaysForPaste[targetDayOfWeek - 1].toISOString().split('T')[0];
 
             let addedCount = 0;
             this.state.copiedDay.corsi.forEach((c, idx) => {
@@ -5084,12 +5532,17 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     id: Date.now() + idx + Math.floor(Math.random() * 1000),
                     dayOfWeek: targetDayOfWeek,
                     schedule: `${giorniShort[targetDayOfWeek]} ${c.startTime}`,
-                    iscritti: [] // Reset iscrizioni per le nuove attività collegate
+                    iscritti: [] // Reset iscrizioni
                 };
+                
+                if (!keepPeriod) {
+                    newCorso.inizio = targetDateStr;
+                    newCorso.fine = targetDateStr;
+                }
+
                 this.state.corsi.push(newCorso);
                 addedCount++;
             });
-
             this.saveAll();
             this.toast(`${addedCount} attività incollate con successo in ${targetDayName}!`);
             this.renderSalaPesi();
@@ -5097,6 +5550,94 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         clearCopiedDay() {
             this.state.copiedDay = null;
+            this.renderSalaPesi();
+        },
+
+        isItalianHoliday(date) {
+            if (!date) return false;
+            const d = date.getDate();
+            const m = date.getMonth() + 1;
+            const y = date.getFullYear();
+
+            // Feste fisse italiane
+            const fixed = [
+                '1-1', '6-1', '25-4', '1-5', '2-6', 
+                '15-8', '1-11', '8-12', '25-12', '26-12'
+            ];
+            const checkStr = `${d}-${m}`;
+            if (fixed.includes(checkStr)) return true;
+
+            // Calcolo Pasqua e Pasquetta (Algoritmo di Gauss)
+            const a = y % 19;
+            const b = y % 4;
+            const c = y % 7;
+            const k = Math.floor(y / 100);
+            const p = Math.floor((13 + 8 * k) / 25);
+            const q = Math.floor(k / 4);
+            const M = (15 - p + k - q) % 30;
+            const N = (4 + k - q) % 7;
+            const d1 = (19 * a + M) % 30;
+            const e = (2 * b + 4 * c + 6 * d1 + N) % 7;
+            let easterDay = 22 + d1 + e;
+            let easterMonth = 3;
+            if (easterDay > 31) {
+                easterDay -= 31;
+                easterMonth = 4;
+            }
+            let pasquettaDay = easterDay + 1;
+            let pasquettaMonth = easterMonth;
+            if (easterMonth === 3 && pasquettaDay === 32) {
+                pasquettaDay = 1;
+                pasquettaMonth = 4;
+            }
+
+            if (d === easterDay && m === easterMonth) return true;
+            if (d === pasquettaDay && m === pasquettaMonth) return true;
+
+            return false;
+        },
+
+        extendDayCorsi(dayOfWeek) {
+            const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+            const targetDayName = DAYS[dayOfWeek - 1];
+            
+            // Trova tutti i corsi attualmente visibili in questo giorno
+            const currentTab = this.state.currentSalaTab || 'all';
+            const weekDays = this.getWeekDates(this.state.currentWeekOffset || 0);
+            const activeCorsi = this.state.corsi.filter(c => this.corsoIsActiveInWeek(c, weekDays));
+            const corsiInDay = (currentTab === 'all' ? activeCorsi : activeCorsi.filter(c => c.sala_id === currentTab))
+                .filter(c => c.dayOfWeek === dayOfWeek);
+
+            if (corsiInDay.length === 0) {
+                this.toast(`Nessun corso programmato di ${targetDayName} da estendere.`, "warning");
+                return;
+            }
+
+            const endDateInput = prompt(`Estendi tutti i ${corsiInDay.length} corsi di ${targetDayName}.\nInserisci la nuova Data di Fine Validità (formato GG/MM/AA o GG/MM/AAAA):\n(es: 31/08/25 o 31/08/2025)`);
+            if (!endDateInput) return;
+
+            // Verifica formato
+            const match = endDateInput.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/);
+            if (!match) {
+                this.toast("Formato data non valido! Usa GG/MM/AA o GG/MM/AAAA", "danger");
+                return;
+            }
+
+            let [_, day, month, year] = match;
+            day = day.padStart(2, '0');
+            month = month.padStart(2, '0');
+            if (year.length === 2) {
+                year = '20' + year; // Assumiamo anni 2000
+            }
+            const endDate = `${year}-${month}-${day}`;
+
+            // Aggiorna i corsi
+            corsiInDay.forEach(c => {
+                c.fine = endDate;
+            });
+
+            this.saveAll();
+            this.toast(`La data di fine di ${corsiInDay.length} corsi è stata impostata al ${day}/${month}/${year}.`, "success");
             this.renderSalaPesi();
         },
 
@@ -5347,20 +5888,84 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             this.renderSalaPesi();
         },
 
-        deleteCorso(id) {
+        promptDeleteCorso(id) {
             const c = this.state.corsi.find(x => x.id === id);
             if (!c) return;
-            if (confirm(`Eliminare definitivamente "${c.nome}"?`)) {
-                this.state.corsi = this.state.corsi.filter(x => x.id !== id);
+            
+            const weekDays = this.getWeekDates(this.state.currentWeekOffset || 0);
+            const targetDateObj = weekDays[c.dayOfWeek - 1];
+            const targetDateStr = targetDateObj.toISOString().split('T')[0];
+            const targetDateFormatted = this.formatDate(targetDateStr);
+            const giorni = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+
+            this.openModal('Opzioni Eliminazione', `
+                <p>Stai per eliminare <strong>${c.nome}</strong> del ${giorni[c.dayOfWeek % 7]}.</p>
+                <p>Cosa vuoi fare?</p>
+                <div style="display:flex; flex-direction:column; gap:12px; margin-top:20px;">
+                    <button class="btn" style="background:var(--card-bg); border:1px solid var(--danger); color:var(--text); text-align:left; padding:12px; display:flex; flex-direction:column; gap:4px;" onclick="app.executeDeleteCorso(${id}, 'all')">
+                        <div style="font-weight:600; font-size:1rem; color:var(--danger);">🗑️ Elimina l'intero periodo</div>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">Il corso verrà cancellato definitivamente dal calendario.</span>
+                    </button>
+                    
+                    <button class="btn" style="background:var(--card-bg); border:1px solid var(--warning); color:var(--text); text-align:left; padding:12px; display:flex; flex-direction:column; gap:4px;" onclick="app.executeDeleteCorso(${id}, '${targetDateStr}')">
+                        <div style="font-weight:600; font-size:1rem; color:var(--warning);">✂️ Elimina SOLO questa settimana (${targetDateFormatted})</div>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">Il corso verrà interrotto questa settimana e riprenderà regolarmente dalla prossima.</span>
+                    </button>
+                    
+                    <button class="btn btn-outline" style="margin-top:10px;" onclick="app.openEditCorsoModal(${id})">Annulla Operazione</button>
+                </div>
+            `);
+        },
+
+        executeDeleteCorso(id, mode) {
+            const cIndex = this.state.corsi.findIndex(x => x.id === id);
+            if (cIndex === -1) return;
+            const c = this.state.corsi[cIndex];
+
+            this.closeModal();
+
+            if (mode === 'all') {
+                this.state.corsi.splice(cIndex, 1);
                 this.saveAll();
-                this.closeModal();
-                this.toast('Attività eliminata.', 'danger');
-                if (this.state.currentPage === 'corsi') {
-                    this.renderCorsi();
-                } else {
-                    this.renderSalaPesi();
+                this.toast('Corso eliminato definitivamente.');
+                if (this.state.currentPage === 'corsi') this.renderCorsi();
+                else this.renderSalaPesi();
+            } else {
+                const targetDateStr = mode;
+                const targetDate = new Date(targetDateStr);
+                
+                const prevWeek = new Date(targetDate);
+                prevWeek.setDate(prevWeek.getDate() - 7);
+                const prevWeekStr = prevWeek.toISOString().split('T')[0];
+
+                const nextWeek = new Date(targetDate);
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
+                if (!c.fine || c.fine >= nextWeekStr) {
+                    const clone = JSON.parse(JSON.stringify(c));
+                    clone.id = Date.now() + Math.floor(Math.random() * 1000);
+                    clone.inizio = nextWeekStr;
+                    clone.iscritti = []; // Svuota iscritti per il corso sdoppiato futuro
+                    this.state.corsi.push(clone);
                 }
+
+                c.fine = prevWeekStr;
+
+                if (c.inizio > c.fine) {
+                    // Se la data di inizio era successiva alla fine (es. hanno cancellato la primissima occorrenza)
+                    this.state.corsi.splice(cIndex, 1);
+                }
+
+                this.saveAll();
+                this.toast('Giorno rimosso con successo (il corso è stato diviso).');
+                if (this.state.currentPage === 'corsi') this.renderCorsi();
+                else this.renderSalaPesi();
             }
+        },
+
+        deleteCorso(id) {
+            this.promptDeleteCorso(id);
         },
 
         openReplicaModal(id) {
@@ -6103,7 +6708,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
 </body></html>`);
             pw.document.close();
             pw.focus();
-        }
+        },
 
 
 
@@ -6858,32 +7463,36 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         }
 
         let deferredPrompt;
-        const installBtn = document.getElementById('pwa-install-btn');
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            const installBtn = document.getElementById('pwa-install-btn');
             if (!isLocalhost && installBtn) {
                 installBtn.style.display = 'flex';
             }
         });
 
-        if (installBtn) {
-            installBtn.addEventListener('click', async () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        console.log('App installata');
+        window.addEventListener('DOMContentLoaded', () => {
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            console.log('App installata');
+                        }
+                        deferredPrompt = null;
+                        installBtn.style.display = 'none';
                     }
-                    deferredPrompt = null;
-                    installBtn.style.display = 'none';
-                }
-            });
-        }
+                });
+            }
+        });
 
         window.addEventListener('appinstalled', () => {
+            const installBtn = document.getElementById('pwa-install-btn');
             if (installBtn) installBtn.style.display = 'none';
             deferredPrompt = null;
         });
