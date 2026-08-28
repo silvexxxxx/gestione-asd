@@ -12,7 +12,7 @@
                 document.documentElement.classList.add('mobile-desktop-mode');
                 const viewport = document.querySelector('meta[name="viewport"]');
                 if (viewport) {
-                    viewport.setAttribute('content', 'width=1280, initial-scale=0.35, minimum-scale=0.2, maximum-scale=3.0, user-scalable=yes');
+                    viewport.setAttribute('content', 'width=1380, initial-scale=0.25, minimum-scale=0.1, maximum-scale=3.0, user-scalable=yes');
                 }
             }
         })();
@@ -121,11 +121,20 @@
         .mobile-desktop-mode,
         .mobile-desktop-mode body,
         .mobile-desktop-mode .app-container {
-            min-width: 1280px !important;
-            width: 1280px !important;
+            min-width: 1380px !important;
+            width: 100% !important; /* Espansione orizzontale per riempire lo schermo */
             overflow-x: auto !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
+        }
+        /* Nasconde le barre di scorrimento brutte su mobile pur lasciando attivo lo scroll */
+        .mobile-desktop-mode::-webkit-scrollbar,
+        .mobile-desktop-mode body::-webkit-scrollbar,
+        .mobile-desktop-mode .app-container::-webkit-scrollbar {
+            display: none !important;
+        }
+        .mobile-desktop-mode {
+            scrollbar-width: none !important; /* Firefox */
         }
 
         /* Top Navbar (previously Sidebar) */
