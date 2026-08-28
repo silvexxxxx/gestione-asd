@@ -4,6 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Rileva se l'utente è su un dispositivo mobile o tablet per abilitare il Desktop Virtuale Fisso
+        (function() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                document.documentElement.classList.add('mobile-desktop-mode');
+                const viewport = document.querySelector('meta[name="viewport"]');
+                if (viewport) {
+                    viewport.setAttribute('content', 'width=1280, initial-scale=0.35, minimum-scale=0.2, maximum-scale=3.0, user-scalable=yes');
+                }
+            }
+        })();
+    </script>
     <title>ASD Gestionale - Sistema Professionale</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
@@ -104,6 +117,17 @@
             overflow: hidden;
         }
 
+        /* Stili specifici per la modalità Desktop Virtuale Fisso su Mobile */
+        .mobile-desktop-mode,
+        .mobile-desktop-mode body,
+        .mobile-desktop-mode .app-container {
+            min-width: 1280px !important;
+            width: 1280px !important;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
         /* Top Navbar (previously Sidebar) */
         aside {
             background: rgba(15, 23, 42, 0.98);
@@ -193,7 +217,8 @@
             color: var(--primary);
         }
 
-        .nav-dropdown:hover .nav-dropdown-content {
+        .nav-dropdown:hover .nav-dropdown-content,
+        .nav-dropdown.active-dropdown .nav-dropdown-content {
             display: block;
         }
 
@@ -9081,7 +9106,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 const mobileNav = {
     toggleDropdown(id) {
-        if (window.innerWidth > 768) return;
+        const isMobileDesktop = document.documentElement.classList.contains('mobile-desktop-mode');
+        if (window.innerWidth > 768 && !isMobileDesktop) return;
         const el = document.getElementById(id);
         if (!el) return;
         const wasOpen = el.classList.contains('active-dropdown');
@@ -9093,7 +9119,8 @@ const mobileNav = {
 
 // Chiudi i dropdown quando si clicca fuori dall'area del menu
 document.addEventListener('click', (e) => {
-    if (window.innerWidth <= 768 && !e.target.closest('.nav-dropdown')) {
+    const isMobileDesktop = document.documentElement.classList.contains('mobile-desktop-mode');
+    if ((window.innerWidth <= 768 || isMobileDesktop) && !e.target.closest('.nav-dropdown')) {
         document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
     }
 });
