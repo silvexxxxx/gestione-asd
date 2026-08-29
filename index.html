@@ -1232,6 +1232,7 @@
                 <div class="nav-dropdown" id="dropdown-cassa">
                     <div class="nav-item" onclick="mobileNav.toggleDropdown('dropdown-cassa')">Segreteria ▾</div>
                     <div class="nav-dropdown-content">
+                        <div class="nav-item" data-page="dati-organizzazione" onclick="app.showPage('dati-organizzazione')" data-guide="Gestisci i dati legali dell'ASD, consiglio direttivo, metodi di pagamento, pacchetti quote e sale.">Dati ed Organizzazione ASD</div>
                         <div class="nav-item" data-page="primanota" onclick="app.showPage('primanota')" data-guide="Tieni traccia di tutte le entrate (ricevute) e delle uscite (spese) della tua associazione.">Prima Nota</div>
                         <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Gestisci i beni di consumo per la palestra.">Magazzino</div>
                         <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Gestione rimborsi spese per i collaboratori o membri del direttivo.">Rimborsi</div>
@@ -2923,6 +2924,7 @@
                         case 'magazzino': this.renderMagazzino(); break;
                         case 'eventi': this.renderEventi(); break;
                         case 'rimborsi': this.renderRimborsi(); break;
+                        case 'dati-organizzazione': this.renderDatiOrganizzazione(); break;
                         case 'database': this.renderDatabase(); break;
                         case 'guida': this.renderGuida(); break;
                     }
@@ -6816,12 +6818,145 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         // DATABASE & IMPOSTAZIONI
         // =========================================================
 
-        renderDatabase() {
+        renderDatiOrganizzazione() {
             const main = document.getElementById('main-content');
             const s = this.state.settings;
             const sale = this.state.sale || [];
             const presets = this.state.quote_presets || [];
             const metodi = s.metodi_pagamento || [];
+            main.innerHTML = `
+                <div class="page-content" style="overflow-y:auto;">
+                    <div class="page-header">
+                        <div>
+                            <h1>🏢 Dati ed Organizzazione ASD</h1>
+                            <p>Gestisci l'anagrafica legale, il consiglio direttivo, i metodi di pagamento, le quote e gli spazi.</p>
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+                        
+                        <!-- 1. Dati Associazione -->
+                        <div class="glass-card" style="grid-column: 1 / -1;">
+                            <h3 style="margin-bottom:1rem;">🏢 Dati Associazione</h3>
+                            <div class="form-group"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName}" onchange="app.updateSetting('asdName', this.value)"></div>
+                            <div class="form-group"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
+                            <div class="form-group"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
+                        </div>
+
+                        <!-- 2. Consiglio Direttivo -->
+                        <div class="glass-card" style="border-left: 4px solid var(--accent); grid-column: 1 / -1;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                                <h3 style="margin:0;">👑 Consiglio Direttivo</h3>
+                                <button class="btn btn-outline" style="font-size:0.75rem;" onclick="app.openDirettivoHistoryModal()">Storico</button>
+                            </div>
+                            
+                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:1rem;">
+                                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Presidente</div>
+                                    <div style="font-weight:600;">${(() => {
+                                        if (!s.presidente) return 'Non definito';
+                                        const socio = this.state.soci.find(x => x.id == s.presidente);
+                                        return socio ? `${socio.cognome} ${socio.nome}` : s.presidente;
+                                    })()}</div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Vice Presidente</div>
+                                    <div style="font-weight:600;">${(() => {
+                                        if (!s.vice_presidente) return 'Non definito';
+                                        const socio = this.state.soci.find(x => x.id == s.vice_presidente);
+                                        return socio ? `${socio.cognome} ${socio.nome}` : s.vice_presidente;
+                                    })()}</div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Segretario</div>
+                                    <div style="font-weight:600;">${(() => {
+                                        if (!s.segretario) return 'Non definito';
+                                        const socio = this.state.soci.find(x => x.id == s.segretario);
+                                        return socio ? `${socio.cognome} ${socio.nome}` : s.segretario;
+                                    })()}</div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Consiglieri</div>
+                                    <div style="font-weight:600;">
+                                        ${(s.consiglieri || []).length > 0 
+                                            ? s.consiglieri.map(c => {
+                                                const socio = this.state.soci.find(x => x.id == c);
+                                                return socio ? `${socio.cognome} ${socio.nome}` : c;
+                                            }).join('<br>') 
+                                            : '<span style="color:var(--text-muted); font-weight:normal;">Nessun consigliere</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" style="width:100%;" onclick="app.openRinnovoDirettivoModal()">Rinnova / Modifica Direttivo</button>
+                        </div>
+
+                        <!-- 3. Metodi di Pagamento -->
+                        <div class="glass-card">
+                            <h3 style="margin-bottom:1rem;">💳 Metodi di Pagamento</h3>
+                            <form id="add-metodo-form" onsubmit="app.handleAddMetodo(event)" style="display:flex; gap:8px; margin-bottom:1rem;">
+                                <input type="text" id="new-metodo-input" class="form-control" placeholder="Es: Satispay..." required style="flex:1;">
+                                <button type="submit" class="btn btn-primary">+ Aggiungi</button>
+                            </form>
+                            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                                ${metodi.map(m => `
+                                    <div style="display:flex; align-items:center; gap:6px; background:rgba(59,130,246,0.1); padding:6px 12px; border-radius:20px; border:1px solid var(--primary);">
+                                        <span style="font-size:0.85rem;">${m}</span>
+                                        <button onclick="app.deleteMetodo('${m}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1rem; line-height:1;">×</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 4. Pacchetti e Quote -->
+                        <div class="glass-card">
+                            <h3 style="margin-bottom:1rem;">💶 Pacchetti Quote</h3>
+                            <button class="btn btn-primary" style="font-size:0.8rem; margin-bottom:1rem;" onclick="app.openAddPresetModal()">+ Nuovo Pacchetto</button>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun pacchetto quota.</p>' :
+                                presets.map(p => `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px;">
+                                        <div>
+                                            <div style="font-weight:600;">${p.nome}</div>
+                                            <div style="font-size:0.75rem; color:var(--text-muted);">€ ${parseFloat(p.importo).toFixed(2)} - ${p.note || ''}</div>
+                                        </div>
+                                        <button class="btn btn-outline text-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="app.deletePreset(${p.id})">🗑️</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 5. Sale e Spazi -->
+                        <div class="glass-card" style="grid-column: 1 / -1;">
+                            <h3 style="margin-bottom:1rem;">🏟️ Sale & Spazi</h3>
+                            <form id="add-sala-form" onsubmit="app.handleAddSala(event)" style="display:flex; gap:8px; margin-bottom:1rem;">
+                                <input type="text" id="new-sala-input" class="form-control" placeholder="Es: Sala Yoga, Area Esterna..." required style="flex:1;">
+                                <button type="submit" class="btn btn-primary" style="white-space:nowrap;">+ Aggiungi</button>
+                            </form>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                ${sale.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessuna sala definita.</p>' :
+                                sale.map(sala => `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; border:1px solid var(--border);">
+                                        <span>🏠 ${sala.nome}</span>
+                                        <button class="btn btn-outline text-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="app.deleteSala('${sala.id}')">🗑️</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+            this.updateLicenseUI();
+            this.cloudSync.updateUIStatus();
+        },
+
+        renderDatabase() {
+            if (this.state.currentPage === 'dati-organizzazione') {
+                this.renderDatiOrganizzazione();
+                return;
+            }
+            const main = document.getElementById('main-content');
+            const s = this.state.settings;
             main.innerHTML = `
                     <div class="page-content" style="overflow-y:auto;">
                         <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -6862,84 +6997,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </div>
                             </div>
 
-                            <!-- Direttivo -->
-                            <div class="glass-card" style="border-left: 4px solid var(--accent);">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                    <h3 style="margin:0;">👑 Consiglio Direttivo</h3>
-                                    <button class="btn btn-outline" style="font-size:0.75rem;" onclick="app.openDirettivoHistoryModal()">Storico</button>
-                                </div>
-                                
-                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:1rem;">
-                                    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
-                                        <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Presidente</div>
-                                        <div style="font-weight:600;">${(() => {
-                                            if (!s.presidente) return 'Non definito';
-                                            const socio = this.state.soci.find(x => x.id == s.presidente);
-                                            return socio ? `${socio.cognome} ${socio.nome}` : s.presidente;
-                                        })()}</div>
-                                    </div>
-                                    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
-                                        <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Vice Presidente</div>
-                                        <div style="font-weight:600;">${(() => {
-                                            if (!s.vice_presidente) return 'Non definito';
-                                            const socio = this.state.soci.find(x => x.id == s.vice_presidente);
-                                            return socio ? `${socio.cognome} ${socio.nome}` : s.vice_presidente;
-                                        })()}</div>
-                                    </div>
-                                    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
-                                        <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Segretario</div>
-                                        <div style="font-weight:600;">${(() => {
-                                            if (!s.segretario) return 'Non definito';
-                                            const socio = this.state.soci.find(x => x.id == s.segretario);
-                                            return socio ? `${socio.cognome} ${socio.nome}` : s.segretario;
-                                        })()}</div>
-                                    </div>
-                                    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
-                                        <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Consiglieri</div>
-                                        <div style="font-weight:600;">
-                                            ${(s.consiglieri || []).length > 0 
-                                                ? s.consiglieri.map(c => {
-                                                    const socio = this.state.soci.find(x => x.id == c);
-                                                    return socio ? `${socio.cognome} ${socio.nome}` : c;
-                                                }).join('<br>') 
-                                                : '<span style="color:var(--text-muted); font-weight:normal;">Nessun consigliere</span>'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <button class="btn btn-primary" style="width:100%;" onclick="app.openRinnovoDirettivoModal()">Rinnova / Modifica Direttivo</button>
-                            </div>
-
-                            <!-- Dati Associazione -->
-                            <div class="glass-card">
-                                <h3 style="margin-bottom:1rem;">🏢 Dati Associazione</h3>
-                                <div class="form-group"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName}" onchange="app.updateSetting('asdName', this.value)"></div>
-                                <div class="form-group"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
-                                <div class="form-group"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
-                            </div>
-
                             <!-- FS Access -->
                             <div class="glass-card" style="border-left: 4px solid #10b981;">
                                 <h3>📂 Cartella Output Documenti</h3>
                                 <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Seleziona la cartella dove salvare automaticamente i file PDF generati (es. "Gestione ASD/Output Documenti"). Verranno create sottocartelle per anno sportivo e categoria.</p>
                                 <button class="btn btn-outline" onclick="app.setupOutputFolder()" data-guide="Seleziona la cartella locale (es. Output Documenti) per salvare in automatico i PDF di ricevute, prima nota e verbali divisi in sottocartelle per anno sportivo.">Imposta Cartella / Richiedi Permesso</button>
-                            </div>
-
-                            <!-- Sale della Palestra -->
-                            <div class="glass-card">
-                                <h3 style="margin-bottom:1rem;">🏟️ Sale & Spazi</h3>
-                                <form id="add-sala-form" onsubmit="app.handleAddSala(event)" style="display:flex; gap:8px; margin-bottom:1rem;">
-                                    <input type="text" id="new-sala-input" class="form-control" placeholder="Es: Sala Yoga, Area Esterna..." required style="flex:1;">
-                                    <button type="submit" class="btn btn-primary" style="white-space:nowrap;">+ Aggiungi</button>
-                                </form>
-                                <div style="display:flex; flex-direction:column; gap:8px;">
-                                    ${sale.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessuna sala definita.</p>' :
-                    sale.map(sala => `
-                                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; border:1px solid var(--border);">
-                                            <span>🏠 ${sala.nome}</span>
-                                            <button class="btn btn-outline text-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="app.deleteSala('${sala.id}')">🗑️</button>
-                                        </div>
-                                    `).join('')}
-                                </div>
                             </div>
 
                             <!-- Guide e Supporto -->
@@ -6953,41 +7015,6 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                         ${this.state.guideMode ? '❌ Disattiva Modalità Guida' : '💡 Attiva Modalità Guida'}
                                     </button>
                                     <button class="btn btn-outline" onclick="app.showPage('guida')" data-guide="Consulta il manuale completo per scoprire tutte le funzionalità del gestionale.">📖 Apri Manuale Utente</button>
-                                </div>
-                            </div>
-
-                            <!-- Quote Presets -->
-                            <div class="glass-card">
-                                <h3 style="margin-bottom:1rem;">💶 Pacchetti Quote</h3>
-                                <button class="btn btn-primary" style="font-size:0.8rem; margin-bottom:1rem;" onclick="app.openAddPresetModal()">+ Nuovo Pacchetto</button>
-                                <div style="display:flex; flex-direction:column; gap:8px;">
-                                    ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun pacchetto quota.</p>' :
-                    presets.map(p => `
-                                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px;">
-                                            <div>
-                                                <div style="font-weight:600;">${p.nome}</div>
-                                                <div style="font-size:0.75rem; color:var(--text-muted);">€ ${parseFloat(p.importo).toFixed(2)} - ${p.note || ''}</div>
-                                            </div>
-                                            <button class="btn btn-outline text-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="app.deletePreset(${p.id})">🗑️</button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-
-                            <!-- Metodi di Pagamento -->
-                            <div class="glass-card">
-                                <h3 style="margin-bottom:1rem;">💳 Metodi di Pagamento</h3>
-                                <form id="add-metodo-form" onsubmit="app.handleAddMetodo(event)" style="display:flex; gap:8px; margin-bottom:1rem;">
-                                    <input type="text" id="new-metodo-input" class="form-control" placeholder="Es: Satispay..." required style="flex:1;">
-                                    <button type="submit" class="btn btn-primary">+ Aggiungi</button>
-                                </form>
-                                <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                                    ${metodi.map(m => `
-                                        <div style="display:flex; align-items:center; gap:6px; background:rgba(59,130,246,0.1); padding:6px 12px; border-radius:20px; border:1px solid var(--primary);">
-                                            <span style="font-size:0.85rem;">${m}</span>
-                                            <button onclick="app.deleteMetodo('${m}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1rem; line-height:1;">×</button>
-                                        </div>
-                                    `).join('')}
                                 </div>
                             </div>
 
