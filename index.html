@@ -1303,8 +1303,40 @@
     </div>
 
     <script>
+        // --- Versione Applicazione & Cache-Busting ---
+        const APP_VERSION = "2.4.0";
+
+        // Controllo versione e pulizia trasparente della cache degli asset all'avvio
+        async function checkAppVersionAndCache() {
+            try {
+                const savedVersion = localStorage.getItem('asd_app_version');
+                if (!savedVersion || savedVersion !== APP_VERSION) {
+                    console.log(`[Version Check] Rilevato cambio versione: da ${savedVersion || 'nessuna'} a ${APP_VERSION}`);
+                    
+                    // Pulizia sicura della sola Cache Storage degli asset (localStorage/sessionStorage/IndexedDB rimangono intatti!)
+                    if ('caches' in window) {
+                        const keyList = await caches.keys();
+                        await Promise.all(keyList.map(key => caches.delete(key)));
+                        console.log('[Version Check] Cache Storage asset svuotata con successo.');
+                    }
+                    
+                    localStorage.setItem('asd_app_version', APP_VERSION);
+                    
+                    // Se era presente una versione precedente, ricarica silenziosamente per applicare la nuova versione pulita
+                    if (savedVersion) {
+                        window.location.reload();
+                        return true;
+                    }
+                }
+            } catch (err) {
+                console.warn('[Version Check] Errore verifica versione:', err);
+            }
+            return false;
+        }
+
         // --- Core Application Logic ---
         const app = {
+            version: APP_VERSION,
             state: {
                 isDirty: false,
                 soci: [],
@@ -7049,7 +7081,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <div class="page-content" style="overflow-y:auto;">
                         <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
-                                <h1>⚙️ Impostazioni</h1>
+                                <h1>⚙️ Impostazioni <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 8px;">v${APP_VERSION}</span></h1>
                                 <p>Configura i dati della tua associazione.</p>
                             </div>
                             <div style="display:flex; gap:10px; flex-direction:column; align-items:flex-end;">
@@ -9565,20 +9597,43 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             }
         });
 
-        // Initialize app
+        // Initialize Service Worker & PWA Auto-Update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then(reg => {
                     console.log('PWA ServiceWorker registrato con successo.', reg.scope);
+                    
+                    // Forza il controllo immediato di aggiornamenti sul server
+                    reg.update().catch(() => {});
+
+                    // Se c'è già un worker in attesa, chiedigli di attivarsi subito
+                    if (reg.waiting) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+
+                    // Ascolta quando viene installato un nuovo Service Worker
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('[PWA] Nuova versione Service Worker installata. Richiedo skipWaiting...');
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        }
+                    });
                 }).catch(err => {
                     console.log('PWA ServiceWorker registrazione fallita:', err);
                 });
             });
-            // Forza il refresh quando si installa una nuova versione
+
+            // Ricarica automaticamente la pagina una sola volta quando il nuovo Service Worker prende il controllo
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
                     refreshing = true;
+                    console.log('[PWA] controllerchange intercettato: ricarico per applicare nuova versione...');
                     window.location.reload();
                 }
             });
@@ -9619,7 +9674,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             deferredPrompt = null;
         });
 
-        window.onload = () => {
+        window.onload = async () => {
+            const isReloading = await checkAppVersionAndCache();
+            if (isReloading) return; // Se sta ricaricando per nuova versione, non avviare la vecchia istanza
+
             app.init();
             
             // Sincronizza lo stato del pulsante schermo intero e della preferenza
