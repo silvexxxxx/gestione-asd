@@ -3878,8 +3878,8 @@ openAddRicevutaModal() {
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label>N. Ricevuta / Anno</label>
                                     <div style="display:flex; gap:0.5rem;">
-                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:60%" value="${lastNum + 1}" required readonly>
-                                        <select name="anno" class="form-control" style="width:45%" required>
+                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:50%; min-width:70px;" value="${lastNum + 1}" required readonly>
+                                        <select name="anno" class="form-control" style="width:50%; min-width:95px;" required>
                                             ${[currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${app.formatAnno(y)}</option>`).join('')}
                                         </select>
                                     </div>
