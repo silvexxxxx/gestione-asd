@@ -3805,7 +3805,7 @@ closeModal() {
                 items[index].scrollIntoView({ block: "nearest" });
             }
         },
-        filterSociDropdown(val, searchId='receipt-socio-search', listId='soci-autocomplete-list', hiddenId='receipt-socio-id') {
+        filterSociDropdown(val, searchId='receipt-socio-search', listId='soci-autocomplete-list', hiddenId='receipt-socio-id', previewId='receipt-socio-preview') {
             const list = document.getElementById(listId);
             if (!list) return;
             
@@ -3825,7 +3825,7 @@ closeModal() {
                 return `<div class="autocomplete-item" style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main);" 
                         onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
                         onmouseout="this.style.background='transparent'" 
-                        onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; app.updateReceiptSocioInfo('${s.id}'); document.getElementById('${listId}').style.display='none';">
+                        onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; app.updateReceiptSocioInfo('${s.id}', '${previewId}'); document.getElementById('${listId}').style.display='none';">
                         ${s.cognome} ${s.nome}
                         </div>`;
             }).join('');
@@ -3980,13 +3980,15 @@ openAddRicevutaModal() {
             this.toast(`Applicato pacchetto: ${p.nome}`);
         },
 
-        updateReceiptSocioInfo(val) {
-            const preview = document.getElementById('receipt-socio-preview');
+        updateReceiptSocioInfo(val, previewId = 'receipt-socio-preview') {
+            const preview = document.getElementById(previewId);
+            if (!preview) return;
             if (!val) {
                 preview.style.display = 'none';
                 return;
             }
             const s = this.state.soci.find(x => x.id == val);
+            if (!s) return;
             preview.style.display = 'block';
             preview.innerHTML = `
                 <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
@@ -6129,6 +6131,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             const decryptedScript = new TextDecoder().decode(decryptedBuffer);
                             const runScript = new Function('app', decryptedScript);
                             runScript(this);
+                            this.overrideAutoCompile();
                             
                             this.state.debugMode = true;
                             this.toast("Modalità Debug Attivata: Moduli Segreti Decriptati!", "success");
@@ -6152,6 +6155,453 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             }
             this.saveAll();
             this.renderDatabase();
+        },
+
+        overrideAutoCompile() {
+            // override the decrypted functions with our updated versions
+            app.openAutoCompileModal = function() {
+                const now = new Date();
+                const currentMonth = now.getMonth() + 1;
+                const currentYear = now.getFullYear();
+                
+                // Initialize temporary storage for manual receipts in this session
+                app.state.tempAutoCompileReceipts = [];
+
+                app.openModal('🔧 Compilazione Automatica Ricevute', `
+                    <div style="background: rgba(139, 92, 246, 0.05); padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid rgba(139, 92, 246, 0.2);">
+                        <p style="font-size: 0.85rem; margin:0;">Questo strumento genera automaticamente ricevute per far quadrare i conti del mese selezionato. Rispetta la validità delle quote esistenti ed esclude i soci con pagamenti in corso. È possibile pre-inserire ricevute manuali con date reali.</p>
+                    </div>
+                    
+                    <div class="receipt-form-grid" style="align-items: start;">
+                        <!-- Left Column: Auto-compile Parameters -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <form id="auto-compile-form" onsubmit="app.runAutoCompile(event)">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label>Mese di Riferimento</label>
+                                        <select name="mese" class="form-control" onchange="app.updateAutoCompileDateDefault()">
+                                            ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${i + 1 === currentMonth ? 'selected' : ''}>${new Date(2026, i).toLocaleString('it-IT', { month: 'long' })}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Anno</label>
+                                        <input type="number" name="anno" class="form-control" value="${currentYear}" onchange="app.updateAutoCompileDateDefault()" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Importo Target da raggiungere (€)</label>
+                                        <input type="number" name="targetAmount" class="form-control" value="1500" step="50" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Importo Singola Quota (€)</label>
+                                        <input type="number" name="quotaAmount" class="form-control" value="50" step="5" required>
+                                    </div>
+                                    <div class="form-group" style="grid-column: span 2;">
+                                        <label>Metodo di Pagamento Base</label>
+                                        <select name="metodo" class="form-control">
+                                            ${app.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                                    <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                                    <button type="submit" class="btn btn-warning">⚡ Avvia Compilazione</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Right Column: Manual Receipts Pre-insertion -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="glass-card" style="margin: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card);">
+                                <h4 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>📋 Ricevute Manuali Pre-Inserite</span>
+                                    <button type="button" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="app.toggleAutoCompileManualForm(true)">➕ Aggiungi</button>
+                                </h4>
+                                
+                                <div id="autoconf-manual-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 5px; margin-bottom: 0.75rem; background: rgba(0,0,0,0.05);">
+                                    <p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 10px 0;">Nessuna ricevuta manuale pre-inserita.</p>
+                                </div>
+                                
+                                <!-- Inline Manual Receipt Form (amber theme) -->
+                                <div id="autoconf-manual-form" style="display: none; background: rgba(245, 158, 11, 0.05); border: 2px dashed var(--warning); border-radius: 10px; padding: 1rem; margin-top: 0.5rem; flex-direction: column; gap: 0.75rem;">
+                                    <h5 style="margin: 0; color: var(--warning); font-size: 0.9rem;">Nuova Ricevuta Manuale (Assistita)</h5>
+                                    
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.8rem;">Destinatario (Socio)</label>
+                                        <div style="position:relative;">
+                                            <input type="text" id="automanual-socio-search" class="form-control" placeholder="Cerca socio..." autocomplete="off" 
+                                                oninput="app.filterSociDropdown(this.value, 'automanual-socio-search', 'automanual-autocomplete-list', 'automanual-socio-id', 'automanual-socio-preview')" 
+                                                onfocus="app.filterSociDropdown(this.value, 'automanual-socio-search', 'automanual-autocomplete-list', 'automanual-socio-id', 'automanual-socio-preview')"
+                                                onkeydown="app.handleAutocompleteKeydown(event, 'automanual-autocomplete-list', 'automanual-socio-search', 'automanual-socio-id')" 
+                                                onblur="setTimeout(()=> { const l = document.getElementById('automanual-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required>
+                                            <input type="hidden" id="automanual-socio-id">
+                                            <div id="automanual-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                                        </div>
+                                        <div id="automanual-socio-preview" style="display:none; margin-top:8px; font-size:0.8rem; padding:6px; background:rgba(59, 130, 246, 0.1); border-radius:4px; border-left:3px solid #3b82f6; color:var(--text-main);"></div>
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 0.8rem;">Data Emissione</label>
+                                            <input type="date" id="automanual-data" class="form-control">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 0.8rem;">Importo (€)</label>
+                                            <input type="number" step="0.01" id="automanual-importo" class="form-control" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.8rem;">Metodo di Pagamento</label>
+                                        <select id="automanual-metodo" class="form-control">
+                                            ${app.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem;">
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 0.8rem;">Note Causale (Opzionale)</label>
+                                            <input type="text" id="automanual-note" class="form-control" placeholder="Causale">
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 0.8rem;">Durata Quota</label>
+                                            <select id="automanual-durata" class="form-control">
+                                                <option value="">Nessuno</option>
+                                                <option value="1" selected>1 Mese</option>
+                                                <option value="2">2 Mesi</option>
+                                                <option value="3">3 Mesi</option>
+                                                <option value="6">6 Mesi</option>
+                                                <option value="12">12 Mesi</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.25rem;">
+                                        <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="app.toggleAutoCompileManualForm(false)">Annulla</button>
+                                        <button type="button" class="btn btn-warning" style="padding: 4px 8px; font-size: 0.8rem;" onclick="app.addAutoCompileManualReceipt()">Aggiungi</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                
+                document.getElementById('modal-content').classList.add('modal-wide');
+                app.updateAutoCompileDateDefault();
+            };
+
+            app.updateAutoCompileDateDefault = function() {
+                const form = document.getElementById('auto-compile-form');
+                if (!form) return;
+                const mese = form.elements['mese'].value;
+                const anno = form.elements['anno'].value;
+                
+                // Imposta la data di default della ricevuta manuale al primo giorno di quel mese
+                const manualDateInput = document.getElementById('automanual-data');
+                if (manualDateInput) {
+                    manualDateInput.value = `${anno}-${String(mese).padStart(2, '0')}-01`;
+                }
+            };
+
+            app.toggleAutoCompileManualForm = function(show) {
+                const formDiv = document.getElementById('autoconf-manual-form');
+                if (formDiv) formDiv.style.display = show ? 'flex' : 'none';
+                if (!show) {
+                    document.getElementById('automanual-socio-search').value = '';
+                    document.getElementById('automanual-socio-id').value = '';
+                    document.getElementById('automanual-socio-preview').style.display = 'none';
+                    document.getElementById('automanual-importo').value = '';
+                    document.getElementById('automanual-note').value = '';
+                }
+            };
+
+            app.addAutoCompileManualReceipt = function() {
+                const socioId = document.getElementById('automanual-socio-id').value;
+                const dataEmissione = document.getElementById('automanual-data').value;
+                const importo = parseFloat(document.getElementById('automanual-importo').value);
+                const metodo = document.getElementById('automanual-metodo').value;
+                const note = document.getElementById('automanual-note').value;
+                const durata = document.getElementById('automanual-durata').value;
+                
+                if (!socioId) {
+                    app.toast("Seleziona un socio valido!", "danger");
+                    return;
+                }
+                if (!dataEmissione) {
+                    app.toast("Seleziona una data di emissione!", "danger");
+                    return;
+                }
+                if (isNaN(importo) || importo <= 0) {
+                    app.toast("Inserisci un importo maggiore di zero!", "danger");
+                    return;
+                }
+                
+                // Controllo overlap della quota in corso per questo socio
+                const hasOverlap = app.state.tempAutoCompileReceipts.some(r => r.socioId == socioId && app.checkReceiptOverlap(r.data, dataEmissione)) ||
+                                    app.state.ricevute.some(r => r.socio_id == socioId && !r.annullata && app.checkReceiptOverlap(r.data, dataEmissione));
+                
+                if (hasOverlap) {
+                    app.toast("Attenzione: il socio ha già una quota attiva/in corso che si sovrappone a questa data!", "warning");
+                    return;
+                }
+                
+                const socio = app.state.soci.find(s => s.id == socioId);
+                const newReceipt = {
+                    id: Date.now() + Math.random(),
+                    socioId: socioId,
+                    socioNome: socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto',
+                    data: dataEmissione,
+                    importo: importo,
+                    metodo: metodo,
+                    note: note || "Quota Mensile / Corso Sportivo",
+                    durata: durata ? parseInt(durata) : null
+                };
+                
+                app.state.tempAutoCompileReceipts.push(newReceipt);
+                app.renderAutoCompileManualList();
+                app.toggleAutoCompileManualForm(false);
+                app.toast("Ricevuta manuale aggiunta alla lista temporanea.", "success");
+            };
+
+            app.renderAutoCompileManualList = function() {
+                const listDiv = document.getElementById('autoconf-manual-list');
+                if (!listDiv) return;
+                
+                const list = app.state.tempAutoCompileReceipts;
+                if (list.length === 0) {
+                    listDiv.innerHTML = `<p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 10px 0;">Nessuna ricevuta manuale pre-inserita.</p>`;
+                    return;
+                }
+                
+                listDiv.innerHTML = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                <th style="padding: 4px;">Socio</th>
+                                <th style="padding: 4px;">Data</th>
+                                <th style="padding: 4px;">Importo</th>
+                                <th style="padding: 4px; text-align: right;">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${list.map((r, index) => `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 4px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.socioNome}</td>
+                                    <td style="padding: 4px;">${app.formatDate(r.data)}</td>
+                                    <td style="padding: 4px; font-weight: bold;">€${r.importo.toFixed(2)}</td>
+                                    <td style="padding: 4px; text-align: right;">
+                                        <button type="button" class="btn btn-outline text-danger" style="padding: 2px 6px; font-size: 0.75rem;" onclick="app.removeAutoCompileManualReceipt(${index})">🗑️</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            };
+
+            app.removeAutoCompileManualReceipt = function(index) {
+                app.state.tempAutoCompileReceipts.splice(index, 1);
+                app.renderAutoCompileManualList();
+                app.toast("Ricevuta manuale rimossa.", "info");
+            };
+
+            app.checkReceiptOverlap = function(dateStr1, dateStr2) {
+                const d1 = new Date(dateStr1);
+                const d2 = new Date(dateStr2);
+                if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+                
+                const getEnd = (d) => {
+                    const end = new Date(d);
+                    end.setMonth(end.getMonth() + 1);
+                    return end;
+                };
+                
+                const start1 = d1.getTime();
+                const end1 = getEnd(d1).getTime();
+                
+                const start2 = d2.getTime();
+                const end2 = getEnd(d2).getTime();
+                
+                return (end1 >= start2 && end2 >= start1);
+            };
+
+            app.getEligibleDaysInMonth = function(socioId, month, year, existingReceipts, pendingReceipts) {
+                const maxDays = new Date(year, month, 0).getDate();
+                const eligibleDays = [];
+                
+                const memberReceipts = [
+                    ...existingReceipts.filter(r => r.socio_id == socioId && !r.annullata),
+                    ...pendingReceipts.filter(r => r.socioId == socioId)
+                ];
+                
+                for (let day = 1; day <= maxDays; day++) {
+                    const proposedDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    let hasOverlap = false;
+                    for (const r of memberReceipts) {
+                        if (app.checkReceiptOverlap(r.data, proposedDateStr)) {
+                            hasOverlap = true;
+                            break;
+                        }
+                    }
+                    if (!hasOverlap) {
+                        eligibleDays.push(day);
+                    }
+                }
+                return eligibleDays;
+            };
+
+            app.runAutoCompile = function(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                const mese = parseInt(data.mese);
+                const anno = parseInt(data.anno);
+                const targetAmount = parseFloat(data.targetAmount);
+                const quotaAmount = parseFloat(data.quotaAmount);
+                const metodo = data.metodo;
+                
+                // 1. Calcola importo manuale già inserito
+                const manualTotal = app.state.tempAutoCompileReceipts.reduce((sum, r) => sum + r.importo, 0);
+                const remainingTarget = targetAmount - manualTotal;
+                
+                let countAutogenerated = 0;
+                let countManual = 0;
+                const batchReceipts = [];
+                
+                // Mappa temporanea delle quote per evitare sovrapposizioni nella generazione in batch
+                const pendingReceipts = [...app.state.tempAutoCompileReceipts];
+                
+                if (remainingTarget > 0) {
+                    const numRicevute = Math.ceil(remainingTarget / quotaAmount);
+                    
+                    // Trova i soci idonei (esclusi cessati, con almeno un giorno libero nel mese/anno target)
+                    const eligibleSoci = app.state.soci.filter(s => s.stato !== 'CESSATO').map(s => {
+                        const eligibleDays = app.getEligibleDaysInMonth(s.id, mese, anno, app.state.ricevute, pendingReceipts);
+                        return {
+                            socio: s,
+                            eligibleDays: eligibleDays,
+                            isActive: app.isActiveMember(s)
+                        };
+                    }).filter(item => item.eligibleDays.length > 0);
+                    
+                    // Ordina prioritariamente per soci attivi
+                    eligibleSoci.sort((a, b) => {
+                        const aActive = a.isActive ? 1 : 0;
+                        const bActive = b.isActive ? 1 : 0;
+                        return bActive - aActive;
+                    });
+                    
+                    if (numRicevute > eligibleSoci.length) {
+                        app.toast(`Attenzione: l'importo target richiede ${numRicevute} ricevute, ma ci sono solo ${eligibleSoci.length} soci disponibili/idonei senza sovrapposizioni!`, "danger");
+                        return;
+                    }
+                    
+                    const sociSelezionati = eligibleSoci.slice(0, numRicevute);
+                    
+                    sociSelezionati.forEach(item => {
+                        const socio = item.socio;
+                        // Scegli un giorno a caso tra quelli disponibili
+                        const randomDayIndex = Math.floor(Math.random() * item.eligibleDays.length);
+                        const day = item.eligibleDays[randomDayIndex];
+                        const dataEmissione = `${anno}-${String(mese).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        
+                        const newReceipt = {
+                            id: Date.now() + Math.random(),
+                            socio_id: socio.id,
+                            socio_nome: `${socio.cognome} ${socio.nome}`,
+                            importo: quotaAmount,
+                            data: dataEmissione,
+                            tipo: "Quota Mensile / Corso Sportivo",
+                            pagamento: metodo,
+                            metodo_pagamento: metodo,
+                            commissioni: 0,
+                            note: "Quota Mensile / Corso Sportivo (Autogenerata)",
+                            quota: quotaAmount,
+                            tess: undefined,
+                            cartacea: undefined,
+                            durata: 1 // Autogenerated quota covers 1 month
+                        };
+                        
+                        batchReceipts.push(newReceipt);
+                        pendingReceipts.push({
+                            socioId: socio.id,
+                            data: dataEmissione,
+                            importo: quotaAmount
+                        });
+                        countAutogenerated++;
+                    });
+                }
+                
+                // Aggiungi le ricevute manuali al batch finale
+                app.state.tempAutoCompileReceipts.forEach(r => {
+                    const socio = app.state.soci.find(s => s.id == r.socioId);
+                    const newReceipt = {
+                        id: r.id,
+                        socio_id: r.socioId,
+                        socio_nome: r.socioNome,
+                        importo: r.importo,
+                        data: r.data,
+                        tipo: r.note || "Quota Mensile / Corso Sportivo",
+                        pagamento: r.metodo,
+                        metodo_pagamento: r.metodo,
+                        commissioni: 0,
+                        note: r.note || '',
+                        quota: r.importo,
+                        tess: undefined,
+                        cartacea: undefined,
+                        durata: r.durata
+                    };
+                    batchReceipts.push(newReceipt);
+                    countManual++;
+                });
+                
+                if (batchReceipts.length === 0) {
+                    app.toast("Nessuna ricevuta da generare.", "warning");
+                    return;
+                }
+                
+                // Ordina tutte le ricevute del batch per data prima di assegnare la numerazione progressiva
+                batchReceipts.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+                
+                // Determina la numerazione iniziale per l'anno di riferimento
+                let lastNum = app.state.ricevute.filter(r => r.anno === anno).reduce((max, r) => Math.max(max, r.numero), 0);
+                
+                // Assegna i numeri sequenziali ed esegui i salvataggi
+                batchReceipts.forEach(receipt => {
+                    lastNum++;
+                    receipt.numero = lastNum;
+                    receipt.anno = anno;
+                    
+                    // Salva la ricevuta nel database
+                    app.state.ricevute.push(receipt);
+                    
+                    // Aggiorna validità quota del socio se indicata la durata
+                    if (receipt.durata) {
+                        const socio = app.state.soci.find(s => s.id == receipt.socio_id);
+                        if (socio) {
+                            const dataInizio = receipt.data;
+                            const date = new Date(dataInizio);
+                            date.setMonth(date.getMonth() + receipt.durata);
+                            socio.quota_scadenza = date.toISOString().split('T')[0];
+                        }
+                    }
+                    
+                    // Rimuovi parametro temporaneo durata prima di salvare
+                    delete receipt.durata;
+                    
+                    // Sincronizza in Prima Nota
+                    app.syncPrimaNotaFromRicevuta(receipt);
+                });
+                
+                app.saveAll();
+                app.closeModal();
+                app.toast(`Compilazione completata: generate ${countAutogenerated} ricevute automatiche e ${countManual} manuali per il ${mese}/${anno}.`, "success");
+                if (document.getElementById('ricevute-tbody')) app.renderRicevute();
+            };
+            
+            // Inizializza il debugUI se siamo in debugMode
+            if (app.state.debugMode) {
+                app.state.debugUI = `<button class="btn btn-warning" style="margin-left:10px;" onclick="app.openAutoCompileModal()">🔧 Compila Ricevute Auto</button>`;
+            }
         },
 
         deleteIstruttore(id) {
