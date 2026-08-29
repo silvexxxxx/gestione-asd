@@ -1163,6 +1163,51 @@
             }
         }
 
+    
+        /* PWA Install Button */
+        #pwa-install-btn {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 22px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #pwa-install-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+        }
+        #pwa-install-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+        .mobile-desktop-mode #pwa-install-btn {
+            bottom: 28px !important;
+            right: 28px !important;
+            padding: 14px 26px !important;
+            font-size: 18px !important;
+        }
+        .mobile-desktop-mode #pwa-install-btn svg {
+            width: 24px !important;
+            height: 24px !important;
+        }
+        @media print {
+            #pwa-install-btn {
+                display: none !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -9639,40 +9684,103 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             });
         }
 
-        let deferredPrompt;
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+        // ============================================================
+        // PWA INSTALLATION MANAGEMENT & PROMPT
+        // ============================================================
+        let deferredPrompt = null;
 
+        function isAppInStandaloneMode() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true ||
+                   document.referrer.includes('android-app://');
+        }
+
+        function updatePwaInstallButton() {
+            const installBtn = document.getElementById('pwa-install-btn');
+            if (!installBtn) return;
+
+            // Se l'app è già in esecuzione in modalità standalone/installata, nascondi il pulsante
+            if (isAppInStandaloneMode()) {
+                installBtn.style.display = 'none';
+            } else {
+                installBtn.style.display = 'flex';
+            }
+        }
+
+        // Ascolto evento nativo per installazione immediata (Chrome, Edge, Android)
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            const installBtn = document.getElementById('pwa-install-btn');
-            if (!isLocalhost && installBtn) {
-                installBtn.style.display = 'flex';
-            }
+            console.log('[PWA] beforeinstallprompt pronto per installazione');
+            updatePwaInstallButton();
         });
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const installBtn = document.getElementById('pwa-install-btn');
-            if (installBtn) {
-                installBtn.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        if (outcome === 'accepted') {
-                            console.log('App installata');
-                        }
-                        deferredPrompt = null;
-                        installBtn.style.display = 'none';
-                    }
-                });
-            }
-        });
-
+        // Ascolto evento installazione completata
         window.addEventListener('appinstalled', () => {
+            console.log('[PWA] Applicazione installata con successo');
             const installBtn = document.getElementById('pwa-install-btn');
             if (installBtn) installBtn.style.display = 'none';
             deferredPrompt = null;
         });
+
+        // Monitoraggio cambio dinamico stato standalone
+        try {
+            window.matchMedia('(display-mode: standalone)').addEventListener('change', () => {
+                updatePwaInstallButton();
+            });
+        } catch (err) {}
+
+        // Inizializzazione visibilità pulsante al caricamento
+        window.addEventListener('DOMContentLoaded', updatePwaInstallButton);
+
+        // Gestione click su pulsante Installa App
+        async function handlePwaInstallClick() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('[PWA] Esito installazione utente:', outcome);
+                if (outcome === 'accepted') {
+                    const installBtn = document.getElementById('pwa-install-btn');
+                    if (installBtn) installBtn.style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else {
+                // Guida all'installazione se il prompt nativo è bloccato o non supportato (es. iOS Safari / iPad)
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                let instructions = '';
+                if (isIOS) {
+                    instructions = `
+                        <div style="text-align: left; padding: 10px 5px; line-height: 1.6;">
+                            <p style="margin-bottom: 12px; font-size: 1rem;">Per installare l'app su <strong>iPhone o iPad</strong>:</p>
+                            <ol style="margin-left: 20px; margin-bottom: 16px; font-size: 0.95rem;">
+                                <li style="margin-bottom: 10px;">Tocca l'icona <strong>Condividi</strong> <span style="font-size: 1.2rem;">⎋</span> (quadrato con freccia verso l'alto) nella barra di Safari.</li>
+                                <li style="margin-bottom: 10px;">Scorri verso il basso e seleziona <strong>"Aggiungi alla schermata Home"</strong> ➕.</li>
+                                <li>Tocca <strong>"Aggiungi"</strong> in alto a destra per confermare.</li>
+                            </ol>
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">L'app verrà installata e sarà utilizzabile a schermo intero anche senza connessione internet.</p>
+                        </div>
+                    `;
+                } else {
+                    instructions = `
+                        <div style="text-align: left; padding: 10px 5px; line-height: 1.6;">
+                            <p style="margin-bottom: 12px; font-size: 1rem;">Per installare l'app sul tuo dispositivo:</p>
+                            <ol style="margin-left: 20px; margin-bottom: 16px; font-size: 0.95rem;">
+                                <li style="margin-bottom: 10px;">Apri il menu del browser (icona con <strong>tre puntini</strong> ⋮ in alto a destra).</li>
+                                <li style="margin-bottom: 10px;">Seleziona <strong>"Installa Gestionale ASD"</strong> oppure <strong>"Aggiungi a schermata Home"</strong>.</li>
+                                <li>Conferma l'installazione quando richiesto dal browser.</li>
+                            </ol>
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">In alternativa, cerca l'icona del monitor/computer con la freccia 🖵 nella barra degli indirizzi in alto a destra.</p>
+                        </div>
+                    `;
+                }
+
+                if (typeof app !== 'undefined' && app.openModal) {
+                    app.openModal('📲 Come Installare l\'Applicazione', instructions);
+                } else {
+                    alert("Per installare l'applicazione, apri il menu del tuo browser e seleziona 'Aggiungi a schermata Home' o 'Installa App'.");
+                }
+            }
+        }
 
         window.onload = async () => {
             const isReloading = await checkAppVersionAndCache();
@@ -9921,9 +10029,9 @@ document.addEventListener('click', (e) => {
     }
 });
 </script>
-<button id="pwa-install-btn" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; background-color: #10b981; color: white; border: none; border-radius: 50px; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); align-items: center; gap: 8px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        Installa App
+<button id="pwa-install-btn" onclick="handlePwaInstallClick()" title="Installa Gestionale ASD sul tuo dispositivo" style="display: none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Installa App</span>
     </button>
 
 
