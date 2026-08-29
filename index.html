@@ -3371,23 +3371,39 @@ closeModal() {
                 // Ordinamento personalizzato
                 const { key, direction } = this.state.sortConfig;
                 filtered.sort((a, b) => {
-                    let valA = a[key] || "";
-                    let valB = b[key] || "";
+                    let valA = a[key];
+                    let valB = b[key];
 
-                    // Gestione date
-                    if (key.includes('scadenza') || key === 'data_nascita' || key === 'inizio') {
-                        const dateA = valA ? new Date(valA).getTime() : 0;
-                        const dateB = valB ? new Date(valB).getTime() : 0;
-                        valA = isNaN(dateA) ? 0 : dateA;
-                        valB = isNaN(dateB) ? 0 : dateB;
+                    const isDateKey = key.includes('scadenza') || key === 'data_nascita' || key === 'inizio';
+                    if (isDateKey) {
+                        // Sposta i valori vuoti o non inseriti in fondo alla lista
+                        if (!valA && !valB) return 0;
+                        if (!valA) return 1;
+                        if (!valB) return -1;
+                        
+                        const dateA = new Date(valA).getTime();
+                        const dateB = new Date(valB).getTime();
+                        const timeA = isNaN(dateA) ? 0 : dateA;
+                        const timeB = isNaN(dateB) ? 0 : dateB;
+                        
+                        if (timeA === 0 && timeB === 0) return 0;
+                        if (timeA === 0) return 1;
+                        if (timeB === 0) return -1;
+
+                        if (timeA < timeB) return direction === 'asc' ? -1 : 1;
+                        if (timeA > timeB) return direction === 'asc' ? 1 : -1;
+                        return 0;
                     } else {
-                        valA = valA.toString().toLowerCase();
-                        valB = valB.toString().toLowerCase();
+                        // Ordinamento standard di stringhe/altri campi (i vuoti vanno in fondo)
+                        const strA = (valA || "").toString().toLowerCase();
+                        const strB = (valB || "").toString().toLowerCase();
+                        if (strA === strB) return 0;
+                        if (strA === "") return 1;
+                        if (strB === "") return -1;
+                        if (strA < strB) return direction === 'asc' ? -1 : 1;
+                        if (strA > strB) return direction === 'asc' ? 1 : -1;
+                        return 0;
                     }
-
-                    if (valA < valB) return direction === 'asc' ? -1 : 1;
-                    if (valA > valB) return direction === 'asc' ? 1 : -1;
-                    return 0;
                 });
 
                 const tbody = document.getElementById('soci-tbody');
