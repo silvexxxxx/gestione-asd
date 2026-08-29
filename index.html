@@ -3813,8 +3813,11 @@ closeModal() {
             const soci = this.state.soci;
             
             const filtered = soci.filter(s => {
-                const fullName = (s.cognome + ' ' + s.nome).toLowerCase();
-                return fullName.includes((val||'').toLowerCase());
+                if (!val) return true;
+                const queryParts = val.toLowerCase().trim().split(/\s+/);
+                const cognome = (s.cognome || '').toLowerCase();
+                const nome = (s.nome || '').toLowerCase();
+                return queryParts.every(part => cognome.includes(part) || nome.includes(part));
             });
             
             list.innerHTML = filtered.map(s => {
