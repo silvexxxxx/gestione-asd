@@ -1949,66 +1949,78 @@
 
             openRinnovoDirettivoModal() {
                 const s = this.state.settings;
-                const getSocioOptions = (selectedVal) => {
-                    let isCustom = selectedVal && !this.state.soci.find(socio => socio.id == selectedVal);
-                    let opts = `<option value="">- Seleziona dal DB -</option>`;
-                    if (isCustom) {
-                        opts += `<option value="${selectedVal}" selected>${selectedVal} (Inserimento Manuale)</option>`;
+                
+                const renderAutocompleteField = (name, label, selectedVal, isRequired = false) => {
+                    const uniqueId = `dir-${name}`;
+                    let displayName = '';
+                    let valId = '';
+                    
+                    if (selectedVal) {
+                        const socio = this.state.soci.find(x => x.id == selectedVal);
+                        if (socio) {
+                            displayName = `${socio.cognome} ${socio.nome}`;
+                            valId = socio.id;
+                        } else {
+                            displayName = selectedVal; // Preserva il vecchio valore testuale manuale
+                            valId = selectedVal;
+                        }
                     }
-                    const sortedSoci = [...this.state.soci].sort((a, b) => {
-                        const nameA = `${a.cognome || ''} ${a.nome || ''}`.toLowerCase();
-                        const nameB = `${b.cognome || ''} ${b.nome || ''}`.toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-                    opts += sortedSoci.map(socio => 
-                        `<option value="${socio.id}" ${socio.id == selectedVal ? 'selected' : ''}>${socio.cognome || ''} ${socio.nome || ''} (${socio.cf || ''})</option>`
-                    ).join('');
-                    return opts;
+                    
+                    return `
+                        <div class="form-group" style="position:relative; margin-bottom: 1rem;">
+                            <label>${label} ${isRequired ? '<span class="text-danger">*</span>' : ''}</label>
+                            <div style="position:relative;">
+                                <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio per cognome o nome..." autocomplete="off" value="${displayName}"
+                                    oninput="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')" 
+                                    onfocus="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')"
+                                    onkeydown="app.handleAutocompleteKeydown(event, '${uniqueId}-list', '${uniqueId}-search', '${uniqueId}-id')" 
+                                    onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)" ${isRequired ? 'required' : ''}>
+                                <input type="hidden" name="${name}" id="${uniqueId}-id" value="${valId}">
+                                <div id="${uniqueId}-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                            </div>
+                        </div>
+                    `;
                 };
 
                 const consiglieri = s.consiglieri || [];
                 let consiglieriHtml = '';
                 consiglieri.forEach((c, idx) => {
+                    const uniqueId = `dir-cons-${idx}`;
+                    let displayName = '';
+                    let valId = '';
+                    
+                    if (c) {
+                        const socio = this.state.soci.find(x => x.id == c);
+                        if (socio) {
+                            displayName = `${socio.cognome} ${socio.nome}`;
+                            valId = socio.id;
+                        } else {
+                            displayName = c;
+                            valId = c;
+                        }
+                    }
+                    
                     consiglieriHtml += `
-                        <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center;">
-                            <select name="consiglieri[]" class="form-control" style="flex:1;">
-                                ${getSocioOptions(c)}
-                            </select>
-                            <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️</button>
-                            <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>
+                        <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center; position:relative; margin-bottom: 0.75rem;">
+                            <div style="position:relative; flex:1;">
+                                <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio consigliere..." autocomplete="off" value="${displayName}"
+                                    oninput="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')" 
+                                    onfocus="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')"
+                                    onkeydown="app.handleAutocompleteKeydown(event, '${uniqueId}-list', '${uniqueId}-search', '${uniqueId}-id')" 
+                                    onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)">
+                                <input type="hidden" name="consiglieri[]" id="${uniqueId}-id" value="${valId}">
+                                <div id="${uniqueId}-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                            </div>
+                            <button type="button" class="btn btn-outline text-danger" style="padding:8px 12px;" onclick="this.parentElement.remove()">✕</button>
                         </div>
                     `;
                 });
 
                 this.openModal('Rinnovo / Modifica Direttivo', `
                     <form id="direttivo-form" onsubmit="app.saveNuovoDirettivo(event)">
-                        <div class="form-group">
-                            <label>Presidente</label>
-                            <div style="display:flex; gap:8px;">
-                                <select name="presidente" class="form-control" style="flex:1;" required>
-                                    ${getSocioOptions(s.presidente)}
-                                </select>
-                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Vice Presidente</label>
-                            <div style="display:flex; gap:8px;">
-                                <select name="vice_presidente" class="form-control" style="flex:1;">
-                                    ${getSocioOptions(s.vice_presidente)}
-                                </select>
-                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Segretario</label>
-                            <div style="display:flex; gap:8px;">
-                                <select name="segretario" class="form-control" style="flex:1;">
-                                    ${getSocioOptions(s.segretario)}
-                                </select>
-                                <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️ Manuale</button>
-                            </div>
-                        </div>
+                        ${renderAutocompleteField('presidente', 'Presidente', s.presidente, true)}
+                        ${renderAutocompleteField('vice_presidente', 'Vice Presidente', s.vice_presidente, false)}
+                        ${renderAutocompleteField('segretario', 'Segretario', s.segretario, false)}
                         
                         <hr style="border:none; border-top:1px solid var(--border); margin:1rem 0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -2029,57 +2041,109 @@
                     </form>
                 `);
             },
-            switchToManualInput(btn) {
-                const select = btn.previousElementSibling;
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.name = select.name;
-                input.className = 'form-control';
-                input.style.flex = '1';
-                input.placeholder = 'Inserisci nome manuale...';
-                
-                // Se c'era un valore selezionato e non era vuoto, lo mettiamo
-                if (select.value) {
-                    const selectedOpt = select.options[select.selectedIndex];
-                    // Estrae solo il nome (toglie il CF tra parentesi se presente)
-                    let text = selectedOpt.text;
-                    if (text.includes(' (')) text = text.split(' (')[0];
-                    input.value = text;
-                }
-                if (select.hasAttribute('required')) input.setAttribute('required', 'true');
-                
-                select.parentNode.insertBefore(input, select);
-                select.remove();
-                btn.remove();
-            },
 
             addConsigliereField() {
                 const container = document.getElementById('consiglieri-container');
-                const getSocioOptions = () => {
-                    let opts = `<option value="">- Seleziona dal DB -</option>`;
-                    const sortedSoci = [...this.state.soci].sort((a, b) => {
-                        const nameA = `${a.cognome || ''} ${a.nome || ''}`.toLowerCase();
-                        const nameB = `${b.cognome || ''} ${b.nome || ''}`.toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-                    opts += sortedSoci.map(socio => 
-                        `<option value="${socio.id}">${socio.cognome || ''} ${socio.nome || ''} (${socio.cf || ''})</option>`
-                    ).join('');
-                    return opts;
-                };
+                const uniqueNum = Date.now() + Math.floor(Math.random() * 1000);
+                const uniqueId = `dir-cons-${uniqueNum}`;
+                
                 container.insertAdjacentHTML('beforeend', `
-                    <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center;">
-                        <select name="consiglieri[]" class="form-control" style="flex:1;">
-                            ${getSocioOptions()}
-                        </select>
-                        <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="app.switchToManualInput(this)" title="Inserimento manuale">✏️</button>
-                        <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>
+                    <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center; position:relative; margin-bottom: 0.75rem;">
+                        <div style="position:relative; flex:1;">
+                            <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio consigliere..." autocomplete="off"
+                                oninput="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')" 
+                                onfocus="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')"
+                                onkeydown="app.handleAutocompleteKeydown(event, '${uniqueId}-list', '${uniqueId}-search', '${uniqueId}-id')" 
+                                onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)">
+                            <input type="hidden" name="consiglieri[]" id="${uniqueId}-id" value="">
+                            <div id="${uniqueId}-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                        </div>
+                        <button type="button" class="btn btn-outline text-danger" style="padding:8px 12px;" onclick="this.parentElement.remove()">✕</button>
                     </div>
                 `);
             },
 
             saveNuovoDirettivo(e) {
                 e.preventDefault();
+                
+                // Validate and resolve each autocomplete field
+                const resolveField = (name, label, isRequired) => {
+                    const uniqueId = `dir-${name}`;
+                    const searchInput = document.getElementById(`${uniqueId}-search`);
+                    const hiddenInput = document.getElementById(`${uniqueId}-id`);
+                    
+                    if (!searchInput || !hiddenInput) return true;
+                    
+                    const query = searchInput.value.trim();
+                    if (!query) {
+                        hiddenInput.value = '';
+                        if (isRequired) {
+                            app.toast(`Il campo ${label} è obbligatorio!`, 'danger');
+                            return false;
+                        }
+                        return true;
+                    }
+                    
+                    const currentId = hiddenInput.value;
+                    const socioById = app.state.soci.find(s => s.id == currentId);
+                    if (socioById && `${socioById.cognome} ${socioById.nome}`.toLowerCase() === query.toLowerCase()) {
+                        return true;
+                    }
+                    
+                    const foundSocio = app.state.soci.find(s => 
+                        `${s.cognome} ${s.nome}`.toLowerCase() === query.toLowerCase() ||
+                        `${s.nome} ${s.cognome}`.toLowerCase() === query.toLowerCase()
+                    );
+                    
+                    if (foundSocio) {
+                        hiddenInput.value = foundSocio.id;
+                        searchInput.value = `${foundSocio.cognome} ${foundSocio.nome}`;
+                        return true;
+                    } else {
+                        app.toast(`Socio "${query}" nel campo ${label} non trovato nel database. Seleziona un socio dall'elenco!`, 'danger');
+                        return false;
+                    }
+                };
+                
+                if (!resolveField('presidente', 'Presidente', true)) return;
+                if (!resolveField('vice_presidente', 'Vice Presidente', false)) return;
+                if (!resolveField('segretario', 'Segretario', false)) return;
+                
+                const consGroups = e.target.querySelectorAll('.cons-group');
+                let consValid = true;
+                consGroups.forEach(group => {
+                    const searchInput = group.querySelector('input[type="text"]');
+                    const hiddenInput = group.querySelector('input[type="hidden"]');
+                    if (!searchInput || !hiddenInput) return;
+                    
+                    const query = searchInput.value.trim();
+                    if (!query) {
+                        hiddenInput.value = '';
+                        return;
+                    }
+                    
+                    const currentId = hiddenInput.value;
+                    const socioById = app.state.soci.find(s => s.id == currentId);
+                    if (socioById && `${socioById.cognome} ${socioById.nome}`.toLowerCase() === query.toLowerCase()) {
+                        return;
+                    }
+                    
+                    const foundSocio = app.state.soci.find(s => 
+                        `${s.cognome} ${s.nome}`.toLowerCase() === query.toLowerCase() ||
+                        `${s.nome} ${s.cognome}`.toLowerCase() === query.toLowerCase()
+                    );
+                    
+                    if (foundSocio) {
+                        hiddenInput.value = foundSocio.id;
+                        searchInput.value = `${foundSocio.cognome} ${foundSocio.nome}`;
+                    } else {
+                        app.toast(`Socio consigliere "${query}" non trovato nel database. Seleziona un socio dall'elenco!`, 'danger');
+                        consValid = false;
+                    }
+                });
+                
+                if (!consValid) return;
+                
                 const fd = new FormData(e.target);
                 const newData = {
                     presidente: fd.get('presidente'),
@@ -2094,7 +2158,6 @@
                 }
 
                 // Salva lo storico se la composizione o la data è cambiata significativamente
-                const isRinnovo = true; // Semplificazione: ogni salvataggio può creare storico, tranne se stesso giorno
                 const lastHistory = this.state.settings.direttivo_history.length > 0 
                     ? this.state.settings.direttivo_history[this.state.settings.direttivo_history.length - 1] 
                     : null;
@@ -2102,7 +2165,6 @@
                 const currentDataInizio = this.state.settings.direttivo_data_inizio || '2000-01-01';
 
                 if (dataInizio !== currentDataInizio) {
-                    // Archivia il corrente
                     if (this.state.settings.presidente || this.state.settings.vice_presidente || this.state.settings.segretario) {
                         this.state.settings.direttivo_history.push({
                             data_inizio: currentDataInizio,
@@ -3842,7 +3904,7 @@ closeModal() {
                 return `<div class="autocomplete-item" style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main);" 
                         onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
                         onmouseout="this.style.background='transparent'" 
-                        onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; app.updateReceiptSocioInfo('${s.id}', '${previewId}'); document.getElementById('${listId}').style.display='none';">
+                        onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; if('${previewId}' && '${previewId}' !== 'null' && '${previewId}' !== 'undefined') { app.updateReceiptSocioInfo('${s.id}', '${previewId}'); } document.getElementById('${listId}').style.display='none';">
                         ${s.cognome} ${s.nome}
                         </div>`;
             }).join('');
