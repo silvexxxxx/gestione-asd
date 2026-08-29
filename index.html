@@ -5091,17 +5091,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         toggleFullscreen() {
-            const btn = document.getElementById('fullscreen-btn');
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().then(() => {
-                    localStorage.setItem('asd_fullscreen', 'true');
-                    if (btn) { btn.title = 'Esci da Schermo Intero'; btn.textContent = '✕⛶'; }
-                }).catch(() => this.toast('Schermo intero non disponibile nel browser.', 'warning'));
+                document.documentElement.requestFullscreen().catch(() => this.toast('Schermo intero non disponibile nel browser.', 'warning'));
             } else {
-                document.exitFullscreen().then(() => {
-                    localStorage.setItem('asd_fullscreen', 'false');
-                    if (btn) { btn.title = 'Schermo Intero'; btn.textContent = '⛶'; }
-                });
+                document.exitFullscreen().catch(() => {});
             }
         },
 
@@ -9574,7 +9567,34 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             deferredPrompt = null;
         });
 
-        window.onload = () => app.init();
+        window.onload = () => {
+            app.init();
+            
+            // Sincronizza lo stato del pulsante schermo intero e della preferenza
+            document.addEventListener('fullscreenchange', () => {
+                const btn = document.getElementById('fullscreen-btn');
+                if (document.fullscreenElement) {
+                    localStorage.setItem('asd_fullscreen', 'true');
+                    if (btn) { btn.title = 'Esci da Schermo Intero'; btn.textContent = '✕⛶'; }
+                } else {
+                    localStorage.setItem('asd_fullscreen', 'false');
+                    if (btn) { btn.title = 'Schermo Intero'; btn.textContent = '⛶'; }
+                }
+            });
+
+            // Ripristina lo schermo intero al primo tocco o clic dell'utente (richiesto per sicurezza dai browser)
+            const restoreFullscreen = () => {
+                if (localStorage.getItem('asd_fullscreen') === 'true' && !document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log('Ripristino schermo intero bloccato:', err);
+                    });
+                }
+                document.removeEventListener('click', restoreFullscreen);
+                document.removeEventListener('keydown', restoreFullscreen);
+            };
+            document.addEventListener('click', restoreFullscreen);
+            document.addEventListener('keydown', restoreFullscreen);
+        };
         
         window.addEventListener('beforeunload', (e) => {
             if (app.state.isDirty) {
