@@ -518,6 +518,20 @@
             max-width: 900px !important;
         }
 
+        .receipt-form-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .receipt-form-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
         .stat-card-clickable {
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -2849,6 +2863,7 @@
             },
 closeModal() {
                 document.getElementById('modal-overlay').style.display = 'none';
+                document.getElementById('modal-content').classList.remove('modal-wide');
             },
 
             // --- DASHBOARD & GENERAL ---
@@ -3836,102 +3851,118 @@ openAddRicevutaModal() {
                         </label>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                        <div class="form-group">
-                            <label>Data</label>
-                            <input type="date" name="data" id="receipt-data" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label>N. Ricevuta / Anno</label>
-                            <div style="display:flex; gap:0.5rem;">
-                                <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:60%" value="${lastNum + 1}" required readonly>
-                                <select name="anno" class="form-control" style="width:45%" required>
-                                    ${[currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${app.formatAnno(y)}</option>`).join('')}
+                    <div class="receipt-form-grid">
+                        
+                        <!-- Left Column -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Destinatario (Socio)</label>
+                                <div style="position:relative;">
+                                    <input type="text" id="receipt-socio-search" class="form-control" placeholder="Inizia a digitare il nome..." autocomplete="off" 
+                                        oninput="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
+                                        onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')"
+                                        onkeydown="app.handleAutocompleteKeydown(event, 'soci-autocomplete-list', 'receipt-socio-search', 'receipt-socio-id')" 
+                                        onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required>
+                                    <input type="hidden" name="socio_id" id="receipt-socio-id" required>
+                                    <div id="soci-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                                </div>
+                                <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(59, 130, 246, 0.1); border-radius:4px; border-left:3px solid #3b82f6; color:var(--text-main);"></div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Data</label>
+                                    <input type="date" name="data" id="receipt-data" class="form-control" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>N. Ricevuta / Anno</label>
+                                    <div style="display:flex; gap:0.5rem;">
+                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:60%" value="${lastNum + 1}" required readonly>
+                                        <select name="anno" class="form-control" style="width:45%" required>
+                                            ${[currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${app.formatAnno(y)}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Metodo di Pagamento</label>
+                                <select name="pagamento" class="form-control" onchange="app.onReceiptPagamentoChange(this.value)">
+                                    ${this.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
                                 </select>
                             </div>
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>Destinatario (Socio)</label>
-                        <div style="position:relative;">
-                            <input type="text" id="receipt-socio-search" class="form-control" placeholder="Inizia a digitare il nome..." autocomplete="off" 
-                                oninput="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
-                                onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')"
-                                onkeydown="app.handleAutocompleteKeydown(event, 'soci-autocomplete-list', 'receipt-socio-search', 'receipt-socio-id')" 
-                                onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required>
-                            <input type="hidden" name="socio_id" id="receipt-socio-id" required>
-                            <div id="soci-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
-                        </div>
-                        <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(59, 130, 246, 0.1); border-radius:4px; border-left:3px solid #3b82f6; color:var(--text-main);"></div>
-                    </div>
-
-                    <div class="glass-card" style="margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card);">
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label style="font-weight:600; color:var(--text-main);">Importo Totale (€)</label>
-                            <input type="number" step="0.01" id="receipt-amount" name="importo" class="form-control" required placeholder="0.00" oninput="app.calculateCommission()" style="font-size:1.4rem; font-weight:700; height:48px;">
-                        </div>
-                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Opzionale: Ripartizione importo (verrà inclusa nella causale)</p>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                            <div class="form-group">
-                                <label style="font-size:0.85rem;">Di cui Quota/Corso (€)</label>
-                                <input type="number" step="0.01" name="quota" id="receipt-quota" class="form-control" placeholder="Es. 45.00">
+                            <div id="receipt-commissioni-row" style="display:none; background:rgba(245, 158, 11, 0.1); border:1px solid var(--warning); border-radius:6px; padding:10px;">
+                                <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:var(--warning);">💸 Commissioni trattenute dal gestore (€)</label>
+                                <input type="number" step="0.01" min="0" name="commissioni" id="receipt-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
+                                <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L'importo netto andrà in Banca. Le commissioni saranno un'Uscita separata.</p>
                             </div>
-                            <div class="form-group">
-                                <label style="font-size:0.85rem;">Di cui Tesseramento (€)</label>
-                                <input type="number" step="0.01" name="tess" id="receipt-tess" class="form-control" placeholder="Es. 15.00">
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Note Causale (Opzionale)</label>
+                                <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota mensile Giugno">
                             </div>
+
                         </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Metodo di Pagamento</label>
-                        <select name="pagamento" class="form-control" onchange="app.onReceiptPagamentoChange(this.value)">
-                            ${this.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
-                        </select>
-                    </div>
 
-                    <div id="receipt-commissioni-row" style="display:none; margin-bottom:15px; background:rgba(245, 158, 11, 0.1); border:1px solid var(--warning); border-radius:6px; padding:10px;">
-                        <label style="display:block; margin-bottom:5px; font-size:0.85rem; font-weight:600; color:var(--warning);">💸 Commissioni trattenute dal gestore (€)</label>
-                        <input type="number" step="0.01" min="0" name="commissioni" id="receipt-commissioni" class="form-control" style="width:100%; padding:8px; border:1px solid #fed7aa; border-radius:4px;" placeholder="Es. 0.75" value="">
-                        <p style="font-size:0.75rem; color:#9a3412; margin-top:4px; margin-bottom:0;">L'importo netto andrà in Banca. Le commissioni saranno un'Uscita separata.</p>
-                    </div>
+                        <!-- Right Column -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            
+                            <div class="glass-card" style="margin: 0; padding: 1.25rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;">
+                                <div class="form-group" style="margin-bottom: 0.75rem;">
+                                    <label style="font-weight:600; color:var(--text-main);">Importo Totale (€)</label>
+                                    <input type="number" step="0.01" id="receipt-amount" name="importo" class="form-control" required placeholder="0.00" oninput="app.calculateCommission()" style="font-size:1.4rem; font-weight:700; height:44px;">
+                                </div>
+                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Opzionale: Ripartizione importo (nella causale)</p>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size:0.85rem;">Quota/Corso (€)</label>
+                                        <input type="number" step="0.01" name="quota" id="receipt-quota" class="form-control" placeholder="Es. 45.00">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size:0.85rem;">Tesseramento (€)</label>
+                                        <input type="number" step="0.01" name="tess" id="receipt-tess" class="form-control" placeholder="Es. 15.00">
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div style="background:#e0f2fe; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #bae6fd;">
-                        <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Validità Quota (Aggiorna anagrafica socio)</p>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                            <div class="form-group">
-                                <label style="font-size:0.85rem; color:#0369a1;">Inizio Validità</label>
-                                <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" style="padding:8px; font-size:0.85rem;">
-                                <p style="font-size:0.7rem; color:#0284c7; margin-top:2px; margin-bottom:0;">Se vuoto, usa la data ricevuta</p>
+                            <div style="background:#e0f2fe; padding:1.25rem; border-radius:12px; border:1px solid #bae6fd;">
+                                <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Validità Quota (Aggiorna anagrafica socio)</p>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size:0.85rem; color:#0369a1;">Inizio Validità</label>
+                                        <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" style="padding:8px; font-size:0.85rem;">
+                                        <p style="font-size:0.7rem; color:#0284c7; margin-top:2px; margin-bottom:0;">Se vuoto, usa la data ricevuta</p>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size:0.85rem; color:#0369a1;">Durata (Mesi)</label>
+                                        <select name="durata" id="receipt-durata" class="form-control" style="padding:8px; font-size:0.85rem;">
+                                            <option value="">Non aggiornare</option>
+                                            <option value="1">1 Mese</option>
+                                            <option value="2">2 Mesi</option>
+                                            <option value="3">3 Mesi (Trimestrale)</option>
+                                            <option value="4">4 Mesi</option>
+                                            <option value="6">6 Mesi (Semestrale)</option>
+                                            <option value="9">9 Mesi</option>
+                                            <option value="12">12 Mesi (Annuale)</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label style="font-size:0.85rem; color:#0369a1;">Durata (Mesi)</label>
-                                <select name="durata" id="receipt-durata" class="form-control" style="padding:8px; font-size:0.85rem;">
-                                    <option value="">Non aggiornare</option>
-                                    <option value="1">1 Mese</option>
-                                    <option value="2">2 Mesi</option>
-                                    <option value="3">3 Mesi (Trimestrale)</option>
-                                    <option value="4">4 Mesi</option>
-                                    <option value="6">6 Mesi (Semestrale)</option>
-                                    <option value="9">9 Mesi</option>
-                                    <option value="12">12 Mesi (Annuale)</option>
-                                </select>
-                            </div>
+
                         </div>
+
                     </div>
 
-                    <div class="form-group">
-                        <label>Note Causale (Opzionale)</label>
-                        <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota mensile Giugno">
-                    </div>
-
-                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1rem;">
                         <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
                         <button type="submit" class="btn btn-success">Genera e Salva</button>
                     </div>
                 </form>
             `);
+            
+            document.getElementById('modal-content').classList.add('modal-wide');
             
             document.getElementById('receipt-data').value = new Date().toISOString().split('T')[0];
         },
