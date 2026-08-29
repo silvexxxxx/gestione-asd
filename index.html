@@ -1230,11 +1230,12 @@
                 <div class="nav-item" onclick="app.openSchedeAtleti()" data-guide="Gestione avanzata per schede di allenamento e performance degli atleti.">Schede Atleti</div>
 
                 <div class="nav-dropdown" id="dropdown-cassa">
-                    <div class="nav-item" onclick="mobileNav.toggleDropdown('dropdown-cassa')">Prima Nota &amp; Cassa ▾</div>
+                    <div class="nav-item" onclick="mobileNav.toggleDropdown('dropdown-cassa')">Segreteria ▾</div>
                     <div class="nav-dropdown-content">
                         <div class="nav-item" data-page="primanota" onclick="app.showPage('primanota')" data-guide="Tieni traccia di tutte le entrate (ricevute) e delle uscite (spese) della tua associazione.">Prima Nota</div>
                         <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Gestisci i beni di consumo per la palestra.">Magazzino</div>
                         <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Gestione rimborsi spese per i collaboratori o membri del direttivo.">Rimborsi</div>
+                        <div class="nav-item" onclick="app.openVerbali()" data-guide="Genera, archivia e stampa i verbali per assemblee dei soci e riunioni del direttivo.">Assemblee e Verbali</div>
                     </div>
                 </div>
 
@@ -6835,15 +6836,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
-                            
-                            <!-- Verbali -->
-                            <div class="glass-card" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; border-left: 4px solid var(--primary);">
-                                <div>
-                                    <h3 style="margin:0 0 0.5rem 0;">📄 Area Assemblee e Verbali</h3>
-                                    <p style="margin:0; font-size:0.9rem; color:var(--text-muted);">Genera, archivia e stampa i verbali per assemblee dei soci e riunioni del direttivo.</p>
-                                </div>
-                                <button class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem;" onclick="app.openVerbali()">Apri Gestore Verbali ➡️</button>
-                            </div>
+
 
                             <!-- Sincronizzazione e Modalità -->
                             <div class="glass-card" style="grid-column: 1 / -1; border-left: 4px solid #3b82f6;">
