@@ -7089,16 +7089,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <button class="btn btn-danger" onclick="app.safeAction('clear-db', this, '🗑️ Azzera Database Iscritti', '#991b1b', () => app.clearSociDatabase())" data-guide="Elimina tutti gli iscritti dal database in modo irreversibile. Clicca più volte per sbloccare.">🗑️ Azzera Database Iscritti</button>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Debug Mode & Feedback -->
-                        <div class="glass-card" style="border-color: rgba(139,92,246,0.3); display:flex; justify-content:space-between; align-items:center;">
-                            <div>
+                            <!-- Modalità Debug -->
+                            <div class="glass-card" style="border-color: rgba(139,92,246,0.3);">
                                 <h3 style="margin-bottom:1rem;">🔒 Modalità Debug</h3>
                                 ${this.state.debugMode ? `
                                     <p style="color:var(--success); margin-bottom:1rem;">✓ Modalità debug attiva e moduli decriptati.</p>
-                                    <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
-                                    ${this.state.debugUI || ''}
+                                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                        <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
+                                        ${this.state.debugUI || ''}
+                                    </div>
                                 ` : `
                                     <div style="display:flex; gap:10px; align-items:center;">
                                         <input type="password" id="debug-password" class="form-control" placeholder="Password Debug" style="max-width:220px;">
@@ -7106,14 +7106,17 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     </div>
                                 `}
                             </div>
-                            
-                            <div style="border-left: 1px solid #334155; padding-left: 20px; text-align: center;">
-                                <h3 style="margin-bottom: 0.5rem; color: #f59e0b;">💡 Hai un'idea?</h3>
-                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Aiutaci a migliorare il gestionale.</p>
-                                <button class="btn" style="background: #f59e0b; color: white; display: inline-flex; align-items: center; gap: 8px; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick="window.location.href='mailto:silveriopintus@gmail.com?subject=Suggerimento per ASD Gestionale&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
-                                    Invia Suggerimento
-                                </button>
+                        </div>
+
+                        <!-- Feedback / Hai un'idea? -->
+                        <div class="glass-card" style="border-color: rgba(245, 158, 11, 0.3); display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+                            <div>
+                                <h3 style="margin: 0 0 0.5rem 0; color: #f59e0b;">💡 Hai un'idea o un suggerimento?</h3>
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Aiutaci a migliorare il gestionale inviandoci i tuoi feedback o le tue proposte.</p>
                             </div>
+                            <button class="btn" style="background: #f59e0b; color: white; display: inline-flex; align-items: center; gap: 8px; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;" onclick="window.location.href='mailto:silveriopintus@gmail.com?subject=Suggerimento per ASD Gestionale&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
+                                Invia Suggerimento
+                            </button>
                         </div>
                     </div>
                 `;
