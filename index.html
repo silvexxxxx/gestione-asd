@@ -454,7 +454,7 @@
             color: var(--danger);
         }
 
-        .badge-cessato {
+        .badge-cessato, .badge-non-attivo {
             background: rgba(148, 163, 184, 0.2);
             color: var(--text-muted);
         }
@@ -3223,6 +3223,7 @@ closeModal() {
                                     <option value="ALL">Tutti gli stati</option>
                                     <option value="ATTIVO">Attivi</option>
                                     <option value="MOROSO">Morosi</option>
+                                    <option value="NON ATTIVO">Non Attivi (Vecchia Data)</option>
                                     <option value="CESSATO">Cessati</option>
                                     <option value="QUOTA_SCADUTA">Quote Scadute</option>
                                     <option value="TESS_SCADUTO">Tess. Scaduti</option>
@@ -3325,14 +3326,15 @@ closeModal() {
 
             getSocioDisplayStato(s) {
                 if (s.stato === 'CESSATO') return 'CESSATO';
+                const isTessActive = app.isActiveMember ? app.isActiveMember(s) : false;
+                if (!isTessActive) {
+                    return 'NON ATTIVO';
+                }
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
                 const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
-                const tScad = s.tesseramento_scadenza ? new Date(s.tesseramento_scadenza) : null;
                 const hasExpiredQuota = qScad && qScad < now;
-                const hasExpiredTess = s.tesserato === 'SI' && tScad && tScad < now;
-                const notTesserato = s.tesserato !== 'SI';
-                if (s.stato === 'ATTIVO' && (hasExpiredQuota || hasExpiredTess || notTesserato)) {
+                if (s.stato === 'ATTIVO' && hasExpiredQuota) {
                     return 'MOROSO';
                 }
                 return s.stato || 'ATTIVO';
