@@ -3267,6 +3267,7 @@ closeModal() {
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
                     const isMinore = eta < 18;
+                    const displayStato = this.getSocioDisplayStato(s);
 
                     return `
                     <tr style="${rowStyle}">
@@ -3295,7 +3296,7 @@ closeModal() {
                         }
                             </div>
                         </td>
-                        <td><span class="badge badge-${s.stato.toLowerCase()}">${s.stato}</span></td>
+                        <td><span class="badge badge-${displayStato.toLowerCase()}">${displayStato}</span></td>
                         <td style="text-align: right; padding-right: 1.5rem;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap;">
                                 ${s.note 
@@ -3322,6 +3323,21 @@ closeModal() {
                 return '';
             },
 
+            getSocioDisplayStato(s) {
+                if (s.stato === 'CESSATO') return 'CESSATO';
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
+                const tScad = s.tesseramento_scadenza ? new Date(s.tesseramento_scadenza) : null;
+                const hasExpiredQuota = qScad && qScad < now;
+                const hasExpiredTess = s.tesserato === 'SI' && tScad && tScad < now;
+                const notTesserato = s.tesserato !== 'SI';
+                if (s.stato === 'ATTIVO' && (hasExpiredQuota || hasExpiredTess || notTesserato)) {
+                    return 'MOROSO';
+                }
+                return s.stato || 'ATTIVO';
+            },
+
             filterSoci() {
                 const search = document.getElementById('socio-search').value.toLowerCase();
                 const statusSelect = document.getElementById('socio-filter-status');
@@ -3344,7 +3360,7 @@ closeModal() {
                         const isTessActive = app.isActiveMember ? app.isActiveMember(s) : false;
                         matchStatus = s.stato !== 'CESSATO' && !isTessActive;
                     } else {
-                        matchStatus = s.stato === status;
+                        matchStatus = this.getSocioDisplayStato(s) === status;
                     }
 
                     return matchSearch && matchStatus;
