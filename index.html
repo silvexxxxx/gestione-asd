@@ -1955,8 +1955,13 @@
                     if (isCustom) {
                         opts += `<option value="${selectedVal}" selected>${selectedVal} (Inserimento Manuale)</option>`;
                     }
-                    opts += this.state.soci.map(socio => 
-                        `<option value="${socio.id}" ${socio.id == selectedVal ? 'selected' : ''}>${socio.nome} (${socio.cf})</option>`
+                    const sortedSoci = [...this.state.soci].sort((a, b) => {
+                        const nameA = `${a.cognome || ''} ${a.nome || ''}`.toLowerCase();
+                        const nameB = `${b.cognome || ''} ${b.nome || ''}`.toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    });
+                    opts += sortedSoci.map(socio => 
+                        `<option value="${socio.id}" ${socio.id == selectedVal ? 'selected' : ''}>${socio.cognome || ''} ${socio.nome || ''} (${socio.cf || ''})</option>`
                     ).join('');
                     return opts;
                 };
@@ -2051,9 +2056,16 @@
             addConsigliereField() {
                 const container = document.getElementById('consiglieri-container');
                 const getSocioOptions = () => {
-                    return `<option value="">- Seleziona dal DB -</option>` + this.state.soci.map(socio => 
-                        `<option value="${socio.id}">${socio.nome} (${socio.cf})</option>`
+                    let opts = `<option value="">- Seleziona dal DB -</option>`;
+                    const sortedSoci = [...this.state.soci].sort((a, b) => {
+                        const nameA = `${a.cognome || ''} ${a.nome || ''}`.toLowerCase();
+                        const nameB = `${b.cognome || ''} ${b.nome || ''}`.toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    });
+                    opts += sortedSoci.map(socio => 
+                        `<option value="${socio.id}">${socio.cognome || ''} ${socio.nome || ''} (${socio.cf || ''})</option>`
                     ).join('');
+                    return opts;
                 };
                 container.insertAdjacentHTML('beforeend', `
                     <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center;">
