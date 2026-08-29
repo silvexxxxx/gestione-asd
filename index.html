@@ -6863,21 +6863,6 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </div>
                             </div>
 
-                            <!-- FS Access -->
-                            <div class="glass-card" style="border-left: 4px solid #10b981;">
-                                <h3>📂 Cartella Output Documenti</h3>
-                                <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Seleziona la cartella dove salvare automaticamente i file PDF generati (es. "Gestione ASD/Output Documenti"). Verranno create sottocartelle per anno sportivo e categoria.</p>
-                                <button class="btn btn-outline" onclick="app.setupOutputFolder()" data-guide="Seleziona la cartella locale (es. Output Documenti) per salvare in automatico i PDF di ricevute, prima nota e verbali divisi in sottocartelle per anno sportivo.">Imposta Cartella / Richiedi Permesso</button>
-                            </div>
-
-                            <!-- Dati Associazione -->
-                            <div class="glass-card">
-                                <h3 style="margin-bottom:1rem;">🏢 Dati Associazione</h3>
-                                <div class="form-group"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName}" onchange="app.updateSetting('asdName', this.value)"></div>
-                                <div class="form-group"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
-                                <div class="form-group"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
-                            </div>
-
                             <!-- Direttivo -->
                             <div class="glass-card" style="border-left: 4px solid var(--accent);">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -6888,26 +6873,56 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:1rem;">
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Presidente</div>
-                                        <div style="font-weight:600;">${s.presidente ? (this.state.soci.find(x => x.id == s.presidente)?.nome || s.presidente) : 'Non definito'}</div>
+                                        <div style="font-weight:600;">${(() => {
+                                            if (!s.presidente) return 'Non definito';
+                                            const socio = this.state.soci.find(x => x.id == s.presidente);
+                                            return socio ? `${socio.cognome} ${socio.nome}` : s.presidente;
+                                        })()}</div>
                                     </div>
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Vice Presidente</div>
-                                        <div style="font-weight:600;">${s.vice_presidente ? (this.state.soci.find(x => x.id == s.vice_presidente)?.nome || s.vice_presidente) : 'Non definito'}</div>
+                                        <div style="font-weight:600;">${(() => {
+                                            if (!s.vice_presidente) return 'Non definito';
+                                            const socio = this.state.soci.find(x => x.id == s.vice_presidente);
+                                            return socio ? `${socio.cognome} ${socio.nome}` : s.vice_presidente;
+                                        })()}</div>
                                     </div>
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Segretario</div>
-                                        <div style="font-weight:600;">${s.segretario ? (this.state.soci.find(x => x.id == s.segretario)?.nome || s.segretario) : 'Non definito'}</div>
+                                        <div style="font-weight:600;">${(() => {
+                                            if (!s.segretario) return 'Non definito';
+                                            const socio = this.state.soci.find(x => x.id == s.segretario);
+                                            return socio ? `${socio.cognome} ${socio.nome}` : s.segretario;
+                                        })()}</div>
                                     </div>
                                     <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; grid-column:1/-1;">
                                         <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Consiglieri</div>
                                         <div style="font-weight:600;">
                                             ${(s.consiglieri || []).length > 0 
-                                                ? s.consiglieri.map(c => this.state.soci.find(x => x.id == c)?.nome || c).join('<br>') 
+                                                ? s.consiglieri.map(c => {
+                                                    const socio = this.state.soci.find(x => x.id == c);
+                                                    return socio ? `${socio.cognome} ${socio.nome}` : c;
+                                                }).join('<br>') 
                                                 : '<span style="color:var(--text-muted); font-weight:normal;">Nessun consigliere</span>'}
                                         </div>
                                     </div>
                                 </div>
                                 <button class="btn btn-primary" style="width:100%;" onclick="app.openRinnovoDirettivoModal()">Rinnova / Modifica Direttivo</button>
+                            </div>
+
+                            <!-- Dati Associazione -->
+                            <div class="glass-card">
+                                <h3 style="margin-bottom:1rem;">🏢 Dati Associazione</h3>
+                                <div class="form-group"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName}" onchange="app.updateSetting('asdName', this.value)"></div>
+                                <div class="form-group"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
+                                <div class="form-group"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
+                            </div>
+
+                            <!-- FS Access -->
+                            <div class="glass-card" style="border-left: 4px solid #10b981;">
+                                <h3>📂 Cartella Output Documenti</h3>
+                                <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Seleziona la cartella dove salvare automaticamente i file PDF generati (es. "Gestione ASD/Output Documenti"). Verranno create sottocartelle per anno sportivo e categoria.</p>
+                                <button class="btn btn-outline" onclick="app.setupOutputFolder()" data-guide="Seleziona la cartella locale (es. Output Documenti) per salvare in automatico i PDF di ricevute, prima nota e verbali divisi in sottocartelle per anno sportivo.">Imposta Cartella / Richiedi Permesso</button>
                             </div>
 
                             <!-- Sale della Palestra -->
