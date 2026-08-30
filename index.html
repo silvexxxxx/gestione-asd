@@ -4,19 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
-        // Rileva se l'utente è su un dispositivo mobile o tablet per abilitare il Desktop Virtuale Fisso
-        (function() {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) {
-                document.documentElement.classList.add('mobile-desktop-mode');
-                const viewport = document.querySelector('meta[name="viewport"]');
-                if (viewport) {
-                    viewport.setAttribute('content', 'width=1380, initial-scale=0.25, minimum-scale=0.1, maximum-scale=3.0, user-scalable=yes');
-                }
-            }
-        })();
-    </script>
     <title>ASD Gestionale - Sistema Professionale</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
@@ -121,26 +108,6 @@
             height: 100vh;
             height: 100dvh;
             overflow: hidden;
-        }
-
-        /* Stili specifici per la modalità Desktop Virtuale Fisso su Mobile */
-        .mobile-desktop-mode,
-        .mobile-desktop-mode body,
-        .mobile-desktop-mode .app-container {
-            min-width: 1380px !important;
-            width: 100% !important; /* Espansione orizzontale per riempire lo schermo */
-            overflow-x: auto !important;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch;
-        }
-        /* Nasconde le barre di scorrimento brutte su mobile pur lasciando attivo lo scroll */
-        .mobile-desktop-mode::-webkit-scrollbar,
-        .mobile-desktop-mode body::-webkit-scrollbar,
-        .mobile-desktop-mode .app-container::-webkit-scrollbar {
-            display: none !important;
-        }
-        .mobile-desktop-mode {
-            scrollbar-width: none !important; /* Firefox */
         }
 
         /* Top Navbar (previously Sidebar) */
@@ -705,67 +672,73 @@
             /* Previeni overflow orizzontale su tutti i contenitori principali */
             .app-container, aside, main, #main-content, .page-content {
                 max-width: 100vw;
-                overflow-x: hidden;
+                box-sizing: border-box;
             }
 
-            /* === TOPBAR MOBILE IN 3 RIGHE === */
+            /* === TOPBAR MOBILE COMPATTA (2 RIGHE) === */
             aside {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: stretch !important;
-                gap: 8px !important;
-                padding: 12px 14px 6px 14px !important;
+                display: grid !important;
+                grid-template-areas: "logo actions" "nav nav" !important;
+                grid-template-columns: 1fr auto !important;
+                align-items: center !important;
+                gap: 6px 8px !important;
+                padding: 8px 12px 6px 12px !important;
                 height: auto !important;
                 min-height: unset !important;
-                position: sticky;
-                top: 0;
-                z-index: 9999;
-                background: rgba(15, 23, 42, 0.98);
-                backdrop-filter: blur(10px);
-                border-bottom: 1px solid var(--border);
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 9999 !important;
+                background: rgba(15, 23, 42, 0.98) !important;
+                backdrop-filter: blur(10px) !important;
+                border-bottom: 1px solid var(--border) !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
             }
 
-            /* Riga 1: Logo ASD + Titolo Gestionale centrato */
+            /* Riga 1 Sinistra: Logo ASD + Titolo */
             .logo-area {
+                grid-area: logo !important;
                 display: flex !important;
                 align-items: center !important;
-                justify-content: center !important;
-                width: 100% !important;
-                font-size: 1.15rem !important;
-                gap: 8px !important;
+                justify-content: flex-start !important;
+                font-size: 1.05rem !important;
+                font-weight: 700 !important;
+                gap: 6px !important;
                 margin: 0 !important;
+                white-space: nowrap !important;
+                color: var(--primary) !important;
             }
 
-            /* Logo immagine personalizzata: ridotta su mobile */
             #customAppLogoImg {
-                max-height: 36px !important;
-                max-width: 70px !important;
+                max-height: 28px !important;
+                max-width: 60px !important;
                 width: auto !important;
             }
-            /* Placeholder logo ridotto */
             #appLogoPlaceholder {
-                width: 36px !important;
-                height: 36px !important;
+                width: 28px !important;
+                height: 28px !important;
                 font-size: 0.5rem !important;
             }
 
-            /* Riga 2: Pulsanti azioni + Storage badge */
+            /* Riga 1 Destra: Pulsanti azioni veloci compatti */
+            .aside-actions,
             aside > div:last-child {
+                grid-area: actions !important;
                 display: flex !important;
                 flex-direction: row !important;
-                justify-content: center !important;
                 align-items: center !important;
-                gap: 6px !important;
-                flex-wrap: wrap !important;
-                width: 100% !important;
-                border-top: 1px dashed var(--border) !important;
-                padding-top: 8px !important;
-                margin: 4px 0 0 0 !important;
+                justify-content: flex-end !important;
+                gap: 5px !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
             }
-            
-            /* Pulsanti azioni veloci compatti */
+
+            .aside-actions button,
+            aside > div:last-child button,
             aside > div:last-child .btn {
-                padding: 5px 8px !important;
+                padding: 4px 8px !important;
                 font-size: 0.72rem !important;
                 white-space: nowrap !important;
                 min-height: 28px !important;
@@ -774,21 +747,16 @@
                 align-items: center !important;
                 gap: 4px !important;
             }
-            /* Pulsante esci compatto */
-            aside > div:last-child button[onclick="app.exitAppPrompt()"] {
-                padding: 5px 8px !important;
-            }
 
-            /* Storage badge compatto */
             aside > div:last-child .stat-card {
-                padding: 0 8px !important;
+                padding: 0 6px !important;
                 border: 1px solid var(--border) !important;
                 border-radius: 6px !important;
                 background: rgba(255, 255, 255, 0.02) !important;
                 display: inline-flex !important;
                 flex-direction: row !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 height: 28px !important;
                 box-sizing: border-box !important;
             }
@@ -800,87 +768,81 @@
                 margin-bottom: 0 !important;
             }
             aside > div:last-child .stat-card .label {
-                display: none !important; /* Nasconde la parola "Storage" */
+                display: none !important;
             }
             #storage-indicator {
-                width: 50px !important;
+                width: 40px !important;
                 height: 4px !important;
                 margin: 0 !important;
             }
 
-            /* Riga 3: NAVBAR / NAV-LINKS SCROLLABILI */
+            /* Riga 2: Contenitore Navigazione a scorrimento orizzontale fluido */
             .nav-links {
+                grid-area: nav !important;
                 display: flex !important;
                 flex-direction: row !important;
                 flex-wrap: nowrap !important;
                 overflow-x: auto !important;
                 -webkit-overflow-scrolling: touch !important;
-                gap: 6px !important;
+                white-space: nowrap !important;
+                gap: 8px !important;
                 width: 100% !important;
-                padding-bottom: 4px !important;
+                padding: 6px 0 2px 0 !important;
                 border-top: 1px solid var(--border) !important;
-                padding-top: 8px !important;
-                margin: 4px 0 0 0 !important;
-                scrollbar-width: none !important; /* Hide scrollbar Firefox */
+                margin: 0 !important;
+                scrollbar-width: none !important; /* Nasconde scrollbar Firefox */
             }
             .nav-links::-webkit-scrollbar {
-                display: none !important; /* Hide scrollbar Chrome/Safari */
+                display: none !important; /* Nasconde scrollbar Chrome/Safari */
             }
 
             .nav-item {
+                flex-shrink: 0 !important;
                 white-space: nowrap !important;
-                padding: 8px 12px !important;
-                font-size: 0.85rem !important;
+                padding: 6px 12px !important;
+                font-size: 0.82rem !important;
                 border-radius: 8px !important;
                 display: inline-flex !important;
                 align-items: center !important;
-                min-height: unset !important;
+                min-height: 32px !important;
             }
 
-            /* === SUB-NAVBAR DROPDOWN MENUS === */
+            /* Sub-navbar dropdowns overlay mobile */
             .nav-dropdown {
-                position: static !important; /* Reset layout context */
+                position: relative !important;
+                flex-shrink: 0 !important;
             }
             .nav-dropdown > .nav-item::after {
                 content: ' ▾';
                 font-size: 0.75rem;
             }
             .nav-dropdown-content {
-                position: absolute !important;
-                top: 100% !important; /* Anchor directly below aside */
-                left: 0 !important;
-                right: 0 !important;
-                width: 100vw !important;
-                background: rgba(15, 23, 42, 0.99) !important;
+                position: fixed !important;
+                top: auto !important;
+                left: 10px !important;
+                right: 10px !important;
+                width: calc(100vw - 20px) !important;
+                max-width: 100vw !important;
+                background: rgba(15, 23, 42, 0.98) !important;
                 backdrop-filter: blur(15px) !important;
-                border-top: 1px solid var(--border) !important;
-                border-bottom: 1px solid var(--border) !important;
-                border-left: none !important;
-                border-right: none !important;
-                border-radius: 0 !important;
-                padding: 8px 12px !important;
-                box-shadow: 0 10px 24px rgba(0,0,0,0.65) !important;
-                z-index: 9999 !important;
+                border: 1px solid var(--border) !important;
+                border-radius: 10px !important;
+                padding: 8px !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+                z-index: 10000 !important;
                 display: none !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-                gap: 8px !important;
-                scrollbar-width: none !important;
-            }
-            .nav-dropdown-content::-webkit-scrollbar {
-                display: none !important;
+                flex-direction: column !important;
+                gap: 4px !important;
             }
             .nav-dropdown.active-dropdown .nav-dropdown-content {
                 display: flex !important;
             }
             .nav-dropdown-content .nav-item {
-                padding: 6px 12px !important;
-                font-size: 0.8rem !important;
-                background: rgba(255,255,255,0.03) !important;
-                border: 1px solid var(--border) !important;
+                width: 100% !important;
+                padding: 8px 12px !important;
+                font-size: 0.85rem !important;
                 border-radius: 6px !important;
+                background: rgba(255,255,255,0.03) !important;
                 color: var(--text-muted) !important;
             }
             .nav-dropdown-content .nav-item:hover,
@@ -889,133 +851,82 @@
                 color: var(--primary) !important;
             }
 
-            /* === CARDS STATS CAROUSEL SLIDER === */
+            /* === DASHBOARD: 4 CONTATORI IN GRIGLIA 2x2 === */
             .stats-row {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-                scroll-snap-type: x mandatory !important;
-                gap: 12px !important;
-                padding: 4px 4px 12px 4px !important;
-                margin-bottom: 1.5rem !important;
-                scrollbar-width: none !important;
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
                 width: 100% !important;
-            }
-            .stats-row::-webkit-scrollbar {
-                display: none !important;
+                padding: 0 !important;
+                margin-bottom: 1.25rem !important;
+                overflow: visible !important;
             }
             .stats-row .stat-card,
             .stats-row .glass-card {
-                flex: 0 0 calc(85% - 6px) !important; /* Show 85% of card */
-                scroll-snap-align: start !important;
-                min-width: 250px !important;
+                flex: none !important;
+                min-width: 0 !important;
+                width: 100% !important;
                 max-width: 100% !important;
+                padding: 12px 8px !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
+                text-align: center !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
+            }
+            .stats-row .stat-card .value {
+                font-size: 1.35rem !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+            .stats-row .stat-card .label {
+                font-size: 0.75rem !important;
+                color: var(--text-muted) !important;
+                margin-top: 4px !important;
+                white-space: normal !important;
+                text-align: center !important;
             }
 
-            /* === TABELLE RESPONSIVE CON SCROLL ORIDINATO === */
-            .table-container {
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch !important;
+            /* === DASHBOARD: RIQUADRI PRINCIPALI A COLONNA SINGOLA VERTICALE === */
+            .dashboard-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+                gap: 1.25rem !important;
+            }
+            .dashboard-grid > div {
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 1.25rem !important;
+            }
+            .dashboard-grid .glass-card {
                 width: 100% !important;
                 max-width: 100% !important;
-                border-radius: 12px !important;
-                margin-bottom: 1rem !important;
-                border: 1px solid var(--border) !important;
-                background: rgba(15, 23, 42, 0.4) !important;
-                scrollbar-width: thin !important;
-            }
-            .table-container table {
-                min-width: 950px !important;
-                width: 100% !important;
-                border-collapse: collapse !important;
-            }
-            .table-container th, 
-            .table-container td {
-                padding: 12px 14px !important;
-                font-size: 0.85rem !important;
-                white-space: nowrap !important;
-            }
-
-            /* === SCROLL VERTICALE COMPLETO E PADDING SICUREZZA === */
-            main, #main-content {
-                padding: 12px !important;
-            }
-            .page-content {
-                height: auto !important;
-                display: block !important;
-                overflow: visible !important;
-                padding-bottom: 96px !important; /* pb-24 previene sovrapposizione barre di navigazione */
-            }
-
-            /* === TABELLA ISTRUTTORI TRASFORMATA IN CARD VERTICALI === */
-            table#istruttori-table,
-            table#istruttori-table thead,
-            table#istruttori-table tbody,
-            table#istruttori-table tr,
-            table#istruttori-table td {
-                display: block !important;
-                width: 100% !important;
                 box-sizing: border-box !important;
-            }
-            table#istruttori-table thead {
-                display: none !important; /* Nasconde intestazione */
-            }
-            table#istruttori-table tr {
-                margin-bottom: 16px !important;
-                border: 1px solid var(--border) !important;
-                border-radius: 12px !important;
-                padding: 12px !important;
-                background: rgba(255, 255, 255, 0.02) !important;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-            }
-            table#istruttori-table td {
-                display: flex !important;
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                padding: 8px 0 !important;
-                border-bottom: 1px dashed rgba(255, 255, 255, 0.05) !important;
-                font-size: 0.85rem !important;
-                white-space: normal !important;
-            }
-            table#istruttori-table td:last-child {
-                border-bottom: none !important;
-                justify-content: flex-end !important;
-                gap: 8px !important;
-                padding-top: 12px !important;
-            }
-            /* Nome in evidenza */
-            table#istruttori-table td:nth-child(1) {
-                font-size: 1.1rem !important;
-                font-weight: bold !important;
-                color: var(--primary) !important;
-                border-bottom: 2px solid var(--border) !important;
-                padding-bottom: 10px !important;
-                margin-bottom: 6px !important;
-            }
-            /* Label prima del valore */
-            table#istruttori-table td:nth-child(2)::before { content: "Ruolo"; font-weight: 600; color: var(--text-muted); }
-            table#istruttori-table td:nth-child(3)::before { content: "Contatti"; font-weight: 600; color: var(--text-muted); }
-            table#istruttori-table td:nth-child(4)::before { content: "Ore/Sett."; font-weight: 600; color: var(--text-muted); }
-            table#istruttori-table td:nth-child(5)::before { content: "Compenso"; font-weight: 600; color: var(--text-muted); }
-            table#istruttori-table td:nth-child(6)::before { content: "Discipline"; font-weight: 600; color: var(--text-muted); }
-            table#istruttori-table td:nth-child(7)::before { content: "Orari"; font-weight: 600; color: var(--text-muted); }
-
-            /* Compensi a larghezza intera verticale */
-            .glass-card div[style*="grid-template-columns:repeat(auto-fit"] {
-                grid-template-columns: 1fr !important;
-                gap: 0.75rem !important;
+                margin: 0 !important;
             }
 
-            /* === IMPOSTAZIONI COMPATTE ED AREA ASSEMBLEE/VERBALI === */
-            .glass-card div[style*="grid-template-columns:1fr 1fr"] {
+            /* === IMPOSTAZIONI & VISTE A DOPPIA COLONNA: FLUSSO VERTICALE (100% LARGHEZZA) === */
+            .page-content div[style*="grid-template-columns"],
+            div[style*="grid-template-columns:1fr 1fr"],
+            div[style*="grid-template-columns: 1fr 1fr"],
+            div[style*="grid-template-columns: 1fr 1fr 1fr"],
+            div[style*="grid-template-columns:1fr 1fr 1fr"],
+            div[style*="grid-template-columns: 2fr 1fr"],
+            div[style*="grid-template-columns:2fr 1fr"],
+            div[style*="grid-template-columns:repeat(auto-fit"],
+            div[style*="grid-template-columns: repeat(auto-fit"],
+            .form-grid,
+            .receipt-form-grid,
+            .sign-grid {
                 grid-template-columns: 1fr !important;
+                width: 100% !important;
                 gap: 1rem !important;
             }
+
             .glass-card[style*="display:flex"] {
                 flex-direction: column !important;
                 align-items: stretch !important;
@@ -1043,6 +954,43 @@
                 box-sizing: border-box !important;
             }
 
+            /* === TABELLE DATI: SCORRIMENTO ORIZZONTALE TOUCH E TESTO LEGGIBILE (13-14px) === */
+            .table-container {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                border-radius: 12px !important;
+                margin-bottom: 1rem !important;
+                border: 1px solid var(--border) !important;
+                background: rgba(15, 23, 42, 0.4) !important;
+                scrollbar-width: thin !important;
+            }
+            .table-container table,
+            table.data-table,
+            .glass-card > table {
+                min-width: 700px !important;
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+            .table-container th, 
+            .table-container td,
+            table.data-table th,
+            table.data-table td,
+            .glass-card > table th,
+            .glass-card > table td {
+                padding: 10px 12px !important;
+                font-size: 13.5px !important; /* Misura leggibile minimo 13-14px */
+                white-space: nowrap !important;
+                line-height: 1.4 !important;
+            }
+            .glass-card:has(> table),
+            .glass-card:has(> .data-table) {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                max-width: 100% !important;
+            }
+
             /* Page header: stack verticale */
             .page-header {
                 flex-direction: column !important;
@@ -1050,12 +998,13 @@
                 gap: 10px !important;
                 margin-bottom: 1rem !important;
             }
-            .page-header .header-title h1 {
+            .page-header .header-title h1,
+            .page-header h1 {
                 font-size: 1.3rem !important;
             }
             .page-header button, .page-header .btn {
                 width: 100% !important;
-                min-height: 44px !important;
+                min-height: 42px !important;
                 justify-content: center !important;
             }
 
@@ -1066,20 +1015,28 @@
                 box-sizing: border-box !important;
             }
 
-            /* Grid: stack verticale su mobile */
-            .dashboard-grid {
-                grid-template-columns: 1fr !important;
+            /* Scroll verticale completo e padding di sicurezza */
+            main, #main-content {
+                padding: 12px !important;
+                overflow-y: auto !important;
+            }
+            .page-content {
+                height: auto !important;
+                display: block !important;
+                overflow: visible !important;
+                padding-bottom: 80px !important;
             }
 
-            /* Modal a schermo intero su mobile */
+            /* Modal su mobile */
             .modal {
-                width: 96% !important;
+                width: 95% !important;
+                max-width: 95% !important;
                 padding: 1.25rem !important;
-                max-height: 92dvh !important;
+                max-height: 90dvh !important;
                 border-radius: 16px !important;
             }
             .modal-wide {
-                max-width: 96% !important;
+                max-width: 95% !important;
             }
 
             /* Toolbar: stack verticale */
@@ -1106,52 +1063,45 @@
 
         /* === SCHERMI MOLTO STRETTI (<640px) === */
         @media (max-width: 640px) {
-            /* Riduci lo storage text per evitare sovrapposizioni */
             #storage-text span {
-                display: none !important; /* Nasconde "(Spazio Illimitato)" */
+                display: none !important;
             }
-            /* Rendi i pulsanti veloci ancora più compatti */
             aside > div:last-child {
                 gap: 4px !important;
             }
             aside > div:last-child .btn {
                 padding: 4px 6px !important;
                 font-size: 0.68rem !important;
-                min-height: 30px !important;
+                min-height: 28px !important;
             }
             #storage-indicator {
-                width: 60px !important;
+                width: 35px !important;
             }
         }
 
-        /* ============================================
-           LANDSCAPE MOBILE (altezza ridotta)
-           ============================================ */
+        /* === LANDSCAPE MOBILE (altezza ridotta) === */
         @media (max-height: 500px) and (orientation: landscape) {
-            /* Header ultra-compatto */
             aside {
-                padding: 6px 12px 4px 12px !important;
-                gap: 4px 8px !important;
+                padding: 4px 10px 2px 10px !important;
+                gap: 4px 6px !important;
             }
-            /* Logo e pulsanti ancora più piccoli */
             #customAppLogoImg {
-                max-height: 28px !important;
-                max-width: 55px !important;
+                max-height: 24px !important;
+                max-width: 50px !important;
             }
             #appLogoPlaceholder {
-                width: 28px !important;
-                height: 28px !important;
+                width: 24px !important;
+                height: 24px !important;
                 font-size: 0.4rem !important;
             }
             .logo-area {
                 font-size: 0.85rem !important;
             }
             aside > div:last-child .btn {
-                padding: 4px 6px !important;
-                font-size: 0.68rem !important;
-                min-height: 30px !important;
+                padding: 3px 6px !important;
+                font-size: 0.65rem !important;
+                min-height: 26px !important;
             }
-            /* Spazio contenuti */
             main, #main-content {
                 padding: 6px !important;
             }
@@ -1218,22 +1168,15 @@
             color: #ffffff;
             transform: scale(1.1);
         }
-        .mobile-desktop-mode #pwa-install-container {
-            bottom: 28px !important;
-            right: 28px !important;
-        }
-        .mobile-desktop-mode #pwa-install-btn {
-            padding: 12px 22px !important;
-            font-size: 16px !important;
-        }
-        .mobile-desktop-mode #pwa-install-btn svg {
-            width: 20px !important;
-            height: 20px !important;
-        }
-        .mobile-desktop-mode #pwa-dismiss-btn {
-            width: 32px !important;
-            height: 32px !important;
-            font-size: 15px !important;
+        @media (max-width: 768px) {
+            #pwa-install-container {
+                bottom: 16px !important;
+                right: 16px !important;
+            }
+            #pwa-install-btn {
+                padding: 8px 14px !important;
+                font-size: 13px !important;
+            }
         }
         @media print {
             #pwa-install-container {
@@ -10030,8 +9973,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 const mobileNav = {
     toggleDropdown(id) {
-        const isMobileDesktop = document.documentElement.classList.contains('mobile-desktop-mode');
-        if (window.innerWidth > 768 && !isMobileDesktop) return;
+        if (window.innerWidth > 768) return;
         const el = document.getElementById(id);
         if (!el) return;
         const wasOpen = el.classList.contains('active-dropdown');
@@ -10041,10 +9983,9 @@ const mobileNav = {
     }
 };
 
-// Chiudi i dropdown quando si clicca fuori dall'area del menu
+// Chiudi i dropdown quando si clicca fuori dall'area del menu o si naviga
 document.addEventListener('click', (e) => {
-    const isMobileDesktop = document.documentElement.classList.contains('mobile-desktop-mode');
-    if ((window.innerWidth <= 768 || isMobileDesktop) && !e.target.closest('.nav-dropdown')) {
+    if (window.innerWidth <= 768 && !e.target.closest('.nav-dropdown')) {
         document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
     }
 });
