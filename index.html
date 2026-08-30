@@ -846,6 +846,9 @@
             .nav-dropdown.active-dropdown .nav-dropdown-content {
                 display: flex !important;
             }
+            .nav-dropdown:not(.active-dropdown) .nav-dropdown-content {
+                display: none !important;
+            }
             .nav-dropdown-content .nav-item {
                 width: 100% !important;
                 padding: 10px 14px !important;
@@ -7720,9 +7723,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         corsoIsActiveInWeek(corso, days) {
-            if (!corso.inizio) return false;
-            const weekEnd = new Date(days[6]); weekEnd.setHours(23, 59, 59);
-            const weekStart = new Date(days[0]); weekStart.setHours(0, 0, 0);
+            if (!corso) return false;
+            if (!corso.inizio) return true; // Se inizio non è specificato, il corso è sempre attivo
+            const weekEnd = new Date(days[6]); weekEnd.setHours(23, 59, 59, 999);
+            const weekStart = new Date(days[0]); weekStart.setHours(0, 0, 0, 0);
             const inizio = new Date(corso.inizio);
             const fine = corso.fine ? new Date(corso.fine) : null;
             if (inizio > weekEnd) return false;
@@ -7754,7 +7758,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         renderSalaPesi() {
             const main = document.getElementById('main-content');
-            const sale = this.state.sale;
+            const sale = this.state.sale || [];
             const offset = this.state.currentWeekOffset || 0;
             const weekDays = this.getWeekDates(offset);
             const currentTab = this.state.currentSalaTab || 'all';
@@ -7763,11 +7767,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Default mobile day to today (1=Lun..7=Dom) or current selection
             const defaultDay = new Date().getDay() === 0 ? 7 : new Date().getDay();
-            const selDay = this.state.currentCalMobileDay || defaultDay;
+            const selDay = parseInt(this.state.currentCalMobileDay || defaultDay, 10);
             const selDate = weekDays[selDay - 1] || weekDays[0];
 
             // Filter active corsi for this week
-            const activeCorsi = this.state.corsi.filter(c => this.corsoIsActiveInWeek(c, weekDays));
+            const activeCorsi = (this.state.corsi || []).filter(c => this.corsoIsActiveInWeek(c, weekDays));
 
             // Build tab HTML
             const tabsHtml = `
@@ -7791,7 +7795,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
                 const isToday = d.toDateString() === new Date().toDateString();
                 const isHoliday = app.isItalianHoliday(d);
-                const isCopiedSource = this.state.copiedDay && this.state.copiedDay.dayOfWeek === dayNum;
+                const isCopiedSource = this.state.copiedDay && parseInt(this.state.copiedDay.dayOfWeek, 10) === dayNum;
                 const isCopied = !!this.state.copiedDay;
                 
                 let headerBg = 'rgba(30,41,59,0.95)';
@@ -7819,22 +7823,22 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             });
 
             // Time rows
-            HOURS.forEach(hour => {
+            HOURS.forEach((hour, hIdx) => {
+                const nextHour = HOURS[hIdx + 1] || '24:00';
                 gridHtml += `<div style="background:rgba(30,41,59,0.85); padding:4px 6px; text-align:right; color:var(--text-muted); align-content:start; border-bottom:1px solid var(--border); border-right:1px solid var(--border);">${hour}</div>`;
                 for (let d = 1; d <= 7; d++) {
                     const slotCorsi = corsiToShow.filter(c => {
-                        const dow = c.dayOfWeek;
-                        if (dow !== d) return false;
+                        if (parseInt(c.dayOfWeek, 10) !== d) return false;
                         const cStart = c.startTime || '00:00';
                         const cEnd = c.endTime || '23:59';
-                        return cStart <= hour && cEnd > hour;
+                        return (cStart <= hour && cEnd > hour) || (cStart >= hour && cStart < nextHour);
                     });
                     const isToday = weekDays[d - 1].toDateString() === new Date().toDateString();
                     gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:36px; padding:2px; position:relative; cursor:pointer; border-bottom:1px solid var(--border); border-right:1px solid var(--border);" onclick="app.openNewCorsoModal(${d}, '${hour}')">`;
                     slotCorsi.forEach(c => {
                         const isConflict = conflicts.has(c.id);
-                        const istrNome = this.state.istruttori.find(i => i.id == c.istruttore_id)?.nome || '-';
-                        const salaNome = this.state.sale.find(s => s.id === c.sala_id)?.nome || '';
+                        const istrNome = (this.state.istruttori || []).find(i => i.id == c.istruttore_id)?.nome || '-';
+                        const salaNome = (this.state.sale || []).find(s => s.id === c.sala_id)?.nome || '';
                         const cNameLower = (c.nome || '').toLowerCase();
                         let defaultColor = 'var(--primary)';
                         if (cNameLower.includes('pole')) defaultColor = '#ec4899';
@@ -7862,7 +7866,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const dateStr = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
                 const isHoliday = app.isItalianHoliday(d);
                 const isSelected = (dayNum === selDay);
-                const dayCorsiCount = corsiToShow.filter(c => c.dayOfWeek === dayNum).length;
+                const dayCorsiCount = corsiToShow.filter(c => parseInt(c.dayOfWeek, 10) === dayNum).length;
 
                 let borderStyle = isSelected ? 'border: 2px solid var(--primary); background: rgba(59,130,246,0.25);' : 'border: 1px solid var(--border); background: var(--bg-card);';
                 let textColor = isSelected ? 'var(--primary)' : 'var(--text-main)';
@@ -7878,12 +7882,19 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             });
             mobileDaySelectorHtml += `</div>`;
 
-            const isCopiedSourceMob = this.state.copiedDay && this.state.copiedDay.dayOfWeek === selDay;
+            const isCopiedSourceMob = this.state.copiedDay && parseInt(this.state.copiedDay.dayOfWeek, 10) === selDay;
             const isCopiedMob = !!this.state.copiedDay;
+            const dayCorsiTotal = corsiToShow.filter(c => parseInt(c.dayOfWeek, 10) === selDay);
+
             let mobileDayHeaderHtml = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:8px 10px; background:rgba(30,41,59,0.7); border-radius:8px; border:1px solid var(--border);">
-                    <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">
-                        ${DAYS[selDay - 1]} ${selDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'long' })}
+                    <div>
+                        <div style="font-weight:700; font-size:0.88rem; color:var(--text-main);">
+                            ${DAYS[selDay - 1]} ${selDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'long' })}
+                        </div>
+                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+                            ${dayCorsiTotal.length === 1 ? '1 attività programmata' : `${dayCorsiTotal.length} attività programmate`}
+                        </div>
                     </div>
                     <div style="display:flex; gap:4px; align-items:center;">
                         <button class="btn btn-outline" style="padding:3px 6px; font-size:0.68rem; ${isCopiedSourceMob ? 'background:var(--primary); color:white;' : ''}" title="Copia attività di questo giorno" onclick="app.copyDay(${selDay})">📋 Copia</button>
@@ -7894,12 +7905,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             `;
 
             let mobileTimelineHtml = `<div style="display:flex; flex-direction:column; gap:6px;">`;
-            HOURS.forEach(hour => {
+            HOURS.forEach((hour, hIdx) => {
+                const nextHour = HOURS[hIdx + 1] || '24:00';
                 const slotCorsi = corsiToShow.filter(c => {
-                    if (c.dayOfWeek !== selDay) return false;
+                    if (parseInt(c.dayOfWeek, 10) !== selDay) return false;
                     const cStart = c.startTime || '00:00';
                     const cEnd = c.endTime || '23:59';
-                    return cStart <= hour && cEnd > hour;
+                    return (cStart <= hour && cEnd > hour) || (cStart >= hour && cStart < nextHour);
                 });
 
                 mobileTimelineHtml += `
@@ -7909,8 +7921,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             ${slotCorsi.length === 0 ? '<div style="font-size:0.68rem; color:var(--text-muted); opacity:0.35; align-self:center; margin:auto;">+ Clicca per aggiungere</div>' : ''}
                             ${slotCorsi.map(c => {
                                 const isConflict = conflicts.has(c.id);
-                                const istrNome = this.state.istruttori.find(i => i.id == c.istruttore_id)?.nome || '-';
-                                const salaNome = this.state.sale.find(s => s.id === c.sala_id)?.nome || '';
+                                const istrNome = (this.state.istruttori || []).find(i => i.id == c.istruttore_id)?.nome || '-';
+                                const salaNome = (this.state.sale || []).find(s => s.id === c.sala_id)?.nome || '';
                                 const cNameLower = (c.nome || '').toLowerCase();
                                 let defaultColor = 'var(--primary)';
                                 if (cNameLower.includes('pole')) defaultColor = '#ec4899';
@@ -7946,7 +7958,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Count conflicts
             const conflictCount = conflicts.size;
-            const copiedLabel = this.state.copiedDay ? `<div style="background:var(--accent); color:white; padding:2px 8px; border-radius:12px; margin-top:4px; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; font-weight:600;">📋 In memoria: ${DAYS[this.state.copiedDay.dayOfWeek - 1]} <span style="cursor:pointer; opacity:0.8; font-size:0.8rem;" title="Annulla Copia" onclick="app.clearCopiedDay()">✖</span></div>` : '';
+            const copiedLabel = this.state.copiedDay ? `<div style="background:var(--accent); color:white; padding:2px 8px; border-radius:12px; margin-top:4px; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; font-weight:600;">📋 In memoria: ${DAYS[parseInt(this.state.copiedDay.dayOfWeek, 10) - 1]} <span style="cursor:pointer; opacity:0.8; font-size:0.8rem;" title="Annulla Copia" onclick="app.clearCopiedDay()">✖</span></div>` : '';
 
             main.innerHTML = `
                     <div class="page-content" style="padding-bottom: 0;">
@@ -10258,8 +10270,16 @@ function closeAllNavDropdowns() {
     document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
 }
 
-// Chiudi i dropdown quando si clicca/tocca FUORI dal menu
+// Chiudi i dropdown quando si clicca su qualsiasi sottovoce o fuori dal menu
 document.addEventListener('click', (e) => {
+    // 1. Se si clicca su una sottovoce interna al menu a tendina
+    if (e.target.closest('.nav-dropdown-content .nav-item, .nav-dropdown-content a, .nav-dropdown-content div, .dropdown-item')) {
+        if (!e.target.matches('.nav-dropdown > .nav-item')) {
+            closeAllNavDropdowns();
+            return;
+        }
+    }
+    // 2. Se si clicca in qualsiasi punto fuori dal menu
     if (!e.target.closest('.nav-dropdown')) {
         closeAllNavDropdowns();
     }
