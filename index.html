@@ -748,7 +748,7 @@
                 flex-direction: row !important;
                 align-items: center !important;
                 justify-content: flex-end !important;
-                gap: 5px !important;
+                gap: 8px !important;
                 min-width: 0 !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -777,7 +777,11 @@
                 flex-shrink: 0 !important;
             }
 
-            #cloud-indicator-btn span#cloud-indicator-label {
+            #fullscreen-btn {
+        display: none !important;
+    }
+
+    #cloud-indicator-btn span#cloud-indicator-label {
                 max-width: 75px;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -1186,9 +1190,156 @@
                 font-size: 13px !important;
             }
         }
+        /* ============================================================
+           GLOBAL PRINT STYLES (@media print)
+           Uniforma la stampa su tutto il gestionale (Soci, Ricevute,
+           Prima Nota, Magazzino, Calendario, Report, Schede)
+           ============================================================ */
         @media print {
-            #pwa-install-container {
+            /* Reset layout, colori di sfondo e altezze per stampa pulita */
+            *, *::before, *::after {
+                background: transparent !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+
+            html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                font-size: 10pt !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .app-container {
+                display: block !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+            }
+
+            /* 1. Nascondi Top Bar, Navigazione, Pulsanti fluttuanti, Bottoni di azione e Modali */
+            aside,
+            nav,
+            .aside-actions,
+            .nav-links,
+            .nav-dropdown,
+            #pwa-install-container,
+            #paywall-overlay,
+            #modal-overlay,
+            .btn,
+            button,
+            .action-btn,
+            .btn-icon,
+            input[type="search"],
+            input[type="text"],
+            select,
+            .search-box,
+            .no-print,
+            .floating-btn,
+            .toast,
+            #toast-container {
                 display: none !important;
+            }
+
+            /* 2. Reset contenitori e overflow per multi-pagina senza troncamento */
+            main,
+            #main-content,
+            .page-content,
+            .table-container,
+            .glass-card,
+            .card,
+            .dashboard-grid,
+            .two-column-layout,
+            .stats-row,
+            .stats-container,
+            .mobile-calendar-view,
+            .desktop-calendar-view {
+                display: block !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                overflow-x: visible !important;
+                overflow-y: visible !important;
+                position: static !important;
+                padding: 0 !important;
+                margin: 0 0 10pt 0 !important;
+                border: none !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            /* 3. Tabelle ben impaginate */
+            table {
+                width: 100% !important;
+                min-width: 100% !important;
+                border-collapse: collapse !important;
+                page-break-inside: auto !important;
+                font-size: 9pt !important;
+            }
+
+            tr {
+                page-break-inside: avoid !important;
+                page-break-after: auto !important;
+            }
+
+            thead {
+                display: table-header-group !important;
+            }
+
+            tfoot {
+                display: table-footer-group !important;
+            }
+
+            th, td {
+                border: 1px solid #cccccc !important;
+                padding: 6px 8px !important;
+                text-align: left !important;
+                color: #000000 !important;
+            }
+
+            th {
+                font-weight: 700 !important;
+                background: #f1f5f9 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Nascondi colonna azioni */
+            th:last-child:has(button),
+            td:last-child:has(button),
+            th.col-actions,
+            td.col-actions,
+            th:has(.btn),
+            td:has(.btn) {
+                display: none !important;
+            }
+
+            /* 4. Titoli ed intestazioni */
+            h1, h2, h3, h4 {
+                color: #000000 !important;
+                page-break-after: avoid !important;
+                margin-top: 10pt !important;
+                margin-bottom: 6pt !important;
+            }
+
+            .page-header {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                border-bottom: 2px solid #000000 !important;
+                padding-bottom: 8pt !important;
+                margin-bottom: 12pt !important;
+            }
+
+            .page-header h1 {
+                font-size: 16pt !important;
+                margin: 0 !important;
             }
         }
 
@@ -7180,10 +7331,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <button class="btn" style="background:var(--primary);" onclick="app.createSnapshot('manual')">➕ Crea Salvataggio Manuale</button>
                                 </div>
                                 
-                                <div style="display:flex; gap:15px; margin-bottom:1rem; align-items:center;">
-                                    <div>
-                                        <label style="font-size:0.85rem; display:block; margin-bottom:5px;">Autosalvataggio ogni (ore)</label>
-                                        <select class="form-control" style="width:120px;" onchange="app.state.settings.autoSaveHours = parseInt(this.value); app.saveAll(); app.checkAutoSave();">
+                                <div style="display:flex; flex-direction:row; gap:10px; margin-bottom:1rem; align-items:flex-end;">
+                                    <div style="flex:1; min-width:0;">
+                                        <label style="font-size:0.82rem; display:block; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Autosave (ore)</label>
+                                        <select class="form-control" style="width:100%;" onchange="app.state.settings.autoSaveHours = parseInt(this.value); app.saveAll(); app.checkAutoSave();">
                                             <option value="0" ${app.state.settings.autoSaveHours === 0 ? 'selected' : ''}>Disattivato</option>
                                             <option value="2" ${app.state.settings.autoSaveHours === 2 ? 'selected' : ''}>2 ore</option>
                                             <option value="6" ${app.state.settings.autoSaveHours === 6 ? 'selected' : ''}>6 ore</option>
@@ -7191,9 +7342,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                             <option value="24" ${app.state.settings.autoSaveHours === 24 ? 'selected' : ''}>24 ore</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label style="font-size:0.85rem; display:block; margin-bottom:5px;">Max conservati</label>
-                                        <select class="form-control" style="width:120px;" onchange="app.state.settings.maxSnapshots = parseInt(this.value); app.saveAll();">
+                                    <div style="flex:1; min-width:0;">
+                                        <label style="font-size:0.82rem; display:block; margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Max conservati</label>
+                                        <select class="form-control" style="width:100%;" onchange="app.state.settings.maxSnapshots = parseInt(this.value); app.saveAll();">
                                             <option value="3" ${app.state.settings.maxSnapshots === 3 ? 'selected' : ''}>3</option>
                                             <option value="5" ${app.state.settings.maxSnapshots === 5 ? 'selected' : ''}>5</option>
                                             <option value="10" ${app.state.settings.maxSnapshots === 10 ? 'selected' : ''}>10</option>
@@ -10102,11 +10253,23 @@ const mobileNav = {
     }
 };
 
-// Chiudi i dropdown quando si clicca fuori dall'area del menu o si naviga
-document.addEventListener('click', (e) => {
-    if (window.innerWidth <= 768 && !e.target.closest('.nav-dropdown')) {
-        document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
-    }
+// Chiudi i dropdown quando si tocca/clicca una qualsiasi voce o fuori dal menu
+function closeAllNavDropdowns() {
+    document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
+}
+
+['click', 'touchend'].forEach(evtType => {
+    document.addEventListener(evtType, (e) => {
+        // Se tocca una voce del sottomenu a tendina
+        if (e.target.closest('.nav-dropdown-content .nav-item') || e.target.closest('.nav-dropdown-content a') || e.target.closest('.nav-dropdown-content div')) {
+            closeAllNavDropdowns();
+            return;
+        }
+        // Se tocca fuori da qualsiasi dropdown
+        if (!e.target.closest('.nav-dropdown')) {
+            closeAllNavDropdowns();
+        }
+    }, { passive: true });
 });
 </script>
 <div id="pwa-install-container" style="display: none;">
