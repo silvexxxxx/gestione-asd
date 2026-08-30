@@ -205,6 +205,41 @@
             display: block;
         }
 
+        /* Pulsante Fullscreen Neon / Fluo Desktop */
+        #fullscreen-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #00d2ff;
+            background: rgba(0, 210, 255, 0.08);
+            border: 1px solid rgba(0, 210, 255, 0.5);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.18), inset 0 0 8px rgba(0, 210, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            text-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+            user-select: none;
+        }
+
+        #fullscreen-btn:hover {
+            color: #ffffff;
+            background: rgba(0, 210, 255, 0.22);
+            border-color: #00d2ff;
+            box-shadow: 0 0 16px rgba(0, 210, 255, 0.5), inset 0 0 10px rgba(0, 210, 255, 0.15);
+            transform: translateY(-1px);
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
+        }
+
+        #fullscreen-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
+        }
+
         /* Main Content */
         main {
             flex: 1;
@@ -1434,8 +1469,9 @@
                     <span id="cloud-indicator-icon">☁️</span>
                     <span id="cloud-indicator-label">Offline</span>
                 </button>
-                <button class="btn btn-outline" id="fullscreen-btn" title="Schermo Intero"
-                    onclick="app.toggleFullscreen()" style="padding: 6px 10px; font-size: 0.75rem;">⛶</button>
+                <button id="fullscreen-btn" title="Schermo Intero" onclick="app.toggleFullscreen()">
+                    <span style="font-size:0.85rem;">⛶</span> <span>Schermo Intero</span>
+                </button>
 
                 <button
                     onclick="app.exitAppPrompt()"
@@ -10034,17 +10070,26 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
 
             app.init();
             
-            // Sincronizza lo stato del pulsante schermo intero e della preferenza
-            document.addEventListener('fullscreenchange', () => {
+            // Sincronizza lo stato del pulsante schermo intero con icona e testo dinamico
+            const updateFullscreenButtonState = () => {
                 const btn = document.getElementById('fullscreen-btn');
-                if (document.fullscreenElement) {
+                if (!btn) return;
+                const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+                if (isFull) {
                     localStorage.setItem('asd_fullscreen', 'true');
-                    if (btn) { btn.title = 'Esci da Schermo Intero'; btn.textContent = '✕⛶'; }
+                    btn.title = 'Esci da Schermo Intero';
+                    btn.innerHTML = '<span style="font-size:0.85rem;">🗗</span> <span>Finestra</span>';
                 } else {
                     localStorage.setItem('asd_fullscreen', 'false');
-                    if (btn) { btn.title = 'Schermo Intero'; btn.textContent = '⛶'; }
+                    btn.title = 'Schermo Intero';
+                    btn.innerHTML = '<span style="font-size:0.85rem;">⛶</span> <span>Schermo Intero</span>';
                 }
+            };
+
+            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+                document.addEventListener(evt, updateFullscreenButtonState);
             });
+            updateFullscreenButtonState();
 
             // Ripristina lo schermo intero al primo tocco o clic dell'utente (richiesto per sicurezza dai browser)
             const restoreFullscreen = () => {
