@@ -1114,9 +1114,6 @@
 
         /* === SCHERMI MOLTO STRETTI (<640px) === */
         @media (max-width: 640px) {
-            #storage-text span {
-                display: none !important;
-            }
             aside > div:last-child {
                 gap: 4px !important;
             }
@@ -1124,9 +1121,6 @@
                 padding: 4px 6px !important;
                 font-size: 0.68rem !important;
                 min-height: 28px !important;
-            }
-            #storage-indicator {
-                width: 35px !important;
             }
         }
 
@@ -1494,17 +1488,10 @@
                     </svg>
                     Esci
                 </button>
-                <div class="stat-card" style="padding: 0; text-align: left;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <span class="label" style="font-size: 0.65rem;">Storage</span>
-                        <span id="storage-text" style="font-size: 0.65rem; color: var(--text-muted);">0.00 MB</span>
-                    </div>
-                    <div id="storage-indicator"
-                        style="height: 6px; width: 100px; background: #334155; border-radius: 3px;">
-                        <div id="storage-bar"
-                            style="height: 100%; width: 2%; background: var(--success); border-radius: 3px;"></div>
-                    </div>
+                <div class="stat-card" id="storage-badge-card" style="padding: 5px 10px; text-align: left; display: flex; align-items: center; gap: 6px; background: rgba(30, 41, 59, 0.6); border: 1px solid var(--border); border-radius: 8px; font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" title="Spazio locale occupato dai dati ASD" onclick="app.showPage('database')">
+                    <span style="font-size: 0.85rem; color: var(--primary);">🖴</span>
+                    <span style="font-weight: 500;">Storage:</span>
+                    <span id="storage-text" style="font-weight: 700; color: var(--text-main);">0.0 KB</span>
                 </div>
             </div>
         </aside>
@@ -3087,17 +3074,41 @@
             }
         },
 
-        async updateStorageIndicator() {
-                let bytes = await this.idbSize();
-                const mb = (bytes / (1024 * 1024)).toFixed(2);
-                const bar = document.getElementById('storage-bar');
-                if (bar) {
-                    bar.style.width = '100%';
-                    bar.style.background = 'var(--primary)';
+        getActualStorageSize() {
+            let totalBytes = 0;
+            try {
+                for (let key in localStorage) {
+                    if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+                        const val = localStorage[key];
+                        if (typeof val === 'string') {
+                            // Ogni carattere UTF-16 in JavaScript Web Storage occupa 2 byte
+                            totalBytes += (val.length + key.length) * 2;
+                        }
+                    }
                 }
-                const text = document.getElementById('storage-text');
-                if (text) text.innerHTML = mb + ' MB <span style="font-size:0.6rem; margin-left:4px; color:#10b981;">(Spazio Illimitato)</span>';
-            },
+            } catch(e) {
+                console.error('Errore calcolo localStorage size:', e);
+            }
+            return totalBytes;
+        },
+
+        async updateStorageIndicator() {
+            let lsBytes = this.getActualStorageSize();
+            let idbBytes = 0;
+            try {
+                idbBytes = await this.idbSize();
+            } catch(e) {}
+            const totalBytes = lsBytes + idbBytes;
+
+            const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+            const kb = (totalBytes / 1024).toFixed(1);
+            const formatted = totalBytes > 1024 * 500 ? `${mb} MB` : `${kb} KB`;
+
+            const text = document.getElementById('storage-text');
+            if (text) {
+                text.textContent = formatted;
+            }
+        },
             
             toast(msg, type = "success") {
                 const container = document.getElementById('toast-container');
