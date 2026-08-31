@@ -4079,7 +4079,9 @@ closeModal() {
                             </div>
                             <div class="header-actions" style="display:flex; gap:8px;">
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta la tabella delle ricevute in formato Excel.">Esporta Excel</button>
-                                
+                                ${this.state.debugMode ? `
+                                    <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.resequenceRicevutePrompt()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
+                                ` : ''}
                                 <button class="btn btn-primary" onclick="app.openAddRicevutaModal()">+ Nuova Ricevuta</button>
                             </div>
                         </div>
@@ -4206,8 +4208,9 @@ closeModal() {
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF(${r.id})" ${r.annullata ? 'disabled' : ''} title="Salva PDF">💾 PDF</button>
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt(${r.id})" ${r.annullata ? 'disabled' : ''} title="Stampa">🖨️</button>
                                 ${this.state.debugMode ? `
+                                    <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${r.numero}, ${r.anno}, '${r.data}')">➕</button>
                                     <button class="btn btn-outline" style="padding: 5px;" title="Modifica" onclick="app.openEditRicevutaModal(${r.id})">✏️</button>
-                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente" onclick="app.permanentlyDeleteRicevuta(${r.id})">🗑️</button>
+                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" onclick="app.permanentlyDeleteRicevuta(${r.id})">🗑️</button>
                                 ` : ''}
                                 ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" onclick="app.annullaRicevuta(${r.id})">🚫</button>` : ''}
                             </div>
@@ -4315,13 +4318,25 @@ closeModal() {
                 list.innerHTML = `<div style="padding:10px; color:var(--text-muted);">Nessun socio trovato</div>`;
             }
         },
-openAddRicevutaModal() {
+openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const today = new Date();
-            const currentYear = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+            const currentYear = forcedAnno ? parseInt(forcedAnno) : (today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1);
             const lastNum = this.state.ricevute.filter(r => r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
+            const initialNum = (insertNum !== null && insertNum !== undefined) ? parseInt(insertNum) : (lastNum + 1);
+            const isInsert = (insertNum !== null && insertNum !== undefined && initialNum <= lastNum);
+            const defaultDate = forcedDate || today.toISOString().split('T')[0];
             
-            this.openModal('Emissione Ricevuta', `
+            this.openModal(isInsert ? `➕ Inserimento Ricevuta Intermedia (N. ${initialNum})` : 'Emissione Ricevuta', `
                 <form id="receipt-form" onsubmit="app.handleRicevutaSubmit(event)">
+
+                    ${isInsert ? `
+                        <div style="background: rgba(59, 130, 246, 0.12); border: 1px solid #3b82f6; border-radius: 8px; padding: 10px; margin-bottom: 15px; font-size: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.2rem;">ℹ️</span>
+                            <div>
+                                <strong>Inserimento con slittamento automatico:</strong> Questa ricevuta prenderà il <strong>N. ${initialNum}/${app.formatAnno(currentYear)}</strong>. Tutte le ricevute esistenti da N. ${initialNum} in poi scaleranno di <strong>+1</strong> posto.
+                            </div>
+                        </div>
+                    ` : ''}
 
                     <!-- Intestazione opzioni: Da Cartaceo + Inserimento Multiplo -->
                     <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid var(--border);">
@@ -4357,12 +4372,12 @@ openAddRicevutaModal() {
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label>Data</label>
-                                    <input type="date" name="data" id="receipt-data" class="form-control" required>
+                                    <input type="date" name="data" id="receipt-data" class="form-control" value="${defaultDate}" required>
                                 </div>
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label>N. Ricevuta / Anno</label>
                                     <div style="display:flex; gap:0.5rem;">
-                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:50%; min-width:70px;" value="${lastNum + 1}" required readonly>
+                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:50%; min-width:70px;" value="${initialNum}" required ${this.state.debugMode ? '' : 'readonly'}>
                                         <select name="anno" class="form-control" style="width:50%; min-width:95px;" required>
                                             ${[currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${app.formatAnno(y)}</option>`).join('')}
                                         </select>
@@ -4447,8 +4462,57 @@ openAddRicevutaModal() {
             `);
             
             document.getElementById('modal-content').classList.add('modal-wide');
+            const dateEl = document.getElementById('receipt-data');
+            if (dateEl) dateEl.value = defaultDate;
+        },
+
+        openInsertRicevutaModal(insertNum, anno, dataDefault) {
+            this.openAddRicevutaModal(insertNum, anno, dataDefault);
+        },
+
+        resequenceRicevutePrompt() {
+            const today = new Date();
+            const defaultYear = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+            const annoStr = prompt("Inserisci l'anno di riferimento per rinumerare la sequenza (1, 2, 3... in ordine progressivo):", defaultYear);
+            if (!annoStr) return;
+            const anno = parseInt(annoStr);
+            if (isNaN(anno)) {
+                this.toast("Anno non valido.", "danger");
+                return;
+            }
+            this.resequenceRicevute(anno);
+        },
+
+        resequenceRicevute(anno) {
+            if (!anno) {
+                const today = new Date();
+                anno = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+            }
+            const yearReceipts = this.state.ricevute.filter(r => r.anno === parseInt(anno));
+            if (yearReceipts.length === 0) {
+                this.toast(`Nessuna ricevuta trovata per l'anno ${app.formatAnno(anno)}.`, "info");
+                return;
+            }
             
-            document.getElementById('receipt-data').value = new Date().toISOString().split('T')[0];
+            // Ordina per numero attuale (o per data poi numero)
+            yearReceipts.sort((a, b) => {
+                if (a.numero !== b.numero) return a.numero - b.numero;
+                return new Date(a.data).getTime() - new Date(b.data).getTime();
+            });
+            
+            let countChanged = 0;
+            yearReceipts.forEach((r, idx) => {
+                const newNum = idx + 1;
+                if (r.numero !== newNum) {
+                    r.numero = newNum;
+                    countChanged++;
+                    this.syncPrimaNotaFromRicevuta(r);
+                }
+            });
+            
+            this.saveAll();
+            this.renderRicevute();
+            this.toast(`Rinumerazione completata per l'anno ${app.formatAnno(anno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} modificate).`, "success");
         },
 
         applyPreset(presetId) {
@@ -4508,10 +4572,10 @@ openAddRicevutaModal() {
         onReceiptCartaceaChange(checked) {
             const numInput = document.getElementById('receipt-numero');
             if (!numInput) return;
-            if (checked) {
+            if (checked || this.state.debugMode) {
                 numInput.removeAttribute('readonly');
                 numInput.style.borderColor = '#ca8a04';
-                numInput.title = 'Inserisci il numero della ricevuta cartacea';
+                numInput.title = 'Inserisci il numero della ricevuta';
             } else {
                 numInput.setAttribute('readonly', true);
                 numInput.style.borderColor = '';
@@ -4643,6 +4707,30 @@ openAddRicevutaModal() {
             if (editId) {
                 receipt = this.state.ricevute.find(r => r.id == editId);
                 if (!receipt) return;
+                
+                const oldNum = receipt.numero;
+                const oldAnno = receipt.anno;
+                const newNum = parseInt(data.numero);
+                const newAnno = parseInt(data.anno);
+                
+                if (oldAnno === newAnno && oldNum !== newNum) {
+                    if (newNum < oldNum) {
+                        const toShift = this.state.ricevute.filter(r => r.id != editId && r.anno === oldAnno && r.numero >= newNum && r.numero < oldNum)
+                                                          .sort((a, b) => b.numero - a.numero);
+                        toShift.forEach(r => {
+                            r.numero += 1;
+                            this.syncPrimaNotaFromRicevuta(r);
+                        });
+                    } else {
+                        const toShift = this.state.ricevute.filter(r => r.id != editId && r.anno === oldAnno && r.numero > oldNum && r.numero <= newNum)
+                                                          .sort((a, b) => a.numero - b.numero);
+                        toShift.forEach(r => {
+                            r.numero -= 1;
+                            this.syncPrimaNotaFromRicevuta(r);
+                        });
+                    }
+                }
+                
                 receipt.socio_id = data.socio_id;
                 receipt.socio_nome = socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto';
                 receipt.importo = importo;
@@ -4655,10 +4743,24 @@ openAddRicevutaModal() {
                 receipt.quota = quota || undefined;
                 receipt.tess = tess || undefined;
                 receipt.cartacea = isCartacea || undefined;
-                // anno and numero aren't changed on edit usually, but just in case:
-                receipt.anno = parseInt(data.anno);
-                receipt.numero = parseInt(data.numero);
+                receipt.anno = newAnno;
+                receipt.numero = newNum;
             } else {
+                const targetNum = parseInt(data.numero);
+                const targetAnno = parseInt(data.anno);
+                
+                // Se inserimento intermedio o su numero esistente, fai slittare i numeri >= targetNum
+                const existingToShift = this.state.ricevute
+                    .filter(r => r.anno === targetAnno && r.numero >= targetNum)
+                    .sort((a, b) => b.numero - a.numero);
+                
+                if (existingToShift.length > 0) {
+                    existingToShift.forEach(r => {
+                        r.numero += 1;
+                        this.syncPrimaNotaFromRicevuta(r);
+                    });
+                }
+                
                 receipt = {
                     id: Date.now() + Math.random(),
                     socio_id: data.socio_id,
@@ -4669,8 +4771,8 @@ openAddRicevutaModal() {
                     pagamento: pagamento,
                     metodo_pagamento: pagamento,
                     commissioni: commissioni,
-                    numero: parseInt(data.numero),
-                    anno: parseInt(data.anno),
+                    numero: targetNum,
+                    anno: targetAnno,
                     note: data.note || '',
                     quota: quota || undefined,
                     tess: tess || undefined,
@@ -4730,13 +4832,30 @@ openAddRicevutaModal() {
         },
 
         permanentlyDeleteRicevuta(id) {
-            if (confirm("ATTENZIONE: Stai per eliminare DEFINITIVAMENTE questa ricevuta. Questa azione è riservata alla manutenzione tecnica. Procedere?")) {
+            const r = this.state.ricevute.find(x => x.id === id);
+            if (!r) return;
+            
+            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${r.numero}/${app.formatAnno(r.anno)} di ${r.socio_nome}.\n\nLa sequenza numerica delle ricevute successive per l'anno ${app.formatAnno(r.anno)} scalerà automaticamente di 1 posto per mantenere la numerazione continua. Procedere?`)) {
+                const deletedNum = r.numero;
+                const deletedAnno = r.anno;
+                
                 this.stornoPrimaNotaFromRicevuta(id);
-                this.state.ricevute = this.state.ricevute.filter(r => r.id !== id);
-                    this.trackDeletion(id);
+                this.state.ricevute = this.state.ricevute.filter(x => x.id !== id);
+                this.trackDeletion(id);
+                
+                // Scala di 1 tutte le ricevute dello stesso anno con numero > deletedNum
+                const shiftedReceipts = this.state.ricevute
+                    .filter(x => x.anno === deletedAnno && x.numero > deletedNum)
+                    .sort((a, b) => a.numero - b.numero);
+                    
+                shiftedReceipts.forEach(x => {
+                    x.numero -= 1;
+                    this.syncPrimaNotaFromRicevuta(x);
+                });
+                
                 this.saveAll();
                 this.renderRicevute();
-                this.toast("Ricevuta eliminata definitivamente dal database.", "danger");
+                this.toast(`Ricevuta eliminata. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
             }
         },
 
@@ -4781,10 +4900,12 @@ openAddRicevutaModal() {
                 if(s) searchInput.value = s.cognome + ' ' + s.nome;
             }
 
-            // Se ricevuta cartacea, abilita numero editabile e spunta checkbox
+            // Se ricevuta cartacea o debug mode, abilita numero editabile e spunta checkbox
             if (r.cartacea) {
                 const cb = document.getElementById('receipt-cartacea');
                 if (cb) { cb.checked = true; this.onReceiptCartaceaChange(true); }
+            } else if (this.state.debugMode) {
+                this.onReceiptCartaceaChange(false);
             }
 
             // Se pagamento non Contanti, mostra commissioni
@@ -4802,13 +4923,36 @@ openAddRicevutaModal() {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
-            Object.keys(data).forEach(k => {
-                if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
-                    data[k] = '20' + data[k].substring(2);
-                }
-            });
+                Object.keys(data).forEach(k => {
+                    if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
+                        data[k] = '20' + data[k].substring(2);
+                    }
+                });
                 const idx = this.state.ricevute.findIndex(x => x.id === id);
                 if (idx < 0) return;
+
+                const oldNum = this.state.ricevute[idx].numero;
+                const oldAnno = this.state.ricevute[idx].anno;
+                const newNum = parseInt(data.numero);
+                const newAnno = parseInt(data.anno);
+
+                if (oldAnno === newAnno && oldNum !== newNum) {
+                    if (newNum < oldNum) {
+                        const toShift = this.state.ricevute.filter(r => r.id !== id && r.anno === oldAnno && r.numero >= newNum && r.numero < oldNum)
+                                                          .sort((a, b) => b.numero - a.numero);
+                        toShift.forEach(r => {
+                            r.numero += 1;
+                            this.syncPrimaNotaFromRicevuta(r);
+                        });
+                    } else {
+                        const toShift = this.state.ricevute.filter(r => r.id !== id && r.anno === oldAnno && r.numero > oldNum && r.numero <= newNum)
+                                                          .sort((a, b) => a.numero - b.numero);
+                        toShift.forEach(r => {
+                            r.numero -= 1;
+                            this.syncPrimaNotaFromRicevuta(r);
+                        });
+                    }
+                }
 
                 const quota = Math.round((parseFloat(data.quota) || 0) * 100) / 100;
                 const tess = Math.round((parseFloat(data.tess) || 0) * 100) / 100;
@@ -4833,8 +4977,8 @@ openAddRicevutaModal() {
                     pagamento: pagamento,
                     metodo_pagamento: pagamento,
                     commissioni: commissioni,
-                    numero: parseInt(data.numero),
-                    anno: parseInt(data.anno),
+                    numero: newNum,
+                    anno: newAnno,
                     note: data.note || '',
                     quota: quota || undefined,
                     tess: tess || undefined,
