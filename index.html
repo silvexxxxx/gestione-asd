@@ -3525,28 +3525,32 @@ closeModal() {
             // --- SOCI MANAGEMENT ---
 
             renderSoci() {
+                const totalSoci = this.state.soci.length;
+                const attiviAnno = this.state.soci.filter(s => this.isActiveMember(s)).length;
+
                 const main = document.getElementById('main-content');
                 main.innerHTML = `
                     <div class="page-content">
                         <div class="page-header">
                             <div class="header-title">
-                                <h1>Anagrafica Soci ${this.state.soci.length > 0 ? `<span style="font-size: 1rem; color: var(--text-muted); font-weight: 400;">(${this.state.soci.length})</span>` : ''}</h1>
+                                <h1>Anagrafica Soci <span style="font-size: 1rem; color: var(--text-muted); font-weight: 400;">(${attiviAnno} attivi anno corrente / ${totalSoci} totali)</span></h1>
                                 <p>Gestisci l'elenco dei soci iscritti alla tua associazione.</p>
                             </div>
                             <button class="btn btn-primary" onclick="app.openAddSocioModal()" data-guide="Clicca qui per aggiungere un nuovo socio. Il Codice Fiscale verrà calcolato in automatico.">+ Aggiungi Socio</button>
                         </div>
 
                         <div class="glass-card member-card">
-                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0;">
-                                <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.state.sociVisibleCount = 50; app.filterSoci()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
-                                <select id="socio-filter-status" class="form-control" style="width: 150px;" onchange="app.state.sociVisibleCount = 50; app.filterSoci()" data-guide="Filtra i soci per stato. Scegli 'Quote Scadute' per vedere chi deve rinnovare l'abbonamento.">
-                                    <option value="ALL">Tutti gli stati</option>
-                                    <option value="ATTIVO">Attivi</option>
-                                    <option value="MOROSO">Morosi</option>
-                                    <option value="NON ATTIVO">Non Attivi (Vecchia Data)</option>
-                                    <option value="CESSATO">Cessati</option>
-                                    <option value="QUOTA_SCADUTA">Quote Scadute</option>
-                                    <option value="TESS_SCADUTO">Tess. Scaduti</option>
+                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.onSocioSearchInput()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
+                                <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato. Scegli 'Quote Scadute' per vedere chi deve rinnovare l'abbonamento.">
+                                    <option value="ANNO_CORRENTE" selected>⭐ Anno Sportivo Corrente (${attiviAnno})</option>
+                                    <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
+                                    <option value="ATTIVO">✅ Attivi con Quota Valida</option>
+                                    <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
+                                    <option value="NON ATTIVO">💤 Non Attivi (Anni Precedenti)</option>
+                                    <option value="CESSATO">🚫 Cessati</option>
+                                    <option value="QUOTA_SCADUTA">⌛ Quote Scadute</option>
+                                    <option value="TESS_SCADUTO">💳 Tess. Scaduti</option>
                                 </select>
                             </div>
 
@@ -3570,11 +3574,28 @@ closeModal() {
                         </div>
                     </div>
                 `;
+                this.state.sociVisibleCount = 200;
+                this.filterSoci();
+            },
+
+            onSocioFilterChange() {
+                const statusSelect = document.getElementById('socio-filter-status');
+                const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
+                this.state.sociVisibleCount = status === 'ANNO_CORRENTE' ? 200 : 50;
+                this.filterSoci();
+            },
+
+            onSocioSearchInput() {
+                const statusSelect = document.getElementById('socio-filter-status');
+                const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
+                if (status !== 'ANNO_CORRENTE') {
+                    this.state.sociVisibleCount = 50;
+                }
                 this.filterSoci();
             },
 
             renderSociRows(soci) {
-                if (soci.length === 0) return `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessun socio trovato.</td></tr>`;
+                if (soci.length === 0) return `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessun socio trovato.</td></tr>`;
 
                 const now = new Date();
                 // Reset hours for a cleaner comparison
@@ -3630,7 +3651,7 @@ closeModal() {
                             </div>
                         </td>
                     </tr>
-                `;
+                    `;
                 }).join('');
             },
 
@@ -3661,9 +3682,10 @@ closeModal() {
             },
 
             filterSoci() {
-                const search = document.getElementById('socio-search').value.toLowerCase();
+                const searchInput = document.getElementById('socio-search');
+                const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
                 const statusSelect = document.getElementById('socio-filter-status');
-                const status = statusSelect ? statusSelect.value : 'ALL';
+                const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
 
                 let filtered = this.state.soci.filter(s => {
                     const fullName = `${s.cognome || ''} ${s.nome || ''}`.toLowerCase();
@@ -3673,7 +3695,9 @@ closeModal() {
                     const now = new Date();
                     now.setHours(0,0,0,0);
 
-                    if (status === 'ALL') {
+                    if (status === 'ANNO_CORRENTE') {
+                        matchStatus = this.isActiveMember(s);
+                    } else if (status === 'ALL') {
                         matchStatus = true;
                     } else if (status === 'QUOTA_SCADUTA') {
                         const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
@@ -3728,17 +3752,30 @@ closeModal() {
 
                 const tbody = document.getElementById('soci-tbody');
                 if (tbody) {
-                    const toRender = filtered.slice(0, this.state.sociVisibleCount);
+                    if (filtered.length === 0) {
+                        if (search && status === 'ANNO_CORRENTE') {
+                            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                                <div style="font-size: 1rem; margin-bottom: 0.8rem; color: var(--text-main);">Nessun socio attivo nell'anno sportivo trovato per <strong>"${search}"</strong></div>
+                                <button class="btn btn-outline" style="margin: 0 auto; display: inline-flex; align-items: center; gap: 6px;" onclick="document.getElementById('socio-filter-status').value='ALL'; app.state.sociVisibleCount = 50; app.filterSoci();">🔍 Cerca in tutto l'archivio (${this.state.soci.length} soci)</button>
+                            </td></tr>`;
+                        } else {
+                            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessun socio trovato con i filtri attuali.</td></tr>`;
+                        }
+                        return;
+                    }
+
+                    const visibleLimit = status === 'ANNO_CORRENTE' ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
+                    const toRender = filtered.slice(0, visibleLimit);
                     tbody.innerHTML = this.renderSociRows(toRender);
-                    if (filtered.length > this.state.sociVisibleCount) {
-                        tbody.innerHTML += `<tr><td colspan="8" style="text-align:center; padding: 2rem;"><button class="btn btn-outline" style="width:100%; font-weight:bold; max-width:300px;" onclick="app.state.sociVisibleCount += 50; app.filterSoci();">👇 Carica altri (mostrati ${this.state.sociVisibleCount} su ${filtered.length})</button></td></tr>`;
+                    if (filtered.length > visibleLimit) {
+                        tbody.innerHTML += `<tr><td colspan="8" style="text-align:center; padding: 2rem;"><button class="btn btn-outline" style="width:100%; font-weight:bold; max-width:320px;" onclick="app.state.sociVisibleCount += 50; app.filterSoci();">👇 Carica altri (mostrati ${toRender.length} su ${filtered.length})</button></td></tr>`;
                     }
                 }
             },
 
             handleSort(key) {
                 const searchVal = document.getElementById('socio-search')?.value || "";
-                const statusVal = document.getElementById('socio-filter-status')?.value || "ALL";
+                const statusVal = document.getElementById('socio-filter-status')?.value || "ANNO_CORRENTE";
                 const tableContainer = document.querySelector('.table-container');
                 const currentScroll = tableContainer ? tableContainer.scrollTop : 0;
 
