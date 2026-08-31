@@ -4473,22 +4473,33 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         resequenceRicevutePrompt() {
             const today = new Date();
             const defaultYear = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
-            const annoStr = prompt("Inserisci l'anno di riferimento per rinumerare la sequenza (1, 2, 3... in ordine progressivo):", defaultYear);
+            const annoStr = prompt("Inserisci l'anno di riferimento per rinumerare la sequenza progressiva (1, 2, 3...):", defaultYear);
             if (!annoStr) return;
             const anno = parseInt(annoStr);
             if (isNaN(anno)) {
                 this.toast("Anno non valido.", "danger");
                 return;
             }
-            this.resequenceRicevute(anno);
+            
+            const hasCartacee = this.state.ricevute.some(r => r.anno === anno && r.cartacea);
+            let onlyDigital = false;
+            if (hasCartacee) {
+                onlyDigital = confirm(`Nell'anno ${app.formatAnno(anno)} sono presenti ricevute da Cartaceo.\n\nPremi OK per rinumerare SOLO le ricevute DIGITALI (mantenendo intatti i numeri fissi del blocchetto cartaceo).\nPremi ANNULLA per rinumerare TUTTE le ricevute dell'anno in ordine cronologico.`);
+            }
+            
+            this.resequenceRicevute(anno, onlyDigital);
         },
 
-        resequenceRicevute(anno) {
+        resequenceRicevute(anno, onlyDigital = false) {
             if (!anno) {
                 const today = new Date();
                 anno = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
             }
-            const yearReceipts = this.state.ricevute.filter(r => r.anno === parseInt(anno));
+            let yearReceipts = this.state.ricevute.filter(r => r.anno === parseInt(anno));
+            if (onlyDigital) {
+                yearReceipts = yearReceipts.filter(r => !r.cartacea);
+            }
+            
             if (yearReceipts.length === 0) {
                 this.toast(`Nessuna ricevuta trovata per l'anno ${app.formatAnno(anno)}.`, "info");
                 return;
@@ -4512,7 +4523,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             
             this.saveAll();
             this.renderRicevute();
-            this.toast(`Rinumerazione completata per l'anno ${app.formatAnno(anno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} modificate).`, "success");
+            const scopeText = onlyDigital ? "digitali" : "totali";
+            this.toast(`Rinumerazione completata (${scopeText}) per il ${app.formatAnno(anno)}: ${yearReceipts.length} ricevute sequenziali (${countChanged} modificate).`, "success");
         },
 
         applyPreset(presetId) {
