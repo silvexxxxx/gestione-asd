@@ -4205,14 +4205,14 @@ closeModal() {
                         <td><span style="color: ${r.cartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${r.cartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;">
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF(${r.id})" ${r.annullata ? 'disabled' : ''} title="Salva PDF">💾 PDF</button>
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt(${r.id})" ${r.annullata ? 'disabled' : ''} title="Stampa">🖨️</button>
+                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Salva PDF">💾 PDF</button>
+                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Stampa">🖨️</button>
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${r.numero}, ${r.anno}, '${r.data}')">➕</button>
-                                    <button class="btn btn-outline" style="padding: 5px;" title="Modifica" onclick="app.openEditRicevutaModal(${r.id})">✏️</button>
-                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" onclick="app.permanentlyDeleteRicevuta(${r.id})">🗑️</button>
+                                    <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
+                                    <button class="btn btn-outline" style="padding: 5px;" title="Modifica" onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
+                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
                                 ` : ''}
-                                ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" onclick="app.annullaRicevuta(${r.id})">🚫</button>` : ''}
+                                ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" onclick="app.annullaRicevuta('${r.id}')">🚫</button>` : ''}
                             </div>
                         </td>
                     </tr>
@@ -4471,9 +4471,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         resequenceRicevutePrompt() {
-            const today = new Date();
-            const defaultYear = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
-            const annoStr = prompt("Inserisci l'anno di riferimento per rinumerare la sequenza progressiva (1, 2, 3...):", defaultYear);
+            const availableYears = [...new Set(this.state.ricevute.map(r => parseInt(r.anno)).filter(y => !isNaN(y) && y > 0))].sort((a,b) => b - a);
+            const defaultYear = availableYears.length > 0 ? availableYears[0] : (new Date().getMonth() >= 8 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+            
+            const annoStr = prompt(`Rinumera Sequenza Ricevute:\nAnni presenti nel database: ${availableYears.map(y => `${y} (${app.formatAnno(y)})`).join(', ') || defaultYear}\n\nInserisci l'anno di riferimento (es. ${defaultYear}) per rinumerare in ordine continuo (1, 2, 3...):`, defaultYear);
             if (!annoStr) return;
             const anno = parseInt(annoStr);
             if (isNaN(anno)) {
@@ -4481,7 +4482,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 return;
             }
             
-            const hasCartacee = this.state.ricevute.some(r => r.anno === anno && r.cartacea);
+            const hasCartacee = this.state.ricevute.some(r => parseInt(r.anno) === anno && r.cartacea);
             let onlyDigital = false;
             if (hasCartacee) {
                 onlyDigital = confirm(`Nell'anno ${app.formatAnno(anno)} sono presenti ricevute da Cartaceo.\n\nPremi OK per rinumerare SOLO le ricevute DIGITALI (mantenendo intatti i numeri fissi del blocchetto cartaceo).\nPremi ANNULLA per rinumerare TUTTE le ricevute dell'anno in ordine cronologico.`);
@@ -4491,31 +4492,33 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         resequenceRicevute(anno, onlyDigital = false) {
-            if (!anno) {
-                const today = new Date();
-                anno = today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1;
-            }
-            let yearReceipts = this.state.ricevute.filter(r => r.anno === parseInt(anno));
+            const targetAnno = parseInt(anno);
+            if (isNaN(targetAnno)) return;
+            
+            let yearReceipts = this.state.ricevute.filter(r => parseInt(r.anno) === targetAnno);
             if (onlyDigital) {
                 yearReceipts = yearReceipts.filter(r => !r.cartacea);
             }
             
             if (yearReceipts.length === 0) {
-                this.toast(`Nessuna ricevuta trovata per l'anno ${app.formatAnno(anno)}.`, "info");
+                this.toast(`Nessuna ricevuta trovata per l'anno ${app.formatAnno(targetAnno)}.`, "info");
                 return;
             }
             
-            // Ordina per numero attuale (o per data poi numero)
+            // Ordina per numero attuale (se presente) oppure per data
             yearReceipts.sort((a, b) => {
-                if (a.numero !== b.numero) return a.numero - b.numero;
+                const numA = parseInt(a.numero) || 0;
+                const numB = parseInt(b.numero) || 0;
+                if (numA !== numB) return numA - numB;
                 return new Date(a.data).getTime() - new Date(b.data).getTime();
             });
             
             let countChanged = 0;
             yearReceipts.forEach((r, idx) => {
                 const newNum = idx + 1;
-                if (r.numero !== newNum) {
+                if (parseInt(r.numero) !== newNum) {
                     r.numero = newNum;
+                    r.anno = targetAnno;
                     countChanged++;
                     this.syncPrimaNotaFromRicevuta(r);
                 }
@@ -4524,7 +4527,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.saveAll();
             this.renderRicevute();
             const scopeText = onlyDigital ? "digitali" : "totali";
-            this.toast(`Rinumerazione completata (${scopeText}) per il ${app.formatAnno(anno)}: ${yearReceipts.length} ricevute sequenziali (${countChanged} modificate).`, "success");
+            this.toast(`Rinumerazione completata (${scopeText}) per il ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
         },
 
         applyPreset(presetId) {
@@ -4844,24 +4847,29 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         permanentlyDeleteRicevuta(id) {
-            const r = this.state.ricevute.find(x => x.id === id);
-            if (!r) return;
+            const r = this.state.ricevute.find(x => String(x.id) === String(id) || x.id == id);
+            if (!r) {
+                console.error("Ricevuta non trovata con ID:", id);
+                return;
+            }
             
-            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${r.numero}/${app.formatAnno(r.anno)} di ${r.socio_nome}.\n\nLa sequenza numerica delle ricevute successive per l'anno ${app.formatAnno(r.anno)} scalerà automaticamente di 1 posto per mantenere la numerazione continua. Procedere?`)) {
-                const deletedNum = r.numero;
-                const deletedAnno = r.anno;
+            const deletedNum = parseInt(r.numero);
+            const deletedAnno = parseInt(r.anno);
+            const socioNome = r.socio_nome || 'Socio';
+            
+            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} di ${socioNome}.\n\nLa sequenza numerica delle ricevute successive per l'anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
                 
-                this.stornoPrimaNotaFromRicevuta(id);
-                this.state.ricevute = this.state.ricevute.filter(x => x.id !== id);
-                this.trackDeletion(id);
+                this.stornoPrimaNotaFromRicevuta(r.id);
+                this.state.ricevute = this.state.ricevute.filter(x => String(x.id) !== String(id) && x.id != id);
+                this.trackDeletion(r.id);
                 
                 // Scala di 1 tutte le ricevute dello stesso anno con numero > deletedNum
                 const shiftedReceipts = this.state.ricevute
-                    .filter(x => x.anno === deletedAnno && x.numero > deletedNum)
-                    .sort((a, b) => a.numero - b.numero);
+                    .filter(x => parseInt(x.anno) === deletedAnno && parseInt(x.numero) > deletedNum)
+                    .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
                     
                 shiftedReceipts.forEach(x => {
-                    x.numero -= 1;
+                    x.numero = parseInt(x.numero) - 1;
                     this.syncPrimaNotaFromRicevuta(x);
                 });
                 
