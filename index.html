@@ -4935,7 +4935,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         annullaRicevuta(id) {
             if (confirm("Sei sicuro di voler ANNULLARE questa ricevuta? Rimarrà visibile in archivio ma non verrà conteggiata nei totali.")) {
-                const r = this.state.ricevute.find(x => x.id === id);
+                const r = this.state.ricevute.find(x => x.id == id || String(x.id) === String(id));
                 if (r) {
                     r.annullata = true;
                     this.saveAll();
@@ -4979,8 +4979,11 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         openEditRicevutaModal(id) {
-            const r = this.state.ricevute.find(x => x.id === id);
-            if (!r) return;
+            const r = this.state.ricevute.find(x => x.id == id || String(x.id) === String(id));
+            if (!r) {
+                console.error("Ricevuta non trovata da modificare con ID:", id);
+                return;
+            }
 
             this.openAddRicevutaModal();
             const form = document.getElementById('receipt-form');
@@ -5047,27 +5050,27 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         data[k] = '20' + data[k].substring(2);
                     }
                 });
-                const idx = this.state.ricevute.findIndex(x => x.id === id);
+                const idx = this.state.ricevute.findIndex(x => x.id == id || String(x.id) === String(id));
                 if (idx < 0) return;
 
-                const oldNum = this.state.ricevute[idx].numero;
-                const oldAnno = this.state.ricevute[idx].anno;
+                const oldNum = parseInt(this.state.ricevute[idx].numero);
+                const oldAnno = parseInt(this.state.ricevute[idx].anno);
                 const newNum = parseInt(data.numero);
                 const newAnno = parseInt(data.anno);
 
                 if (oldAnno === newAnno && oldNum !== newNum) {
                     if (newNum < oldNum) {
-                        const toShift = this.state.ricevute.filter(r => r.id !== id && r.anno === oldAnno && r.numero >= newNum && r.numero < oldNum)
-                                                          .sort((a, b) => b.numero - a.numero);
+                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && parseInt(r.anno) === oldAnno && parseInt(r.numero) >= newNum && parseInt(r.numero) < oldNum)
+                                                          .sort((a, b) => parseInt(b.numero) - parseInt(a.numero));
                         toShift.forEach(r => {
-                            r.numero += 1;
+                            r.numero = parseInt(r.numero) + 1;
                             this.syncPrimaNotaFromRicevuta(r);
                         });
                     } else {
-                        const toShift = this.state.ricevute.filter(r => r.id !== id && r.anno === oldAnno && r.numero > oldNum && r.numero <= newNum)
-                                                          .sort((a, b) => a.numero - b.numero);
+                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && parseInt(r.anno) === oldAnno && parseInt(r.numero) > oldNum && parseInt(r.numero) <= newNum)
+                                                          .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
                         toShift.forEach(r => {
-                            r.numero -= 1;
+                            r.numero = parseInt(r.numero) - 1;
                             this.syncPrimaNotaFromRicevuta(r);
                         });
                     }
@@ -5572,8 +5575,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         // --- EXPORT TOOLS ---
 
         generatePDF(receiptId) {
-            const r = this.state.ricevute.find(x => x.id === receiptId);
-            const s = this.state.soci.find(x => x.id == r.socio_id);
+            const r = this.state.ricevute.find(x => x.id == receiptId || String(x.id) === String(receiptId));
+            const s = this.state.soci.find(x => x.id == r?.socio_id);
             if (!r) return;
 
             const { jsPDF } = window.jspdf;
@@ -5648,7 +5651,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         printReceipt(receiptId) {
-            const r = this.state.ricevute.find(x => x.id === receiptId);
+            const r = this.state.ricevute.find(x => x.id == receiptId || String(x.id) === String(receiptId));
             const s = this.state.soci.find(x => x.id == r?.socio_id);
             if (!r) return;
             const sportsYear = this.getSportsYear(r.anno);
