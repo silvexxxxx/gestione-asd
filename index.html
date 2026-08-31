@@ -4142,41 +4142,60 @@ closeModal() {
 
                 let sorted = [...receipts];
                 
-                if (this.ricevuteSortKey) {
-                    const k = this.ricevuteSortKey;
-                    const dir = this.ricevuteSortDir === 'asc' ? 1 : -1;
-                    sorted.sort((a, b) => {
-                        let valA, valB;
-                        if (k === 'numero') {
-                            if (a.anno !== b.anno) return (a.anno - b.anno) * dir;
-                            return (a.numero - b.numero) * dir;
-                        } else if (k === 'socio_nome') {
-                            valA = (a.socio_nome || '').toLowerCase();
-                            valB = (b.socio_nome || '').toLowerCase();
-                        } else if (k === 'data') {
-                            valA = new Date(a.data).getTime() || 0;
-                            valB = new Date(b.data).getTime() || 0;
-                        } else if (k === 'tipo') {
-                            valA = (a.tipo || '').toLowerCase();
-                            valB = (b.tipo || '').toLowerCase();
-                        } else if (k === 'importo') {
-                            valA = parseFloat(a.importo) || 0;
-                            valB = parseFloat(b.importo) || 0;
-                        } else if (k === 'metodo') {
-                            valA = (a.metodo_pagamento || a.pagamento || 'Contanti').toLowerCase();
-                            valB = (b.metodo_pagamento || b.pagamento || 'Contanti').toLowerCase();
-                        } else if (k === 'cartacea') {
-                            valA = a.cartacea ? 1 : 0;
-                            valB = b.cartacea ? 1 : 0;
-                        }
+                const k = this.ricevuteSortKey || 'data';
+                const dir = this.ricevuteSortDir === 'asc' ? 1 : -1;
+                
+                sorted.sort((a, b) => {
+                    let diff = 0;
+                    
+                    if (k === 'data' || k === 'numero') {
+                        // Ordinamento combinato Data + Numero: mantiene la coerenza cronologica e sequenziale
+                        const dateA = new Date(a.data).getTime() || 0;
+                        const dateB = new Date(b.data).getTime() || 0;
+                        diff = (dateA - dateB) * dir;
                         
-                        if (valA < valB) return -1 * dir;
-                        if (valA > valB) return 1 * dir;
-                        return 0;
-                    });
-                } else {
-                    sorted.sort((a, b) => (b.anno - a.anno) || (b.numero - a.numero));
-                }
+                        // A parità di data (o cliccando su numero), ordina per numero ricevuta
+                        if (diff === 0) {
+                            const numA = parseInt(a.numero) || 0;
+                            const numB = parseInt(b.numero) || 0;
+                            diff = (numA - numB) * dir;
+                        }
+                    } else if (k === 'socio_nome') {
+                        const valA = (a.socio_nome || '').toLowerCase();
+                        const valB = (b.socio_nome || '').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    } else if (k === 'tipo') {
+                        const valA = (a.tipo || '').toLowerCase();
+                        const valB = (b.tipo || '').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    } else if (k === 'importo') {
+                        const valA = parseFloat(a.importo) || 0;
+                        const valB = parseFloat(b.importo) || 0;
+                        diff = (valA - valB) * dir;
+                    } else if (k === 'metodo') {
+                        const valA = (a.metodo_pagamento || a.pagamento || 'Contanti').toLowerCase();
+                        const valB = (b.metodo_pagamento || b.pagamento || 'Contanti').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    } else if (k === 'cartacea') {
+                        const valA = a.cartacea ? 1 : 0;
+                        const valB = b.cartacea ? 1 : 0;
+                        diff = (valA - valB) * dir;
+                    }
+                    
+                    // Se c'è parità sulla colonna selezionata, spareggia sempre con Data e poi Numero
+                    if (diff === 0) {
+                        const dateA = new Date(a.data).getTime() || 0;
+                        const dateB = new Date(b.data).getTime() || 0;
+                        diff = (dateA - dateB) * dir;
+                        if (diff === 0) {
+                            const numA = parseInt(a.numero) || 0;
+                            const numB = parseInt(b.numero) || 0;
+                            diff = (numA - numB) * dir;
+                        }
+                    }
+                    
+                    return diff;
+                });
 
                 return sorted.map(r => {
                     let iconaMetodo = '';
