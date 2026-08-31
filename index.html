@@ -6643,7 +6643,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                 app.openModal('🔧 Compilazione Automatica Ricevute', `
                     <div style="background: rgba(139, 92, 246, 0.05); padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid rgba(139, 92, 246, 0.2);">
-                        <p style="font-size: 0.85rem; margin:0;">Questo strumento genera automaticamente ricevute per far quadrare i conti del mese selezionato. Rispetta la validità delle quote esistenti ed esclude i soci con pagamenti in corso. È possibile pre-inserire ricevute manuali con date reali.</p>
+                        <p style="font-size: 0.85rem; margin:0;">Questo strumento genera automaticamente ricevute per far quadrare i conti del mese selezionato. Rispetta la validità delle quote esistenti ed esclude i soci con pagamenti in corso. È possibile pre-inserire ricevute manuali con date reali e ripartizione causale.</p>
                     </div>
                     
                     <div class="receipt-form-grid" style="align-items: start;">
@@ -6653,29 +6653,35 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
                                         <label>Mese di Riferimento</label>
-                                        <select name="mese" class="form-control" onchange="app.updateAutoCompileDateDefault()">
+                                        <select name="mese" class="form-control" onchange="app.updateAutoCompileDateDefault(); app.updateAutoCompileSummary();">
                                             ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${i + 1 === currentMonth ? 'selected' : ''}>${new Date(2026, i).toLocaleString('it-IT', { month: 'long' })}</option>`).join('')}
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label>Anno</label>
-                                        <input type="number" name="anno" class="form-control" value="${currentYear}" onchange="app.updateAutoCompileDateDefault()" required>
+                                        <input type="number" name="anno" class="form-control" value="${currentYear}" onchange="app.updateAutoCompileDateDefault(); app.updateAutoCompileSummary();" required>
                                     </div>
                                     <div class="form-group">
                                         <label>Importo Target da raggiungere (€)</label>
-                                        <input type="number" name="targetAmount" class="form-control" value="1500" step="50" required>
+                                        <input type="number" name="targetAmount" id="autocompile-target" class="form-control" value="1500" step="any" min="0" required oninput="app.updateAutoCompileSummary()">
                                     </div>
                                     <div class="form-group">
                                         <label>Importo Singola Quota (€)</label>
-                                        <input type="number" name="quotaAmount" class="form-control" value="50" step="5" required>
+                                        <input type="number" name="quotaAmount" id="autocompile-quota" class="form-control" value="45" step="any" min="0.01" required oninput="app.updateAutoCompileSummary()">
                                     </div>
                                     <div class="form-group" style="grid-column: span 2;">
-                                        <label>Metodo di Pagamento Base</label>
+                                        <label>Metodo di Pagamento Base (Quote Auto)</label>
                                         <select name="metodo" class="form-control">
                                             ${app.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
                                         </select>
                                     </div>
                                 </div>
+
+                                <!-- Live Calculation Summary Box -->
+                                <div id="autocompile-summary-box" style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 10px; padding: 0.85rem; margin-top: 1rem;">
+                                    <!-- Populated by app.updateAutoCompileSummary() -->
+                                </div>
+
                                 <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem;">
                                     <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
                                     <button type="submit" class="btn btn-warning">⚡ Avvia Compilazione</button>
@@ -6691,7 +6697,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <button type="button" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="app.toggleAutoCompileManualForm(true)">➕ Aggiungi</button>
                                 </h4>
                                 
-                                <div id="autoconf-manual-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 5px; margin-bottom: 0.75rem; background: rgba(0,0,0,0.05);">
+                                <div id="autoconf-manual-list" style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 5px; margin-bottom: 0.75rem; background: rgba(0,0,0,0.05);">
                                     <p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 10px 0;">Nessuna ricevuta manuale pre-inserita.</p>
                                 </div>
                                 
@@ -6719,8 +6725,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                             <input type="date" id="automanual-data" class="form-control">
                                         </div>
                                         <div class="form-group" style="margin-bottom: 0;">
-                                            <label style="font-size: 0.8rem;">Importo (€)</label>
-                                            <input type="number" step="0.01" id="automanual-importo" class="form-control" placeholder="0.00">
+                                            <label style="font-size: 0.8rem; font-weight: 600;">Importo Totale (€)</label>
+                                            <input type="number" step="any" id="automanual-importo" class="form-control" placeholder="0.00" style="font-weight: bold;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Ripartizione Causale (uguale a Inserimento Ricevute Standard) -->
+                                    <div style="background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;">Ripartizione Importo nella Causale (Opzionale):</div>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                            <div class="form-group" style="margin-bottom: 0;">
+                                                <label style="font-size: 0.75rem;">Quota / Corso (€)</label>
+                                                <input type="number" step="any" id="automanual-quota" class="form-control" placeholder="Es. 45.00" oninput="app.updateAutoManualImportoFromSplit()">
+                                            </div>
+                                            <div class="form-group" style="margin-bottom: 0;">
+                                                <label style="font-size: 0.75rem;">Tesseramento (€)</label>
+                                                <input type="number" step="any" id="automanual-tess" class="form-control" placeholder="Es. 25.00" oninput="app.updateAutoManualImportoFromSplit()">
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -6734,7 +6755,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem;">
                                         <div class="form-group" style="margin-bottom: 0;">
                                             <label style="font-size: 0.8rem;">Note Causale (Opzionale)</label>
-                                            <input type="text" id="automanual-note" class="form-control" placeholder="Causale">
+                                            <input type="text" id="automanual-note" class="form-control" placeholder="Es: Quota mensile Giugno">
                                         </div>
                                         <div class="form-group" style="margin-bottom: 0;">
                                             <label style="font-size: 0.8rem;">Durata Quota</label>
@@ -6761,6 +6782,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 
                 document.getElementById('modal-content').classList.add('modal-wide');
                 app.updateAutoCompileDateDefault();
+                app.updateAutoCompileSummary();
             };
 
             app.updateAutoCompileDateDefault = function() {
@@ -6776,14 +6798,31 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             };
 
+            app.updateAutoManualImportoFromSplit = function() {
+                const quota = parseFloat(document.getElementById('automanual-quota')?.value) || 0;
+                const tess = parseFloat(document.getElementById('automanual-tess')?.value) || 0;
+                const total = quota + tess;
+                if (total > 0) {
+                    const importoInput = document.getElementById('automanual-importo');
+                    if (importoInput) {
+                        importoInput.value = total.toFixed(2);
+                    }
+                }
+            };
+
             app.toggleAutoCompileManualForm = function(show) {
                 const formDiv = document.getElementById('autoconf-manual-form');
                 if (formDiv) formDiv.style.display = show ? 'flex' : 'none';
                 if (!show) {
                     document.getElementById('automanual-socio-search').value = '';
                     document.getElementById('automanual-socio-id').value = '';
-                    document.getElementById('automanual-socio-preview').style.display = 'none';
+                    const prev = document.getElementById('automanual-socio-preview');
+                    if (prev) prev.style.display = 'none';
                     document.getElementById('automanual-importo').value = '';
+                    const quotaEl = document.getElementById('automanual-quota');
+                    if (quotaEl) quotaEl.value = '';
+                    const tessEl = document.getElementById('automanual-tess');
+                    if (tessEl) tessEl.value = '';
                     document.getElementById('automanual-note').value = '';
                 }
             };
@@ -6791,9 +6830,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             app.addAutoCompileManualReceipt = function() {
                 const socioId = document.getElementById('automanual-socio-id').value;
                 const dataEmissione = document.getElementById('automanual-data').value;
-                const importo = parseFloat(document.getElementById('automanual-importo').value);
+                const quota = Math.round((parseFloat(document.getElementById('automanual-quota')?.value) || 0) * 100) / 100;
+                const tess = Math.round((parseFloat(document.getElementById('automanual-tess')?.value) || 0) * 100) / 100;
+                let importo = Math.round((parseFloat(document.getElementById('automanual-importo').value) || 0) * 100) / 100;
+                
+                if (importo <= 0 && (quota > 0 || tess > 0)) {
+                    importo = Math.round((quota + tess) * 100) / 100;
+                }
+
                 const metodo = document.getElementById('automanual-metodo').value;
-                const note = document.getElementById('automanual-note').value;
+                const note = (document.getElementById('automanual-note').value || '').trim();
                 const durata = document.getElementById('automanual-durata').value;
                 
                 if (!socioId) {
@@ -6817,6 +6863,19 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     app.toast("Attenzione: il socio ha già una quota attiva/in corso che si sovrappone a questa data!", "warning");
                     return;
                 }
+
+                // Genera la causale con la stessa divisione descrittiva dell'inserimento standard
+                let tipoCausale = 'Quota Associativa';
+                if (quota > 0 || tess > 0) {
+                    const parts = [];
+                    if (tess > 0) parts.push(`Tesseramento: €${tess.toFixed(2)}`);
+                    if (quota > 0) parts.push(`Quota/Corso: €${quota.toFixed(2)}`);
+                    tipoCausale = parts.join(' + ');
+                } else if (note) {
+                    tipoCausale = note;
+                } else {
+                    tipoCausale = "Quota Mensile / Corso Sportivo";
+                }
                 
                 const socio = app.state.soci.find(s => s.id == socioId);
                 const newReceipt = {
@@ -6826,7 +6885,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     data: dataEmissione,
                     importo: importo,
                     metodo: metodo,
-                    note: note || "Quota Mensile / Corso Sportivo",
+                    tipo: tipoCausale,
+                    note: note,
+                    quota: quota > 0 ? quota : (tess > 0 ? undefined : importo),
+                    tess: tess > 0 ? tess : undefined,
                     durata: durata ? parseInt(durata) : null
                 };
                 
@@ -6840,42 +6902,95 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const listDiv = document.getElementById('autoconf-manual-list');
                 if (!listDiv) return;
                 
-                const list = app.state.tempAutoCompileReceipts;
+                const list = app.state.tempAutoCompileReceipts || [];
                 if (list.length === 0) {
                     listDiv.innerHTML = `<p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 10px 0;">Nessuna ricevuta manuale pre-inserita.</p>`;
-                    return;
-                }
-                
-                listDiv.innerHTML = `
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid var(--border); text-align: left;">
-                                <th style="padding: 4px;">Socio</th>
-                                <th style="padding: 4px;">Data</th>
-                                <th style="padding: 4px;">Importo</th>
-                                <th style="padding: 4px; text-align: right;">Azione</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${list.map((r, index) => `
-                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding: 4px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.socioNome}</td>
-                                    <td style="padding: 4px;">${app.formatDate(r.data)}</td>
-                                    <td style="padding: 4px; font-weight: bold;">€${r.importo.toFixed(2)}</td>
-                                    <td style="padding: 4px; text-align: right;">
-                                        <button type="button" class="btn btn-outline text-danger" style="padding: 2px 6px; font-size: 0.75rem;" onclick="app.removeAutoCompileManualReceipt(${index})">🗑️</button>
-                                    </td>
+                } else {
+                    listDiv.innerHTML = `
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                    <th style="padding: 4px;">Socio</th>
+                                    <th style="padding: 4px;">Data</th>
+                                    <th style="padding: 4px;">Causale</th>
+                                    <th style="padding: 4px;">Importo</th>
+                                    <th style="padding: 4px; text-align: right;">Azione</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
+                            </thead>
+                            <tbody>
+                                ${list.map((r, index) => `
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding: 4px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${r.socioNome}</td>
+                                        <td style="padding: 4px; white-space: nowrap;">${app.formatDate(r.data)}</td>
+                                        <td style="padding: 4px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.tipo}${r.note ? ' - ' + r.note : ''}">
+                                            <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: var(--accent); font-size: 0.7rem; padding: 2px 4px; border-radius: 4px;">${r.tipo}</span>
+                                        </td>
+                                        <td style="padding: 4px; font-weight: bold; white-space: nowrap;">€${r.importo.toFixed(2)}</td>
+                                        <td style="padding: 4px; text-align: right;">
+                                            <button type="button" class="btn btn-outline text-danger" style="padding: 2px 6px; font-size: 0.75rem;" onclick="app.removeAutoCompileManualReceipt(${index})">🗑️</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+                app.updateAutoCompileSummary();
             };
 
             app.removeAutoCompileManualReceipt = function(index) {
                 app.state.tempAutoCompileReceipts.splice(index, 1);
                 app.renderAutoCompileManualList();
                 app.toast("Ricevuta manuale rimossa.", "info");
+            };
+
+            app.updateAutoCompileSummary = function() {
+                const form = document.getElementById('auto-compile-form');
+                const summaryBox = document.getElementById('autocompile-summary-box');
+                if (!form || !summaryBox) return;
+
+                const targetAmount = parseFloat(form.elements['targetAmount']?.value) || 0;
+                const quotaAmount = parseFloat(form.elements['quotaAmount']?.value) || 0;
+                const manualReceipts = app.state.tempAutoCompileReceipts || [];
+                const manualTotal = manualReceipts.reduce((sum, r) => sum + r.importo, 0);
+                const manualCount = manualReceipts.length;
+
+                const remainingTarget = Math.max(0, targetAmount - manualTotal);
+                let autoCount = 0;
+                if (remainingTarget > 0 && quotaAmount > 0) {
+                    autoCount = Math.round(remainingTarget / quotaAmount);
+                }
+                const autoTotal = autoCount * quotaAmount;
+                const finalEstimatedTotal = manualTotal + autoTotal;
+                const diff = finalEstimatedTotal - targetAmount;
+                const diffText = diff === 0 ? 'Target esatto' : (diff > 0 ? `+€${diff.toFixed(2)}` : `-€${Math.abs(diff).toFixed(2)}`);
+                const diffColor = diff === 0 ? '#10b981' : (Math.abs(diff) <= quotaAmount / 2 ? '#3b82f6' : '#f59e0b');
+
+                summaryBox.innerHTML = `
+                    <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                        <span>📊 Riepilogo Conteggio Totali</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Arrotondamento plausibile a quote da €${quotaAmount.toFixed(2)}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: rgba(0,0,0,0.15); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Ricevute Manuali Reali:</div>
+                            <div style="font-weight: 700; font-size: 0.9rem; color: #f59e0b;">€${manualTotal.toFixed(2)} <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(${manualCount})</span></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Quote Auto (${autoCount} × €${quotaAmount.toFixed(2)}):</div>
+                            <div style="font-weight: 700; font-size: 0.9rem; color: #3b82f6;">€${autoTotal.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 0.5rem;">
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">Totale Finale: €${finalEstimatedTotal.toFixed(2)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Richiesto: €${targetAmount.toFixed(2)} &bull; Differenza: <span style="color: ${diffColor}; font-weight: 600;">${diffText}</span></div>
+                        </div>
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent); background: rgba(139, 92, 246, 0.15); padding: 3px 8px; border-radius: 4px;">
+                            ${manualCount + autoCount} Ricevute Totali
+                        </div>
+                    </div>
+                `;
             };
 
             app.checkReceiptOverlap = function(dateStr1, dateStr2) {
@@ -6944,68 +7059,70 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 // Mappa temporanea delle quote per evitare sovrapposizioni nella generazione in batch
                 const pendingReceipts = [...app.state.tempAutoCompileReceipts];
                 
-                if (remainingTarget > 0) {
-                    const numRicevute = Math.ceil(remainingTarget / quotaAmount);
+                if (remainingTarget > 0 && quotaAmount > 0) {
+                    const numRicevute = Math.round(remainingTarget / quotaAmount);
                     
-                    // Trova i soci idonei (esclusi cessati, con almeno un giorno libero nel mese/anno target)
-                    const eligibleSoci = app.state.soci.filter(s => s.stato !== 'CESSATO').map(s => {
-                        const eligibleDays = app.getEligibleDaysInMonth(s.id, mese, anno, app.state.ricevute, pendingReceipts);
-                        return {
-                            socio: s,
-                            eligibleDays: eligibleDays,
-                            isActive: app.isActiveMember(s)
-                        };
-                    }).filter(item => item.eligibleDays.length > 0);
-                    
-                    // Ordina prioritariamente per soci attivi
-                    eligibleSoci.sort((a, b) => {
-                        const aActive = a.isActive ? 1 : 0;
-                        const bActive = b.isActive ? 1 : 0;
-                        return bActive - aActive;
-                    });
-                    
-                    if (numRicevute > eligibleSoci.length) {
-                        app.toast(`Attenzione: l'importo target richiede ${numRicevute} ricevute, ma ci sono solo ${eligibleSoci.length} soci disponibili/idonei senza sovrapposizioni!`, "danger");
-                        return;
-                    }
-                    
-                    const sociSelezionati = eligibleSoci.slice(0, numRicevute);
-                    
-                    sociSelezionati.forEach(item => {
-                        const socio = item.socio;
-                        // Scegli un giorno a caso tra quelli disponibili
-                        const randomDayIndex = Math.floor(Math.random() * item.eligibleDays.length);
-                        const day = item.eligibleDays[randomDayIndex];
-                        const dataEmissione = `${anno}-${String(mese).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    if (numRicevute > 0) {
+                        // Trova i soci idonei (esclusi cessati, con almeno un giorno libero nel mese/anno target)
+                        const eligibleSoci = app.state.soci.filter(s => s.stato !== 'CESSATO').map(s => {
+                            const eligibleDays = app.getEligibleDaysInMonth(s.id, mese, anno, app.state.ricevute, pendingReceipts);
+                            return {
+                                socio: s,
+                                eligibleDays: eligibleDays,
+                                isActive: app.isActiveMember(s)
+                            };
+                        }).filter(item => item.eligibleDays.length > 0);
                         
-                        const newReceipt = {
-                            id: Date.now() + Math.random(),
-                            socio_id: socio.id,
-                            socio_nome: `${socio.cognome} ${socio.nome}`,
-                            importo: quotaAmount,
-                            data: dataEmissione,
-                            tipo: "Quota Mensile / Corso Sportivo",
-                            pagamento: metodo,
-                            metodo_pagamento: metodo,
-                            commissioni: 0,
-                            note: "Quota Mensile / Corso Sportivo (Autogenerata)",
-                            quota: quotaAmount,
-                            tess: undefined,
-                            cartacea: undefined,
-                            durata: 1 // Autogenerated quota covers 1 month
-                        };
-                        
-                        batchReceipts.push(newReceipt);
-                        pendingReceipts.push({
-                            socioId: socio.id,
-                            data: dataEmissione,
-                            importo: quotaAmount
+                        // Ordina prioritariamente per soci attivi
+                        eligibleSoci.sort((a, b) => {
+                            const aActive = a.isActive ? 1 : 0;
+                            const bActive = b.isActive ? 1 : 0;
+                            return bActive - aActive;
                         });
-                        countAutogenerated++;
-                    });
+                        
+                        if (numRicevute > eligibleSoci.length) {
+                            app.toast(`Attenzione: l'importo target richiede ${numRicevute} ricevute automatiche, ma ci sono solo ${eligibleSoci.length} soci disponibili/idonei senza sovrapposizioni!`, "danger");
+                            return;
+                        }
+                        
+                        const sociSelezionati = eligibleSoci.slice(0, numRicevute);
+                        
+                        sociSelezionati.forEach(item => {
+                            const socio = item.socio;
+                            // Scegli un giorno a caso tra quelli disponibili
+                            const randomDayIndex = Math.floor(Math.random() * item.eligibleDays.length);
+                            const day = item.eligibleDays[randomDayIndex];
+                            const dataEmissione = `${anno}-${String(mese).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            
+                            const newReceipt = {
+                                id: Date.now() + Math.random(),
+                                socio_id: socio.id,
+                                socio_nome: `${socio.cognome} ${socio.nome}`,
+                                importo: quotaAmount,
+                                data: dataEmissione,
+                                tipo: "Quota Mensile / Corso Sportivo",
+                                pagamento: metodo,
+                                metodo_pagamento: metodo,
+                                commissioni: 0,
+                                note: "Quota Mensile / Corso Sportivo (Autogenerata)",
+                                quota: quotaAmount,
+                                tess: undefined,
+                                cartacea: undefined,
+                                durata: 1 // Autogenerated quota covers 1 month
+                            };
+                            
+                            batchReceipts.push(newReceipt);
+                            pendingReceipts.push({
+                                socioId: socio.id,
+                                data: dataEmissione,
+                                importo: quotaAmount
+                            });
+                            countAutogenerated++;
+                        });
+                    }
                 }
                 
-                // Aggiungi le ricevute manuali al batch finale
+                // Aggiungi le ricevute manuali al batch finale con la causale e ripartizione esatta
                 app.state.tempAutoCompileReceipts.forEach(r => {
                     const socio = app.state.soci.find(s => s.id == r.socioId);
                     const newReceipt = {
@@ -7014,13 +7131,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         socio_nome: r.socioNome,
                         importo: r.importo,
                         data: r.data,
-                        tipo: r.note || "Quota Mensile / Corso Sportivo",
+                        tipo: r.tipo || "Quota Mensile / Corso Sportivo",
                         pagamento: r.metodo,
                         metodo_pagamento: r.metodo,
                         commissioni: 0,
                         note: r.note || '',
-                        quota: r.importo,
-                        tess: undefined,
+                        quota: r.quota,
+                        tess: r.tess,
                         cartacea: undefined,
                         durata: r.durata
                     };
@@ -7068,7 +7185,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 
                 app.saveAll();
                 app.closeModal();
-                app.toast(`Compilazione completata: generate ${countAutogenerated} ricevute automatiche e ${countManual} manuali per il ${mese}/${anno}.`, "success");
+                const totalGen = batchReceipts.reduce((s, r) => s + r.importo, 0);
+                app.toast(`Compilazione completata: generate ${countAutogenerated} ricevute automatiche e ${countManual} manuali per il ${mese}/${anno}. Totale: €${totalGen.toFixed(2)}.`, "success");
                 if (document.getElementById('ricevute-tbody')) app.renderRicevute();
             };
             
