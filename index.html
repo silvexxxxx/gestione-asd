@@ -4080,7 +4080,7 @@ closeModal() {
                             <div class="header-actions" style="display:flex; gap:8px;">
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta la tabella delle ricevute in formato Excel.">Esporta Excel</button>
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.resequenceRicevutePrompt()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
+                                    <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
                                 ` : ''}
                                 <button class="btn btn-primary" onclick="app.openAddRicevutaModal()">+ Nuova Ricevuta</button>
                             </div>
@@ -4470,24 +4470,123 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.openAddRicevutaModal(insertNum, anno, dataDefault);
         },
 
-        resequenceRicevutePrompt() {
+        openResequenceModal() {
             const availableYears = [...new Set(this.state.ricevute.map(r => parseInt(r.anno)).filter(y => !isNaN(y) && y > 0))].sort((a,b) => b - a);
             const defaultYear = availableYears.length > 0 ? availableYears[0] : (new Date().getMonth() >= 8 ? new Date().getFullYear() : new Date().getFullYear() - 1);
             
-            const annoStr = prompt(`Rinumera Sequenza Ricevute:\nAnni presenti nel database: ${availableYears.map(y => `${y} (${app.formatAnno(y)})`).join(', ') || defaultYear}\n\nInserisci l'anno di riferimento (es. ${defaultYear}) per rinumerare in ordine continuo (1, 2, 3...):`, defaultYear);
-            if (!annoStr) return;
-            const anno = parseInt(annoStr);
-            if (isNaN(anno)) {
-                this.toast("Anno non valido.", "danger");
-                return;
+            const renderYearStats = (selectedYear) => {
+                const receipts = this.state.ricevute.filter(r => parseInt(r.anno) === selectedYear);
+                const digitalReceipts = receipts.filter(r => !r.cartacea);
+                const cartaceeReceipts = receipts.filter(r => r.cartacea);
+                
+                // Trova buchi nella sequenza
+                const nums = receipts.map(r => parseInt(r.numero)).filter(n => !isNaN(n) && n > 0).sort((a,b) => a - b);
+                const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+                const missing = [];
+                for (let i = 1; i <= maxNum; i++) {
+                    if (!nums.includes(i)) missing.push(i);
+                }
+                
+                return {
+                    total: receipts.length,
+                    digital: digitalReceipts.length,
+                    cartacee: cartaceeReceipts.length,
+                    maxNum: maxNum,
+                    missing: missing
+                };
+            };
+            
+            const stats = renderYearStats(defaultYear);
+            
+            const modalContent = `
+                <div style="display:flex; flex-direction:column; gap:15px;">
+                    <div style="background:rgba(59, 130, 246, 0.1); border:1px solid #3b82f6; border-radius:8px; padding:12px; font-size:0.9rem; color:var(--text-main);">
+                        <strong>ℹ️ Compattazione e Rinumerazione Sequenza:</strong><br>
+                        Questa procedura riordina tutte le ricevute dell'anno selezionato (per data e numero progressivo) e riassegna una sequenza continua da <strong>1 a ${stats.total || 'N'}</strong> senza buchi. Tutte le descrizioni collegate in Prima Nota verranno aggiornate all'istante.
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-weight:600;">Seleziona Anno / Stagione Sportiva:</label>
+                        <select id="resequence-year-select" class="form-control" onchange="app.updateResequenceModalStats(parseInt(this.value))">
+                            ${availableYears.map(y => `<option value="${y}" ${y === defaultYear ? 'selected' : ''}>Anno ${y} (${app.formatAnno(y)})</option>`).join('')}
+                        </select>
+                    </div>
+                    
+                    <div id="resequence-stats-box" style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:15px;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.9rem; margin-bottom:10px;">
+                            <div><strong>Ricevute totali nel database:</strong> <span id="reseq-stat-total" style="font-weight:bold; color:var(--primary);">${stats.total}</span></div>
+                            <div><strong>Di cui Digitali:</strong> <span id="reseq-stat-digital">${stats.digital}</span></div>
+                            <div><strong>Di cui Cartacee:</strong> <span id="reseq-stat-cartacee">${stats.cartacee}</span></div>
+                            <div><strong>Numero Massimo Attuale:</strong> <span id="reseq-stat-max" style="font-weight:bold;">${stats.maxNum}</span></div>
+                        </div>
+                        <div id="reseq-missing-alert" style="background:rgba(245, 158, 11, 0.15); border:1px solid var(--warning); border-radius:6px; padding:8px 12px; font-size:0.85rem; color:var(--text-main); ${stats.missing.length > 0 ? '' : 'display:none;'}">
+                            ⚠️ <strong>Numeri mancanti (buchi) rilevati:</strong> <span id="reseq-missing-list" style="color:var(--danger); font-weight:bold;">${stats.missing.join(', ') || 'Nessuno'}</span>
+                        </div>
+                    </div>
+                    
+                    ${stats.cartacee > 0 ? `
+                        <div id="reseq-cartacee-option" style="background:rgba(16, 185, 129, 0.1); border:1px solid #10b981; border-radius:8px; padding:10px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:0.9rem; margin-bottom:0;">
+                                <input type="checkbox" id="reseq-only-digital" checked style="width:18px; height:18px;">
+                                🛡️ Mantieni inalterati i numeri fissi delle ricevute da Cartaceo (rinumera solo le digitali)
+                            </label>
+                        </div>
+                    ` : `
+                        <input type="hidden" id="reseq-only-digital" value="false">
+                    `}
+                    
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="button" class="btn btn-primary" onclick="app.executeResequenceFromModal()" style="font-weight:700;">🔄 Compatta e Rinumera Ricevute</button>
+                    </div>
+                </div>
+            `;
+            
+            this.openModal('🔄 Rinumera Sequenza Ricevute', modalContent);
+        },
+
+        updateResequenceModalStats(selectedYear) {
+            const receipts = this.state.ricevute.filter(r => parseInt(r.anno) === selectedYear);
+            const digitalReceipts = receipts.filter(r => !r.cartacea);
+            const cartaceeReceipts = receipts.filter(r => r.cartacea);
+            
+            const nums = receipts.map(r => parseInt(r.numero)).filter(n => !isNaN(n) && n > 0).sort((a,b) => a - b);
+            const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+            const missing = [];
+            for (let i = 1; i <= maxNum; i++) {
+                if (!nums.includes(i)) missing.push(i);
             }
             
-            const hasCartacee = this.state.ricevute.some(r => parseInt(r.anno) === anno && r.cartacea);
-            let onlyDigital = false;
-            if (hasCartacee) {
-                onlyDigital = confirm(`Nell'anno ${app.formatAnno(anno)} sono presenti ricevute da Cartaceo.\n\nPremi OK per rinumerare SOLO le ricevute DIGITALI (mantenendo intatti i numeri fissi del blocchetto cartaceo).\nPremi ANNULLA per rinumerare TUTTE le ricevute dell'anno in ordine cronologico.`);
-            }
+            const totalEl = document.getElementById('reseq-stat-total');
+            if (totalEl) totalEl.textContent = receipts.length;
+            const digEl = document.getElementById('reseq-stat-digital');
+            if (digEl) digEl.textContent = digitalReceipts.length;
+            const cartEl = document.getElementById('reseq-stat-cartacee');
+            if (cartEl) cartEl.textContent = cartaceeReceipts.length;
+            const maxEl = document.getElementById('reseq-stat-max');
+            if (maxEl) maxEl.textContent = maxNum;
             
+            const alertEl = document.getElementById('reseq-missing-alert');
+            const missingListEl = document.getElementById('reseq-missing-list');
+            if (alertEl && missingListEl) {
+                if (missing.length > 0) {
+                    alertEl.style.display = 'block';
+                    missingListEl.textContent = missing.join(', ');
+                } else {
+                    alertEl.style.display = 'none';
+                    missingListEl.textContent = 'Nessuno';
+                }
+            }
+        },
+
+        executeResequenceFromModal() {
+            const select = document.getElementById('resequence-year-select');
+            if (!select) return;
+            const anno = parseInt(select.value);
+            const onlyDigitalCb = document.getElementById('reseq-only-digital');
+            const onlyDigital = onlyDigitalCb ? (onlyDigitalCb.type === 'checkbox' ? onlyDigitalCb.checked : onlyDigitalCb.value === 'true') : false;
+            
+            this.closeModal();
             this.resequenceRicevute(anno, onlyDigital);
         },
 
@@ -4527,7 +4626,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.saveAll();
             this.renderRicevute();
             const scopeText = onlyDigital ? "digitali" : "totali";
-            this.toast(`Rinumerazione completata (${scopeText}) per il ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
+            this.toast(`Rinumerazione completata (${scopeText}) per l'anno ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
         },
 
         applyPreset(presetId) {
