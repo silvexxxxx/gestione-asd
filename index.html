@@ -6938,13 +6938,19 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
                                         <label>Mese di Riferimento</label>
-                                        <select name="mese" class="form-control" onchange="app.updateAutoCompileDateDefault(); app.updateAutoCompileSummary();">
+                                        <select name="mese" id="autocompile-mese" class="form-control" onchange="app.updateAutoCompileSportingYears(); app.updateAutoCompileDateDefault(); app.updateAutoCompileSummary();">
                                             ${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${i + 1 === currentMonth ? 'selected' : ''}>${new Date(2026, i).toLocaleString('it-IT', { month: 'long' })}</option>`).join('')}
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>Anno</label>
-                                        <input type="number" name="anno" class="form-control" value="${currentYear}" onchange="app.updateAutoCompileDateDefault(); app.updateAutoCompileSummary();" required>
+                                        <label>Anno Calendario</label>
+                                        <input type="number" name="anno" id="autocompile-anno" class="form-control" value="${currentYear}" onchange="app.updateAutoCompileSportingYears(); app.updateAutoCompileDateDefault(); app.updateAutoCompileSummary();" required>
+                                    </div>
+                                    <div class="form-group" style="grid-column: span 2;">
+                                        <label style="font-weight: 600; color: var(--primary);">Anno Sportivo (Stagione / Numerazione Ricevute)</label>
+                                        <select name="annoSportivo" id="autocompile-anno-sportivo" class="form-control" style="font-weight: 600; border-color: var(--primary);" onchange="app.updateAutoCompileSummary()">
+                                            <!-- Popolato dinamicamente -->
+                                        </select>
                                     </div>
                                     <div class="form-group">
                                         <label>Importo Target da raggiungere (€)</label>
@@ -7066,8 +7072,31 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 `);
                 
                 document.getElementById('modal-content').classList.add('modal-wide');
+                app.updateAutoCompileSportingYears();
                 app.updateAutoCompileDateDefault();
                 app.updateAutoCompileSummary();
+            };
+
+            app.updateAutoCompileSportingYears = function() {
+                const form = document.getElementById('auto-compile-form');
+                if (!form) return;
+                const mese = parseInt(form.elements['mese']?.value) || 1;
+                const annoSolare = parseInt(form.elements['anno']?.value) || new Date().getFullYear();
+                // In Italia: Mesi 9..12 (Settembre..Dicembre) = annoSolare / annoSolare+1; Mesi 1..8 (Gennaio..Agosto) = annoSolare-1 / annoSolare
+                const suggestedSportingYear = mese >= 9 ? annoSolare : annoSolare - 1;
+                
+                const select = document.getElementById('autocompile-anno-sportivo');
+                if (select) {
+                    const currentVal = parseInt(select.value);
+                    const years = [annoSolare - 2, annoSolare - 1, annoSolare, annoSolare + 1];
+                    const selectedYear = (!isNaN(currentVal) && years.includes(currentVal)) ? currentVal : suggestedSportingYear;
+                    
+                    select.innerHTML = years.map(y => `
+                        <option value="${y}" ${y === selectedYear ? 'selected' : ''}>
+                            Stagione ${y}/${y+1} (${app.formatAnno(y)}) ${y === suggestedSportingYear ? '⭐ (Consigliata per ' + new Date(2026, mese - 1).toLocaleString('it-IT', { month: 'long' }) + ')' : ''}
+                        </option>
+                    `).join('');
+                }
             };
 
             app.updateAutoCompileDateDefault = function() {
@@ -7204,7 +7233,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </thead>
                             <tbody>
                                 ${list.map((r, index) => `
-                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <tr style="border-bottom: 1px solid rgba(255,255,205,0.05);">
                                         <td style="padding: 4px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">${r.socioNome}</td>
                                         <td style="padding: 4px; white-space: nowrap;">${app.formatDate(r.data)}</td>
                                         <td style="padding: 4px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.tipo}${r.note ? ' - ' + r.note : ''}">
@@ -7236,6 +7265,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                 const targetAmount = parseFloat(form.elements['targetAmount']?.value) || 0;
                 const quotaAmount = parseFloat(form.elements['quotaAmount']?.value) || 0;
+                const annoSportivoVal = parseInt(form.elements['annoSportivo']?.value);
                 const manualReceipts = app.state.tempAutoCompileReceipts || [];
                 const manualTotal = manualReceipts.reduce((sum, r) => sum + r.importo, 0);
                 const manualCount = manualReceipts.length;
@@ -7250,11 +7280,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const diff = finalEstimatedTotal - targetAmount;
                 const diffText = diff === 0 ? 'Target esatto' : (diff > 0 ? `+€${diff.toFixed(2)}` : `-€${Math.abs(diff).toFixed(2)}`);
                 const diffColor = diff === 0 ? '#10b981' : (Math.abs(diff) <= quotaAmount / 2 ? '#3b82f6' : '#f59e0b');
+                const stagioneLabel = !isNaN(annoSportivoVal) ? `${annoSportivoVal}/${annoSportivoVal+1} (${app.formatAnno(annoSportivoVal)})` : '';
 
                 summaryBox.innerHTML = `
                     <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
                         <span>📊 Riepilogo Conteggio Totali</span>
-                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Arrotondamento plausibile a quote da €${quotaAmount.toFixed(2)}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Arrotondamento a quote da €${quotaAmount.toFixed(2)}</span>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: rgba(0,0,0,0.15); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;">
                         <div>
@@ -7270,6 +7301,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div>
                             <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">Totale Finale: €${finalEstimatedTotal.toFixed(2)}</div>
                             <div style="font-size: 0.75rem; color: var(--text-muted);">Richiesto: €${targetAmount.toFixed(2)} &bull; Differenza: <span style="color: ${diffColor}; font-weight: 600;">${diffText}</span></div>
+                            ${stagioneLabel ? `<div style="font-size: 0.75rem; color: var(--primary); margin-top: 2px;">🏷️ Numerazione assegnata a: <strong>Stagione ${stagioneLabel}</strong></div>` : ''}
                         </div>
                         <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent); background: rgba(139, 92, 246, 0.15); padding: 3px 8px; border-radius: 4px;">
                             ${manualCount + autoCount} Ricevute Totali
@@ -7329,6 +7361,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const data = Object.fromEntries(formData.entries());
                 const mese = parseInt(data.mese);
                 const anno = parseInt(data.anno);
+                const annoSportivo = parseInt(data.annoSportivo) || (mese >= 9 ? anno : anno - 1);
                 const targetAmount = parseFloat(data.targetAmount);
                 const quotaAmount = parseFloat(data.quotaAmount);
                 const metodo = data.metodo;
@@ -7438,14 +7471,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 // Ordina tutte le ricevute del batch per data prima di assegnare la numerazione progressiva
                 batchReceipts.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
                 
-                // Determina la numerazione iniziale per l'anno di riferimento
-                let lastNum = app.state.ricevute.filter(r => r.anno === anno).reduce((max, r) => Math.max(max, r.numero), 0);
+                // Determina la numerazione iniziale per l'anno sportivo di riferimento
+                let lastNum = app.state.ricevute
+                    .filter(r => parseInt(r.anno) === annoSportivo)
+                    .reduce((max, r) => Math.max(max, parseInt(r.numero) || 0), 0);
                 
                 // Assegna i numeri sequenziali ed esegui i salvataggi
                 batchReceipts.forEach(receipt => {
                     lastNum++;
                     receipt.numero = lastNum;
-                    receipt.anno = anno;
+                    receipt.anno = annoSportivo;
                     
                     // Salva la ricevuta nel database
                     app.state.ricevute.push(receipt);
@@ -7471,8 +7506,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 app.saveAll();
                 app.closeModal();
                 const totalGen = batchReceipts.reduce((s, r) => s + r.importo, 0);
-                app.toast(`Compilazione completata: generate ${countAutogenerated} ricevute automatiche e ${countManual} manuali per il ${mese}/${anno}. Totale: €${totalGen.toFixed(2)}.`, "success");
-                if (document.getElementById('ricevute-tbody')) app.renderRicevute();
+                app.toast(`Compilazione completata: generate ${countAutogenerated} ricevute automatiche e ${countManual} manuali per ${mese}/${anno} (Stagione ${app.formatAnno(annoSportivo)}). Totale: €${totalGen.toFixed(2)}.`, "success");
+                if (document.getElementById('receipts-tbody') || document.getElementById('ricevute-tbody')) app.renderRicevute();
             };
             
             // Inizializza il debugUI se siamo in debugMode
