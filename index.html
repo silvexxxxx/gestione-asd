@@ -1770,6 +1770,36 @@
             if (changed) { this.saveAll(); }
         },
 
+        sanitizeSettings() {
+            if (!this.state.settings) {
+                this.state.settings = {};
+            }
+            let changed = false;
+            if (!this.state.settings.metodi_pagamento || !Array.isArray(this.state.settings.metodi_pagamento)) {
+                this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"];
+                changed = true;
+            } else if (!this.state.settings.metodi_pagamento.includes("CBILL")) {
+                this.state.settings.metodi_pagamento.push("CBILL");
+                changed = true;
+            }
+            if (!this.state.settings.categorie_entrate || !Array.isArray(this.state.settings.categorie_entrate)) {
+                this.state.settings.categorie_entrate = ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"];
+                changed = true;
+            }
+            if (!this.state.settings.categorie_uscite || !Array.isArray(this.state.settings.categorie_uscite)) {
+                this.state.settings.categorie_uscite = ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie"];
+                changed = true;
+            }
+            if (changed && typeof this.saveAll === 'function') {
+                this.saveAll();
+            }
+        },
+
+        getMetodiPagamento() {
+            this.sanitizeSettings();
+            return this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"];
+        },
+
         trackDeletion(id) {
             if (!this.state.deletedIds) this.state.deletedIds = [];
             if (id && !this.state.deletedIds.includes(id)) {
@@ -1788,6 +1818,7 @@
 
                 await this.loadData();
                 this.sanitizeDates();
+                this.sanitizeSettings();
                 
                                 // --- PAYWALL / LICENZA / TRIAL ---
                 let installDate = localStorage.getItem('asd_install_date');
@@ -1977,8 +2008,10 @@
                     const idbState = await this.idbGet('main_state');
                     if (idbState) {
                         this.state = { ...this.state, ...idbState };
+                        this.sanitizeSettings();
                         this.migrateSoci();
                         this.migrateIstruttori();
+                        this.migrateCorsiNames();
                         return; // Se ha caricato da IndexedDB, non serve leggere localStorage!
                     }
                 } catch (e) {
@@ -2059,12 +2092,8 @@
                     this.state.sale = [{ id: "sala-pesi", nome: "Sala Pesi" }];
                 }
 
-                // Safety check for payment methods
-                if (!this.state.settings.metodi_pagamento || !Array.isArray(this.state.settings.metodi_pagamento)) {
-                    this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"];
-                } else if (!this.state.settings.metodi_pagamento.includes("CBILL")) {
-                    this.state.settings.metodi_pagamento.push("CBILL");
-                }
+                // Safety check for settings
+                this.sanitizeSettings();
 
                 if (storedSent) {
                     this.state.sent_reminders = JSON.parse(storedSent);
@@ -2809,6 +2838,7 @@
                         }
 
                         app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
+                        app.sanitizeSettings();
                         
                         await app.idbSet('main_state', app.state);
                         
@@ -4415,7 +4445,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label>Metodo di Pagamento</label>
                                 <select name="pagamento" class="form-control" onchange="app.onReceiptPagamentoChange(this.value)">
-                                    ${this.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                                    ${this.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
                                 </select>
                             </div>
 
@@ -6074,7 +6104,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <div class="form-group">
                                 <label id="label-metodo">Metodo Pagamento*</label>
                                 <select name="metodo" class="form-control" required>
-                                    ${this.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                                    ${this.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
@@ -6971,7 +7001,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <div class="form-group" style="grid-column: span 2;">
                                         <label>Metodo di Pagamento Base (Quote Auto)</label>
                                         <select name="metodo" class="form-control">
-                                            ${app.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                                            ${app.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
                                         </select>
                                     </div>
                                 </div>
@@ -7047,7 +7077,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label style="font-size: 0.8rem;">Metodo di Pagamento</label>
                                         <select id="automanual-metodo" class="form-control">
-                                            ${app.state.settings.metodi_pagamento.map(m => `<option value="${m}">${m}</option>`).join('')}
+                                            ${app.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
                                         </select>
                                     </div>
                                     
@@ -7661,7 +7691,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const s = this.state.settings;
             const sale = this.state.sale || [];
             const presets = this.state.quote_presets || [];
-            const metodi = s.metodi_pagamento || [];
+            const metodi = this.getMetodiPagamento();
             main.innerHTML = `
                 <div class="page-content" style="overflow-y:auto;">
                     <div class="page-header">
@@ -9516,7 +9546,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <select name="pagamento" class="form-control">
                                     <option value="Bonifico Bancario">Bonifico Bancario</option>
                                     <option value="Contanti">Contanti</option>
-                                    ${this.state.settings.metodi_pagamento.filter(m => m !== 'Contanti').map(m => `<option value="${m}">${m}</option>`).join('')}
+                                    ${this.getMetodiPagamento().filter(m => m !== 'Contanti').map(m => `<option value="${m}">${m}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
