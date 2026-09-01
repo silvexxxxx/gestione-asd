@@ -6143,7 +6143,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
 
                     // Tipo
-                    if (tipo !== 'all' && t.tipo !== tipo) return false;
+                    if (tipo === 'Giroconto') {
+                        const isGc = (t.tipo === 'Giroconto') || !!t.giroconto_group || (t.riferimento && t.riferimento.startsWith('GIROCONTO_')) || (t.categoria && t.categoria.startsWith('Giroconto'));
+                        if (!isGc) return false;
+                    } else if (tipo !== 'all') {
+                        if (t.tipo !== tipo) return false;
+                    }
                     
                     // Metodo
                     let metodoFilter = this.pnMetodoFilter || 'all';
