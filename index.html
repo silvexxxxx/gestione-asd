@@ -1571,7 +1571,7 @@
                     presidente: "",
                     segretario: "",
                     vice_presidente: "",
-                    metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"],
+                    metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"],
                     categorie_entrate: ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"],
                     categorie_uscite: ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie"],
                     autoSaveHours: 0,
@@ -1776,11 +1776,17 @@
             }
             let changed = false;
             if (!this.state.settings.metodi_pagamento || !Array.isArray(this.state.settings.metodi_pagamento)) {
-                this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"];
+                this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
                 changed = true;
-            } else if (!this.state.settings.metodi_pagamento.includes("CBILL")) {
-                this.state.settings.metodi_pagamento.push("CBILL");
-                changed = true;
+            } else {
+                if (!this.state.settings.metodi_pagamento.includes("CBILL")) {
+                    this.state.settings.metodi_pagamento.push("CBILL");
+                    changed = true;
+                }
+                if (!this.state.settings.metodi_pagamento.includes("Bancomat")) {
+                    this.state.settings.metodi_pagamento.push("Bancomat");
+                    changed = true;
+                }
             }
             if (!this.state.settings.categorie_entrate || !Array.isArray(this.state.settings.categorie_entrate)) {
                 this.state.settings.categorie_entrate = ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"];
@@ -1795,9 +1801,14 @@
             }
         },
 
+        isCassaMetodo(metodo) {
+            if (!metodo) return false;
+            return metodo.toString().trim().toLowerCase() === 'contanti';
+        },
+
         getMetodiPagamento() {
             this.sanitizeSettings();
-            return this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"];
+            return this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
         },
 
         trackDeletion(id) {
@@ -5959,7 +5970,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let bancaDigitale = 0;
                 
                 this.state.primanota.forEach(t => {
-                    let amt = parseFloat(t.importo);
+                    let amt = parseFloat(t.importo) || 0;
                     if (t.tipo === 'Uscita') amt = -amt;
                     
                     if (t.tipo === 'Giroconto') {
@@ -5967,12 +5978,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         // Convenzione: Se da Cassa a Banca -> -Cassa +Banca
                         // Ma il metodo salva "Contanti -> Banca" o viceversa.
                         // Gestiamolo così: Il "metodo" è l'Origine, "categoria" è la Destinazione
-                        if (t.metodo === 'Contanti') { cassaReale -= amt; bancaDigitale += amt; }
+                        if (this.isCassaMetodo(t.metodo)) { cassaReale -= amt; bancaDigitale += amt; }
                         else { bancaDigitale -= amt; cassaReale += amt; }
                         return; // Non altera il totale
                     }
 
-                    if (t.metodo === 'Contanti') {
+                    if (this.isCassaMetodo(t.metodo)) {
                         cassaReale += amt;
                     } else {
                         bancaDigitale += amt;
@@ -6044,8 +6055,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     
                     // Metodo
                     let metodoFilter = this.pnMetodoFilter || 'all';
-                    if (metodoFilter === 'cassa' && t.metodo !== 'Contanti') return false;
-                    if (metodoFilter === 'banca' && t.metodo === 'Contanti') return false;
+                    if (metodoFilter === 'cassa' && !this.isCassaMetodo(t.metodo)) return false;
+                    if (metodoFilter === 'banca' && this.isCassaMetodo(t.metodo)) return false;
 
                     // Ricerca
                     if (search) {
@@ -6329,10 +6340,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             if (t.tipo === 'Uscita') amt = -amt;
                             
                             if (t.tipo === 'Giroconto') {
-                                if (t.metodo === 'Contanti') { cassaReale -= amt; bancaDigitale += amt; }
+                                if (this.isCassaMetodo(t.metodo)) { cassaReale -= amt; bancaDigitale += amt; }
                                 else { bancaDigitale -= amt; cassaReale += amt; }
                             } else {
-                                if (t.metodo === 'Contanti') cassaReale += amt;
+                                if (this.isCassaMetodo(t.metodo)) cassaReale += amt;
                                 else bancaDigitale += amt;
                             }
                         }
