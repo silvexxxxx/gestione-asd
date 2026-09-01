@@ -1571,7 +1571,7 @@
                     presidente: "",
                     segretario: "",
                     vice_presidente: "",
-                    metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp"],
+                    metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"],
                     categorie_entrate: ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"],
                     categorie_uscite: ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie"],
                     autoSaveHours: 0,
@@ -2060,8 +2060,10 @@
                 }
 
                 // Safety check for payment methods
-                if (!this.state.settings.metodi_pagamento) {
-                    this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp"];
+                if (!this.state.settings.metodi_pagamento || !Array.isArray(this.state.settings.metodi_pagamento)) {
+                    this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL"];
+                } else if (!this.state.settings.metodi_pagamento.includes("CBILL")) {
+                    this.state.settings.metodi_pagamento.push("CBILL");
                 }
 
                 if (storedSent) {
