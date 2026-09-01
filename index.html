@@ -6216,7 +6216,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <select id="new-pn-tipo" name="tipo" class="form-control" required onchange="app.updatePrimaNotaFormFields(this.value)">
                                 <option value="Uscita" ${defaultTipo === 'Uscita' ? 'selected' : ''}>Uscita</option>
                                 <option value="Entrata" ${defaultTipo === 'Entrata' ? 'selected' : ''}>Entrata</option>
-                                <option value="Giroconto" ${defaultTipo === 'Giroconto' ? 'selected' : ''}>Giroconto</option>
+                                <option value="Giroconto" ${defaultTipo === 'Giroconto' ? 'selected' : ''}>Giroconto (Spostamento Cassa ⇄ Banca)</option>
                             </select>
                         </div>
                         
@@ -6274,6 +6274,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const metodoSelect = document.getElementById('new-pn-metodo');
                 const labelMetodo = document.getElementById('label-metodo');
                 const labelCat = document.getElementById('label-categoria');
+                const descInput = document.getElementById('new-pn-descrizione');
                 
                 if (!catSelect || !labelMetodo || !labelCat) return;
 
@@ -6283,22 +6284,28 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Entrata*';
                     if (metodoSelect) {
+                        metodoSelect.onchange = null;
                         const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
                         metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('');
                     }
+                    catSelect.onchange = null;
                     this.state.settings.categorie_entrate.forEach(c => {
                         catSelect.innerHTML += `<option value="${c}" ${preselectedCat === c ? 'selected' : ''}>${c}</option>`;
                     });
+                    if (descInput && !descInput.value) descInput.placeholder = 'Es. Donazione liberale / Sponsor';
                 } else if (tipo === 'Uscita') {
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Uscita*';
                     if (metodoSelect) {
+                        metodoSelect.onchange = null;
                         const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
                         metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('');
                     }
+                    catSelect.onchange = null;
                     this.state.settings.categorie_uscite.forEach(c => {
                         catSelect.innerHTML += `<option value="${c}" ${preselectedCat === c ? 'selected' : ''}>${c}</option>`;
                     });
+                    if (descInput && !descInput.value) descInput.placeholder = 'Es. Pagamento affitto / Bolletta';
                 } else if (tipo === 'Giroconto') {
                     labelMetodo.innerText = 'Da (Origine)*';
                     labelCat.innerText = 'A (Destinazione)*';
@@ -6308,11 +6315,25 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <option value="Contanti" ${curM === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
                             <option value="Banca" ${curM === 'Banca' ? 'selected' : ''}>Banca</option>
                         `;
+                        metodoSelect.onchange = () => {
+                            if (catSelect) {
+                                catSelect.value = metodoSelect.value === 'Contanti' ? 'Banca' : 'Contanti';
+                            }
+                        };
                     }
+                    const targetDest = preselectedCat || (metodoSelect && metodoSelect.value === 'Banca' ? 'Contanti' : 'Banca');
                     catSelect.innerHTML = `
-                        <option value="Banca" ${preselectedCat === 'Banca' ? 'selected' : ''}>Banca</option>
-                        <option value="Contanti" ${preselectedCat === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
+                        <option value="Banca" ${targetDest === 'Banca' ? 'selected' : ''}>Banca</option>
+                        <option value="Contanti" ${targetDest === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
                     `;
+                    catSelect.onchange = () => {
+                        if (metodoSelect) {
+                            metodoSelect.value = catSelect.value === 'Banca' ? 'Contanti' : 'Banca';
+                        }
+                    };
+                    if (descInput && !descInput.value) {
+                        descInput.placeholder = 'Es. Versamento contanti allo sportello bancario';
+                    }
                 }
             },
 
