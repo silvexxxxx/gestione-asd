@@ -3212,6 +3212,10 @@
                 setTimeout(() => t.remove(), 4000);
             },
 
+            showToast(msg, type = "success") {
+                return this.toast(msg, type);
+            },
+
             openSchedeAtleti() {
                 // Chiudi eventuali menu dropdown aperti
                 document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
@@ -6335,7 +6339,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         this.state.primanota[idx].descrizione = descrizioneVal;
                         this.state.primanota[idx].importo = importoVal;
                     }
-                    this.showToast('Movimento aggiornato con successo', 'success');
+                    this.toast('Movimento aggiornato con successo', 'success');
                 } else {
                     this.state.primanota.push({
                         id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
@@ -6347,7 +6351,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         importo: importoVal,
                         riferimento: 'MANUALE'
                     });
-                    this.showToast('Movimento salvato con successo', 'success');
+                    this.toast('Movimento salvato con successo', 'success');
                 }
                 
                 this.saveAll();
@@ -6361,7 +6365,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     this.trackDeletion(id);
                     this.saveAll();
                     this.renderPrimaNota();
-                    this.showToast('Movimento eliminato', 'success');
+                    this.toast('Movimento eliminato', 'success');
                 }
             },
 
@@ -6439,7 +6443,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let refChiusura = 'CHIUSURA_' + selectedAS.replace('/','_');
                 let giaChiuso = this.state.primanota.find(t => t.riferimento === refChiusura);
                 if (giaChiuso) {
-                    this.showToast("Errore: Esercizio " + selectedAS + " già chiuso!", "danger");
+                    this.toast("Errore: Esercizio " + selectedAS + " già chiuso!", "danger");
                     return;
                 }
 
@@ -6490,7 +6494,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     
                     this.saveAll();
                     this.renderPrimaNota();
-                    this.showToast('Esercizio ' + selectedAS + ' chiuso. Saldi riportati al ' + nextAS, 'success');
+                    this.toast('Esercizio ' + selectedAS + ' chiuso. Saldi riportati al ' + nextAS, 'success');
                 }
             },
 
@@ -6558,7 +6562,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         exportPrimaNotaExcel() {
                 const txns = this.getFilteredPrimaNota();
                 if (txns.length === 0) {
-                    this.showToast('Nessun movimento da esportare', 'warning');
+                    this.toast('Nessun movimento da esportare', 'warning');
                     return;
                 }
 
