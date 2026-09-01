@@ -6145,8 +6145,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div class="form-group">
                             <label>Tipo Movimento*</label>
                             <select id="new-pn-tipo" name="tipo" class="form-control" required onchange="app.updatePrimaNotaFormFields(this.value)">
+                                <option value="Uscita" selected>Uscita</option>
                                 <option value="Entrata">Entrata</option>
-                                <option value="Uscita">Uscita</option>
                                 <option value="Giroconto">Giroconto</option>
                             </select>
                         </div>
@@ -6170,7 +6170,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label id="label-categoria">Categoria*</label>
+                                <label id="label-categoria">Categoria Uscita*</label>
                                 <select id="new-pn-categoria" name="categoria" class="form-control" required>
                                     <!-- Injected based on type -->
                                 </select>
@@ -6189,7 +6189,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     </form>
                 `);
                 
-                this.updatePrimaNotaFormFields('Entrata');
+                this.updatePrimaNotaFormFields('Uscita');
             },
 
             updatePrimaNotaFormFields(tipo) {
