@@ -1806,6 +1806,45 @@
             return metodo.toString().trim().toLowerCase() === 'contanti';
         },
 
+        sanitizePrimaNota() {
+            if (!this.state.primanota || !Array.isArray(this.state.primanota)) {
+                this.state.primanota = [];
+                return;
+            }
+
+            const activeReceiptIds = new Set((this.state.ricevute || []).map(r => String(r.id)));
+            const beforeCount = this.state.primanota.length;
+
+            this.state.primanota = this.state.primanota.filter(t => {
+                const ref = t.riferimento || '';
+                
+                // 1. Elimina qualsiasi vecchio STORNO legato a ricevute eliminate
+                if (ref.startsWith('STORNO_RICEVUTA_') || (t.categoria === 'Storno' && (t.descrizione || '').toUpperCase().startsWith('STORNO RICEVUTA'))) {
+                    return false;
+                }
+
+                // 2. Elimina movimenti RICEVUTA_ o COMM_RICEVUTA_ la cui ricevuta originale non esiste più
+                if (ref.startsWith('RICEVUTA_')) {
+                    const recId = ref.replace('RICEVUTA_', '');
+                    if (!activeReceiptIds.has(recId)) {
+                        return false;
+                    }
+                }
+                if (ref.startsWith('COMM_RICEVUTA_')) {
+                    const recId = ref.replace('COMM_RICEVUTA_', '');
+                    if (!activeReceiptIds.has(recId)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            if (this.state.primanota.length !== beforeCount && typeof this.saveAll === 'function') {
+                this.saveAll();
+            }
+        },
+
         getMetodiPagamento() {
             this.sanitizeSettings();
             return this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
@@ -1830,6 +1869,7 @@
                 await this.loadData();
                 this.sanitizeDates();
                 this.sanitizeSettings();
+                this.sanitizePrimaNota();
                 
                                 // --- PAYWALL / LICENZA / TRIAL ---
                 let installDate = localStorage.getItem('asd_install_date');
@@ -2020,6 +2060,7 @@
                     if (idbState) {
                         this.state = { ...this.state, ...idbState };
                         this.sanitizeSettings();
+                        this.sanitizePrimaNota();
                         this.migrateSoci();
                         this.migrateIstruttori();
                         this.migrateCorsiNames();
@@ -4833,22 +4874,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 }
             }
         },
-        stornoPrimaNotaFromRicevuta(id) {
-            const ref = 'RICEVUTA_' + id;
-            const txn = this.state.primanota.find(t => t.riferimento === ref);
-            if (txn) {
-                // Genera storno
-                this.state.primanota.push({
-                    id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                    data: new Date().toISOString().split('T')[0],
-                    tipo: 'Uscita',
-                    metodo: txn.metodo,
-                    categoria: 'Storno',
-                    descrizione: 'STORNO ' + txn.descrizione,
-                    importo: parseFloat(txn.importo),
-                    riferimento: 'STORNO_' + ref
-                });
-            }
+        removePrimaNotaFromRicevuta(id) {
+            const recIdStr = String(id);
+            this.state.primanota = (this.state.primanota || []).filter(t => {
+                const ref = t.riferimento || '';
+                if (ref === 'RICEVUTA_' + recIdStr || ref === 'COMM_RICEVUTA_' + recIdStr || ref === 'STORNO_RICEVUTA_' + recIdStr) return false;
+                if (ref.includes(recIdStr)) return false;
+                return true;
+            });
         },
 
         handleRicevutaSubmit(e) {
@@ -5026,7 +5059,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             
             if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} di ${socioNome}.\n\nLa sequenza numerica delle ricevute successive per l'anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
                 
-                this.stornoPrimaNotaFromRicevuta(r.id);
+                this.removePrimaNotaFromRicevuta(r.id);
                 this.state.ricevute = this.state.ricevute.filter(x => String(x.id) !== String(id) && x.id != id);
                 this.trackDeletion(r.id);
                 
@@ -5042,7 +5075,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 
                 this.saveAll();
                 this.renderRicevute();
-                this.toast(`Ricevuta eliminata. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
+                this.toast(`Ricevuta eliminata definitivamente senza storni. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
             }
         },
 
@@ -5860,6 +5893,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         
             // --- PRIMA NOTA MANAGEMENT ---
             renderPrimaNota() {
+                this.sanitizePrimaNota();
                 const main = document.getElementById('main-content');
                 
                 // Calcoli saldi
@@ -6123,7 +6157,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 ${sign}€ ${parseFloat(t.importo).toFixed(2)}
                             </td>
                             <td style="text-align: right; padding-right: 1.5rem;">
-                                ${(!t.riferimento || !t.riferimento.startsWith('RICEVUTA_')) && !t.riferimento?.startsWith('STORNO') ? `
+                                ${(!t.riferimento || !t.riferimento.startsWith('RICEVUTA_')) ? `
                                     <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina" onclick="app.deletePrimaNota('${t.id}')">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
                                     </button>
