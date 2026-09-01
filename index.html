@@ -5900,9 +5900,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         </div>
 
-                        <!-- Filtri -->
-                        <div class="glass-card" style="margin-bottom: 2rem;">
-                            <div class="toolbar" style="margin-bottom: 0;">
+                        <!-- Tabella Unificata nella Member-Card -->
+                        <div class="glass-card member-card">
+                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0;">
                                 <select id="pn-year" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutto lo storico</option>
                                     <option value="${nextAS}" ${yearFilter === nextAS ? 'selected' : ''}>${nextAS}</option>
@@ -5925,26 +5925,25 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </select>
                                 <input type="text" id="pn-search" class="form-control search-input" placeholder="Cerca descrizione o categoria..." oninput="app.filterPrimaNota()">
                             </div>
-                        </div>
 
-                        <!-- Tabella -->
-                        <div class="glass-card table-container">
-                            <table id="pn-table">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Tipo</th>
-                                        <th>Metodo</th>
-                                        <th>Categoria</th>
-                                        <th>Descrizione</th>
-                                        <th style="text-align: right;">Importo</th>
-                                        <th>Azioni</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${this.renderPrimaNotaRows(this.getFilteredPrimaNota())}
-                                </tbody>
-                            </table>
+                            <div class="table-container">
+                                <table id="pn-table" style="margin-top: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th style="cursor: pointer; user-select: none; padding-left: 1.5rem; width: 12%;" onclick="app.sortPrimaNota('data')">Data <span id="sort-pn-data">${this.getPnSortIcon('data')}</span></th>
+                                            <th style="cursor: pointer; user-select: none; width: 10%;" onclick="app.sortPrimaNota('tipo')">Tipo <span id="sort-pn-tipo">${this.getPnSortIcon('tipo')}</span></th>
+                                            <th style="cursor: pointer; user-select: none; width: 12%;" onclick="app.sortPrimaNota('metodo')">Metodo <span id="sort-pn-metodo">${this.getPnSortIcon('metodo')}</span></th>
+                                            <th style="cursor: pointer; user-select: none; width: 18%;" onclick="app.sortPrimaNota('categoria')">Categoria <span id="sort-pn-categoria">${this.getPnSortIcon('categoria')}</span></th>
+                                            <th style="cursor: pointer; user-select: none; width: 26%;" onclick="app.sortPrimaNota('descrizione')">Descrizione <span id="sort-pn-descrizione">${this.getPnSortIcon('descrizione')}</span></th>
+                                            <th style="cursor: pointer; user-select: none; text-align: right; width: 12%;" onclick="app.sortPrimaNota('importo')">Importo <span id="sort-pn-importo">${this.getPnSortIcon('importo')}</span></th>
+                                            <th style="text-align: right; padding-right: 1.5rem; width: 10%;">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pn-tbody">
+                                        ${this.renderPrimaNotaRows(this.getFilteredPrimaNota())}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -5988,6 +5987,32 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 this.pnMetodoFilter = metodo;
                 this.renderPrimaNota();
             },
+
+            getPnSortIcon(key) {
+                const k = this.pnSortKey || 'data';
+                const dir = this.pnSortDir || 'desc';
+                if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+                return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
+            },
+
+            sortPrimaNota(key) {
+                if (!this.pnSortKey) this.pnSortKey = 'data';
+                if (!this.pnSortDir) this.pnSortDir = 'desc';
+
+                if (this.pnSortKey === key) {
+                    this.pnSortDir = this.pnSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.pnSortKey = key;
+                    this.pnSortDir = (key === 'data' || key === 'importo') ? 'desc' : 'asc';
+                }
+
+                ['data', 'tipo', 'metodo', 'categoria', 'descrizione', 'importo'].forEach(k => {
+                    const el = document.getElementById('sort-pn-' + k);
+                    if (el) el.innerHTML = this.getPnSortIcon(k);
+                });
+
+                this.filterPrimaNota();
+            },
             
             getFilteredPrimaNota() {
                 let currentD = new Date();
@@ -5997,7 +6022,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let tipo = document.getElementById('pn-tipo') ? document.getElementById('pn-tipo').value : 'all';
                 let search = document.getElementById('pn-search') ? document.getElementById('pn-search').value.toLowerCase() : '';
 
-                return this.state.primanota.filter(t => {
+                let filtered = this.state.primanota.filter(t => {
                     let d = new Date(t.data);
                     
                     // Anno Sportivo (1 Settembre - 31 Agosto)
@@ -6030,12 +6055,38 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
 
                     return true;
-                }).sort((a, b) => new Date(b.data) - new Date(a.data));
+                });
+
+                const key = this.pnSortKey || 'data';
+                const dir = this.pnSortDir || 'desc';
+
+                filtered.sort((a, b) => {
+                    let diff = 0;
+                    if (key === 'data') {
+                        const dateA = new Date(a.data).getTime() || 0;
+                        const dateB = new Date(b.data).getTime() || 0;
+                        diff = dateA - dateB;
+                        if (diff === 0) {
+                            diff = (parseInt(a.id) || 0) - (parseInt(b.id) || 0);
+                        }
+                    } else if (key === 'importo') {
+                        const amtA = parseFloat(a.importo) || 0;
+                        const amtB = parseFloat(b.importo) || 0;
+                        diff = amtA - amtB;
+                    } else {
+                        const valA = (a[key] || '').toString().toLowerCase();
+                        const valB = (b[key] || '').toString().toLowerCase();
+                        diff = valA.localeCompare(valB);
+                    }
+                    return dir === 'asc' ? diff : -diff;
+                });
+
+                return filtered;
             },
 
             renderPrimaNotaRows(txns) {
                 if (txns.length === 0) {
-                    return `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Nessun movimento trovato</td></tr>`;
+                    return `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessun movimento trovato</td></tr>`;
                 }
 
                 return txns.map(t => {
@@ -6049,7 +6100,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                     return `
                         <tr>
-                            <td>${this.formatDate(t.data)}</td>
+                            <td style="padding-left: 1.5rem;">${this.formatDate(t.data)}</td>
                             <td><span class="badge ${badgeClass}">${t.tipo}</span></td>
                             <td>${t.metodo}</td>
                             <td>${t.categoria}</td>
@@ -6060,7 +6111,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <td style="text-align: right; font-weight: 700; color: ${colorAmt};">
                                 ${sign}€ ${parseFloat(t.importo).toFixed(2)}
                             </td>
-                            <td>
+                            <td style="text-align: right; padding-right: 1.5rem;">
                                 ${(!t.riferimento || !t.riferimento.startsWith('RICEVUTA_')) && !t.riferimento?.startsWith('STORNO') ? `
                                     <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina" onclick="app.deletePrimaNota('${t.id}')">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
@@ -6073,7 +6124,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             },
 
             filterPrimaNota() {
-                const tbody = document.querySelector('#pn-table tbody');
+                const tbody = document.querySelector('#pn-tbody');
                 if(tbody) tbody.innerHTML = this.renderPrimaNotaRows(this.getFilteredPrimaNota());
             },
 
