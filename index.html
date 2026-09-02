@@ -1517,7 +1517,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.4.2";
+        const APP_VERSION = "2.4.3";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -4978,11 +4978,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label>N. Ricevuta / Anno</label>
                                     <div style="display:flex; gap:0.5rem;">
-                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:50%; min-width:70px;" value="${initialNum}" required ${this.state.debugMode ? '' : 'readonly'}>
-                                        <select name="anno" class="form-control" style="width:50%; min-width:95px;" required>
+                                        <input type="number" name="numero" id="receipt-numero" class="form-control" style="width:50%; min-width:70px;" value="${initialNum}" required ${this.state.debugMode ? '' : 'readonly'} oninput="app.checkReceiptNumberDuplicate()" onchange="app.checkReceiptNumberDuplicate()">
+                                        <select name="anno" id="receipt-anno" class="form-control" style="width:50%; min-width:95px;" required onchange="app.checkReceiptNumberDuplicate()">
                                             ${[currentYear-2, currentYear-1, currentYear, currentYear+1, currentYear+2].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${app.formatAnno(y)}</option>`).join('')}
                                         </select>
                                     </div>
+                                    <div id="receipt-duplicate-warning" style="display:none; margin-top:6px; font-size:0.8rem; padding:6px 10px; background:rgba(239, 68, 68, 0.15); border:1px solid var(--danger); border-radius:4px; color:var(--danger); font-weight:600;"></div>
                                 </div>
                             </div>
 
@@ -5110,16 +5111,44 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     if (!nums.includes(i)) missing.push(i);
                 }
                 
+                // Rileva numeri duplicati (doppioni)
+                const numGroups = {};
+                receipts.forEach(r => {
+                    const n = parseInt(r.numero);
+                    if (!isNaN(n) && n > 0) {
+                        if (!numGroups[n]) numGroups[n] = [];
+                        numGroups[n].push(r);
+                    }
+                });
+                const duplicates = Object.keys(numGroups)
+                    .filter(n => numGroups[n].length > 1)
+                    .map(n => ({
+                        numero: parseInt(n),
+                        count: numGroups[n].length,
+                        receipts: numGroups[n]
+                    }))
+                    .sort((a, b) => a.numero - b.numero);
+
                 return {
                     total: receipts.length,
                     digital: digitalReceipts.length,
                     cartacee: cartaceeReceipts.length,
                     maxNum: maxNum,
-                    missing: missing
+                    missing: missing,
+                    duplicates: duplicates
                 };
             };
             
             const stats = renderYearStats(defaultYear);
+
+            const formatDuplicatesHtml = (dups) => {
+                if (!dups || dups.length === 0) return 'Nessun duplicato';
+                return dups.map(d => `
+                    <div style="padding:4px 0; border-bottom:1px dashed rgba(239,68,68,0.3); line-height:1.4;">
+                        <strong style="color:var(--danger);">N. ${d.numero}:</strong> ${d.receipts.map(r => `<span style="font-weight:600;">${r.socio_nome}</span> <span style="font-size:0.8rem; color:var(--text-muted);">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})</span>`).join(' <strong style="color:var(--danger);">VS</strong> ')}
+                    </div>
+                `).join('');
+            };
             
             const modalContent = `
                 <div style="display:flex; flex-direction:column; gap:15px;">
@@ -5144,6 +5173,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         </div>
                         <div id="reseq-missing-alert" style="background:rgba(245, 158, 11, 0.15); border:1px solid var(--warning); border-radius:6px; padding:8px 12px; font-size:0.85rem; color:var(--text-main); ${stats.missing.length > 0 ? '' : 'display:none;'}">
                             ⚠️ <strong>Numeri mancanti (buchi) rilevati:</strong> <span id="reseq-missing-list" style="color:var(--danger); font-weight:bold;">${stats.missing.join(', ') || 'Nessuno'}</span>
+                        </div>
+                        <div id="reseq-duplicates-alert" style="background:rgba(239, 68, 68, 0.12); border:1px solid var(--danger); border-radius:6px; padding:8px 12px; font-size:0.85rem; color:var(--text-main); margin-top:8px; ${stats.duplicates.length > 0 ? '' : 'display:none;'}">
+                            🚨 <strong>Numeri duplicati (doppioni) rilevati:</strong>
+                            <div id="reseq-duplicates-list" style="margin-top:5px; max-height:130px; overflow-y:auto;">
+                                ${formatDuplicatesHtml(stats.duplicates)}
+                            </div>
                         </div>
                     </div>
                     
@@ -5179,6 +5214,23 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             for (let i = 1; i <= maxNum; i++) {
                 if (!nums.includes(i)) missing.push(i);
             }
+
+            const numGroups = {};
+            receipts.forEach(r => {
+                const n = parseInt(r.numero);
+                if (!isNaN(n) && n > 0) {
+                    if (!numGroups[n]) numGroups[n] = [];
+                    numGroups[n].push(r);
+                }
+            });
+            const duplicates = Object.keys(numGroups)
+                .filter(n => numGroups[n].length > 1)
+                .map(n => ({
+                    numero: parseInt(n),
+                    count: numGroups[n].length,
+                    receipts: numGroups[n]
+                }))
+                .sort((a, b) => a.numero - b.numero);
             
             const totalEl = document.getElementById('reseq-stat-total');
             if (totalEl) totalEl.textContent = receipts.length;
@@ -5198,6 +5250,22 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 } else {
                     alertEl.style.display = 'none';
                     missingListEl.textContent = 'Nessuno';
+                }
+            }
+
+            const dupAlertEl = document.getElementById('reseq-duplicates-alert');
+            const dupListEl = document.getElementById('reseq-duplicates-list');
+            if (dupAlertEl && dupListEl) {
+                if (duplicates.length > 0) {
+                    dupAlertEl.style.display = 'block';
+                    dupListEl.innerHTML = duplicates.map(d => `
+                        <div style="padding:4px 0; border-bottom:1px dashed rgba(239,68,68,0.3); line-height:1.4;">
+                            <strong style="color:var(--danger);">N. ${d.numero}:</strong> ${d.receipts.map(r => `<span style="font-weight:600;">${r.socio_nome}</span> <span style="font-size:0.8rem; color:var(--text-muted);">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})</span>`).join(' <strong style="color:var(--danger);">VS</strong> ')}
+                        </div>
+                    `).join('');
+                } else {
+                    dupAlertEl.style.display = 'none';
+                    dupListEl.innerHTML = 'Nessun duplicato';
                 }
             }
         },
@@ -5392,6 +5460,45 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 numInput.title = '';
             }
         },
+
+        checkReceiptNumberDuplicate() {
+            const form = document.getElementById('receipt-form');
+            if (!form) return false;
+            const numEl = document.getElementById('receipt-numero');
+            const annoEl = form.querySelector('[name="anno"]');
+            const warnEl = document.getElementById('receipt-duplicate-warning');
+            if (!numEl || !annoEl) return false;
+            
+            const num = parseInt(numEl.value);
+            const anno = parseInt(annoEl.value);
+            const editId = form.dataset.editId;
+            
+            if (isNaN(num) || isNaN(anno) || num <= 0) {
+                if (warnEl) warnEl.style.display = 'none';
+                numEl.style.borderColor = (form.querySelector('[name="cartacea"]')?.checked || this.state.debugMode) ? '#ca8a04' : '';
+                return false;
+            }
+            
+            const existing = this.state.ricevute.filter(r => 
+                (editId ? (String(r.id) !== String(editId) && r.id != editId) : true) &&
+                parseInt(r.anno) === anno && 
+                parseInt(r.numero) === num
+            );
+            
+            if (existing.length > 0) {
+                const names = existing.map(r => `${r.socio_nome} (${this.formatDate(r.data)}, €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})`).join('; ');
+                if (warnEl) {
+                    warnEl.innerHTML = `⚠️ <strong>Numero già presente!</strong> N. ${num}/${app.formatAnno(anno)} assegnato a: <br>${names}`;
+                    warnEl.style.display = 'block';
+                }
+                numEl.style.borderColor = 'var(--danger)';
+                return true;
+            } else {
+                if (warnEl) warnEl.style.display = 'none';
+                numEl.style.borderColor = (form.querySelector('[name="cartacea"]')?.checked || this.state.debugMode) ? '#ca8a04' : '';
+                return false;
+            }
+        },
         
         
         syncPrimaNotaFromRicevuta(ricevuta) {
@@ -5504,6 +5611,28 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (tess > 0) parts.push(`Tesseramento: €${tess.toFixed(2)}`);
                 if (quota > 0) parts.push(`Quota/Corso: €${quota.toFixed(2)}`);
                 tipoCausale = parts.join(' + ');
+            }
+
+            const targetNum = parseInt(data.numero);
+            const targetAnno = parseInt(data.anno);
+
+            // Controllo anti-duplicati ricevuta
+            const existingDups = this.state.ricevute.filter(r => 
+                (editId ? (String(r.id) !== String(editId) && r.id != editId) : true) &&
+                parseInt(r.anno) === targetAnno && 
+                parseInt(r.numero) === targetNum
+            );
+            if (existingDups.length > 0) {
+                const dupInfo = existingDups.map(r => `• ${r.socio_nome} (Data: ${this.formatDate(r.data)}, Importo: €${parseFloat(r.importo).toFixed(2)}, ${r.cartacea ? 'Cartaceo' : 'Digitale'})`).join('\n');
+                const warnMsg = `⚠️ ATTENZIONE: NUMERO RICEVUTA GIÀ ASSEGNATO!\n\nIl numero ${targetNum}/${app.formatAnno(targetAnno)} è già presente nel database per:\n${dupInfo}\n\n`;
+                if (this.state.debugMode) {
+                    if (!confirm(warnMsg + "Sei in MODALITÀ DEBUG:\nVuoi forzare comunque il salvataggio con questo numero duplicato?\n\n(Premi ANNULLA per tornare indietro e correggere il numero)")) {
+                        return;
+                    }
+                } else {
+                    alert(warnMsg + "Non è consentito salvare due ricevute con lo stesso numero. Modifica il numero progressivo prima di procedere.");
+                    return;
+                }
             }
 
             let receipt;
@@ -5766,6 +5895,26 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const oldAnno = parseInt(this.state.ricevute[idx].anno);
                 const newNum = parseInt(data.numero);
                 const newAnno = parseInt(data.anno);
+
+                if (oldAnno !== newAnno || oldNum !== newNum) {
+                    const existingDups = this.state.ricevute.filter(r => 
+                        (String(r.id) !== String(id) && r.id != id) &&
+                        parseInt(r.anno) === newAnno && 
+                        parseInt(r.numero) === newNum
+                    );
+                    if (existingDups.length > 0) {
+                        const dupInfo = existingDups.map(r => `• ${r.socio_nome} (Data: ${this.formatDate(r.data)}, Importo: €${parseFloat(r.importo).toFixed(2)}, ${r.cartacea ? 'Cartaceo' : 'Digitale'})`).join('\n');
+                        const warnMsg = `⚠️ ATTENZIONE: NUMERO RICEVUTA GIÀ ASSEGNATO!\n\nIl numero ${newNum}/${app.formatAnno(newAnno)} è già presente nel database per:\n${dupInfo}\n\n`;
+                        if (this.state.debugMode) {
+                            if (!confirm(warnMsg + "Sei in MODALITÀ DEBUG: vuoi forzare comunque il salvataggio con questo numero duplicato?\n(Premi ANNULLA per tornare indietro e correggere il numero)")) {
+                                return;
+                            }
+                        } else {
+                            alert(warnMsg + "Non è consentito salvare due ricevute con lo stesso numero. Modifica il numero progressivo prima di procedere.");
+                            return;
+                        }
+                    }
+                }
 
                 if (oldAnno === newAnno && oldNum !== newNum) {
                     if (newNum < oldNum) {
