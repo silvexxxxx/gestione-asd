@@ -1782,11 +1782,15 @@
                 this.state.settings.metodi_pagamento = ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
                 changed = true;
             } else {
-                if (!this.state.settings.metodi_pagamento.includes("CBILL")) {
+                const hasMethod = (name) => this.state.settings.metodi_pagamento.some(m => {
+                    const n = (typeof m === 'object' && m !== null) ? m.nome : m;
+                    return String(n).trim().toLowerCase() === name.toLowerCase();
+                });
+                if (!hasMethod("CBILL")) {
                     this.state.settings.metodi_pagamento.push("CBILL");
                     changed = true;
                 }
-                if (!this.state.settings.metodi_pagamento.includes("Bancomat")) {
+                if (!hasMethod("Bancomat")) {
                     this.state.settings.metodi_pagamento.push("Bancomat");
                     changed = true;
                 }
@@ -1804,8 +1808,58 @@
             }
         },
 
+        getMetodoConfig(nomeMetodo) {
+            this.sanitizeSettings();
+            if (!nomeMetodo) {
+                return { nome: '', tipo_registro: 'banca', percentuale: 0, fisso: 0, is_default: false };
+            }
+            const searchName = typeof nomeMetodo === 'object' && nomeMetodo !== null ? (nomeMetodo.nome || '') : String(nomeMetodo).trim();
+            const list = this.state.settings.metodi_pagamento || [];
+            const found = list.find(m => {
+                if (typeof m === 'object' && m !== null) {
+                    return (m.nome || '').toLowerCase() === searchName.toLowerCase();
+                }
+                return String(m).toLowerCase() === searchName.toLowerCase();
+            });
+
+            if (found && typeof found === 'object') {
+                return {
+                    nome: found.nome || searchName,
+                    tipo_registro: found.tipo_registro || (found.nome?.toLowerCase() === 'contanti' ? 'cassa' : 'banca'),
+                    percentuale: typeof found.percentuale === 'number' ? found.percentuale : (parseFloat(found.percentuale) || 0),
+                    fisso: typeof found.fisso === 'number' ? found.fisso : (parseFloat(found.fisso) || 0),
+                    is_default: !!found.is_default
+                };
+            }
+
+            // Se non trovato o se presente come semplice stringa:
+            const isSumUp = searchName.toLowerCase().replace(/\s/g, '').includes('sumup');
+            const isContanti = searchName.toLowerCase() === 'contanti';
+            if (isSumUp) {
+                return {
+                    nome: searchName || 'SumUp',
+                    tipo_registro: 'banca',
+                    percentuale: 1.95,
+                    fisso: 0.00,
+                    is_default: false
+                };
+            }
+
+            return {
+                nome: searchName,
+                tipo_registro: isContanti ? 'cassa' : 'banca',
+                percentuale: 0,
+                fisso: 0,
+                is_default: false
+            };
+        },
+
         isCassaMetodo(metodo) {
             if (!metodo) return false;
+            const cfg = this.getMetodoConfig(metodo);
+            if (cfg && cfg.tipo_registro) {
+                return cfg.tipo_registro === 'cassa';
+            }
             return metodo.toString().trim().toLowerCase() === 'contanti';
         },
 
@@ -1892,7 +1946,8 @@
 
         getMetodiPagamento() {
             this.sanitizeSettings();
-            return this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
+            const raw = this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
+            return raw.map(m => (typeof m === 'object' && m !== null ? m.nome : m)).filter(Boolean);
         },
 
         trackDeletion(id) {
