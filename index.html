@@ -4718,13 +4718,24 @@ closeModal() {
                 sorted.sort((a, b) => {
                     let diff = 0;
                     
-                    if (k === 'data' || k === 'numero') {
+                    if (k === 'numero') {
+                        const numA = parseInt(a.numero) || 0;
+                        const numB = parseInt(b.numero) || 0;
+                        diff = (numA - numB) * dir;
+                        
+                        // A parità di numero, ordina per data
+                        if (diff === 0) {
+                            const dateA = new Date(a.data).getTime() || 0;
+                            const dateB = new Date(b.data).getTime() || 0;
+                            diff = (dateA - dateB) * dir;
+                        }
+                    } else if (k === 'data') {
                         // Ordinamento combinato Data + Numero: mantiene la coerenza cronologica e sequenziale
                         const dateA = new Date(a.data).getTime() || 0;
                         const dateB = new Date(b.data).getTime() || 0;
                         diff = (dateA - dateB) * dir;
                         
-                        // A parità di data (o cliccando su numero), ordina per numero ricevuta
+                        // A parità di data, ordina per numero ricevuta
                         if (diff === 0) {
                             const numA = parseInt(a.numero) || 0;
                             const numB = parseInt(b.numero) || 0;
