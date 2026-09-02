@@ -2723,6 +2723,15 @@
                         migrated = true;
                     }
 
+                    // Se il socio aveva una quota relativa all'anno sportivo 25/26 e non ha scadenza tesseramento impostata:
+                    if (!updated.tesseramento_scadenza && updated.quota_scadenza) {
+                        const qd = new Date(updated.quota_scadenza);
+                        if (!isNaN(qd.getTime()) && qd >= new Date(2025, 8, 1) && qd <= new Date(2026, 7, 31, 23, 59, 59)) {
+                            updated.tesseramento_scadenza = '2026-08-31';
+                            migrated = true;
+                        }
+                    }
+
                     // Se il tesseramento è scaduto (scadenza <= 31/08/2026 o antecedente ad oggi),
                     // per il nuovo anno sportivo 26/27 il socio risulta NON tesserato finché non rinnova
                     if (updated.tesseramento_scadenza) {
@@ -7137,7 +7146,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             this.renderCorsi();
         },
         getTesseramentoScadenza(s) {
-            if (!s || s.tesserato !== 'SI') return null;
+            if (!s) return null;
 
             // Se ha una data esplicita di avvenuto tesseramento:
             // Regola federale Anno Sportivo (1 Settembre - 31 Agosto):
@@ -7160,7 +7169,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             // Se è tesserato SI ma senza data (es. dati storici/importati):
             // I tesseramenti pregressi (avviati nell'anno sportivo 25/26 o prima del 1° Settembre 2026) sono scaduti il 31/08/2026.
-            return '2026-08-31';
+            if (s.tesserato === 'SI') {
+                return '2026-08-31';
+            }
+
+            return null;
         },
 
         isTesseramentoAttivo(s) {
@@ -7187,6 +7200,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         isPreviousSportYearMember(s) {
             if (!s || s.stato === 'CESSATO') return false;
 
+            // Se è già attivo nel nuovo anno sportivo corrente (26/27), non appartiene all'elenco dei soli passati
+            if (this.isTesseramentoAttivo(s)) return false;
+
             const now = new Date();
             const currentMonth = now.getMonth();
             const currentYear = now.getFullYear();
@@ -7194,7 +7210,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const prevYearStart = new Date(currentSportYearStartYear - 1, 8, 1);
             const prevYearEnd = new Date(currentSportYearStartYear, 7, 31, 23, 59, 59);
 
-            // 1. Scadenza tesseramento cade nella chiusura dell'anno sportivo precedente (es. 31/08/2026)
+            // 1. Scadenza tesseramento registrata o calcolata ricade nella chiusura dell'anno sportivo precedente (es. 31/08/2026)
             const scadStr = this.getTesseramentoScadenza(s);
             if (scadStr) {
                 const scadDate = new Date(scadStr);
@@ -7211,8 +7227,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             }
 
-            // 3. Socio tesserato SI appartenente al pregresso non ancora rinnovato nel corrente anno sportivo
-            if (s.tesserato === 'SI' && !this.isTesseramentoAttivo(s)) {
+            // 3. Quota valida o scaduta nell'anno sportivo precedente (25/26)
+            if (s.quota_scadenza) {
+                const qDate = new Date(s.quota_scadenza);
+                if (!isNaN(qDate.getTime()) && qDate >= prevYearStart && qDate <= prevYearEnd) {
+                    return true;
+                }
+            }
+
+            // 4. Socio con tesseramento scaduto al 31/08/2026
+            if (s.tesseramento_scadenza === '2026-08-31') {
                 return true;
             }
 
