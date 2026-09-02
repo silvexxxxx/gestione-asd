@@ -2107,13 +2107,23 @@
                             const ref = `RICORRENTE_${costo.id}_${periodKey}`;
                             if (!existingRefs.has(ref)) {
                                 const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+                                const mesiNomi = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+                                let descPeriodo = '';
+                                if (periodicita === 'mensile') {
+                                    descPeriodo = `per il mese di ${mesiNomi[m]} ${y}`;
+                                } else if (periodicita === 'trimestrale') {
+                                    const qNum = Math.floor(m / 3) + 1;
+                                    descPeriodo = `per il ${qNum}° Trimestre ${y}`;
+                                } else {
+                                    descPeriodo = `per l'anno ${y}`;
+                                }
                                 this.state.primanota.push({
                                     id: 'txn_rec_' + Date.now() + Math.random().toString(36).substr(2, 5),
                                     data: dateStr,
                                     tipo: 'Uscita',
                                     metodo: costo.metodo || 'Banca',
                                     categoria: costo.categoria || 'Spese e Commissioni Bancarie',
-                                    descrizione: `${costo.nome} (${periodicita === 'mensile' ? 'Canone' : 'Spesa'} ${periodKey})`,
+                                    descrizione: `${costo.nome} - ${descPeriodo}`,
                                     importo: importo,
                                     riferimento: ref
                                 });
@@ -9476,9 +9486,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         <div class="form-group">
-                            <label>Giorno di Addebito*</label>
+                            <label>Giorno di Addebito (Indicativo)*</label>
                             <select name="giorno" class="form-control" required>
-                                <option value="fine_mese" ${(!c.giorno || c.giorno === 'fine_mese') ? 'selected' : ''}>Fine mese (consigliato per canoni)</option>
+                                <option value="fine_mese" ${(!c.giorno || c.giorno === 'fine_mese') ? 'selected' : ''}>Fine mese (Consigliato / Standard)</option>
                                 <option value="1" ${c.giorno === '1' ? 'selected' : ''}>Il 1° del mese</option>
                                 <option value="5" ${c.giorno === '5' ? 'selected' : ''}>Il 5 del mese</option>
                                 <option value="10" ${c.giorno === '10' ? 'selected' : ''}>Il 10 del mese</option>
@@ -9511,8 +9521,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         </div>
                     </div>
 
-                    <div style="background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:6px; font-size:0.82rem; color:var(--text-muted);">
-                        💡 <em>Impostato questo costo, il gestionale registrerà in automatico la riga di Uscita in Prima Nota ad ogni scadenza maturata, evitando doppi inserimenti.</em>
+                    <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); padding:10px 12px; border-radius:8px; font-size:0.82rem; line-height:1.5; color:var(--text-muted);">
+                        <strong style="color:#a5b4fc; display:block; margin-bottom:4px;">ℹ️ Nota sul giorno di addebito (Estratto Conto):</strong>
+                        Molti istituti bancari addebitano canoni e carte in giorni variabili (es. ultimo giorno lavorativo o primi giorni del mese successivo).
+                        Il sistema genera convenzionalmente il movimento con causale standard <em>"per il mese di [Mese Anno]"</em>. Potrai in qualsiasi momento perfezionare la data esatta o l'importo con un clic (pulsante ✏️) dall'elenco di Prima Nota una volta verificato l'estratto conto.
                     </div>
 
                     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
