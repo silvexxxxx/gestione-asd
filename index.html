@@ -2705,6 +2705,26 @@
                         migrated = true;
                     }
 
+                    // Normalizzazione scadenze tesseramento federale (Anno sportivo: 1 Set - 31 Ago)
+                    if (updated.tesserato === 'SI') {
+                        if (updated.tesseramento_data) {
+                            const d = new Date(updated.tesseramento_data);
+                            if (!isNaN(d.getTime())) {
+                                const y = d.getFullYear();
+                                const m = d.getMonth();
+                                const correctExp = `${m >= 8 ? y + 1 : y}-08-31`;
+                                if (updated.tesseramento_scadenza !== correctExp) {
+                                    updated.tesseramento_scadenza = correctExp;
+                                    migrated = true;
+                                }
+                            }
+                        } else if (!updated.tesseramento_scadenza || updated.tesseramento_scadenza > '2026-08-31') {
+                            // Se tesserato senza data registrata avviato nel 25/26 o precedente: scaduto il 31/08/2026
+                            updated.tesseramento_scadenza = '2026-08-31';
+                            migrated = true;
+                        }
+                    }
+
                     return updated;
                 });
 
@@ -3843,8 +3863,9 @@ closeModal() {
 
                 return soci.map(s => {
                     const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
-                    const tScad = s.tesseramento_scadenza ? new Date(s.tesseramento_scadenza) : null;
-                    const isExpired = (qScad && qScad < now) || (s.tesserato === 'SI' && tScad && tScad < now);
+                    const tessScadStr = this.getTesseramentoScadenza(s);
+                    const isTessActive = this.isTesseramentoAttivo(s);
+                    const isExpired = (qScad && qScad < now) || (s.tesserato === 'SI' && !isTessActive);
                     const rowStyle = isExpired ? 'color: var(--danger); font-weight: 500;' : '';
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
@@ -3868,14 +3889,18 @@ closeModal() {
                         </td>
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
-                                ${s.tesserato === 'SI' && s.tesseramento_scadenza && new Date(s.tesseramento_scadenza) < now 
-                                    ? `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">TESS: SCADUTO</span>`
-                                    : `<span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ${s.tesserato || 'NO'}</span>`
+                                ${s.tesserato === 'SI'
+                                    ? (isTessActive 
+                                        ? `<span class="badge badge-active" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ATTIVO</span>`
+                                        : `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">TESS: SCADUTO</span>`
+                                    )
+                                    : `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px;">TESS: NO</span>`
                                 }
                                 ${s.tesseramento_data
-                            ? `<span class="${this.getCertColor(s.tesseramento_scadenza)}" style="font-size: 0.78rem; font-weight: 600;">Dal: ${this.formatDate(s.tesseramento_data)}</span>`
-                            : `<span style="font-size: 0.72rem; color: var(--text-muted);">Data non inserita</span>`
-                        }
+                                    ? `<span class="${this.getCertColor(tessScadStr)}" style="font-size: 0.78rem; font-weight: 600;">Dal: ${this.formatDate(s.tesseramento_data)}</span>`
+                                    : `<span style="font-size: 0.72rem; color: var(--text-muted);">Data non inserita</span>`
+                                }
+                                ${tessScadStr ? `<span style="font-size: 0.7rem; color: ${!isTessActive ? 'var(--danger)' : 'var(--text-muted)'}; font-weight: 500;">Scad: ${this.formatDate(tessScadStr)}</span>` : ''}
                             </div>
                         </td>
                         <td><span class="badge badge-${displayStato.toLowerCase()}">${displayStato}</span></td>
@@ -5241,6 +5266,21 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 socio.quota_scadenza = date.toISOString().split('T')[0];
             }
 
+            // Se la ricevuta include tesseramento, rinnova automaticamente il tesseramento del socio
+            const tessImporto = parseFloat(data.tess) || 0;
+            const hasTessNote = (data.note || '').toLowerCase().includes('tesseramento');
+            if ((tessImporto > 0 || hasTessNote) && socio) {
+                const tessDate = data.data || new Date().toISOString().split('T')[0];
+                const d = new Date(tessDate);
+                const expYear = d.getMonth() >= 8 ? d.getFullYear() + 1 : d.getFullYear();
+                socio.tesserato = 'SI';
+                socio.tesseramento_data = tessDate;
+                socio.tesseramento_scadenza = `${expYear}-08-31`;
+                if (socio.stato === 'NON ATTIVO' || socio.stato === 'CESSATO') {
+                    socio.stato = 'ATTIVO';
+                }
+            }
+
             // Sincronizza Prima Nota
             this.syncPrimaNotaFromRicevuta(receipt);
 
@@ -5594,18 +5634,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         openCertAlertsModal() {
             const alerts = this.getCertificateAlerts();
             const now = new Date();
-            const nowRef = new Date();
-            const sportYear = nowRef.getMonth() >= 8 ? nowRef.getFullYear() + 1 : nowRef.getFullYear();
-            const autoExpiry = `${sportYear}-08-31`;
 
             const rows = alerts.length === 0
                 ? `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">Nessun certificato in scadenza nei prossimi 90 giorni. ✅</td></tr>`
                 : alerts.map(s => {
                     const certDays = s.certificato_scadenza ? Math.ceil((new Date(s.certificato_scadenza) - now) / 86400000) : null;
                     let certLabel = certDays === null ? '-' : certDays < 0 ? `<span style="color:var(--danger);font-weight:700;">SCADUTO (${Math.abs(certDays)}gg fa)</span>` : certDays === 0 ? `<span style="color:var(--danger);font-weight:700;">SCADE OGGI</span>` : `<span style="color:${certDays <= 30 ? 'var(--danger)' : certDays <= 60 ? 'var(--warning)' : 'var(--success)'}; font-weight:600;">${certDays} giorni</span>`;
-                    const tessScad = (s.tesserato === 'SI' && s.tesseramento_scadenza) ? s.tesseramento_scadenza : (s.tesserato === 'SI' ? autoExpiry : null);
+                    const tessScad = this.getTesseramentoScadenza(s);
+                    const isTessActive = this.isTesseramentoAttivo(s);
                     const tessDays = tessScad ? Math.ceil((new Date(tessScad) - now) / 86400000) : null;
-                    let tessLabel = tessDays === null ? `<span style="color:var(--text-muted);font-size:0.75rem;">N/A</span>` : tessDays < 0 ? `<span style="color:var(--danger);font-weight:700;">SCADUTA</span>` : `<span style="color:${tessDays <= 30 ? 'var(--danger)' : 'var(--warning)'}; font-weight:600;">${tessDays}gg</span>`;
+                    let tessLabel = tessDays === null ? `<span style="color:var(--text-muted);font-size:0.75rem;">N/A</span>` : !isTessActive ? `<span style="color:var(--danger);font-weight:700;">SCADUTO</span>` : `<span style="color:${tessDays <= 30 ? 'var(--danger)' : 'var(--warning)'}; font-weight:600;">${tessDays}gg</span>`;
                     const today = new Date().toISOString().split('T')[0];
                     const sentList = this.state.sent_reminders[today] || [];
                     const isEmailSent = sentList.includes(`${s.id}_email`);
@@ -7051,37 +7089,52 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             this.closeModal();
             this.renderCorsi();
         },
-        isActiveMember(s) {
-            if (s.stato === 'CESSATO') return false;
-            if (s.tesserato !== 'SI') return false;
+        getTesseramentoScadenza(s) {
+            if (!s || s.tesserato !== 'SI') return null;
+
+            // Se ha una data esplicita di avvenuto tesseramento:
+            // Regola federale Anno Sportivo (1 Settembre - 31 Agosto):
+            // - Da 1° Settembre a 31 Dicembre (mesi 8-11): scade il 31 Agosto dell'anno successivo (Y+1).
+            // - Da 1° Gennaio a 31 Agosto (mesi 0-7): scade il 31 Agosto dello stesso anno (Y).
+            if (s.tesseramento_data) {
+                const d = new Date(s.tesseramento_data);
+                if (!isNaN(d.getTime())) {
+                    const y = d.getFullYear();
+                    const m = d.getMonth();
+                    const expYear = m >= 8 ? y + 1 : y;
+                    return `${expYear}-08-31`;
+                }
+            }
+
+            // Se ha una scadenza esplicita già registrata
+            if (s.tesseramento_scadenza) {
+                return s.tesseramento_scadenza;
+            }
+
+            // Se è tesserato SI ma senza data (es. dati storici/importati):
+            // I tesseramenti pregressi (avviati nell'anno sportivo 25/26 o prima del 1° Settembre 2026) sono scaduti il 31/08/2026.
+            return '2026-08-31';
+        },
+
+        isTesseramentoAttivo(s) {
+            if (!s || s.stato === 'CESSATO' || s.tesserato !== 'SI') return false;
+
+            const scadStr = this.getTesseramentoScadenza(s);
+            if (!scadStr) return false;
+
+            const scadDate = new Date(scadStr);
+            if (isNaN(scadDate.getTime())) return false;
 
             const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-            // L'anno sportivo corrente: inizia il 1 settembre dell'anno passato (se siamo jan-ago)
-            // o il 1 settembre dell'anno corrente (se siamo set-dic).
-            const sportYearStart = new Date(currentMonth < 8 ? currentYear - 1 : currentYear, 8, 1);
-            // Fine dell'anno sportivo corrente: 31 agosto dell'anno successivo
-            const sportYearEnd = new Date(currentMonth < 8 ? currentYear : currentYear + 1, 7, 31, 23, 59, 59);
+            now.setHours(0, 0, 0, 0);
 
-            // Caso 1: ha una scadenza tesseramento valida — controlla che cada nell'anno sportivo corrente
-            if (s.tesseramento_scadenza) {
-                const tessScad = new Date(s.tesseramento_scadenza);
-                if (!isNaN(tessScad.getTime())) {
-                    return tessScad >= sportYearStart;
-                }
-            }
+            return scadDate >= now;
+        },
 
-            // Caso 2: ha una data di avvenuto tesseramento — controlla che cada nell'anno sportivo corrente
-            if (s.tesseramento_data) {
-                const tessData = new Date(s.tesseramento_data);
-                if (!isNaN(tessData.getTime())) {
-                    return tessData >= sportYearStart && tessData <= sportYearEnd;
-                }
-            }
-
-            // Caso 3 (fallback): tesserato=SI ma senza date — considera attivo se stato è ATTIVO o MOROSO
-            return s.stato === 'ATTIVO' || s.stato === 'MOROSO';
+        isActiveMember(s) {
+            if (!s || s.stato === 'CESSATO') return false;
+            // Un socio è attivo nell'anno sportivo corrente solo se ha il tesseramento valido ed attivo per l'anno sportivo corrente
+            return this.isTesseramentoAttivo(s);
         },
 
         getCertificateAlerts() {
@@ -7106,7 +7159,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     if (!s.certificato_scadenza) return -Infinity; // Anomalie in cima alla lista
                     const cd = new Date(s.certificato_scadenza).getTime();
                     if (isNaN(cd)) return -Infinity;
-                    const td = (s.tesserato === 'SI' && s.tesseramento_scadenza) ? new Date(s.tesseramento_scadenza).getTime() : Infinity;
+                    const td = (s.tesserato === 'SI' && this.getTesseramentoScadenza(s)) ? new Date(this.getTesseramentoScadenza(s)).getTime() : Infinity;
                     return Math.min(cd, td);
                 };
                 return getMin(a) - getMin(b);
@@ -7184,13 +7237,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 // tesseramento display: only show if tesserato=SI
                 // La scadenza tessera federale è sempre il 31/08 dell'anno sportivo corrente
                 // Anno sportivo: se siamo dopo il 01/09 -> anno corrente+1, altrimenti anno corrente
-                const nowRef = new Date();
-                const sportYear = nowRef.getMonth() >= 8 ? nowRef.getFullYear() + 1 : nowRef.getFullYear();
-                const autoExpiry = `${sportYear}-08-31`;
                 let tessHtml = '';
                 if (s.tesserato === 'SI') {
-                    const tessScad = s.tesseramento_scadenza || autoExpiry;
-                    tessHtml = `<span class="${this.getCertColor(tessScad)}">${this.formatDate(tessScad)}</span>`;
+                    const tessScad = this.getTesseramentoScadenza(s);
+                    const isTessActive = this.isTesseramentoAttivo(s);
+                    tessHtml = tessScad 
+                        ? `<span class="${!isTessActive ? 'text-danger' : this.getCertColor(tessScad)}">${this.formatDate(tessScad)} ${!isTessActive ? '(SCAD)' : ''}</span>`
+                        : `<span style="color:var(--text-muted);font-size:0.75rem;">N/D</span>`;
                 } else {
                     tessHtml = `<span class="badge badge-moroso" style="font-size:0.6rem;">NON TESS.</span>`;
                 }
