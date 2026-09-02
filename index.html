@@ -1517,7 +1517,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.4.4";
+        const APP_VERSION = "2.4.5";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -3749,10 +3749,12 @@
                 const main = document.getElementById('main-content');
                 const tableContainer = document.querySelector('.table-container');
 
-                // Salva posizione scroll se usciamo da soci
+                // Salva posizione scroll se usciamo da soci o ricevute
                 if (this.state.currentPage === 'soci' && tableContainer) {
                     this.state.lastSociScroll = tableContainer.scrollTop;
                     localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
+                } else if (this.state.currentPage === 'ricevute' && tableContainer) {
+                    this.state.lastRicevuteScroll = tableContainer.scrollTop;
                 }
 
                 this.state.currentPage = pageId;
@@ -3780,7 +3782,13 @@
                                 if (newContainer) newContainer.scrollTop = this.state.lastSociScroll;
                             }, 10);
                             break;
-                        case 'ricevute': this.renderRicevute(); break;
+                        case 'ricevute':
+                            this.renderRicevute(false);
+                            setTimeout(() => {
+                                const newContainer = document.querySelector('.table-container');
+                                if (newContainer && this.state.lastRicevuteScroll) newContainer.scrollTop = this.state.lastRicevuteScroll;
+                            }, 10);
+                            break;
                         case 'primanota': this.renderPrimaNota(); break;
                         case 'sala-pesi': this.renderSalaPesi(); break;
                         case 'corsi': this.renderCorsi(); break;
@@ -4638,8 +4646,37 @@ closeModal() {
 
             // --- RICEVUTE MANAGEMENT ---
 
-            renderRicevute() {
+            renderRicevute(preserveState = true, highlightId = null) {
                 const main = document.getElementById('main-content');
+                const tbody = document.getElementById('receipts-tbody');
+                const tableContainer = document.querySelector('.table-container');
+                const searchInput = document.getElementById('receipt-search');
+                const startInput = document.getElementById('receipt-date-start');
+                const endInput = document.getElementById('receipt-date-end');
+                
+                // Se la tabella delle ricevute è già attiva nel DOM e vogliamo preservare la posizione
+                if (preserveState && tbody && tableContainer) {
+                    const scrollY = tableContainer.scrollTop;
+                    const winScrollY = window.scrollY;
+                    
+                    this.filterRicevute();
+                    
+                    // Ripristina lo scroll istantaneamente
+                    tableContainer.scrollTop = scrollY;
+                    window.scrollTo(0, winScrollY);
+                    
+                    if (highlightId) {
+                        this.highlightReceiptRow(highlightId);
+                    }
+                    return;
+                }
+
+                // Cattura eventuali filtri e scroll precedenti
+                const prevSearch = searchInput ? searchInput.value : '';
+                const prevStart = startInput ? startInput.value : '';
+                const prevEnd = endInput ? endInput.value : '';
+                const prevScroll = tableContainer ? tableContainer.scrollTop : (this.state.lastRicevuteScroll || 0);
+
                 main.innerHTML = `
                     <div class="page-content">
                         <div class="page-header">
@@ -4658,9 +4695,9 @@ closeModal() {
 
                         <div class="glass-card member-card">
                             <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0;">
-                                <input type="text" id="receipt-search" class="form-control search-input" placeholder="Cerca socio o numero ricevuta..." oninput="app.filterRicevute()">
-                                <input type="date" id="receipt-date-start" class="form-control" style="width: 150px;" onchange="app.filterRicevute()">
-                                <input type="date" id="receipt-date-end" class="form-control" style="width: 150px;" onchange="app.filterRicevute()">
+                                <input type="text" id="receipt-search" class="form-control search-input" placeholder="Cerca socio o numero ricevuta..." value="${prevSearch}" oninput="app.filterRicevute()">
+                                <input type="date" id="receipt-date-start" class="form-control" style="width: 150px;" value="${prevStart}" onchange="app.filterRicevute()">
+                                <input type="date" id="receipt-date-end" class="form-control" style="width: 150px;" value="${prevEnd}" onchange="app.filterRicevute()">
                             </div>
 
                             <div class="table-container">
@@ -4685,6 +4722,21 @@ closeModal() {
                         </div>
                     </div>
                 `;
+
+                if (prevSearch || prevStart || prevEnd) {
+                    this.filterRicevute();
+                }
+
+                if (prevScroll > 0) {
+                    setTimeout(() => {
+                        const newContainer = document.querySelector('.table-container');
+                        if (newContainer) newContainer.scrollTop = prevScroll;
+                    }, 50);
+                }
+
+                if (highlightId) {
+                    setTimeout(() => this.highlightReceiptRow(highlightId), 100);
+                }
             },
 
             sortRicevute(key) {
@@ -4795,7 +4847,7 @@ closeModal() {
                     }
                     
                     return `
-                    <tr>
+                    <tr id="receipt-row-${r.id}" data-id="${r.id}">
                         <td>${r.numero}/${app.formatAnno(r.anno)}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
                         <td>${this.formatDate(r.data)}</td>
@@ -4820,18 +4872,37 @@ closeModal() {
             },
 
             filterRicevute() {
-                const search = document.getElementById('receipt-search').value.toLowerCase();
-                const start = document.getElementById('receipt-date-start').value;
-                const end = document.getElementById('receipt-date-end').value;
+                const searchEl = document.getElementById('receipt-search');
+                const startEl = document.getElementById('receipt-date-start');
+                const endEl = document.getElementById('receipt-date-end');
+                const tbody = document.getElementById('receipts-tbody');
+                if (!tbody) return;
+
+                const search = (searchEl ? searchEl.value : '').toLowerCase();
+                const start = startEl ? startEl.value : '';
+                const end = endEl ? endEl.value : '';
 
                 const filtered = this.state.ricevute.filter(r => {
-                    const matchSearch = r.socio_nome.toLowerCase().includes(search) || `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
+                    const matchSearch = (r.socio_nome || '').toLowerCase().includes(search) || `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
                     const matchStart = !start || r.data >= start;
                     const matchEnd = !end || r.data <= end;
                     return matchSearch && matchStart && matchEnd;
                 });
 
-                document.getElementById('receipts-tbody').innerHTML = this.renderRicevuteRows(filtered);
+                tbody.innerHTML = this.renderRicevuteRows(filtered);
+            },
+
+            highlightReceiptRow(id) {
+                const row = document.getElementById('receipt-row-' + id) || document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    row.style.transition = 'background-color 0.4s ease';
+                    const origBg = row.style.backgroundColor;
+                    row.style.backgroundColor = 'rgba(59, 130, 246, 0.28)';
+                    setTimeout(() => {
+                        row.style.backgroundColor = origBg;
+                    }, 1800);
+                }
             },
 
             
@@ -5741,7 +5812,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.syncPrimaNotaFromRicevuta(receipt);
 
             this.saveAll();
-            this.renderRicevute();
+            this.renderRicevute(true, receipt.id);
 
             if (isMultiplo && !editId) {
                 this.toast(`✅ Ricevuta n.${receipt.numero} salvata! Puoi inserire la prossima.`, 'success');
@@ -5773,7 +5844,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     r.annullata = true;
                     this.removePrimaNotaFromRicevuta(r.id);
                     this.saveAll();
-                    this.renderRicevute();
+                    this.renderRicevute(true, id);
                     this.toast("Ricevuta annullata correttamente.", "warning");
                 }
             }
@@ -5807,7 +5878,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 });
                 
                 this.saveAll();
-                this.renderRicevute();
+                this.renderRicevute(true);
                 this.toast(`Ricevuta eliminata definitivamente. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
             }
         },
@@ -5976,7 +6047,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.saveAll();
                 this.toast("Ricevuta aggiornata!");
                 this.closeModal();
-                this.renderRicevute();
+                this.renderRicevute(true, id);
             };
         },
 
