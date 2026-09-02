@@ -1567,6 +1567,9 @@
                     asdName: "Mia ASD S.R.L.",
                     pIva: "01234567890",
                     address: "Via Roma 1, 00100 Roma",
+                    phone: "",
+                    email: "",
+                    pec: "",
                     logo: "",
                     presidente: "",
                     segretario: "",
@@ -2311,14 +2314,102 @@
                     <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--text-muted);">
                         <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Dal ${d.data_inizio} al ${d.data_fine || 'Oggi'}</div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:0.85rem;">
-                            <div><strong>Presidente:</strong> ${d.presidente ? (this.state.soci.find(x => x.id == d.presidente)?.nome || d.presidente) : '-'}</div>
-                            <div><strong>Vice:</strong> ${d.vice_presidente ? (this.state.soci.find(x => x.id == d.vice_presidente)?.nome || d.vice_presidente) : '-'}</div>
-                            <div><strong>Segretario:</strong> ${d.segretario ? (this.state.soci.find(x => x.id == d.segretario)?.nome || d.segretario) : '-'}</div>
-                            <div><strong>Consiglieri:</strong> ${(d.consiglieri || []).map(c => this.state.soci.find(x => x.id == c)?.nome || c).join(', ') || '-'}</div>
+                            <div><strong>Presidente:</strong> ${(() => { if(!d.presidente) return '-'; const sc = this.state.soci.find(x => x.id == d.presidente); return sc ? `${sc.cognome} ${sc.nome}` : d.presidente; })()}</div>
+                            <div><strong>Vice:</strong> ${(() => { if(!d.vice_presidente) return '-'; const sc = this.state.soci.find(x => x.id == d.vice_presidente); return sc ? `${sc.cognome} ${sc.nome}` : d.vice_presidente; })()}</div>
+                            <div><strong>Segretario:</strong> ${(() => { if(!d.segretario) return '-'; const sc = this.state.soci.find(x => x.id == d.segretario); return sc ? `${sc.cognome} ${sc.nome}` : d.segretario; })()}</div>
+                            <div><strong>Consiglieri:</strong> ${(d.consiglieri || []).map(c => { const sc = this.state.soci.find(x => x.id == c); return sc ? `${sc.cognome} ${sc.nome}` : c; }).join(', ') || '-'}</div>
                         </div>
                     </div>
                 `).join('');
                 this.openModal('Cronologia Direttivo', `<div style="max-height:60vh; overflow-y:auto;">${storicHtml}</div>`);
+            },
+
+            filterDirettivoDropdown(val, uniqueId, isFocus = false) {
+                const list = document.getElementById(`${uniqueId}-list`);
+                if (!list) return;
+
+                // Chiudi eventuali altri menu a tendina aperti
+                document.querySelectorAll('.direttivo-dropdown-list').forEach(el => {
+                    if (el.id !== `${uniqueId}-list`) el.style.display = 'none';
+                });
+
+                const soci = this.state.soci || [];
+                const sortedSoci = [...soci].sort((a, b) => {
+                    const cA = (a.cognome || '').toLowerCase();
+                    const cB = (b.cognome || '').toLowerCase();
+                    if (cA !== cB) return cA.localeCompare(cB);
+                    return (a.nome || '').toLowerCase().localeCompare((b.nome || '').toLowerCase());
+                });
+
+                const query = (val || '').trim().toLowerCase();
+                let filtered = sortedSoci;
+                if (query) {
+                    const parts = query.split(/\s+/);
+                    filtered = sortedSoci.filter(s => {
+                        const cognome = (s.cognome || '').toLowerCase();
+                        const nome = (s.nome || '').toLowerCase();
+                        const cf = (s.codiceFiscale || '').toLowerCase();
+                        return parts.every(p => cognome.includes(p) || nome.includes(p) || cf.includes(p));
+                    });
+                }
+
+                if (filtered.length === 0) {
+                    list.innerHTML = `<div style="padding:10px 14px; color:var(--text-muted); font-size:0.85rem;">Nessun socio trovato. Digita per cercare o seleziona un socio valido.</div>`;
+                } else {
+                    list.innerHTML = filtered.map(s => {
+                        const fullName = `${s.cognome || ''} ${s.nome || ''}`.trim();
+                        const safeFullName = fullName.replace(/'/g, "\\'");
+                        return `
+                            <div class="autocomplete-item" style="padding:9px 12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.06); color:var(--text-main); display:flex; justify-content:space-between; align-items:center;" 
+                                onmouseover="this.style.background='rgba(59,130,246,0.2)'" 
+                                onmouseout="this.style.background='transparent'" 
+                                onmousedown="app.selectDirettivoSocio('${uniqueId}', '${s.id}', '${safeFullName}')">
+                                <div>
+                                    <strong style="color:var(--text-main);">${fullName}</strong>
+                                    ${s.codiceFiscale ? `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">CF: ${s.codiceFiscale}</span>` : ''}
+                                </div>
+                                <span style="font-size:0.7rem; color:var(--primary); background:rgba(59,130,246,0.15); padding:2px 6px; border-radius:4px; font-weight:600;">Socio</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                list.style.display = 'block';
+            },
+
+            toggleDirettivoDropdown(uniqueId) {
+                const list = document.getElementById(`${uniqueId}-list`);
+                if (!list) return;
+                if (list.style.display === 'block') {
+                    list.style.display = 'none';
+                } else {
+                    this.filterDirettivoDropdown('', uniqueId);
+                    const searchInput = document.getElementById(`${uniqueId}-search`);
+                    if (searchInput) searchInput.focus();
+                }
+            },
+
+            selectDirettivoSocio(uniqueId, socioId, fullName) {
+                const searchInput = document.getElementById(`${uniqueId}-search`);
+                const hiddenInput = document.getElementById(`${uniqueId}-id`);
+                const list = document.getElementById(`${uniqueId}-list`);
+                if (searchInput) searchInput.value = fullName;
+                if (hiddenInput) hiddenInput.value = socioId;
+                if (list) list.style.display = 'none';
+            },
+
+            handleDirettivoKeydown(e, uniqueId) {
+                const list = document.getElementById(`${uniqueId}-list`);
+                if (e.key === 'Escape') {
+                    if (list) list.style.display = 'none';
+                } else if (e.key === 'Enter') {
+                    if (list && list.style.display === 'block') {
+                        const firstItem = list.querySelector('.autocomplete-item');
+                        if (firstItem) {
+                            e.preventDefault();
+                            firstItem.dispatchEvent(new MouseEvent('mousedown'));
+                        }
+                    }
+                }
             },
 
             openRinnovoDirettivoModal() {
@@ -2335,7 +2426,7 @@
                             displayName = `${socio.cognome} ${socio.nome}`;
                             valId = socio.id;
                         } else {
-                            displayName = selectedVal; // Preserva il vecchio valore testuale manuale
+                            displayName = selectedVal;
                             valId = selectedVal;
                         }
                     }
@@ -2343,15 +2434,18 @@
                     return `
                         <div class="form-group" style="position:relative; margin-bottom: 1rem;">
                             <label>${label} ${isRequired ? '<span class="text-danger">*</span>' : ''}</label>
-                            <div style="position:relative;">
-                                <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio per cognome o nome..." autocomplete="off" value="${displayName}"
-                                    oninput="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')" 
-                                    onfocus="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')"
-                                    onkeydown="app.handleAutocompleteKeydown(event, '${uniqueId}-list', '${uniqueId}-search', '${uniqueId}-id')" 
+                            <div style="position:relative; display:flex; align-items:center;">
+                                <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio per cognome o nome..." autocomplete="off" value="${displayName}" style="padding-right:38px;"
+                                    oninput="app.filterDirettivoDropdown(this.value, '${uniqueId}')" 
+                                    onfocus="app.filterDirettivoDropdown(this.value, '${uniqueId}', true)"
+                                    onkeydown="app.handleDirettivoKeydown(event, '${uniqueId}')"
                                     onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)" ${isRequired ? 'required' : ''}>
+                                <button type="button" tabindex="-1" onclick="app.toggleDirettivoDropdown('${uniqueId}')" title="Mostra tutti i soci"
+                                    style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:6px 10px; font-size:0.75rem; border-radius:4px; transition:color 0.2s;"
+                                    onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">▼</button>
                                 <input type="hidden" name="${name}" id="${uniqueId}-id" value="${valId}">
-                                <div id="${uniqueId}-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
                             </div>
+                            <div id="${uniqueId}-list" class="direttivo-dropdown-list" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 2px); background:#1e293b; border:1px solid var(--border); backdrop-filter:blur(8px); max-height:160px; overflow-y:auto; width:100%; z-index:100; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
                         </div>
                     `;
                 };
@@ -2377,13 +2471,18 @@
                     consiglieriHtml += `
                         <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center; position:relative; margin-bottom: 0.75rem;">
                             <div style="position:relative; flex:1;">
-                                <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio consigliere..." autocomplete="off" value="${displayName}"
-                                    oninput="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')" 
-                                    onfocus="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')"
-                                    onkeydown="app.handleAutocompleteKeydown(event, '${uniqueId}-list', '${uniqueId}-search', '${uniqueId}-id')" 
-                                    onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)">
-                                <input type="hidden" name="consiglieri[]" id="${uniqueId}-id" value="${valId}">
-                                <div id="${uniqueId}-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                                <div style="position:relative; display:flex; align-items:center;">
+                                    <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio consigliere..." autocomplete="off" value="${displayName}" style="padding-right:38px;"
+                                        oninput="app.filterDirettivoDropdown(this.value, '${uniqueId}')" 
+                                        onfocus="app.filterDirettivoDropdown(this.value, '${uniqueId}', true)"
+                                        onkeydown="app.handleDirettivoKeydown(event, '${uniqueId}')"
+                                        onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)">
+                                    <button type="button" tabindex="-1" onclick="app.toggleDirettivoDropdown('${uniqueId}')" title="Mostra tutti i soci"
+                                        style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:6px 10px; font-size:0.75rem; border-radius:4px; transition:color 0.2s;"
+                                        onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">▼</button>
+                                    <input type="hidden" name="consiglieri[]" id="${uniqueId}-id" value="${valId}">
+                                </div>
+                                <div id="${uniqueId}-list" class="direttivo-dropdown-list" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 2px); background:#1e293b; border:1px solid var(--border); backdrop-filter:blur(8px); max-height:160px; overflow-y:auto; width:100%; z-index:100; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
                             </div>
                             <button type="button" class="btn btn-outline text-danger" style="padding:8px 12px;" onclick="this.parentElement.remove()">✕</button>
                         </div>
@@ -2424,13 +2523,18 @@
                 container.insertAdjacentHTML('beforeend', `
                     <div class="form-group cons-group" style="display:flex; gap:10px; align-items:center; position:relative; margin-bottom: 0.75rem;">
                         <div style="position:relative; flex:1;">
-                            <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio consigliere..." autocomplete="off"
-                                oninput="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')" 
-                                onfocus="app.filterSociDropdown(this.value, '${uniqueId}-search', '${uniqueId}-list', '${uniqueId}-id', 'null')"
-                                onkeydown="app.handleAutocompleteKeydown(event, '${uniqueId}-list', '${uniqueId}-search', '${uniqueId}-id')" 
-                                onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)">
-                            <input type="hidden" name="consiglieri[]" id="${uniqueId}-id" value="">
-                            <div id="${uniqueId}-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:150px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                            <div style="position:relative; display:flex; align-items:center;">
+                                <input type="text" id="${uniqueId}-search" class="form-control" placeholder="Cerca socio consigliere..." autocomplete="off" style="padding-right:38px;"
+                                    oninput="app.filterDirettivoDropdown(this.value, '${uniqueId}')" 
+                                    onfocus="app.filterDirettivoDropdown(this.value, '${uniqueId}', true)"
+                                    onkeydown="app.handleDirettivoKeydown(event, '${uniqueId}')"
+                                    onblur="setTimeout(()=> { const l = document.getElementById('${uniqueId}-list'); if(l) l.style.display='none'; }, 200)">
+                                <button type="button" tabindex="-1" onclick="app.toggleDirettivoDropdown('${uniqueId}')" title="Mostra tutti i soci"
+                                    style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:6px 10px; font-size:0.75rem; border-radius:4px; transition:color 0.2s;"
+                                    onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">▼</button>
+                                <input type="hidden" name="consiglieri[]" id="${uniqueId}-id" value="">
+                            </div>
+                            <div id="${uniqueId}-list" class="direttivo-dropdown-list" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 2px); background:#1e293b; border:1px solid var(--border); backdrop-filter:blur(8px); max-height:160px; overflow-y:auto; width:100%; z-index:100; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
                         </div>
                         <button type="button" class="btn btn-outline text-danger" style="padding:8px 12px;" onclick="this.parentElement.remove()">✕</button>
                     </div>
@@ -8032,9 +8136,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <!-- 1. Dati Associazione -->
                         <div class="glass-card" style="grid-column: 1 / -1;">
                             <h3 style="margin-bottom:1rem;">🏢 Dati Associazione</h3>
-                            <div class="form-group"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName}" onchange="app.updateSetting('asdName', this.value)"></div>
-                            <div class="form-group"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
-                            <div class="form-group"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+                                <div class="form-group" style="margin-bottom:0;"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName || ''}" onchange="app.updateSetting('asdName', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label>Telefono</label><input type="tel" class="form-control" placeholder="Es. 340 1234567" value="${s.phone || s.telefono || ''}" onchange="app.updateSetting('phone', this.value); app.updateSetting('telefono', this.value);"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label>Email</label><input type="email" class="form-control" placeholder="Es. info@asd.it" value="${s.email || ''}" onchange="app.updateSetting('email', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label>PEC</label><input type="email" class="form-control" placeholder="Es. asd@pec.it" value="${s.pec || ''}" onchange="app.updateSetting('pec', this.value)"></div>
+                            </div>
                         </div>
 
                         <!-- 2. Consiglio Direttivo -->
