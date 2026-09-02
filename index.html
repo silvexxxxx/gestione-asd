@@ -3787,6 +3787,14 @@ closeModal() {
             renderSoci() {
                 const totalSoci = this.state.soci.length;
                 const attiviAnno = this.state.soci.filter(s => this.isActiveMember(s)).length;
+                const attiviAnnoPrec = this.state.soci.filter(s => this.isPreviousSportYearMember(s)).length;
+
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                const currentSportYearStartYear = currentMonth >= 8 ? currentYear : currentYear - 1;
+                const prevSportYearLabel = `${(currentSportYearStartYear - 1).toString().slice(-2)}/${currentSportYearStartYear.toString().slice(-2)}`;
+                const currSportYearLabel = `${currentSportYearStartYear.toString().slice(-2)}/${(currentSportYearStartYear + 1).toString().slice(-2)}`;
 
                 const main = document.getElementById('main-content');
                 main.innerHTML = `
@@ -3802,8 +3810,9 @@ closeModal() {
                         <div class="glass-card member-card">
                             <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
                                 <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.onSocioSearchInput()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
-                                <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato. Scegli 'Quote Scadute' per vedere chi deve rinnovare l'abbonamento.">
-                                    <option value="ANNO_CORRENTE" selected>⭐ Anno Sportivo Corrente (${attiviAnno})</option>
+                                <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato o per anno sportivo.">
+                                    <option value="ANNO_CORRENTE" selected>⭐ Anno Sportivo Corrente (${currSportYearLabel}) (${attiviAnno})</option>
+                                    <option value="ANNO_PRECEDENTE">📅 Anno Sportivo Precedente (${prevSportYearLabel}) (${attiviAnnoPrec})</option>
                                     <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
                                     <option value="ATTIVO">✅ Attivi con Quota Valida</option>
                                     <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
@@ -3841,14 +3850,14 @@ closeModal() {
             onSocioFilterChange() {
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
-                this.state.sociVisibleCount = status === 'ANNO_CORRENTE' ? 200 : 50;
+                this.state.sociVisibleCount = (status === 'ANNO_CORRENTE' || status === 'ANNO_PRECEDENTE') ? 200 : 50;
                 this.filterSoci();
             },
 
             onSocioSearchInput() {
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
-                if (status !== 'ANNO_CORRENTE') {
+                if (status !== 'ANNO_CORRENTE' && status !== 'ANNO_PRECEDENTE') {
                     this.state.sociVisibleCount = 50;
                 }
                 this.filterSoci();
@@ -3962,6 +3971,8 @@ closeModal() {
 
                     if (status === 'ANNO_CORRENTE') {
                         matchStatus = this.isActiveMember(s);
+                    } else if (status === 'ANNO_PRECEDENTE') {
+                        matchStatus = this.isPreviousSportYearMember(s);
                     } else if (status === 'ALL') {
                         matchStatus = true;
                     } else if (status === 'QUOTA_SCADUTA') {
@@ -4029,7 +4040,7 @@ closeModal() {
                         return;
                     }
 
-                    const visibleLimit = status === 'ANNO_CORRENTE' ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
+                    const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'ANNO_PRECEDENTE') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
                     const toRender = filtered.slice(0, visibleLimit);
                     tbody.innerHTML = this.renderSociRows(toRender);
                     if (filtered.length > visibleLimit) {
@@ -7135,6 +7146,41 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             if (!s || s.stato === 'CESSATO') return false;
             // Un socio è attivo nell'anno sportivo corrente solo se ha il tesseramento valido ed attivo per l'anno sportivo corrente
             return this.isTesseramentoAttivo(s);
+        },
+
+        isPreviousSportYearMember(s) {
+            if (!s || s.stato === 'CESSATO') return false;
+
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            const currentSportYearStartYear = currentMonth >= 8 ? currentYear : currentYear - 1;
+            const prevYearStart = new Date(currentSportYearStartYear - 1, 8, 1);
+            const prevYearEnd = new Date(currentSportYearStartYear, 7, 31, 23, 59, 59);
+
+            // 1. Scadenza tesseramento cade nella chiusura dell'anno sportivo precedente (es. 31/08/2026)
+            const scadStr = this.getTesseramentoScadenza(s);
+            if (scadStr) {
+                const scadDate = new Date(scadStr);
+                if (!isNaN(scadDate.getTime()) && scadDate >= prevYearStart && scadDate <= prevYearEnd) {
+                    return true;
+                }
+            }
+
+            // 2. Data di avvenuto tesseramento registrata nell'anno sportivo precedente (es. 01/09/2025 - 31/08/2026)
+            if (s.tesseramento_data) {
+                const tessDate = new Date(s.tesseramento_data);
+                if (!isNaN(tessDate.getTime()) && tessDate >= prevYearStart && tessDate <= prevYearEnd) {
+                    return true;
+                }
+            }
+
+            // 3. Socio tesserato SI appartenente al pregresso non ancora rinnovato nel corrente anno sportivo
+            if (s.tesserato === 'SI' && !this.isTesseramentoAttivo(s)) {
+                return true;
+            }
+
+            return false;
         },
 
         getCertificateAlerts() {
