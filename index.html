@@ -8212,17 +8212,25 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                         <!-- 4. Pacchetti e Quote -->
                         <div class="glass-card">
-                            <h3 style="margin-bottom:1rem;">💶 Pacchetti Quote</h3>
-                            <button class="btn btn-primary" style="font-size:0.8rem; margin-bottom:1rem;" onclick="app.openAddPresetModal()">+ Nuovo Pacchetto</button>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                                <h3 style="margin:0;">💶 Pacchetti Quote</h3>
+                                <button class="btn btn-primary" style="font-size:0.8rem;" onclick="app.openAddPresetModal()">+ Nuovo Pacchetto</button>
+                            </div>
                             <div style="display:flex; flex-direction:column; gap:8px;">
                                 ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun pacchetto quota.</p>' :
-                                presets.map(p => `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px;">
-                                        <div>
-                                            <div style="font-weight:600;">${p.nome}</div>
+                                presets.map((p, idx) => `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; gap:10px;">
+                                        <div style="flex:1; min-width:0;">
+                                            <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nome}</div>
                                             <div style="font-size:0.75rem; color:var(--text-muted);">€ ${parseFloat(p.importo).toFixed(2)} - ${p.note || ''}</div>
                                         </div>
-                                        <button class="btn btn-outline text-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="app.deletePreset(${p.id})">🗑️</button>
+                                        <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+                                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; ${idx === 0 ? 'opacity:0.3; cursor:not-allowed;' : ''}" title="Sposta in alto" onclick="app.movePreset(${p.id}, -1)" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
+                                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; ${idx === presets.length - 1 ? 'opacity:0.3; cursor:not-allowed;' : ''}" title="Sposta in basso" onclick="app.movePreset(${p.id}, 1)" ${idx === presets.length - 1 ? 'disabled' : ''}>⬇️</button>
+                                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:#3b82f6; border-color:#3b82f6;" title="Inserisci nuovo pacchetto dopo questo" onclick="app.openAddPresetModal(${idx + 1})">➕</button>
+                                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="Modifica pacchetto" onclick="app.openEditPresetModal(${p.id})">✏️</button>
+                                            <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina pacchetto" onclick="app.deletePreset(${p.id})">🗑️</button>
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -8474,37 +8482,103 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             this.renderDatabase();
         },
 
-        openAddPresetModal() {
-            this.openModal('Nuovo Pacchetto Quota', `
-                    <form id="add-preset-form" onsubmit="app.handleAddPreset(event)" style="display:flex; flex-direction:column; gap:12px;">
+        openAddPresetModal(insertAtIndex = null) {
+            const isInsert = (insertAtIndex !== null && insertAtIndex !== undefined);
+            this.openModal(isInsert ? `➕ Inserisci Nuovo Pacchetto (Posizione ${insertAtIndex + 1})` : 'Nuovo Pacchetto Quota', `
+                    <form id="add-preset-form" onsubmit="app.handleAddPreset(event, ${insertAtIndex !== null ? insertAtIndex : 'null'})" style="display:flex; flex-direction:column; gap:12px;">
                         <div class="form-group"><label>Nome Pacchetto</label><input type="text" name="nome" class="form-control" required placeholder="Es: Mensile Standard"></div>
-                        <div class="form-group"><label>Importo (€)</label><input type="number" name="importo" class="form-control" step="0.01" required min="0"></div>
+                        <div class="form-group"><label>Importo (€)</label><input type="number" name="importo" class="form-control" step="0.01" required min="0" placeholder="0.00"></div>
                         <div class="form-group"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Descrizione opzionale"></div>
-                        <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
                             <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                            <button type="submit" class="btn btn-primary">Salva</button>
+                            <button type="submit" class="btn btn-primary">💾 Salva</button>
                         </div>
                     </form>
                 `);
         },
 
-        handleAddPreset(e) {
+        handleAddPreset(e, insertAtIndex = null) {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target).entries());
             data.id = Date.now();
-            data.importo = parseFloat(data.importo);
-            this.state.quote_presets.push(data);
+            data.nome = data.nome.trim();
+            data.importo = parseFloat(data.importo) || 0;
+            data.note = data.note ? data.note.trim() : '';
+            if (insertAtIndex !== null && insertAtIndex !== undefined && insertAtIndex >= 0 && insertAtIndex <= this.state.quote_presets.length) {
+                this.state.quote_presets.splice(insertAtIndex, 0, data);
+            } else {
+                this.state.quote_presets.push(data);
+            }
             this.saveAll();
             this.closeModal();
             this.toast('Pacchetto aggiunto!');
             this.renderDatabase();
         },
 
-        deletePreset(id) {
-            this.state.quote_presets = this.state.quote_presets.filter(p => p.id !== id);
+        openEditPresetModal(id) {
+            const p = this.state.quote_presets.find(x => x.id == id);
+            if (!p) return;
+            const safeNome = (p.nome || '').replace(/"/g, '&quot;');
+            const safeNote = (p.note || '').replace(/"/g, '&quot;');
+            const safeImporto = parseFloat(p.importo || 0).toFixed(2);
+            this.openModal(`✏️ Modifica Pacchetto`, `
+                <form id="edit-preset-form" onsubmit="app.handleEditPreset(event, ${p.id})" style="display:flex; flex-direction:column; gap:12px;">
+                    <div class="form-group">
+                        <label>Nome Pacchetto</label>
+                        <input type="text" name="nome" class="form-control" required value="${safeNome}">
+                    </div>
+                    <div class="form-group">
+                        <label>Importo (€)</label>
+                        <input type="number" name="importo" class="form-control" step="0.01" required min="0" value="${safeImporto}">
+                    </div>
+                    <div class="form-group">
+                        <label>Note</label>
+                        <input type="text" name="note" class="form-control" value="${safeNote}" placeholder="Descrizione opzionale">
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                    </div>
+                </form>
+            `);
+        },
+
+        handleEditPreset(e, id) {
+            e.preventDefault();
+            const p = this.state.quote_presets.find(x => x.id == id);
+            if (!p) return;
+            const data = Object.fromEntries(new FormData(e.target).entries());
+            p.nome = data.nome.trim();
+            p.importo = parseFloat(data.importo) || 0;
+            p.note = data.note ? data.note.trim() : '';
             this.saveAll();
-            this.toast('Pacchetto rimosso.', 'danger');
+            this.closeModal();
+            this.toast('Pacchetto modificato!');
             this.renderDatabase();
+        },
+
+        movePreset(id, direction) {
+            const idx = this.state.quote_presets.findIndex(p => p.id == id);
+            if (idx === -1) return;
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= this.state.quote_presets.length) return;
+            
+            const item = this.state.quote_presets.splice(idx, 1)[0];
+            this.state.quote_presets.splice(targetIdx, 0, item);
+            
+            this.saveAll();
+            this.renderDatabase();
+        },
+
+        deletePreset(id) {
+            const p = this.state.quote_presets.find(x => x.id === id);
+            const nome = p ? ` "${p.nome}"` : '';
+            if (confirm(`Eliminare il pacchetto quota${nome}?`)) {
+                this.state.quote_presets = this.state.quote_presets.filter(p => p.id !== id);
+                this.saveAll();
+                this.toast('Pacchetto rimosso.', 'danger');
+                this.renderDatabase();
+            }
         },
 
         createSnapshot(type = 'manual') {
