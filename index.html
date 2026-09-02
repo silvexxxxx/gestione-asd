@@ -1800,7 +1800,10 @@
                 changed = true;
             }
             if (!this.state.settings.categorie_uscite || !Array.isArray(this.state.settings.categorie_uscite)) {
-                this.state.settings.categorie_uscite = ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie"];
+                this.state.settings.categorie_uscite = ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie", "Spese e Commissioni Bancarie"];
+                changed = true;
+            } else if (!this.state.settings.categorie_uscite.includes("Spese e Commissioni Bancarie")) {
+                this.state.settings.categorie_uscite.push("Spese e Commissioni Bancarie");
                 changed = true;
             }
             if (changed && typeof this.saveAll === 'function') {
@@ -6668,6 +6671,24 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         </div>
 
+                        <div id="pn-bank-presets-row" style="display:none; margin-bottom:1rem; background:rgba(59,130,246,0.06); border:1px dashed rgba(59,130,246,0.35); border-radius:8px; padding:10px 12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:4px;">
+                                <label style="margin:0; font-size:0.82rem; font-weight:600; color:#60a5fa; display:flex; align-items:center; gap:5px;">
+                                    ⚡ Preset Spese e Competenze Bancarie
+                                </label>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">(Opzionale: autocompila categoria e causale)</span>
+                            </div>
+                            <select id="pn-bank-preset-select" class="form-control" style="font-size:0.85rem;" onchange="app.applyPrimaNotaBankPreset(this.value)">
+                                <option value="">-- Seleziona spesa bancaria standard (opzionale) --</option>
+                                <option value="canone">Canone mensile / trimestrale tenuta conto</option>
+                                <option value="bollo">Imposta di bollo (giacenza media > 5.000 €)</option>
+                                <option value="competenze">Spese liquidazione competenze trimestrali</option>
+                                <option value="cbill">Commissione operazione CBill / PagoPA</option>
+                                <option value="bonifico">Commissione bonifico SEPA ordinario / istantaneo</option>
+                                <option value="pos">Canone mensile / noleggio terminale POS</option>
+                            </select>
+                        </div>
+
                         <div class="form-group">
                             <label>Descrizione / Note*</label>
                             <input type="text" id="new-pn-descrizione" name="descrizione" class="form-control" required placeholder="Es. Pagamento affitto Gennaio">
@@ -6688,18 +6709,85 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 this.updatePrimaNotaFormFields(defaultTipo, defaultCat, defaultMetodo);
             },
 
+            applyPrimaNotaBankPreset(val) {
+                if (!val) return;
+                const catSelect = document.getElementById('new-pn-categoria');
+                const descInput = document.getElementById('new-pn-descrizione');
+                if (!catSelect || !descInput) return;
+
+                let targetCat = '';
+                let targetDesc = '';
+
+                switch(val) {
+                    case 'canone':
+                        targetCat = 'Spese e Commissioni Bancarie';
+                        targetDesc = 'Canone tenuta conto corrente bancario';
+                        break;
+                    case 'bollo':
+                        targetCat = 'SIAE e Tasse';
+                        targetDesc = 'Imposta di bollo conto corrente bancario';
+                        break;
+                    case 'competenze':
+                        targetCat = 'Spese e Commissioni Bancarie';
+                        targetDesc = 'Spese liquidazione competenze trimestrali';
+                        break;
+                    case 'cbill':
+                        targetCat = 'Spese e Commissioni Bancarie';
+                        targetDesc = 'Commissione pagamento CBill / PagoPA';
+                        break;
+                    case 'bonifico':
+                        targetCat = 'Spese e Commissioni Bancarie';
+                        targetDesc = 'Commissione operazione bonifico SEPA';
+                        break;
+                    case 'pos':
+                        targetCat = 'Spese e Commissioni Bancarie';
+                        targetDesc = 'Canone / noleggio mensile terminale POS';
+                        break;
+                }
+
+                if (targetCat) {
+                    let exists = Array.from(catSelect.options).some(o => o.value.toLowerCase() === targetCat.toLowerCase());
+                    if (!exists) {
+                        const opt = document.createElement('option');
+                        opt.value = targetCat;
+                        opt.innerText = targetCat;
+                        catSelect.appendChild(opt);
+                        if (this.state.settings.categorie_uscite && !this.state.settings.categorie_uscite.includes(targetCat)) {
+                            this.state.settings.categorie_uscite.push(targetCat);
+                            this.saveAll();
+                        }
+                    }
+                    catSelect.value = targetCat;
+                }
+                if (targetDesc) {
+                    descInput.value = targetDesc;
+                }
+            },
+
             updatePrimaNotaFormFields(tipo, preselectedCat = '', preselectedMetodo = '') {
                 const catSelect = document.getElementById('new-pn-categoria');
                 const metodoSelect = document.getElementById('new-pn-metodo');
                 const labelMetodo = document.getElementById('label-metodo');
                 const labelCat = document.getElementById('label-categoria');
                 const descInput = document.getElementById('new-pn-descrizione');
+                const presetRow = document.getElementById('pn-bank-presets-row');
                 
                 if (!catSelect || !labelMetodo || !labelCat) return;
 
                 catSelect.innerHTML = '';
+
+                const checkBankPresetVisibility = (currentMethod) => {
+                    if (!presetRow) return;
+                    const isBanca = (tipo === 'Uscita') && currentMethod && !this.isCassaMetodo(currentMethod);
+                    presetRow.style.display = isBanca ? 'block' : 'none';
+                    if (!isBanca) {
+                        const sel = document.getElementById('pn-bank-preset-select');
+                        if (sel) sel.value = '';
+                    }
+                };
                 
                 if (tipo === 'Entrata') {
+                    if (presetRow) presetRow.style.display = 'none';
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Entrata*';
                     if (metodoSelect) {
@@ -6716,9 +6804,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Uscita*';
                     if (metodoSelect) {
-                        metodoSelect.onchange = null;
                         const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
                         metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('');
+                        metodoSelect.onchange = (e) => {
+                            checkBankPresetVisibility(e.target.value);
+                        };
+                        checkBankPresetVisibility(curM);
                     }
                     catSelect.onchange = null;
                     this.state.settings.categorie_uscite.forEach(c => {
@@ -6726,6 +6817,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     });
                     if (descInput && !descInput.value) descInput.placeholder = 'Es. Pagamento affitto / Bolletta';
                 } else if (tipo === 'Giroconto') {
+                    if (presetRow) presetRow.style.display = 'none';
                     labelMetodo.innerText = 'Da (Origine)*';
                     labelCat.innerText = 'A (Destinazione)*';
                     if (metodoSelect) {
