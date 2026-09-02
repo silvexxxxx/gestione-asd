@@ -1826,6 +1826,10 @@
                 this.state.settings.categorie_uscite.push("Spese e Commissioni Bancarie");
                 changed = true;
             }
+            if (!this.state.settings.costi_fissi_periodici || !Array.isArray(this.state.settings.costi_fissi_periodici)) {
+                this.state.settings.costi_fissi_periodici = [];
+                changed = true;
+            }
             if (changed && typeof this.saveAll === 'function') {
                 this.saveAll();
             }
@@ -1967,6 +1971,118 @@
             }
         },
 
+        syncCostiPeriodici(silent = true) {
+            this.sanitizeSettings();
+            const list = this.state.settings.costi_fissi_periodici || [];
+            if (!list.length) return 0;
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth(); // 0..11
+            let generatedCount = 0;
+
+            if (!Array.isArray(this.state.primanota)) {
+                this.state.primanota = [];
+            }
+
+            const existingRefs = new Set(this.state.primanota.map(t => t.riferimento).filter(Boolean));
+
+            list.forEach(costo => {
+                if (costo.attivo === false) return;
+
+                const periodicita = costo.periodicita || 'mensile';
+                const importo = parseFloat(costo.importo) || 0;
+                if (importo <= 0) return;
+
+                // Calcolo data di partenza (default inizio anno corrente o data_inizio se specificata)
+                const startYear = costo.data_inizio ? parseInt(costo.data_inizio.split('-')[0]) : currentYear;
+                const startMonth = costo.data_inizio ? (parseInt(costo.data_inizio.split('-')[1]) - 1) : 0;
+
+                // Controlliamo i periodi dal mese di inizio fino al mese corrente
+                for (let y = startYear; y <= currentYear; y++) {
+                    const mStart = (y === startYear) ? Math.max(0, startMonth) : 0;
+                    const mEnd = (y === currentYear) ? currentMonth : 11;
+
+                    for (let m = mStart; m <= mEnd; m++) {
+                        let isDue = false;
+                        let periodKey = '';
+                        let targetDate = null;
+
+                        if (periodicita === 'mensile') {
+                            periodKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+                            if (costo.giorno === 'fine_mese' || !costo.giorno) {
+                                const lastDay = new Date(y, m + 1, 0).getDate();
+                                targetDate = new Date(y, m, lastDay);
+                            } else {
+                                const maxDay = new Date(y, m + 1, 0).getDate();
+                                const chosenDay = Math.min(parseInt(costo.giorno) || 1, maxDay);
+                                targetDate = new Date(y, m, chosenDay);
+                            }
+                            if (today >= targetDate) {
+                                isDue = true;
+                            }
+                        } else if (periodicita === 'trimestrale') {
+                            // Trimestri: marzo (2), giugno (5), settembre (8), dicembre (11)
+                            if ([2, 5, 8, 11].includes(m)) {
+                                const qNum = Math.floor(m / 3) + 1;
+                                periodKey = `${y}-Q${qNum}`;
+                                const lastDay = new Date(y, m + 1, 0).getDate();
+                                targetDate = new Date(y, m, lastDay);
+                                if (today >= targetDate) {
+                                    isDue = true;
+                                }
+                            }
+                        } else if (periodicita === 'annuale') {
+                            // Annuale: mese 11 (dicembre)
+                            if (m === 11) {
+                                periodKey = `${y}-ANNUALE`;
+                                const lastDay = new Date(y, m + 1, 0).getDate();
+                                targetDate = new Date(y, m, lastDay);
+                                if (today >= targetDate) {
+                                    isDue = true;
+                                }
+                            }
+                        }
+
+                        if (isDue && periodKey && targetDate) {
+                            const ref = `RICORRENTE_${costo.id}_${periodKey}`;
+                            if (!existingRefs.has(ref)) {
+                                const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+                                this.state.primanota.push({
+                                    id: 'txn_rec_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                                    data: dateStr,
+                                    tipo: 'Uscita',
+                                    metodo: costo.metodo || 'Banca',
+                                    categoria: costo.categoria || 'Spese e Commissioni Bancarie',
+                                    descrizione: `${costo.nome} (${periodicita === 'mensile' ? 'Canone' : 'Spesa'} ${periodKey})`,
+                                    importo: importo,
+                                    riferimento: ref
+                                });
+                                existingRefs.add(ref);
+                                generatedCount++;
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (generatedCount > 0) {
+                this.saveAll();
+                if (!silent) {
+                    this.toast(`⚡ Registrati in Prima Nota ${generatedCount} costi periodici!`, 'success');
+                }
+                if (this.state.currentPage === 'primanota') {
+                    this.renderPrimaNota();
+                } else if (this.state.currentPage === 'dati-organizzazione') {
+                    this.renderDatiOrganizzazione();
+                }
+            } else if (!silent) {
+                this.toast('Tutti i costi periodici risultano già registrati in Prima Nota.', 'info');
+            }
+
+            return generatedCount;
+        },
+
         getMetodiPagamento() {
             this.sanitizeSettings();
             const raw = this.state.settings.metodi_pagamento || ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"];
@@ -1993,6 +2109,7 @@
                 this.sanitizeDates();
                 this.sanitizeSettings();
                 this.sanitizePrimaNota();
+                this.syncCostiPeriodici(true);
                 
                                 // --- PAYWALL / LICENZA / TRIAL ---
                 let installDate = localStorage.getItem('asd_install_date');
@@ -6313,6 +6430,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         
             // --- PRIMA NOTA MANAGEMENT ---
             renderPrimaNota() {
+                this.syncCostiPeriodici(true);
                 this.sanitizePrimaNota();
                 const main = document.getElementById('main-content');
                 
@@ -8551,6 +8669,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const sale = this.state.sale || [];
             const presets = this.state.quote_presets || [];
             const metodi = this.getMetodiPagamento();
+            const costiFissi = this.state.settings.costi_fissi_periodici || [];
             main.innerHTML = `
                 <div class="page-content" style="overflow-y:auto;">
                     <div class="page-header">
@@ -8680,6 +8799,88 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                                         ${cfg.nome.toLowerCase() === 'contanti' ? '' : `
                                                             <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina metodo" onclick="app.deleteMetodo('${cfg.nome.replace(/'/g, "\\'")}')">🗑️</button>
                                                         `}
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 3b. Costi Fissi e Spese Bancarie Periodiche -->
+                        <div class="glass-card" style="grid-column: 1 / -1; border-left: 4px solid #6366f1;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px;">
+                                <div>
+                                    <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
+                                        🏦 Costi Fissi & Spese Bancarie Periodiche
+                                        <span style="font-size:0.75rem; background:rgba(99,102,241,0.2); color:#a5b4fc; padding:2px 8px; border-radius:10px; font-weight:normal;">Auto-registrazione</span>
+                                    </h3>
+                                    <p style="margin:4px 0 0 0; font-size:0.85rem; color:var(--text-muted);">
+                                        Configura spese fisse e ricorrenti (es. canone carta di debito 3 €/mese, tenuta conto, POS). Il gestionale le registrerà automaticamente in Prima Nota alle scadenze impostate.
+                                    </p>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <button type="button" class="btn btn-outline" style="font-size:0.8rem; border-color:#6366f1; color:#818cf8;" onclick="app.syncCostiPeriodici(false)">
+                                        ⚡ Verifica / Registra Ora
+                                    </button>
+                                    <button type="button" class="btn btn-primary" style="font-size:0.85rem; background:#6366f1; border-color:#6366f1;" onclick="app.openCostoFissoModal()">
+                                        + Nuovo Costo Periodico
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
+                                            <th style="padding:10px 12px;">Spesa / Descrizione</th>
+                                            <th style="padding:10px 12px;">Importo</th>
+                                            <th style="padding:10px 12px;">Cadenza & Giorno</th>
+                                            <th style="padding:10px 12px;">Destinazione</th>
+                                            <th style="padding:10px 12px;">Stato</th>
+                                            <th style="padding:10px 12px; text-align:right;">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${costiFissi.length === 0 ? `
+                                            <tr>
+                                                <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.88rem;">
+                                                    Nessun costo fisso configurato. Clicca su <strong>"+ Nuovo Costo Periodico"</strong> per impostare ad esempio il canone della carta o del conto corrente.
+                                                </td>
+                                            </tr>
+                                        ` : costiFissi.map(c => {
+                                            const isAttivo = (c.attivo !== false);
+                                            const cadenzaStr = c.periodicita === 'mensile' 
+                                                ? (c.giorno === 'fine_mese' ? 'Mensile (Fine Mese)' : `Mensile (il ${c.giorno} del mese)`)
+                                                : (c.periodicita === 'trimestrale' ? 'Trimestrale (Fine Trimestre)' : 'Annuale');
+                                            return `
+                                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                                    <td style="padding:12px; font-weight:600; color:var(--text-light);">
+                                                        ${c.nome}
+                                                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">${c.categoria || 'Spese e Commissioni Bancarie'}</div>
+                                                    </td>
+                                                    <td style="padding:12px; font-weight:700; color:var(--danger);">
+                                                        -€ ${parseFloat(c.importo).toFixed(2)}
+                                                    </td>
+                                                    <td style="padding:12px;">
+                                                        <span style="font-size:0.85rem; color:var(--text-light);">${cadenzaStr}</span>
+                                                    </td>
+                                                    <td style="padding:12px;">
+                                                        <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:10px; font-size:0.75rem; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                                                            🏦 ${c.metodo || 'Banca'}
+                                                        </span>
+                                                    </td>
+                                                    <td style="padding:12px;">
+                                                        <button type="button" onclick="app.toggleCostoFisso('${c.id}')" style="background:none; border:none; cursor:pointer; padding:0;" title="Clicca per attivare o mettere in pausa">
+                                                            <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:10px; font-size:0.75rem; font-weight:600; ${isAttivo ? 'background:rgba(16,185,129,0.15); color:#10b981;' : 'background:rgba(107,114,128,0.2); color:#9ca3af;'}">
+                                                                ${isAttivo ? '● Attivo (Auto-ins)' : '⏸️ In Pausa'}
+                                                            </span>
+                                                        </button>
+                                                    </td>
+                                                    <td style="padding:12px; text-align:right; white-space:nowrap;">
+                                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica" onclick="app.openCostoFissoModal('${c.id}')">✏️ Modifica</button>
+                                                        <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina" onclick="app.deleteCostoFisso('${c.id}')">🗑️</button>
                                                     </td>
                                                 </tr>
                                             `;
@@ -9130,6 +9331,206 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             });
             this.saveAll();
             this.toast(`Metodo "${m}" rimosso.`, 'danger');
+            this.renderDatiOrganizzazione();
+        },
+
+        openCostoFissoModal(editId = null) {
+            const isEdit = !!editId;
+            const list = this.state.settings.costi_fissi_periodici || [];
+            const c = isEdit ? (list.find(x => String(x.id) === String(editId)) || {}) : {};
+            const curDate = new Date();
+            const curMonthStr = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+
+            this.openModal(isEdit ? `✏️ Modifica Costo Periodico: ${c.nome}` : '➕ Nuovo Costo Periodico / Spesa Fissa', `
+                <form id="costo-fisso-form" onsubmit="app.handleSaveCostoFisso(event, '${isEdit ? editId : ''}')" style="display:flex; flex-direction:column; gap:14px;">
+                    ${!isEdit ? `
+                        <div class="form-group" style="background:rgba(99,102,241,0.08); padding:10px 12px; border-radius:8px; border:1px dashed rgba(99,102,241,0.35); margin-bottom:0;">
+                            <label style="font-size:0.8rem; color:#818cf8; font-weight:600; margin-bottom:4px; display:block;">⚡ Precompila con Modello Frequente:</label>
+                            <select class="form-control" style="font-size:0.85rem;" onchange="app.fillCostoFissoPreset(this.value)">
+                                <option value="">-- Seleziona spesa ricorrente tipica --</option>
+                                <option value="carta_debito">Canone carta di debito (3.00 € / mese - fine mese)</option>
+                                <option value="canone_cc">Canone tenuta conto corrente (5.00 € / mese - fine mese)</option>
+                                <option value="canone_pos">Canone noleggio terminale POS (10.00 € / mese - fine mese)</option>
+                                <option value="bollo_trimestre">Imposta di bollo conto corrente (25.00 € / trimestre)</option>
+                                <option value="competenze_trimestre">Spese competenze trimestrali (15.00 € / trimestre)</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    <div class="form-group">
+                        <label>Nome Spesa / Descrizione*</label>
+                        <input type="text" name="nome" class="form-control" required placeholder="Es: Canone carta di debito, Canone c/c..." value="${c.nome || ''}">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Importo Fisso (€)*</label>
+                            <input type="number" step="0.01" min="0.01" name="importo" class="form-control" required placeholder="0.00" value="${c.importo ? parseFloat(c.importo).toFixed(2) : ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Cadenza / Periodicità*</label>
+                            <select name="periodicita" class="form-control" required>
+                                <option value="mensile" ${c.periodicita === 'mensile' ? 'selected' : ''}>Mensile (ogni mese)</option>
+                                <option value="trimestrale" ${c.periodicita === 'trimestrale' ? 'selected' : ''}>Trimestrale (Marzo, Giugno, Settembre, Dicembre)</option>
+                                <option value="annuale" ${c.periodicita === 'annuale' ? 'selected' : ''}>Annuale (a fine anno)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Giorno di Addebito*</label>
+                            <select name="giorno" class="form-control" required>
+                                <option value="fine_mese" ${(!c.giorno || c.giorno === 'fine_mese') ? 'selected' : ''}>Fine mese (consigliato per canoni)</option>
+                                <option value="1" ${c.giorno === '1' ? 'selected' : ''}>Il 1° del mese</option>
+                                <option value="5" ${c.giorno === '5' ? 'selected' : ''}>Il 5 del mese</option>
+                                <option value="10" ${c.giorno === '10' ? 'selected' : ''}>Il 10 del mese</option>
+                                <option value="15" ${c.giorno === '15' ? 'selected' : ''}>Il 15 del mese</option>
+                                <option value="20" ${c.giorno === '20' ? 'selected' : ''}>Il 20 del mese</option>
+                                <option value="28" ${c.giorno === '28' ? 'selected' : ''}>Il 28 del mese</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>A partire da (Mese iniziale)*</label>
+                            <input type="month" name="data_inizio" class="form-control" required value="${c.data_inizio ? c.data_inizio.substring(0, 7) : curMonthStr}">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Registro / Metodo di Addebito*</label>
+                            <select name="metodo" class="form-control" required>
+                                <option value="Banca" ${(!c.metodo || c.metodo === 'Banca') ? 'selected' : ''}>🏦 Banca (Conto Corrente)</option>
+                                <option value="Contanti" ${c.metodo === 'Contanti' ? 'selected' : ''}>🏷️ Contanti (Cassa Reale)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoria Contabile*</label>
+                            <select name="categoria" class="form-control" required>
+                                ${(this.state.settings.categorie_uscite || ['Spese e Commissioni Bancarie']).map(cat => `
+                                    <option value="${cat}" ${(c.categoria === cat || (!c.categoria && cat === 'Spese e Commissioni Bancarie')) ? 'selected' : ''}>${cat}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:6px; font-size:0.82rem; color:var(--text-muted);">
+                        💡 <em>Impostato questo costo, il gestionale registrerà in automatico la riga di Uscita in Prima Nota ad ogni scadenza maturata, evitando doppi inserimenti.</em>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="background:#6366f1; border-color:#6366f1;">💾 Salva Costo Periodico</button>
+                    </div>
+                </form>
+            `);
+        },
+
+        fillCostoFissoPreset(key) {
+            const form = document.getElementById('costo-fisso-form');
+            if (!form || !key) return;
+            const nomeInput = form.querySelector('input[name="nome"]');
+            const impInput = form.querySelector('input[name="importo"]');
+            const perSelect = form.querySelector('select[name="periodicita"]');
+            const gioSelect = form.querySelector('select[name="giorno"]');
+            const catSelect = form.querySelector('select[name="categoria"]');
+
+            const presets = {
+                carta_debito: { nome: 'Canone carta di debito', imp: '3.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' },
+                canone_cc: { nome: 'Canone tenuta conto corrente', imp: '5.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' },
+                canone_pos: { nome: 'Canone noleggio terminale POS', imp: '10.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' },
+                bollo_trimestre: { nome: 'Imposta di bollo conto corrente', imp: '25.00', per: 'trimestrale', gio: 'fine_mese', cat: 'SIAE e Tasse' },
+                competenze_trimestre: { nome: 'Spese competenze liquidazione', imp: '15.00', per: 'trimestrale', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' }
+            };
+
+            const p = presets[key];
+            if (!p) return;
+            if (nomeInput) nomeInput.value = p.nome;
+            if (impInput) impInput.value = p.imp;
+            if (perSelect) perSelect.value = p.per;
+            if (gioSelect) gioSelect.value = p.gio;
+            if (catSelect && Array.from(catSelect.options).some(o => o.value === p.cat)) {
+                catSelect.value = p.cat;
+            }
+        },
+
+        handleSaveCostoFisso(e, editId = '') {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const nome = (formData.get('nome') || '').trim();
+            const importo = parseFloat(formData.get('importo')) || 0;
+            const periodicita = formData.get('periodicita') || 'mensile';
+            const giorno = formData.get('giorno') || 'fine_mese';
+            const data_inizio = formData.get('data_inizio') ? (formData.get('data_inizio') + '-01') : (new Date().toISOString().substring(0, 7) + '-01');
+            const metodo = formData.get('metodo') || 'Banca';
+            const categoria = formData.get('categoria') || 'Spese e Commissioni Bancarie';
+
+            if (!nome || importo <= 0) {
+                this.toast('Inserisci un nome valido e un importo maggiore di zero.', 'warning');
+                return;
+            }
+
+            this.sanitizeSettings();
+            let list = this.state.settings.costi_fissi_periodici || [];
+
+            const item = {
+                id: editId || ('costo_' + Date.now() + Math.random().toString(36).substr(2, 4)),
+                nome: nome,
+                importo: importo,
+                periodicita: periodicita,
+                giorno: giorno,
+                data_inizio: data_inizio,
+                metodo: metodo,
+                categoria: categoria,
+                attivo: true
+            };
+
+            if (editId) {
+                const idx = list.findIndex(x => String(x.id) === String(editId));
+                if (idx >= 0) {
+                    list[idx] = { ...list[idx], ...item };
+                } else {
+                    list.push(item);
+                }
+                this.toast(`Costo periodico "${nome}" aggiornato!`, 'success');
+            } else {
+                list.push(item);
+                this.toast(`Costo periodico "${nome}" configurato!`, 'success');
+            }
+
+            this.state.settings.costi_fissi_periodici = list;
+            this.saveAll();
+            this.closeModal();
+
+            // Esegui la sincronizzazione immediata per registrare eventuali scadenze già maturate
+            this.syncCostiPeriodici(true);
+            this.renderDatiOrganizzazione();
+        },
+
+        deleteCostoFisso(id) {
+            this.sanitizeSettings();
+            const list = this.state.settings.costi_fissi_periodici || [];
+            const item = list.find(x => String(x.id) === String(id));
+            if (!item) return;
+
+            if (!confirm(`Sei sicuro di voler eliminare il costo fisso "${item.nome}"? I movimenti già registrati in Prima Nota non verranno cancellati.`)) return;
+
+            this.state.settings.costi_fissi_periodici = list.filter(x => String(x.id) !== String(id));
+            this.saveAll();
+            this.toast(`Costo periodico "${item.nome}" rimosso.`, 'danger');
+            this.renderDatiOrganizzazione();
+        },
+
+        toggleCostoFisso(id) {
+            this.sanitizeSettings();
+            const list = this.state.settings.costi_fissi_periodici || [];
+            const item = list.find(x => String(x.id) === String(id));
+            if (!item) return;
+
+            item.attivo = !(item.attivo !== false);
+            this.saveAll();
+            this.toast(`Costo "${item.nome}": ${item.attivo ? 'attivato' : 'messo in pausa'}`, 'info');
             this.renderDatiOrganizzazione();
         },
 
