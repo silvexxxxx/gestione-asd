@@ -1794,6 +1794,26 @@
                     this.state.settings.metodi_pagamento.push("Bancomat");
                     changed = true;
                 }
+                if (!hasMethod("Bonifico Istantaneo")) {
+                    this.state.settings.metodi_pagamento.push({
+                        nome: "Bonifico Istantaneo",
+                        tipo_registro: "banca",
+                        percentuale: 0,
+                        fisso: 1.50,
+                        is_default: false
+                    });
+                    changed = true;
+                }
+                if (!hasMethod("Bonifico Estero") && !hasMethod("Bonifico Estero / Extra-SEPA")) {
+                    this.state.settings.metodi_pagamento.push({
+                        nome: "Bonifico Estero",
+                        tipo_registro: "banca",
+                        percentuale: 0,
+                        fisso: 8.00,
+                        is_default: false
+                    });
+                    changed = true;
+                }
             }
             if (!this.state.settings.categorie_entrate || !Array.isArray(this.state.settings.categorie_entrate)) {
                 this.state.settings.categorie_entrate = ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"];
@@ -8940,6 +8960,33 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             `);
         },
 
+        fillMetodoPreset(key) {
+            const form = document.getElementById('save-metodo-form');
+            if (!form || !key) return;
+            const nomeInput = form.querySelector('input[name="nome"]');
+            const regSelect = form.querySelector('select[name="tipo_registro"]');
+            const percInput = form.querySelector('input[name="percentuale"]');
+            const fissoInput = form.querySelector('input[name="fisso"]');
+
+            const presets = {
+                bonifico_ordinario: { nome: 'Bonifico Ordinario', tipo_registro: 'banca', perc: 0, fisso: 0 },
+                bonifico_istantaneo: { nome: 'Bonifico Istantaneo', tipo_registro: 'banca', perc: 0, fisso: 1.50 },
+                bonifico_estero: { nome: 'Bonifico Estero / Extra-SEPA', tipo_registro: 'banca', perc: 0, fisso: 8.00 },
+                satispay: { nome: 'Satispay', tipo_registro: 'banca', perc: 1.00, fisso: 0.20 },
+                sumup: { nome: 'SumUp', tipo_registro: 'banca', perc: 1.95, fisso: 0 },
+                pos_fisico: { nome: 'POS Fisico Bancomat / Carte', tipo_registro: 'banca', perc: 1.20, fisso: 0 },
+                paypal: { nome: 'PayPal', tipo_registro: 'banca', perc: 3.40, fisso: 0.35 },
+                contanti: { nome: 'Contanti', tipo_registro: 'cassa', perc: 0, fisso: 0 }
+            };
+
+            const p = presets[key];
+            if (!p) return;
+            if (nomeInput && !nomeInput.readOnly) nomeInput.value = p.nome;
+            if (regSelect && !regSelect.disabled) regSelect.value = p.tipo_registro;
+            if (percInput) percInput.value = p.perc;
+            if (fissoInput) fissoInput.value = p.fisso.toFixed(2);
+        },
+
         openMetodoModal(nomeMetodo = null) {
             const isEdit = !!nomeMetodo;
             const cfg = isEdit ? this.getMetodoConfig(nomeMetodo) : { nome: '', tipo_registro: 'banca', percentuale: 0, fisso: 0 };
@@ -8947,6 +8994,22 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             this.openModal(isEdit ? `✏️ Modifica Metodo: ${cfg.nome}` : '➕ Nuovo Metodo di Pagamento', `
                 <form id="save-metodo-form" onsubmit="app.handleSaveMetodo(event, '${isEdit ? cfg.nome.replace(/'/g, "\\'") : ''}')" style="display:flex; flex-direction:column; gap:14px;">
+                    ${!isContanti ? `
+                        <div class="form-group" style="background:rgba(59,130,246,0.08); padding:10px 12px; border-radius:8px; border:1px dashed rgba(59,130,246,0.35); margin-bottom:0;">
+                            <label style="font-size:0.8rem; color:#60a5fa; font-weight:600; margin-bottom:4px; display:block;">⚡ Precompila da Modello Rapido (Opzionale):</label>
+                            <select class="form-control" style="font-size:0.85rem;" onchange="app.fillMetodoPreset(this.value)">
+                                <option value="">-- Seleziona un modello con tariffe già impostate --</option>
+                                <option value="bonifico_ordinario">Bonifico Ordinario (Banca, 0.00%)</option>
+                                <option value="bonifico_istantaneo">Bonifico Istantaneo (Banca, es. 1.50 € fissa)</option>
+                                <option value="bonifico_estero">Bonifico Estero / Extra-SEPA (Banca, es. 8.00 € fissa)</option>
+                                <option value="satispay">Satispay (Banca, 1.00% + 0.20 €)</option>
+                                <option value="sumup">SumUp (Banca, 1.95%)</option>
+                                <option value="pos_fisico">POS Fisico Bancomat / Carte (Banca, 1.20%)</option>
+                                <option value="paypal">PayPal (Banca, 3.40% + 0.35 €)</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
                     <div class="form-group">
                         <label>Nome Metodo*</label>
                         <input type="text" name="nome" class="form-control" required placeholder="Es: Satispay, POS Fisico, Carta di Credito..." value="${cfg.nome || ''}" ${isContanti ? 'readonly title="Il metodo predefinito Contanti non può essere rinominato"' : ''}>
