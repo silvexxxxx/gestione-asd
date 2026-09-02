@@ -8499,20 +8499,70 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <button class="btn btn-primary" style="width:100%;" onclick="app.openRinnovoDirettivoModal()">Rinnova / Modifica Direttivo</button>
                         </div>
 
-                        <!-- 3. Metodi di Pagamento -->
-                        <div class="glass-card">
-                            <h3 style="margin-bottom:1rem;">💳 Metodi di Pagamento</h3>
-                            <form id="add-metodo-form" onsubmit="app.handleAddMetodo(event)" style="display:flex; gap:8px; margin-bottom:1rem;">
-                                <input type="text" id="new-metodo-input" class="form-control" placeholder="Es: Satispay..." required style="flex:1;">
-                                <button type="submit" class="btn btn-primary">+ Aggiungi</button>
-                            </form>
-                            <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                                ${metodi.map(m => `
-                                    <div style="display:flex; align-items:center; gap:6px; background:rgba(59,130,246,0.1); padding:6px 12px; border-radius:20px; border:1px solid var(--primary);">
-                                        <span style="font-size:0.85rem;">${m}</span>
-                                        <button onclick="app.deleteMetodo('${m}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:1rem; line-height:1;">×</button>
-                                    </div>
-                                `).join('')}
+                        <!-- 3. Metodi di Pagamento e Commissioni -->
+                        <div class="glass-card" style="grid-column: 1 / -1;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px;">
+                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                    <h3 style="margin:0;">💳 Metodi di Pagamento & Commissioni</h3>
+                                    <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; border-color:var(--primary); color:var(--primary);" onclick="app.openCommissioniGuideModal()">
+                                        ℹ️ <span>Come impostare le commissioni?</span>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-primary" style="font-size:0.85rem;" onclick="app.openMetodoModal()">+ Nuovo Metodo</button>
+                            </div>
+
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
+                                            <th style="padding:10px 12px;">Nome Metodo</th>
+                                            <th style="padding:10px 12px;">Destinazione</th>
+                                            <th style="padding:10px 12px;">Commissioni (% + fisso)</th>
+                                            <th style="padding:10px 12px; text-align:right;">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${metodi.map(mName => {
+                                            const cfg = this.getMetodoConfig(mName);
+                                            const isCassa = (cfg.tipo_registro === 'cassa');
+                                            const perc = parseFloat(cfg.percentuale) || 0;
+                                            const fisso = parseFloat(cfg.fisso) || 0;
+                                            
+                                            let commLabel = '';
+                                            if (perc > 0 && fisso > 0) {
+                                                commLabel = `<strong>${perc.toFixed(2)}%</strong> + €${fisso.toFixed(2)}`;
+                                            } else if (perc > 0) {
+                                                commLabel = `<strong>${perc.toFixed(2)}%</strong>`;
+                                            } else if (fisso > 0) {
+                                                commLabel = `€${fisso.toFixed(2)} <span style="font-size:0.8rem; color:var(--text-muted);">(quota fissa)</span>`;
+                                            } else {
+                                                commLabel = `<span style="color:var(--text-muted);">Nessuna (0%)</span>`;
+                                            }
+
+                                            return `
+                                                <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
+                                                    <td style="padding:12px; font-weight:600; color:var(--text-light);">
+                                                        ${cfg.nome}
+                                                    </td>
+                                                    <td style="padding:12px;">
+                                                        <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:12px; font-size:0.8rem; font-weight:500; ${isCassa ? 'background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3);' : 'background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'}">
+                                                            ${isCassa ? '🏷️ Cassa Reale' : '🏦 Conto Banca / POS'}
+                                                        </span>
+                                                    </td>
+                                                    <td style="padding:12px;">
+                                                        ${commLabel}
+                                                    </td>
+                                                    <td style="padding:12px; text-align:right; white-space:nowrap;">
+                                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica metodo" onclick="app.openMetodoModal('${cfg.nome.replace(/'/g, "\\'")}')">✏️ Modifica</button>
+                                                        ${cfg.nome.toLowerCase() === 'contanti' ? '' : `
+                                                            <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina metodo" onclick="app.deleteMetodo('${cfg.nome.replace(/'/g, "\\'")}')">🗑️</button>
+                                                        `}
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
@@ -8769,23 +8819,152 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             }
         },
 
+        openCommissioniGuideModal() {
+            this.openModal('ℹ️ Guida alla configurazione delle spese e commissioni bancarie', `
+                <div style="line-height: 1.6; font-size: 0.92rem;">
+                    <p style="margin-bottom: 1rem;">Per impostare correttamente i costi ed evitare discrepanze tra la Prima Nota e il tuo conto reale, tieni a portata di mano l'ultimo estratto conto bancario o il foglio informativo (DDS/FI) rilasciato dalla tua banca o dal gestore POS.</p>
+                    <h4 style="margin: 1.25rem 0 0.5rem 0; color: var(--primary); font-size: 1rem;">Cosa cercare nel documento:</h4>
+                    <ul style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <li><strong>Commissioni POS / Pagamenti Digitali (es. SumUp, Satispay, POS fisico):</strong> cerca la voce <em>"Riepilogo commissioni transato"</em> o verifica la percentuale sul contratto stipulato (es. 1,40%, 1,95%).</li>
+                        <li><strong>Bonifici in uscita:</strong> cerca le voci <em>"Commissione bonifico SEPA ordinario"</em> e <em>"Commissione bonifico istantaneo"</em> (solitamente tra 0,50 € e 2,50 € a operazione).</li>
+                        <li><strong>Bollettini / CBill / PagoPA:</strong> cerca <em>"Commissione pagamenti CBill / PagoPA tramite home banking"</em>.</li>
+                        <li><strong>Costi fissi e periodici:</strong> cerca le voci <em>"Canone mensile/trimestrale tenuta conto"</em>, <em>"Spese liquidazione competenze"</em> e <em>"Imposta di bollo"</em> (applicata se la giacenza media supera i 5.000 €).</li>
+                    </ul>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="app.closeModal()">Ho capito</button>
+                    </div>
+                </div>
+            `);
+        },
+
+        openMetodoModal(nomeMetodo = null) {
+            const isEdit = !!nomeMetodo;
+            const cfg = isEdit ? this.getMetodoConfig(nomeMetodo) : { nome: '', tipo_registro: 'banca', percentuale: 0, fisso: 0 };
+            const isContanti = (cfg.nome || '').trim().toLowerCase() === 'contanti';
+
+            this.openModal(isEdit ? `✏️ Modifica Metodo: ${cfg.nome}` : '➕ Nuovo Metodo di Pagamento', `
+                <form id="save-metodo-form" onsubmit="app.handleSaveMetodo(event, '${isEdit ? cfg.nome.replace(/'/g, "\\'") : ''}')" style="display:flex; flex-direction:column; gap:14px;">
+                    <div class="form-group">
+                        <label>Nome Metodo*</label>
+                        <input type="text" name="nome" class="form-control" required placeholder="Es: Satispay, POS Fisico, Carta di Credito..." value="${cfg.nome || ''}" ${isContanti ? 'readonly title="Il metodo predefinito Contanti non può essere rinominato"' : ''}>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Destinazione Contabile (Registro)*</label>
+                        <select name="tipo_registro" class="form-control" required ${isContanti ? 'disabled' : ''}>
+                            <option value="banca" ${cfg.tipo_registro === 'banca' ? 'selected' : ''}>🏦 Conto Corrente Bancario / POS / Digitale</option>
+                            <option value="cassa" ${cfg.tipo_registro === 'cassa' ? 'selected' : ''}>🏷️ Cassa Reale (Denaro Contante)</option>
+                        </select>
+                        ${isContanti ? '<input type="hidden" name="tipo_registro" value="cassa">' : ''}
+                        <small style="color:var(--text-muted); font-size:0.8rem;">Determina se i movimenti con questo metodo incrementano la Cassa o il Conto Bancario in Prima Nota.</small>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Trattenuta / Commissione (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" name="percentuale" class="form-control" placeholder="es. 1.95" value="${parseFloat(cfg.percentuale) || 0}">
+                            <small style="color:var(--text-muted); font-size:0.75rem;">Es: 1.95 per SumUp</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Costo Fisso per Operazione (€)</label>
+                            <input type="number" step="0.01" min="0" name="fisso" class="form-control" placeholder="es. 0.00" value="${(parseFloat(cfg.fisso) || 0).toFixed(2)}">
+                            <small style="color:var(--text-muted); font-size:0.75rem;">Es: 0.20 per micropagamenti</small>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:6px; font-size:0.82rem; color:var(--text-muted);">
+                        💡 <em>Se impostate, le commissioni verranno scorporate automaticamente registrando l'uscita in Prima Nota all'emissione della ricevuta.</em>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">💾 Salva Metodo</button>
+                    </div>
+                </form>
+            `);
+        },
+
+        handleSaveMetodo(e, oldNome = '') {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const nome = (formData.get('nome') || '').trim();
+            const tipo_registro = formData.get('tipo_registro') || 'banca';
+            const percentuale = parseFloat(formData.get('percentuale')) || 0;
+            const fisso = parseFloat(formData.get('fisso')) || 0;
+
+            if (!nome) return;
+
+            this.sanitizeSettings();
+            let list = this.state.settings.metodi_pagamento || [];
+
+            const newObj = {
+                nome: nome,
+                tipo_registro: tipo_registro,
+                percentuale: percentuale,
+                fisso: fisso,
+                is_default: (nome.toLowerCase() === 'contanti')
+            };
+
+            const getIndex = (name) => list.findIndex(m => {
+                const n = (typeof m === 'object' && m !== null) ? m.nome : m;
+                return String(n).trim().toLowerCase() === name.trim().toLowerCase();
+            });
+
+            if (oldNome) {
+                const idx = getIndex(oldNome);
+                if (idx >= 0) {
+                    list[idx] = newObj;
+                } else {
+                    list.push(newObj);
+                }
+                this.toast(`Metodo "${nome}" aggiornato con successo!`, 'success');
+            } else {
+                if (getIndex(nome) >= 0) {
+                    this.toast(`Esiste già un metodo di pagamento denominato "${nome}"!`, 'warning');
+                    return;
+                }
+                list.push(newObj);
+                this.toast(`Nuovo metodo "${nome}" aggiunto con successo!`, 'success');
+            }
+
+            this.state.settings.metodi_pagamento = list;
+            this.saveAll();
+            this.closeModal();
+            this.renderDatiOrganizzazione();
+        },
+
         handleAddMetodo(e) {
             e.preventDefault();
-            const val = document.getElementById('new-metodo-input').value.trim();
+            const val = document.getElementById('new-metodo-input')?.value.trim();
             if (!val) return;
-            if (!this.state.settings.metodi_pagamento) this.state.settings.metodi_pagamento = [];
-            if (!this.state.settings.metodi_pagamento.includes(val)) {
-                this.state.settings.metodi_pagamento.push(val);
-                this.saveAll();
-                this.toast(`Metodo "${val}" aggiunto!`);
-            }
-            this.renderDatabase();
+            this.handleSaveMetodo({
+                preventDefault: () => {},
+                target: {
+                    nome: { value: val },
+                    tipo_registro: { value: 'banca' },
+                    percentuale: { value: 0 },
+                    fisso: { value: 0 }
+                }
+            });
         },
 
         deleteMetodo(m) {
-            this.state.settings.metodi_pagamento = this.state.settings.metodi_pagamento.filter(x => x !== m);
+            if (!m) return;
+            if (m.toString().trim().toLowerCase() === 'contanti') {
+                this.toast("Il metodo Contanti è fondamentale e non può essere rimosso!", "warning");
+                return;
+            }
+            if (!confirm(`Sei sicuro di voler eliminare il metodo di pagamento "${m}"?`)) return;
+
+            this.sanitizeSettings();
+            this.state.settings.metodi_pagamento = (this.state.settings.metodi_pagamento || []).filter(x => {
+                const n = (typeof x === 'object' && x !== null) ? x.nome : x;
+                return String(n).trim().toLowerCase() !== m.trim().toLowerCase();
+            });
             this.saveAll();
-            this.renderDatabase();
+            this.toast(`Metodo "${m}" rimosso.`, 'danger');
+            this.renderDatiOrganizzazione();
         },
 
         openAddPresetModal(insertAtIndex = null) {
