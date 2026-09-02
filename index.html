@@ -2706,21 +2706,31 @@
                     }
 
                     // Normalizzazione scadenze tesseramento federale (Anno sportivo: 1 Set - 31 Ago)
-                    if (updated.tesserato === 'SI') {
-                        if (updated.tesseramento_data) {
-                            const d = new Date(updated.tesseramento_data);
-                            if (!isNaN(d.getTime())) {
-                                const y = d.getFullYear();
-                                const m = d.getMonth();
-                                const correctExp = `${m >= 8 ? y + 1 : y}-08-31`;
-                                if (updated.tesseramento_scadenza !== correctExp) {
-                                    updated.tesseramento_scadenza = correctExp;
-                                    migrated = true;
-                                }
+                    if (updated.tesseramento_data) {
+                        const d = new Date(updated.tesseramento_data);
+                        if (!isNaN(d.getTime())) {
+                            const y = d.getFullYear();
+                            const m = d.getMonth();
+                            const correctExp = `${m >= 8 ? y + 1 : y}-08-31`;
+                            if (updated.tesseramento_scadenza !== correctExp) {
+                                updated.tesseramento_scadenza = correctExp;
+                                migrated = true;
                             }
-                        } else if (!updated.tesseramento_scadenza || updated.tesseramento_scadenza > '2026-08-31') {
-                            // Se tesserato senza data registrata avviato nel 25/26 o precedente: scaduto il 31/08/2026
-                            updated.tesseramento_scadenza = '2026-08-31';
+                        }
+                    } else if (updated.tesserato === 'SI' && (!updated.tesseramento_scadenza || updated.tesseramento_scadenza > '2026-08-31')) {
+                        // Se tesserato senza data registrata avviato nel 25/26 o precedente: scaduto il 31/08/2026
+                        updated.tesseramento_scadenza = '2026-08-31';
+                        migrated = true;
+                    }
+
+                    // Se il tesseramento è scaduto (scadenza <= 31/08/2026 o antecedente ad oggi),
+                    // per il nuovo anno sportivo 26/27 il socio risulta NON tesserato finché non rinnova
+                    if (updated.tesseramento_scadenza) {
+                        const sExp = new Date(updated.tesseramento_scadenza);
+                        sExp.setHours(23, 59, 59, 999);
+                        const nowDate = new Date();
+                        if (sExp < nowDate && updated.tesserato === 'SI') {
+                            updated.tesserato = 'NO';
                             migrated = true;
                         }
                     }
@@ -3874,7 +3884,7 @@ closeModal() {
                     const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
                     const tessScadStr = this.getTesseramentoScadenza(s);
                     const isTessActive = this.isTesseramentoAttivo(s);
-                    const isExpired = (qScad && qScad < now) || (s.tesserato === 'SI' && !isTessActive);
+                    const isExpired = (qScad && qScad < now) || (tessScadStr && !isTessActive);
                     const rowStyle = isExpired ? 'color: var(--danger); font-weight: 500;' : '';
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
@@ -3898,12 +3908,12 @@ closeModal() {
                         </td>
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
-                                ${s.tesserato === 'SI'
-                                    ? (isTessActive 
-                                        ? `<span class="badge badge-active" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ATTIVO</span>`
-                                        : `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">TESS: SCADUTO</span>`
+                                ${isTessActive 
+                                    ? `<span class="badge badge-active" style="font-size: 0.6rem; padding: 2px 5px;">TESS: ATTIVO</span>`
+                                    : (tessScadStr
+                                        ? `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2);">TESS: SCADUTO</span>`
+                                        : `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px;">TESS: NO</span>`
                                     )
-                                    : `<span class="badge badge-moroso" style="font-size: 0.6rem; padding: 2px 5px;">TESS: NO</span>`
                                 }
                                 ${s.tesseramento_data
                                     ? `<span class="${this.getCertColor(tessScadStr)}" style="font-size: 0.78rem; font-weight: 600;">Dal: ${this.formatDate(s.tesseramento_data)}</span>`
@@ -4214,7 +4224,7 @@ closeModal() {
                             <div class="form-group">
                                 <label>Tesseramento Federale</label>
                                 <select name="tesserato" class="form-control" onchange="app.handleTesseratoChange(this)">
-                                    <option value="NO">NO (Non Tesserato)</option>
+                                    <option value="NO">NO (Non Tesserato / Scaduto)</option>
                                     <option value="SI">SI (Tesserato)</option>
                                 </select>
                             </div>
@@ -4262,6 +4272,8 @@ closeModal() {
                     if (input) {
                         if (key === 'stato') {
                             input.value = this.getSocioDisplayStato(s);
+                        } else if (key === 'tesserato') {
+                            input.value = this.isTesseramentoAttivo(s) ? 'SI' : 'NO';
                         } else {
                             input.value = s[key];
                         }
@@ -4316,6 +4328,15 @@ closeModal() {
             });
                 const editId = parseInt(e.target.dataset.editId);
                 data.updated_at = Date.now();
+
+                // Verifica coerenza tesseramento per la stagione corrente
+                if (data.tesserato === 'SI' && data.tesseramento_scadenza) {
+                    const sExp = new Date(data.tesseramento_scadenza);
+                    sExp.setHours(23, 59, 59, 999);
+                    if (sExp < new Date()) {
+                        data.tesserato = 'NO';
+                    }
+                }
 
                 if (editId) {
                     const idx = this.state.soci.findIndex(s => s.id === editId);
@@ -5776,9 +5797,24 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 handleTesseratoChange(el) {
             const form = el.closest('form');
             const dataInput = form.querySelector('[name="tesseramento_data"]');
-            if (el.value === 'SI' && !dataInput.value) {
-                dataInput.value = new Date().toISOString().split('T')[0];
-                this.autoSetTessExpiry(dataInput);
+            if (el.value === 'SI') {
+                const now = new Date();
+                const m = now.getMonth();
+                const y = now.getFullYear();
+                const sportYearStart = new Date(m >= 8 ? y : y - 1, 8, 1);
+
+                let isPastSportYear = false;
+                if (dataInput && dataInput.value) {
+                    const d = new Date(dataInput.value);
+                    if (isNaN(d.getTime()) || d < sportYearStart) isPastSportYear = true;
+                } else {
+                    isPastSportYear = true;
+                }
+
+                if (isPastSportYear && dataInput) {
+                    dataInput.value = now.toISOString().split('T')[0];
+                }
+                if (dataInput) this.autoSetTessExpiry(dataInput);
             }
         },
 
