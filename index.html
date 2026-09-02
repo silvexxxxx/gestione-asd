@@ -5123,23 +5123,33 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         calculateCommission() {
             const val = document.querySelector('select[name="pagamento"]')?.value;
-            if (!val || val === 'Contanti') return;
-            const isSumUp = val.toLowerCase().replace(/\s/g, '').includes('sumup');
-            if (isSumUp) {
-                const importo = parseFloat(document.getElementById('receipt-amount').value) || 0;
-                if (importo > 0) {
-                    const comm = importo * 0.0195;
-                    document.getElementById('receipt-commissioni').value = (Math.round(comm * 100) / 100).toFixed(2);
+            const commInput = document.getElementById('receipt-commissioni');
+            if (!commInput) return;
+            if (!val || this.isCassaMetodo(val)) {
+                commInput.value = '';
+                return;
+            }
+            const cfg = this.getMetodoConfig(val);
+            const importo = parseFloat(document.getElementById('receipt-amount')?.value) || 0;
+            if (importo > 0 && cfg) {
+                const perc = parseFloat(cfg.percentuale) || 0;
+                const fisso = parseFloat(cfg.fisso) || 0;
+                if (perc > 0 || fisso > 0) {
+                    const comm = (importo * (perc / 100)) + fisso;
+                    const commArrotondata = Math.round(comm * 100) / 100;
+                    commInput.value = commArrotondata > 0 ? commArrotondata.toFixed(2) : '';
                 } else {
-                    document.getElementById('receipt-commissioni').value = '';
+                    commInput.value = '';
                 }
+            } else {
+                commInput.value = '';
             }
         },
 
         onReceiptPagamentoChange(val) {
             const row = document.getElementById('receipt-commissioni-row');
             if (!row) return;
-            if (val && val !== 'Contanti') {
+            if (val && !this.isCassaMetodo(val)) {
                 row.style.display = 'block';
                 this.calculateCommission();
             } else {
@@ -5178,10 +5188,11 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const metodo = ricevuta.metodo_pagamento || ricevuta.pagamento || 'Contanti';
             const commissioni = parseFloat(ricevuta.commissioni) || 0;
             const importoLordo = parseFloat(ricevuta.importo);
+            const isCassa = this.isCassaMetodo(metodo);
             
             let descBase = 'Ricevuta N.' + ricevuta.numero + '/' + app.formatAnno(ricevuta.anno) + ' - ' + nomeSocio;
             let descrizioneEntrata = descBase;
-            if (metodo !== 'Contanti' && commissioni > 0) {
+            if (!isCassa && commissioni > 0) {
                 descrizioneEntrata += ` [lordo: €${importoLordo.toFixed(2)}, comm. ${metodo}: -€${commissioni.toFixed(2)}]`;
             }
 
@@ -5205,7 +5216,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
             
             // GESTIONE USCITA (Commissioni)
-            if (metodo !== 'Contanti' && commissioni > 0) {
+            if (!isCassa && commissioni > 0) {
                 const descUscita = `Commissioni ${metodo} su Ric. N.${ricevuta.numero}/${app.formatAnno(ricevuta.anno)} - ${nomeSocio} (lordo: €${importoLordo.toFixed(2)})`;
                 if (txnUscita >= 0) {
                     this.state.primanota[txnUscita].data = ricevuta.data;
