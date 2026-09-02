@@ -1452,7 +1452,7 @@
                 <div class="nav-dropdown" id="dropdown-cassa">
                     <div class="nav-item" onclick="mobileNav.toggleDropdown('dropdown-cassa')">Segreteria ▾</div>
                     <div class="nav-dropdown-content">
-                        <div class="nav-item" data-page="dati-organizzazione" onclick="app.showPage('dati-organizzazione')" data-guide="Gestisci i dati legali dell'ASD, consiglio direttivo, metodi di pagamento, pacchetti quote e sale.">Dati ed Organizzazione ASD</div>
+                        <div class="nav-item" data-page="dati-organizzazione" onclick="app.showPage('dati-organizzazione')" data-guide="Gestisci i dati legali dell'ASD, consiglio direttivo, metodi di pagamento, pacchetti quote e tesseramento e sale.">Dati ed Organizzazione ASD</div>
                         <div class="nav-item" data-page="primanota" onclick="app.showPage('primanota')" data-guide="Tieni traccia di tutte le entrate (ricevute) e delle uscite (spese) della tua associazione.">Prima Nota</div>
                         <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Gestisci i beni di consumo per la palestra.">Magazzino</div>
                         <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Gestione rimborsi spese per i collaboratori o membri del direttivo.">Rimborsi</div>
@@ -4584,6 +4584,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const initialNum = (insertNum !== null && insertNum !== undefined) ? parseInt(insertNum) : (lastNum + 1);
             const isInsert = (insertNum !== null && insertNum !== undefined && initialNum <= lastNum);
             const defaultDate = forcedDate || today.toISOString().split('T')[0];
+            const presets = this.state.quote_presets || [];
             
             this.openModal(isInsert ? `➕ Inserimento Ricevuta Intermedia (N. ${initialNum})` : 'Emissione Ricevuta', `
                 <form id="receipt-form" onsubmit="app.handleRicevutaSubmit(event)">
@@ -4658,8 +4659,30 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                             </div>
 
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label>Note Causale (Opzionale)</label>
-                                <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota mensile Giugno">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <label style="margin:0;">Note Causale (Opzionale)</label>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Scegli dal menu o digita</span>
+                                </div>
+                                <select id="receipt-causale-preset" class="form-control" style="margin-bottom:6px; font-size:0.85rem;" onchange="app.applyCausalePreset(this.value, 'receipt-note', 'receipt-amount', 'receipt-durata', 'receipt-quota', 'receipt-tess')">
+                                    <option value="">⚡ Seleziona Causale da Pacchetti o Suggerimenti...</option>
+                                    ${presets.length > 0 ? `
+                                        <optgroup label="💶 PACCHETTI QUOTE E TESSERAMENTO (IN CIMA)">
+                                            ${presets.map(p => `<option value="preset:${p.id}">💶 ${p.nome} — € ${parseFloat(p.importo).toFixed(2)}${p.note ? ' (' + p.note + ')' : ''}</option>`).join('')}
+                                        </optgroup>
+                                    ` : ''}
+                                    <optgroup label="💡 SUGGERIMENTI DI COMPILAZIONE">
+                                        <option value="text:Quota Associativa Mensile">💡 Quota Associativa Mensile</option>
+                                        <option value="text:Quota Associativa Trimestrale">💡 Quota Associativa Trimestrale</option>
+                                        <option value="text:Quota Associativa Semestrale">💡 Quota Associativa Semestrale</option>
+                                        <option value="text:Quota Associativa Annuale">💡 Quota Associativa Annuale</option>
+                                        <option value="text:Tesseramento e Iscrizione Annuale">💡 Tesseramento e Iscrizione Annuale</option>
+                                        <option value="text:Tesseramento Federale">💡 Tesseramento Federale</option>
+                                        <option value="text:Quota Corso e Attività Sportiva">💡 Quota Corso e Attività Sportiva</option>
+                                        <option value="text:Ingresso Singolo / Prova">💡 Ingresso Singolo / Prova</option>
+                                        <option value="text:Integrazione Quota Associativa">💡 Integrazione Quota Associativa</option>
+                                    </optgroup>
+                                </select>
+                                <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota mensile Giugno (o compilata dal menu sopra)">
                             </div>
 
                         </div>
@@ -4888,14 +4911,77 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.toast(`Rinumerazione completata (${scopeText}) per l'anno ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
         },
 
-        applyPreset(presetId) {
-            if (!presetId) return;
-            const p = this.state.quote_presets.find(x => x.id == presetId);
-            if (!p) return;
+        applyCausalePreset(val, noteId = 'receipt-note', amountId = 'receipt-amount', durataId = 'receipt-durata', quotaId = 'receipt-quota', tessId = 'receipt-tess') {
+            if (!val) return;
+            const noteEl = document.getElementById(noteId);
+            const amountEl = document.getElementById(amountId);
+            const durataEl = document.getElementById(durataId);
+            const quotaEl = document.getElementById(quotaId);
+            const tessEl = document.getElementById(tessId);
 
-            document.getElementById('receipt-amount').value = p.importo;
-            document.getElementById('receipt-note').value = p.note;
-            this.toast(`Applicato pacchetto: ${p.nome}`);
+            if (val.startsWith('preset:')) {
+                const presetId = val.replace('preset:', '');
+                const p = this.state.quote_presets.find(x => x.id == presetId);
+                if (!p) return;
+
+                if (noteEl) noteEl.value = p.nome;
+                if (amountEl && p.importo !== undefined && p.importo !== null && !isNaN(p.importo)) {
+                    amountEl.value = parseFloat(p.importo).toFixed(2);
+                    if (typeof this.calculateCommission === 'function') this.calculateCommission();
+                }
+
+                // Autocompila Quota o Tesseramento se presenti nei campi di ripartizione
+                const lower = (p.nome || '').toLowerCase();
+                const impVal = parseFloat(p.importo || 0).toFixed(2);
+                if (quotaEl && tessEl) {
+                    if (lower.includes('tesseramento') && !lower.includes('quota')) {
+                        tessEl.value = impVal;
+                        quotaEl.value = '';
+                    } else if (lower.includes('quota') && !lower.includes('tesseramento')) {
+                        quotaEl.value = impVal;
+                        tessEl.value = '';
+                    } else {
+                        quotaEl.value = impVal;
+                    }
+                }
+
+                // Autocompila durata quota in base al nome o alle note
+                const textForDuration = (lower + ' ' + (p.note || '').toLowerCase());
+                if (durataEl) {
+                    if (textForDuration.includes('annuale') || textForDuration.includes('12 mesi') || textForDuration.includes('1 anno')) {
+                        durataEl.value = '12';
+                    } else if (textForDuration.includes('semestrale') || textForDuration.includes('6 mesi')) {
+                        durataEl.value = '6';
+                    } else if (textForDuration.includes('trimestrale') || textForDuration.includes('3 mesi')) {
+                        durataEl.value = '3';
+                    } else if (textForDuration.includes('mensile') || textForDuration.includes('1 mese')) {
+                        durataEl.value = '1';
+                    } else if (textForDuration.includes('2 mesi')) {
+                        durataEl.value = '2';
+                    } else if (textForDuration.includes('4 mesi')) {
+                        durataEl.value = '4';
+                    } else if (textForDuration.includes('9 mesi')) {
+                        durataEl.value = '9';
+                    }
+                }
+
+                this.toast(`Applicato pacchetto: ${p.nome} (€ ${parseFloat(p.importo || 0).toFixed(2)})`);
+            } else if (val.startsWith('text:')) {
+                const text = val.replace('text:', '');
+                if (noteEl) noteEl.value = text;
+                const lower = text.toLowerCase();
+                if (durataEl) {
+                    if (lower.includes('annuale')) durataEl.value = '12';
+                    else if (lower.includes('semestrale')) durataEl.value = '6';
+                    else if (lower.includes('trimestrale')) durataEl.value = '3';
+                    else if (lower.includes('mensile')) durataEl.value = '1';
+                }
+                this.toast(`Causale impostata: ${text}`);
+            }
+        },
+
+        applyPreset(presetId) {
+            this.applyCausalePreset('preset:' + presetId);
         },
 
         updateReceiptSocioInfo(val, previewId = 'receipt-socio-preview') {
@@ -8210,14 +8296,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         </div>
 
-                        <!-- 4. Pacchetti e Quote -->
+                        <!-- 4. Pacchetti Quote e Tesseramento -->
                         <div class="glass-card">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                <h3 style="margin:0;">💶 Pacchetti Quote</h3>
+                                <h3 style="margin:0;">💶 Pacchetti Quote e Tesseramento</h3>
                                 <button class="btn btn-primary" style="font-size:0.8rem;" onclick="app.openAddPresetModal()">+ Nuovo Pacchetto</button>
                             </div>
                             <div style="display:flex; flex-direction:column; gap:8px;">
-                                ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun pacchetto quota.</p>' :
+                                ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun pacchetto quote o tesseramento.</p>' :
                                 presets.map((p, idx) => `
                                     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; gap:10px;">
                                         <div style="flex:1; min-width:0;">
@@ -8484,9 +8570,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         openAddPresetModal(insertAtIndex = null) {
             const isInsert = (insertAtIndex !== null && insertAtIndex !== undefined);
-            this.openModal(isInsert ? `➕ Inserisci Nuovo Pacchetto (Posizione ${insertAtIndex + 1})` : 'Nuovo Pacchetto Quota', `
+            this.openModal(isInsert ? `➕ Inserisci Nuovo Pacchetto (Posizione ${insertAtIndex + 1})` : 'Nuovo Pacchetto Quota e Tesseramento', `
                     <form id="add-preset-form" onsubmit="app.handleAddPreset(event, ${insertAtIndex !== null ? insertAtIndex : 'null'})" style="display:flex; flex-direction:column; gap:12px;">
-                        <div class="form-group"><label>Nome Pacchetto</label><input type="text" name="nome" class="form-control" required placeholder="Es: Mensile Standard"></div>
+                        <div class="form-group"><label>Nome Pacchetto</label><input type="text" name="nome" class="form-control" required placeholder="Es: Quota Mensile, Tesseramento Annuale..."></div>
                         <div class="form-group"><label>Importo (€)</label><input type="number" name="importo" class="form-control" step="0.01" required min="0" placeholder="0.00"></div>
                         <div class="form-group"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Descrizione opzionale"></div>
                         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
