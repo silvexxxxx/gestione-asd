@@ -3806,13 +3806,14 @@ closeModal() {
             renderSoci() {
                 const totalSoci = this.state.soci.length;
                 const attiviAnno = this.state.soci.filter(s => this.isActiveMember(s)).length;
-                const attiviAnnoPrec = this.state.soci.filter(s => this.isPreviousSportYearMember(s)).length;
+                const sociStagione = this.state.soci.filter(s => this.isSeasonMember(s));
+                const sociStagioneCount = sociStagione.length;
+                const daRinnovareCount = sociStagione.filter(s => !this.isActiveMember(s)).length;
 
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
                 const currentSportYearStartYear = currentMonth >= 8 ? currentYear : currentYear - 1;
-                const prevSportYearLabel = `${(currentSportYearStartYear - 1).toString().slice(-2)}/${currentSportYearStartYear.toString().slice(-2)}`;
                 const currSportYearLabel = `${currentSportYearStartYear.toString().slice(-2)}/${(currentSportYearStartYear + 1).toString().slice(-2)}`;
 
                 const main = document.getElementById('main-content');
@@ -3820,7 +3821,7 @@ closeModal() {
                     <div class="page-content">
                         <div class="page-header">
                             <div class="header-title">
-                                <h1>Anagrafica Soci <span style="font-size: 1rem; color: var(--text-muted); font-weight: 400;">(${attiviAnno} attivi anno corrente / ${totalSoci} totali)</span></h1>
+                                <h1>Anagrafica Soci <span style="font-size: 1rem; color: var(--text-muted); font-weight: 400;">(${attiviAnno} rinnovati ${currSportYearLabel} • ${daRinnovareCount} da rinnovare / ${totalSoci} totali)</span></h1>
                                 <p>Gestisci l'elenco dei soci iscritti alla tua associazione.</p>
                             </div>
                             <button class="btn btn-primary" onclick="app.openAddSocioModal()" data-guide="Clicca qui per aggiungere un nuovo socio. Il Codice Fiscale verrà calcolato in automatico.">+ Aggiungi Socio</button>
@@ -3829,16 +3830,16 @@ closeModal() {
                         <div class="glass-card member-card">
                             <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
                                 <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.onSocioSearchInput()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
-                                <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato o per anno sportivo.">
-                                    <option value="ANNO_CORRENTE" selected>⭐ Anno Sportivo Corrente (${currSportYearLabel}) (${attiviAnno})</option>
-                                    <option value="ANNO_PRECEDENTE">📅 Anno Sportivo Precedente (${prevSportYearLabel}) (${attiviAnnoPrec})</option>
+                                <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato.">
+                                    <option value="ANNO_CORRENTE" selected>⭐ Soci Anno Sportivo Corrente (${currSportYearLabel}) (${sociStagioneCount})</option>
                                     <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
-                                    <option value="ATTIVO">✅ Attivi con Quota Valida</option>
+                                    <option value="TESS_ATTIVO">✅ Tesserati Attivi ${currSportYearLabel} (${attiviAnno})</option>
+                                    <option value="TESS_SCADUTO">💳 Tesseramenti da Rinnovare (${daRinnovareCount})</option>
+                                    <option value="ATTIVO">🟢 Attivi con Quota Valida</option>
                                     <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
-                                    <option value="NON ATTIVO">💤 Non Attivi (Anni Precedenti)</option>
+                                    <option value="NON ATTIVO">💤 Non Attivi (Archivio)</option>
                                     <option value="CESSATO">🚫 Cessati</option>
                                     <option value="QUOTA_SCADUTA">⌛ Quote Scadute</option>
-                                    <option value="TESS_SCADUTO">💳 Tess. Scaduti</option>
                                 </select>
                             </div>
 
@@ -3869,14 +3870,14 @@ closeModal() {
             onSocioFilterChange() {
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
-                this.state.sociVisibleCount = (status === 'ANNO_CORRENTE' || status === 'ANNO_PRECEDENTE') ? 200 : 50;
+                this.state.sociVisibleCount = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO' || status === 'TESS_SCADUTO') ? 200 : 50;
                 this.filterSoci();
             },
 
             onSocioSearchInput() {
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
-                if (status !== 'ANNO_CORRENTE' && status !== 'ANNO_PRECEDENTE') {
+                if (status !== 'ANNO_CORRENTE' && status !== 'TESS_ATTIVO' && status !== 'TESS_SCADUTO') {
                     this.state.sociVisibleCount = 50;
                 }
                 this.filterSoci();
@@ -3989,17 +3990,16 @@ closeModal() {
                     now.setHours(0,0,0,0);
 
                     if (status === 'ANNO_CORRENTE') {
+                        matchStatus = this.isSeasonMember(s);
+                    } else if (status === 'TESS_ATTIVO') {
                         matchStatus = this.isActiveMember(s);
-                    } else if (status === 'ANNO_PRECEDENTE') {
-                        matchStatus = this.isPreviousSportYearMember(s);
                     } else if (status === 'ALL') {
                         matchStatus = true;
                     } else if (status === 'QUOTA_SCADUTA') {
                         const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
                         matchStatus = s.stato !== 'CESSATO' && qScad && qScad < now;
                     } else if (status === 'TESS_SCADUTO') {
-                        const isTessActive = app.isActiveMember ? app.isActiveMember(s) : false;
-                        matchStatus = s.stato !== 'CESSATO' && !isTessActive;
+                        matchStatus = s.stato !== 'CESSATO' && this.isSeasonMember(s) && !this.isActiveMember(s);
                     } else {
                         matchStatus = this.getSocioDisplayStato(s) === status;
                     }
@@ -4059,7 +4059,7 @@ closeModal() {
                         return;
                     }
 
-                    const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'ANNO_PRECEDENTE') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
+                    const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO' || status === 'TESS_SCADUTO') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
                     const toRender = filtered.slice(0, visibleLimit);
                     tbody.innerHTML = this.renderSociRows(toRender);
                     if (filtered.length > visibleLimit) {
@@ -7195,6 +7195,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             if (!s || s.stato === 'CESSATO') return false;
             // Un socio è attivo nell'anno sportivo corrente solo se ha il tesseramento valido ed attivo per l'anno sportivo corrente
             return this.isTesseramentoAttivo(s);
+        },
+
+        isSeasonMember(s) {
+            if (!s || s.stato === 'CESSATO') return false;
+            // Soci appartenenti alla stagione corrente (rinnovati o in attesa di rinnovo dal 25/26)
+            return this.isActiveMember(s) || this.isPreviousSportYearMember(s);
         },
 
         isPreviousSportYearMember(s) {
