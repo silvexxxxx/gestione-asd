@@ -1517,7 +1517,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.4.1";
+        const APP_VERSION = "2.4.2";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -4692,7 +4692,7 @@ closeModal() {
                     this.ricevuteSortDir = this.ricevuteSortDir === 'asc' ? 'desc' : 'asc';
                 } else {
                     this.ricevuteSortKey = key;
-                    this.ricevuteSortDir = 'desc'; // Usually desc is better first, but let's say asc
+                    this.ricevuteSortDir = 'asc';
                 }
                 
                 // Update headers UI
@@ -4713,7 +4713,7 @@ closeModal() {
                 let sorted = [...receipts];
                 
                 const k = this.ricevuteSortKey || 'data';
-                const dir = this.ricevuteSortDir === 'asc' ? 1 : -1;
+                const dir = (this.ricevuteSortDir || 'asc') === 'asc' ? 1 : -1;
                 
                 sorted.sort((a, b) => {
                     let diff = 0;
@@ -4810,7 +4810,7 @@ closeModal() {
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
                                     <button class="btn btn-outline" style="padding: 5px;" title="Modifica" onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
-                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
+                                    ${!r.cartacea ? `<button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive digitali di -1)" onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>` : ''}
                                 ` : ''}
                                 ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" onclick="app.annullaRicevuta('${r.id}')">🚫</button>` : ''}
                             </div>
@@ -5656,20 +5656,24 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 console.error("Ricevuta non trovata con ID:", id);
                 return;
             }
+            if (r.cartacea) {
+                alert("Le ricevute da blocchetto cartaceo hanno numerazione fissa e non possono essere eliminate definitivamente.");
+                return;
+            }
             
             const deletedNum = parseInt(r.numero);
             const deletedAnno = parseInt(r.anno);
             const socioNome = r.socio_nome || 'Socio';
             
-            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} di ${socioNome}.\n\nLa sequenza numerica delle ricevute successive per l'anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
+            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} di ${socioNome}.\n\nLa sequenza numerica delle ricevute digitali successive per l'anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
                 
                 this.removePrimaNotaFromRicevuta(r.id);
                 this.state.ricevute = this.state.ricevute.filter(x => String(x.id) !== String(id) && x.id != id);
                 this.trackDeletion(r.id);
                 
-                // Scala di 1 tutte le ricevute dello stesso anno con numero > deletedNum
+                // Scala di 1 tutte le ricevute DIGITALI dello stesso anno con numero > deletedNum
                 const shiftedReceipts = this.state.ricevute
-                    .filter(x => parseInt(x.anno) === deletedAnno && parseInt(x.numero) > deletedNum)
+                    .filter(x => parseInt(x.anno) === deletedAnno && parseInt(x.numero) > deletedNum && !x.cartacea)
                     .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
                     
                 shiftedReceipts.forEach(x => {
@@ -5679,7 +5683,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 
                 this.saveAll();
                 this.renderRicevute();
-                this.toast(`Ricevuta eliminata definitivamente senza storni. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
+                this.toast(`Ricevuta eliminata definitivamente. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute digitali successive scalate di 1.' : ''}`, "danger");
             }
         },
 
