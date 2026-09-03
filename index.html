@@ -4688,6 +4688,7 @@ closeModal() {
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta la tabella delle ricevute in formato Excel.">Esporta Excel</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 / -1)">⏩ Sposta Sequenza</button>
                                 ` : ''}
                                 <button class="btn btn-primary" onclick="app.openAddRicevutaModal()">+ Nuova Ricevuta</button>
                             </div>
@@ -4861,6 +4862,7 @@ closeModal() {
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Stampa">🖨️</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
+                                    <button class="btn btn-outline" style="padding: 5px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" title="Sposta questa e tutte le successive di N posizioni (+1 / -1)" onclick="app.openShiftRicevuteModal('${r.id}')">⏩</button>
                                     <button class="btn btn-outline" style="padding: 5px;" title="Modifica" onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
                                     <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
                                 ` : ''}
@@ -5401,6 +5403,215 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.renderRicevute();
             const scopeText = onlyDigital ? "digitali" : "totali";
             this.toast(`Rinumerazione completata (${scopeText}) per l'anno ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
+        },
+
+        openShiftRicevuteModal(initialReceiptId = null) {
+            let initReceipt = initialReceiptId ? this.state.ricevute.find(r => String(r.id) === String(initialReceiptId) || r.id == initialReceiptId) : null;
+            
+            const availableYears = [...new Set(this.state.ricevute.map(r => parseInt(r.anno)).filter(y => !isNaN(y) && y > 0))].sort((a,b) => b - a);
+            const defaultYear = initReceipt ? parseInt(initReceipt.anno) : (availableYears.length > 0 ? availableYears[0] : (new Date().getMonth() >= 8 ? new Date().getFullYear() : new Date().getFullYear() - 1));
+            const defaultType = initReceipt ? (initReceipt.cartacea ? 'cartaceo' : 'digitale') : 'cartaceo';
+            
+            this._initialShiftReceiptId = initReceipt ? initReceipt.id : null;
+
+            this.openModal('⏩ Sposta Sequenza Ricevute (Shift)', `
+                <div style="display:flex; flex-direction:column; gap:15px;">
+                    <div style="background:rgba(59, 130, 246, 0.1); border:1px solid #3b82f6; border-radius:8px; padding:12px; font-size:0.9rem; color:var(--text-main);">
+                        <strong>💡 Spostamento e Slittamento Numerico:</strong><br>
+                        Questa funzione permette di incrementare (es. <strong>+1</strong>) o decrementare (es. <strong>-1</strong>) i numeri delle ricevute a partire da una ricevuta specifica, per fare spazio o riallineare la sequenza senza generare conflitti.
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:600;">Registro / Origine:</label>
+                            <select id="shift-type-select" class="form-control" onchange="app.updateShiftReceiptList()">
+                                <option value="cartaceo" ${defaultType === 'cartaceo' ? 'selected' : ''}>📋 Cartaceo</option>
+                                <option value="digitale" ${defaultType === 'digitale' ? 'selected' : ''}>💻 Digitale</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:600;">Anno / Stagione:</label>
+                            <select id="shift-year-select" class="form-control" onchange="app.updateShiftReceiptList()">
+                                ${availableYears.map(y => `<option value="${y}" ${y === defaultYear ? 'selected' : ''}>Anno ${y} (${app.formatAnno(y)})</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-weight:600;">A partire da quale ricevuta (compresa):</label>
+                        <select id="shift-start-receipt" class="form-control" onchange="app.renderShiftPreview()">
+                            <!-- Popolato dinamicamente -->
+                        </select>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:flex-end;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:600;">Sposta di (posizioni):</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <input type="number" id="shift-delta-input" class="form-control" value="1" style="width:80px;" oninput="app.renderShiftPreview()">
+                                <button type="button" class="btn btn-outline" style="padding:6px 12px;" onclick="document.getElementById('shift-delta-input').value = 1; app.renderShiftPreview();">+1</button>
+                                <button type="button" class="btn btn-outline" style="padding:6px 12px;" onclick="document.getElementById('shift-delta-input').value = 2; app.renderShiftPreview();">+2</button>
+                                <button type="button" class="btn btn-outline" style="padding:6px 12px;" onclick="document.getElementById('shift-delta-input').value = -1; app.renderShiftPreview();">-1</button>
+                            </div>
+                        </div>
+                        <div style="font-size:0.85rem; color:var(--text-muted); padding-bottom:6px;">
+                            (Usa <strong>+1</strong> per fare spazio in avanti, <strong>-1</strong> per compattare indietro)
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span style="font-weight:600; font-size:0.9rem;">👀 Ricevute coinvolte nell'aggiornamento (<span id="shift-preview-count">0</span>):</span>
+                            <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:0.75rem;" onclick="app.toggleAllShiftCheckboxes()">Inverti selezione</button>
+                        </div>
+                        <div id="shift-preview-list" style="max-height:190px; overflow-y:auto; font-size:0.85rem; display:flex; flex-direction:column; gap:6px; padding:2px;">
+                            <!-- Anteprima dinamica con checkbox -->
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:5px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="button" class="btn btn-primary" id="shift-confirm-btn" onclick="app.executeShiftRicevuteFromModal()" style="font-weight:700;">⏩ Conferma Spostamento (+1)</button>
+                    </div>
+                </div>
+            `);
+            
+            this.updateShiftReceiptList();
+        },
+
+        updateShiftReceiptList() {
+            const type = document.getElementById('shift-type-select')?.value || 'cartaceo';
+            const isCartacea = (type === 'cartaceo');
+            const anno = parseInt(document.getElementById('shift-year-select')?.value);
+            const select = document.getElementById('shift-start-receipt');
+            if (!select) return;
+            
+            let list = this.state.ricevute.filter(r => parseInt(r.anno) === anno && (!!r.cartacea === isCartacea));
+            list.sort((a, b) => {
+                const dateA = new Date(a.data).getTime() || 0;
+                const dateB = new Date(b.data).getTime() || 0;
+                if (dateA !== dateB) return dateA - dateB;
+                return (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0);
+            });
+            
+            if (list.length === 0) {
+                select.innerHTML = `<option value="">Nessuna ricevuta ${type} trovata per l'anno selezionato</option>`;
+                this.renderShiftPreview();
+                return;
+            }
+            
+            const targetId = this._initialShiftReceiptId;
+            select.innerHTML = list.map(r => `
+                <option value="${r.id}" ${targetId && (String(r.id) === String(targetId) || r.id == targetId) ? 'selected' : ''}>
+                    N. ${r.numero} - ${r.socio_nome} (${this.formatDate(r.data)})
+                </option>
+            `).join('');
+            
+            this._initialShiftReceiptId = null;
+            this.renderShiftPreview();
+        },
+
+        renderShiftPreview() {
+            const type = document.getElementById('shift-type-select')?.value || 'cartaceo';
+            const isCartacea = (type === 'cartaceo');
+            const anno = parseInt(document.getElementById('shift-year-select')?.value);
+            const startId = document.getElementById('shift-start-receipt')?.value;
+            const delta = parseInt(document.getElementById('shift-delta-input')?.value) || 0;
+            const previewList = document.getElementById('shift-preview-list');
+            const countEl = document.getElementById('shift-preview-count');
+            const btn = document.getElementById('shift-confirm-btn');
+            if (!previewList) return;
+            
+            if (btn) {
+                btn.textContent = `⏩ Conferma Spostamento (${delta >= 0 ? '+' : ''}${delta})`;
+                btn.disabled = (delta === 0 || !startId);
+            }
+            
+            let list = this.state.ricevute.filter(r => parseInt(r.anno) === anno && (!!r.cartacea === isCartacea));
+            list.sort((a, b) => {
+                const dateA = new Date(a.data).getTime() || 0;
+                const dateB = new Date(b.data).getTime() || 0;
+                if (dateA !== dateB) return dateA - dateB;
+                return (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0);
+            });
+            
+            const startIdx = list.findIndex(r => String(r.id) === String(startId) || r.id == startId);
+            if (startIdx < 0 || delta === 0) {
+                previewList.innerHTML = `<div style="color:var(--text-muted); padding:10px; text-align:center;">Seleziona una ricevuta e imposta uno spostamento diverso da 0.</div>`;
+                if (countEl) countEl.textContent = '0';
+                return;
+            }
+            
+            const targetReceipts = list.slice(startIdx);
+            if (countEl) countEl.textContent = targetReceipts.length;
+            
+            previewList.innerHTML = targetReceipts.map(r => {
+                const curNum = parseInt(r.numero);
+                const newNum = curNum + delta;
+                return `
+                    <label style="display:flex; align-items:center; gap:10px; padding:6px 10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:6px; margin-bottom:0; cursor:pointer;">
+                        <input type="checkbox" class="shift-receipt-cb" value="${r.id}" checked style="width:16px; height:16px;" onchange="app.updateShiftCheckedCount()">
+                        <div style="flex:1;">
+                            <span style="font-weight:600;">${r.socio_nome}</span> 
+                            <span style="color:var(--text-muted); font-size:0.8rem;">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)})</span>
+                        </div>
+                        <div style="font-size:0.95rem;">
+                            N. <strong>${curNum}</strong> ➔ <strong style="color:${delta > 0 ? 'var(--primary)' : 'var(--warning)'}; font-size:1.05rem;">N. ${newNum}</strong>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+        },
+
+        updateShiftCheckedCount() {
+            const cbs = document.querySelectorAll('.shift-receipt-cb:checked');
+            const countEl = document.getElementById('shift-preview-count');
+            if (countEl) countEl.textContent = cbs.length;
+        },
+
+        toggleAllShiftCheckboxes() {
+            const cbs = document.querySelectorAll('.shift-receipt-cb');
+            if (!cbs || cbs.length === 0) return;
+            const allChecked = Array.from(cbs).every(cb => cb.checked);
+            cbs.forEach(cb => cb.checked = !allChecked);
+            this.updateShiftCheckedCount();
+        },
+
+        executeShiftRicevuteFromModal() {
+            const delta = parseInt(document.getElementById('shift-delta-input')?.value) || 0;
+            if (delta === 0) {
+                this.toast("Lo spostamento deve essere diverso da 0.", "warning");
+                return;
+            }
+            const cbs = Array.from(document.querySelectorAll('.shift-receipt-cb:checked'));
+            if (cbs.length === 0) {
+                this.toast("Nessuna ricevuta selezionata per lo spostamento.", "warning");
+                return;
+            }
+            const selectedIds = new Set(cbs.map(cb => String(cb.value)));
+            
+            const type = document.getElementById('shift-type-select')?.value || 'cartaceo';
+            
+            let toShift = this.state.ricevute.filter(r => selectedIds.has(String(r.id)));
+            
+            // Ordine di applicazione sicuro:
+            // Se delta > 0: ordina dal numero più alto al più basso per evitare doppioni temporanei durante il ciclo
+            // Se delta < 0: ordina dal numero più basso al più alto
+            toShift.sort((a, b) => {
+                const numA = parseInt(a.numero) || 0;
+                const numB = parseInt(b.numero) || 0;
+                return delta > 0 ? (numB - numA) : (numA - numB);
+            });
+            
+            toShift.forEach(r => {
+                r.numero = parseInt(r.numero) + delta;
+                this.syncPrimaNotaFromRicevuta(r);
+            });
+            
+            this.saveAll();
+            this.closeModal();
+            this.renderRicevute(true, toShift[toShift.length - 1]?.id);
+            this.toast(`✅ Spostamento completato con successo: ${toShift.length} ricevute ${type} aggiornate di ${delta > 0 ? '+' : ''}${delta}!`, "success");
         },
 
         applyCausalePreset(val, noteId = 'receipt-note', amountId = 'receipt-amount', durataId = 'receipt-durata', quotaId = 'receipt-quota', tessId = 'receipt-tess') {
