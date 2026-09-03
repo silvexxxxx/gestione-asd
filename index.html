@@ -5416,6 +5416,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const targetAnno = parseInt(anno);
             if (isNaN(targetAnno)) return;
             
+            this.createSnapshot('pre-resequence');
+            
             let yearReceipts = this.state.ricevute.filter(r => parseInt(r.anno) === targetAnno);
             if (onlyDigital) {
                 yearReceipts = yearReceipts.filter(r => !r.cartacea);
@@ -5642,6 +5644,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 return;
             }
             const selectedIds = new Set(cbs.map(cb => String(cb.value)));
+            
+            this.createSnapshot('pre-shift');
             
             const type = document.getElementById('shift-type-select')?.value || 'cartaceo';
             
