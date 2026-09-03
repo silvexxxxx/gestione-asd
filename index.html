@@ -3262,6 +3262,19 @@
                 if (typeof syncMobileActionBar === 'function') syncMobileActionBar();
             },
 
+            async forceUploadToCloud() {
+                if (!this.accessToken) {
+                    app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
+                    return;
+                }
+                if (!confirm("⚠️ Vuoi forzare la sovrascrittura di Google Drive con i dati attuali di questo computer?\n\nQuesta operazione aggiornerà il Cloud allo stato esatto attuale del PC, senza rischiare di riesumare vecchi dati o vecchi numeri di ricevuta.")) {
+                    return;
+                }
+                app.toast("Caricamento forzato su Google Drive in corso...", "info");
+                await this.uploadBackup(false, true);
+                app.toast("✅ Google Drive sovrascritto con successo con i dati locali!", "success");
+            },
+
             async performInitialSync() {
                 app.toast('Sincronizzazione Cloud in corso...', 'info');
                 try {
@@ -3273,10 +3286,20 @@
                     if (searchData.files && searchData.files.length > 0) {
                         this.fileId = searchData.files[0].id;
                         
-                        const hasLocalData = app.state.soci.length > 0 || app.state.ricevute.length > 0;
+                        const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
                         if (hasLocalData) {
-                            // SILENT AUTO-MERGE: unisce automaticamente senza far scegliere l'utente e rischiare perdite
-                            await this.mergeBackup(false);
+                            const choice = confirm(
+                                "☁️ Sincronizzazione Google Drive:\n\n" +
+                                "È stato trovato un file di backup esistente su Google Drive.\n\n" +
+                                "• Premi [OK] per SOVRASCRIVERE Google Drive con i dati attuali del computer (CONSIGLIATO se hai appena riordinato o modificato ricevute/dati in locale per evitare che il vecchio cloud ripeschi vecchi numeri).\n\n" +
+                                "• Premi [ANNULLA] per effettuare la FUSIONE (Merge unendo dati locali e dati cloud)."
+                            );
+                            if (choice) {
+                                await this.uploadBackup(false, true);
+                                app.toast('✅ Google Drive aggiornato e sincronizzato con i dati del computer!', 'success');
+                            } else {
+                                await this.mergeBackup(false);
+                            }
                         } else {
                             await this.downloadBackup();
                         }
@@ -9601,9 +9624,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 
                                 
                                 
-                                <div style="display:flex; gap:10px; align-items:center;">
+                                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                                     <button class="btn btn-outline" style="color: var(--text-muted); border-color: var(--text-muted);" onclick="app.cloudSync.logout()">Passa a Modalità Offline</button>
                                     <button class="btn btn-primary" onclick="app.cloudSync.login()">Passa a Modalità Cloud (API)</button>
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer">⬆️ Sovrascrivi Cloud con Dati Locali</button>
                                 </div>
                                 
                                 <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;">Stato attuale: ${localStorage.getItem('asd_cloud_sync') === 'true' ? '<span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>' : '<span style="color:var(--text-muted);">Offline (Locale)</span>'}</div>
