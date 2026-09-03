@@ -5469,9 +5469,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         </div>
                     </div>
                     
-                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:5px;">
-                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                        <button type="button" class="btn btn-primary" id="shift-confirm-btn" onclick="app.executeShiftRicevuteFromModal()" style="font-weight:700;">⏩ Conferma Spostamento (+1)</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:5px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-size:0.85rem;" onclick="app.riallineaRicevuteCartaceeOttobre()" title="Riallinea automaticamente secondo il cartaceo reale (Petrollese 24, Ledda 25, Biggio 26, Pelinga 27, Vigo 28, Onado 29...)">🪄 Riallinea Cartaceo Reale (24-29+)</button>
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                            <button type="button" class="btn btn-primary" id="shift-confirm-btn" onclick="app.executeShiftRicevuteFromModal()" style="font-weight:700;">⏩ Conferma Spostamento (+1)</button>
+                        </div>
                     </div>
                 </div>
             `);
@@ -5612,6 +5615,61 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.closeModal();
             this.renderRicevute(true, toShift[toShift.length - 1]?.id);
             this.toast(`✅ Spostamento completato con successo: ${toShift.length} ricevute ${type} aggiornate di ${delta > 0 ? '+' : ''}${delta}!`, "success");
+        },
+
+        riallineaRicevuteCartaceeOttobre() {
+            if (!confirm("Vuoi riallineare automaticamente la sequenza cartacea di Ottobre 2025 secondo il cartaceo reale?\n\n• Petrollese Antonio: N. 24\n• Ledda Elena: N. 25\n• Biggio Mariella: N. 26\n• Pelinga Fabio: N. 27\n• Vigo Schiavina: N. 28\n• Onado Salvatore: N. 29\n• Strazzera Giuseppina: N. 30\n• Rivano Ambrogio: N. 31\n• Porcu Elisa: N. 32\n• (e tutte le successive a seguire)\n\nProcedere?")) {
+                return;
+            }
+
+            const yearReceipts = this.state.ricevute.filter(r => (r.cartacea || String(r.cartacea) === 'true') && (parseInt(r.anno) === 2025 || parseInt(r.anno) === 25));
+            const findR = (part) => yearReceipts.find(r => (r.socio_nome || '').toLowerCase().includes(part.toLowerCase()));
+
+            const petrollese = findR('petrollese');
+            const ledda = findR('ledda');
+            const biggio = findR('biggio');
+            const pelinga = findR('pelinga');
+            const vigo = findR('vigo');
+            const onado = findR('onado');
+            const strazzera = findR('strazzera');
+            const rivano = findR('rivano');
+            const porcu = findR('porcu');
+
+            const fixedSet = new Set([petrollese, ledda, biggio, pelinga, vigo, onado, strazzera, rivano, porcu].filter(Boolean));
+
+            // Tutte le ricevute cartacee con data successiva a Porcu Elisa (21/10/2025)
+            const porcuDate = porcu ? new Date(porcu.data).getTime() : new Date('2025-10-21').getTime();
+            const subsequent = yearReceipts.filter(r => !fixedSet.has(r) && new Date(r.data).getTime() >= porcuDate)
+                                          .sort((a, b) => (parseInt(b.numero) || 0) - (parseInt(a.numero) || 0));
+
+            subsequent.forEach(r => {
+                r.numero = (parseInt(r.numero) || 0) + 1;
+                this.syncPrimaNotaFromRicevuta(r);
+            });
+
+            const ordered = [
+                { r: porcu, num: 32 },
+                { r: rivano, num: 31 },
+                { r: strazzera, num: 30 },
+                { r: onado, num: 29 },
+                { r: vigo, num: 28 },
+                { r: pelinga, num: 27 },
+                { r: biggio, num: 26 },
+                { r: ledda, num: 25 },
+                { r: petrollese, num: 24 }
+            ];
+
+            ordered.forEach(item => {
+                if (item.r) {
+                    item.r.numero = item.num;
+                    this.syncPrimaNotaFromRicevuta(item.r);
+                }
+            });
+
+            this.saveAll();
+            this.closeModal();
+            this.renderRicevute(true, petrollese?.id);
+            this.toast("✅ Ricevute cartacee riallineate con successo al cartaceo reale!", "success");
         },
 
         applyCausalePreset(val, noteId = 'receipt-note', amountId = 'receipt-amount', durataId = 'receipt-durata', quotaId = 'receipt-quota', tessId = 'receipt-tess') {
@@ -5946,23 +6004,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const newNum = parseInt(data.numero);
                 const newAnno = parseInt(data.anno);
                 
-                if (oldAnno === newAnno && oldNum !== newNum) {
-                    if (newNum < oldNum) {
-                        const toShift = this.state.ricevute.filter(r => r.id != editId && (!!r.cartacea === isCartacea) && r.anno === oldAnno && r.numero >= newNum && r.numero < oldNum)
-                                                          .sort((a, b) => b.numero - a.numero);
-                        toShift.forEach(r => {
-                            r.numero += 1;
-                            this.syncPrimaNotaFromRicevuta(r);
-                        });
-                    } else {
-                        const toShift = this.state.ricevute.filter(r => r.id != editId && (!!r.cartacea === isCartacea) && r.anno === oldAnno && r.numero > oldNum && r.numero <= newNum)
-                                                          .sort((a, b) => a.numero - b.numero);
-                        toShift.forEach(r => {
-                            r.numero -= 1;
-                            this.syncPrimaNotaFromRicevuta(r);
-                        });
-                    }
-                }
+
                 
                 receipt.socio_id = data.socio_id;
                 receipt.socio_nome = socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto';
@@ -6217,23 +6259,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     }
                 }
 
-                if (oldAnno === newAnno && oldNum !== newNum) {
-                    if (newNum < oldNum) {
-                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && (!!r.cartacea === isCartacea) && parseInt(r.anno) === oldAnno && parseInt(r.numero) >= newNum && parseInt(r.numero) < oldNum)
-                                                          .sort((a, b) => parseInt(b.numero) - parseInt(a.numero));
-                        toShift.forEach(r => {
-                            r.numero = parseInt(r.numero) + 1;
-                            this.syncPrimaNotaFromRicevuta(r);
-                        });
-                    } else {
-                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && (!!r.cartacea === isCartacea) && parseInt(r.anno) === oldAnno && parseInt(r.numero) > oldNum && parseInt(r.numero) <= newNum)
-                                                          .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
-                        toShift.forEach(r => {
-                            r.numero = parseInt(r.numero) - 1;
-                            this.syncPrimaNotaFromRicevuta(r);
-                        });
-                    }
-                }
+
 
                 const quota = Math.round((parseFloat(data.quota) || 0) * 100) / 100;
                 const tess = Math.round((parseFloat(data.tess) || 0) * 100) / 100;
