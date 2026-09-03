@@ -4712,6 +4712,7 @@ closeModal() {
                 const prevSearch = searchInput ? searchInput.value : '';
                 const prevStart = startInput ? startInput.value : '';
                 const prevEnd = endInput ? endInput.value : '';
+                const prevRegistro = document.getElementById('receipt-filter-registro')?.value || 'all';
                 const savedScroll = parseFloat(localStorage.getItem('asd_last_ricevute_scroll')) || 0;
                 const prevScroll = tableContainer ? tableContainer.scrollTop : (savedScroll || this.state.lastRicevuteScroll || 0);
 
@@ -4722,9 +4723,10 @@ closeModal() {
                                 <h1>Gestione Ricevute</h1>
                                 <p>Emissione e archivio ricevute non fiscali.</p>
                             </div>
-                            <div class="header-actions" style="display:flex; gap:8px;">
+                            <div class="header-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta la tabella delle ricevute in formato Excel.">Esporta Excel</button>
                                 ${this.state.debugMode ? `
+                                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea Cartacee (1-199) e Digitali (1-74)">🪄 Ripara Registri (Opz. 1)</button>
                                     <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
                                     <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 / -1)">⏩ Sposta Sequenza</button>
                                 ` : ''}
@@ -4733,8 +4735,13 @@ closeModal() {
                         </div>
 
                         <div class="glass-card member-card">
-                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0;">
+                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                                 <input type="text" id="receipt-search" class="form-control search-input" placeholder="Cerca socio o numero ricevuta..." value="${prevSearch}" oninput="app.filterRicevute()">
+                                <select id="receipt-filter-registro" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterRicevute()">
+                                    <option value="all" ${prevRegistro === 'all' ? 'selected' : ''}>📑 Tutti i Registri</option>
+                                    <option value="cartaceo" ${prevRegistro === 'cartaceo' ? 'selected' : ''}>📋 Solo Cartaceo</option>
+                                    <option value="digitale" ${prevRegistro === 'digitale' ? 'selected' : ''}>💻 Solo Digitale</option>
+                                </select>
                                 <input type="date" id="receipt-date-start" class="form-control" style="width: 150px;" value="${prevStart}" onchange="app.filterRicevute()">
                                 <input type="date" id="receipt-date-end" class="form-control" style="width: 150px;" value="${prevEnd}" onchange="app.filterRicevute()">
                             </div>
@@ -4814,6 +4821,15 @@ closeModal() {
                     let diff = 0;
                     
                     if (k === 'numero') {
+                        const regEl = document.getElementById('receipt-filter-registro');
+                        const isAll = !regEl || regEl.value === 'all';
+                        if (isAll) {
+                            const isCartA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
+                            const isCartB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
+                            if (isCartA !== isCartB) {
+                                return isCartA - isCartB;
+                            }
+                        }
                         const numA = parseInt(a.numero) || 0;
                         const numB = parseInt(b.numero) || 0;
                         diff = (numA - numB) * dir;
@@ -4919,18 +4935,22 @@ closeModal() {
                 const searchEl = document.getElementById('receipt-search');
                 const startEl = document.getElementById('receipt-date-start');
                 const endEl = document.getElementById('receipt-date-end');
+                const regEl = document.getElementById('receipt-filter-registro');
                 const tbody = document.getElementById('receipts-tbody');
                 if (!tbody) return;
 
                 const search = (searchEl ? searchEl.value : '').toLowerCase();
                 const start = startEl ? startEl.value : '';
                 const end = endEl ? endEl.value : '';
+                const reg = regEl ? regEl.value : 'all';
 
                 const filtered = this.state.ricevute.filter(r => {
+                    const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
                     const matchSearch = (r.socio_nome || '').toLowerCase().includes(search) || `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
                     const matchStart = !start || r.data >= start;
                     const matchEnd = !end || r.data <= end;
-                    return matchSearch && matchStart && matchEnd;
+                    const matchReg = (reg === 'all') || (reg === 'cartaceo' && isCart) || (reg === 'digitale' && !isCart);
+                    return matchSearch && matchStart && matchEnd && matchReg;
                 });
 
                 tbody.innerHTML = this.renderRicevuteRows(filtered);
@@ -5728,6 +5748,44 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.closeModal();
             this.renderRicevute(true, petrollese?.id);
             this.toast("✅ Ricevute cartacee riallineate con successo al cartaceo reale!", "success");
+        },
+
+        applicaOpzione1Database() {
+            if (!confirm("Vuoi applicare la Riparazione Opzione 1?\n\n• Registro Cartaceo: Mantiene fedeli le ricevute N. 1-199 (da settembre ad aprile)\n• Registro Digitale: Riordina le ricevute in ordine cronologico da N. 1 a N. 74 (eliminando numeri zero e doppioni)\n• Prima Nota: Sincronizzazione automatica degli importi e numeri\n\nProcedere con la riparazione?")) {
+                return;
+            }
+
+            this.createSnapshot('pre-opzione1');
+
+            const cartacee = this.state.ricevute.filter(r => r.cartacea === true || String(r.cartacea) === 'true');
+            const digitali = this.state.ricevute.filter(r => !(r.cartacea === true || String(r.cartacea) === 'true'));
+
+            // 1. Cartacee: ordina per numero e data (rimangono 1-199)
+            cartacee.sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
+
+            // 2. Digitali: ordina per data cronologica, spareggiando con id
+            digitali.sort((a, b) => {
+                const dateA = new Date(a.data).getTime() || 0;
+                const dateB = new Date(b.data).getTime() || 0;
+                if (dateA !== dateB) return dateA - dateB;
+                return (parseFloat(a.id) || 0) - (parseFloat(b.id) || 0);
+            });
+
+            // Assegna progressivo 1..N
+            digitali.forEach((r, idx) => {
+                r.numero = idx + 1;
+                r.cartacea = false;
+                this.syncPrimaNotaFromRicevuta(r);
+            });
+
+            cartacee.forEach(r => {
+                this.syncPrimaNotaFromRicevuta(r);
+            });
+
+            this.state.ricevute = [...cartacee, ...digitali];
+            this.saveAll();
+            this.renderRicevute();
+            this.toast(`✅ Riparazione Opzione 1 completata! ${cartacee.length} cartacee (1-199) e ${digitali.length} digitali (1-${digitali.length}) perfettamente sincronizzate.`, "success");
         },
 
         applyCausalePreset(val, noteId = 'receipt-note', amountId = 'receipt-amount', durataId = 'receipt-durata', quotaId = 'receipt-quota', tessId = 'receipt-tess') {
@@ -9673,8 +9731,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <h3 style="margin-bottom:1rem;">💾 Salvataggi di Stato (Snapshots)</h3>
                                 <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Salva copie complete del database da ripristinare in caso di errore.</p>
                                 
-                                <div style="display:flex; gap:10px; margin-bottom:1rem;">
+                                <div style="display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
                                     <button class="btn" style="background:var(--primary);" onclick="app.createSnapshot('manual')">➕ Crea Salvataggio Manuale</button>
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()">🪄 Ripara Ricevute (Opz. 1: Cartaceo 1-199 & Digitale 1-74)</button>
                                 </div>
                                 
                                 <div style="display:flex; flex-direction:row; gap:10px; margin-bottom:1rem; align-items:flex-end;">
