@@ -1534,12 +1534,7 @@
                     }
                     
                     localStorage.setItem('asd_app_version', APP_VERSION);
-                    
-                    // Se era presente una versione precedente, ricarica silenziosamente per applicare la nuova versione pulita
-                    if (savedVersion) {
-                        window.location.reload();
-                        return true;
-                    }
+                    console.log('[Version Check] Versione aggiornata a:', APP_VERSION);
                 }
             } catch (err) {
                 console.warn('[Version Check] Errore verifica versione:', err);
@@ -2264,7 +2259,20 @@
                 this.updateStorageIndicator();
 
                 this.syncAthletesIframe();
-                this.showPage(this.state.currentPage || 'dashboard');
+                const restorePage = sessionStorage.getItem('asd_restore_page');
+                const restoreScroll = sessionStorage.getItem('asd_restore_scroll');
+                if (restorePage) {
+                    sessionStorage.removeItem('asd_restore_page');
+                    this.showPage(restorePage);
+                } else {
+                    this.showPage(this.state.currentPage || 'dashboard');
+                }
+                if (restoreScroll) {
+                    sessionStorage.removeItem('asd_restore_scroll');
+                    setTimeout(() => {
+                        window.scrollTo({ top: parseInt(restoreScroll), behavior: 'instant' });
+                    }, 100);
+                }
 
                 // Close modal on click outside
                 document.getElementById('modal-overlay').addEventListener('click', (e) => {
@@ -5168,6 +5176,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         openResequenceModal() {
+            if (!this.state.debugMode) {
+                this.toast("La funzione di rinumerazione è accessibile solo in Modalità Debug.", "warning");
+                return;
+            }
             const availableYears = [...new Set(this.state.ricevute.map(r => parseInt(r.anno)).filter(y => !isNaN(y) && y > 0))].sort((a,b) => b - a);
             const defaultYear = availableYears.length > 0 ? availableYears[0] : (new Date().getMonth() >= 8 ? new Date().getFullYear() : new Date().getFullYear() - 1);
             
@@ -5406,6 +5418,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         openShiftRicevuteModal(initialReceiptId = null) {
+            if (!this.state.debugMode) {
+                this.toast("La funzione di spostamento sequenza è accessibile solo in Modalità Debug.", "warning");
+                return;
+            }
             let initReceipt = initialReceiptId ? this.state.ricevute.find(r => String(r.id) === String(initialReceiptId) || r.id == initialReceiptId) : null;
             
             const availableYears = [...new Set(this.state.ricevute.map(r => parseInt(r.anno)).filter(y => !isNaN(y) && y > 0))].sort((a,b) => b - a);
@@ -5618,6 +5634,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         riallineaRicevuteCartaceeOttobre() {
+            if (!this.state.debugMode) {
+                this.toast("Questa funzione è accessibile solo in Modalità Debug.", "warning");
+                return;
+            }
             if (!confirm("Vuoi riallineare automaticamente la sequenza cartacea di Ottobre 2025 secondo il cartaceo reale?\n\n• Petrollese Antonio: N. 24\n• Ledda Elena: N. 25\n• Biggio Mariella: N. 26\n• Pelinga Fabio: N. 27\n• Vigo Schiavina: N. 28\n• Onado Salvatore: N. 29\n• Strazzera Giuseppina: N. 30\n• Rivano Ambrogio: N. 31\n• Porcu Elisa: N. 32\n• (e tutte le successive a seguire)\n\nProcedere?")) {
                 return;
             }
@@ -12653,12 +12673,24 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                 });
             });
 
-            // Ricarica automaticamente la pagina una sola volta quando il nuovo Service Worker prende il controllo
+            // Gestione aggiornamento PWA senza interruzione brutale
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
+                    const modalOpen = (document.getElementById('modal-overlay')?.style.display === 'flex') || document.querySelector('.modal');
+                    if (modalOpen) {
+                        console.log('[PWA] Modale attivo: ricaricamento automatico rimandato per non interrompere il lavoro.');
+                        if (window.app && app.toast) {
+                            app.toast('✨ Aggiornamento scaricato in background. Verrà applicato automaticamente alla chiusura della finestra o al prossimo riavvio.', 'info');
+                        }
+                        return;
+                    }
                     refreshing = true;
-                    console.log('[PWA] controllerchange intercettato: ricarico per applicare nuova versione...');
+                    console.log('[PWA] controllerchange: salvataggio posizione e ricaricamento pulito...');
+                    if (window.app && app.state) {
+                        sessionStorage.setItem('asd_restore_page', app.state.currentPage || 'dashboard');
+                        sessionStorage.setItem('asd_restore_scroll', String(window.scrollY || 0));
+                    }
                     window.location.reload();
                 }
             });
@@ -12791,6 +12823,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         };
         
         window.addEventListener('beforeunload', (e) => {
+            if (window.app && app.state) {
+                sessionStorage.setItem('asd_restore_page', app.state.currentPage || 'dashboard');
+                sessionStorage.setItem('asd_restore_scroll', String(window.scrollY || 0));
+            }
             if (app.state.isDirty) {
                 app.createSnapshot('auto-exit');
                 // Sincronizzazione di emergenza in chiusura tramite keepalive
