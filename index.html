@@ -5182,23 +5182,29 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     if (!nums.includes(i)) missing.push(i);
                 }
                 
-                // Rileva numeri duplicati (doppioni)
-                const numGroups = {};
-                receipts.forEach(r => {
-                    const n = parseInt(r.numero);
-                    if (!isNaN(n) && n > 0) {
-                        if (!numGroups[n]) numGroups[n] = [];
-                        numGroups[n].push(r);
-                    }
-                });
-                const duplicates = Object.keys(numGroups)
-                    .filter(n => numGroups[n].length > 1)
-                    .map(n => ({
-                        numero: parseInt(n),
-                        count: numGroups[n].length,
-                        receipts: numGroups[n]
-                    }))
-                    .sort((a, b) => a.numero - b.numero);
+                // Rileva numeri duplicati (doppioni) separatamente per serie Digitale e Cartacea
+                const getDuplicatesForList = (list, label) => {
+                    const numGroups = {};
+                    list.forEach(r => {
+                        const n = parseInt(r.numero);
+                        if (!isNaN(n) && n > 0) {
+                            if (!numGroups[n]) numGroups[n] = [];
+                            numGroups[n].push(r);
+                        }
+                    });
+                    return Object.keys(numGroups)
+                        .filter(n => numGroups[n].length > 1)
+                        .map(n => ({
+                            numero: parseInt(n),
+                            type: label,
+                            count: numGroups[n].length,
+                            receipts: numGroups[n]
+                        }));
+                };
+                const duplicates = [
+                    ...getDuplicatesForList(digitalReceipts, 'Digitale'),
+                    ...getDuplicatesForList(cartaceeReceipts, 'Cartaceo')
+                ].sort((a, b) => a.numero - b.numero);
 
                 return {
                     total: receipts.length,
@@ -5216,7 +5222,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (!dups || dups.length === 0) return 'Nessun duplicato';
                 return dups.map(d => `
                     <div style="padding:4px 0; border-bottom:1px dashed rgba(239,68,68,0.3); line-height:1.4;">
-                        <strong style="color:var(--danger);">N. ${d.numero}:</strong> ${d.receipts.map(r => `<span style="font-weight:600;">${r.socio_nome}</span> <span style="font-size:0.8rem; color:var(--text-muted);">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})</span>`).join(' <strong style="color:var(--danger);">VS</strong> ')}
+                        <strong style="color:var(--danger);">N. ${d.numero} [${d.type}]:</strong> ${d.receipts.map(r => `<span style="font-weight:600;">${r.socio_nome}</span> <span style="font-size:0.8rem; color:var(--text-muted);">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})</span>`).join(' <strong style="color:var(--danger);">VS</strong> ')}
                     </div>
                 `).join('');
             };
@@ -5286,22 +5292,28 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (!nums.includes(i)) missing.push(i);
             }
 
-            const numGroups = {};
-            receipts.forEach(r => {
-                const n = parseInt(r.numero);
-                if (!isNaN(n) && n > 0) {
-                    if (!numGroups[n]) numGroups[n] = [];
-                    numGroups[n].push(r);
-                }
-            });
-            const duplicates = Object.keys(numGroups)
-                .filter(n => numGroups[n].length > 1)
-                .map(n => ({
-                    numero: parseInt(n),
-                    count: numGroups[n].length,
-                    receipts: numGroups[n]
-                }))
-                .sort((a, b) => a.numero - b.numero);
+            const getDuplicatesForList = (list, label) => {
+                const numGroups = {};
+                list.forEach(r => {
+                    const n = parseInt(r.numero);
+                    if (!isNaN(n) && n > 0) {
+                        if (!numGroups[n]) numGroups[n] = [];
+                        numGroups[n].push(r);
+                    }
+                });
+                return Object.keys(numGroups)
+                    .filter(n => numGroups[n].length > 1)
+                    .map(n => ({
+                        numero: parseInt(n),
+                        type: label,
+                        count: numGroups[n].length,
+                        receipts: numGroups[n]
+                    }));
+            };
+            const duplicates = [
+                ...getDuplicatesForList(digitalReceipts, 'Digitale'),
+                ...getDuplicatesForList(cartaceeReceipts, 'Cartaceo')
+            ].sort((a, b) => a.numero - b.numero);
             
             const totalEl = document.getElementById('reseq-stat-total');
             if (totalEl) totalEl.textContent = receipts.length;
@@ -5331,7 +5343,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     dupAlertEl.style.display = 'block';
                     dupListEl.innerHTML = duplicates.map(d => `
                         <div style="padding:4px 0; border-bottom:1px dashed rgba(239,68,68,0.3); line-height:1.4;">
-                            <strong style="color:var(--danger);">N. ${d.numero}:</strong> ${d.receipts.map(r => `<span style="font-weight:600;">${r.socio_nome}</span> <span style="font-size:0.8rem; color:var(--text-muted);">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})</span>`).join(' <strong style="color:var(--danger);">VS</strong> ')}
+                            <strong style="color:var(--danger);">N. ${d.numero} [${d.type}]:</strong> ${d.receipts.map(r => `<span style="font-weight:600;">${r.socio_nome}</span> <span style="font-size:0.8rem; color:var(--text-muted);">(${app.formatDate(r.data)} - €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})</span>`).join(' <strong style="color:var(--danger);">VS</strong> ')}
                         </div>
                     `).join('');
                 } else {
@@ -5530,6 +5542,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 numInput.style.borderColor = '';
                 numInput.title = '';
             }
+            this.checkReceiptNumberDuplicate();
         },
 
         checkReceiptNumberDuplicate() {
@@ -5537,36 +5550,40 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if (!form) return false;
             const numEl = document.getElementById('receipt-numero');
             const annoEl = form.querySelector('[name="anno"]');
+            const cartaceaEl = form.querySelector('[name="cartacea"]');
             const warnEl = document.getElementById('receipt-duplicate-warning');
             if (!numEl || !annoEl) return false;
             
             const num = parseInt(numEl.value);
             const anno = parseInt(annoEl.value);
+            const isCartacea = !!(cartaceaEl && cartaceaEl.checked);
             const editId = form.dataset.editId;
             
             if (isNaN(num) || isNaN(anno) || num <= 0) {
                 if (warnEl) warnEl.style.display = 'none';
-                numEl.style.borderColor = (form.querySelector('[name="cartacea"]')?.checked || this.state.debugMode) ? '#ca8a04' : '';
+                numEl.style.borderColor = (isCartacea || this.state.debugMode) ? '#ca8a04' : '';
                 return false;
             }
             
             const existing = this.state.ricevute.filter(r => 
                 (editId ? (String(r.id) !== String(editId) && r.id != editId) : true) &&
                 parseInt(r.anno) === anno && 
-                parseInt(r.numero) === num
+                parseInt(r.numero) === num &&
+                (!!r.cartacea === isCartacea)
             );
             
             if (existing.length > 0) {
                 const names = existing.map(r => `${r.socio_nome} (${this.formatDate(r.data)}, €${parseFloat(r.importo).toFixed(2)}${r.cartacea ? ' 📋' : ' 💻'})`).join('; ');
+                const tipoLabel = isCartacea ? 'Cartaceo 📋' : 'Digitale 💻';
                 if (warnEl) {
-                    warnEl.innerHTML = `⚠️ <strong>Numero già presente!</strong> N. ${num}/${app.formatAnno(anno)} assegnato a: <br>${names}`;
+                    warnEl.innerHTML = `⚠️ <strong>Numero già presente nel registro ${tipoLabel}!</strong> N. ${num}/${app.formatAnno(anno)} assegnato a: <br>${names}`;
                     warnEl.style.display = 'block';
                 }
                 numEl.style.borderColor = 'var(--danger)';
                 return true;
             } else {
                 if (warnEl) warnEl.style.display = 'none';
-                numEl.style.borderColor = (form.querySelector('[name="cartacea"]')?.checked || this.state.debugMode) ? '#ca8a04' : '';
+                numEl.style.borderColor = (isCartacea || this.state.debugMode) ? '#ca8a04' : '';
                 return false;
             }
         },
@@ -5687,21 +5704,23 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const targetNum = parseInt(data.numero);
             const targetAnno = parseInt(data.anno);
 
-            // Controllo anti-duplicati ricevuta
+            // Controllo anti-duplicati ricevuta (per serie: Cartaceo o Digitale)
             const existingDups = this.state.ricevute.filter(r => 
                 (editId ? (String(r.id) !== String(editId) && r.id != editId) : true) &&
                 parseInt(r.anno) === targetAnno && 
-                parseInt(r.numero) === targetNum
+                parseInt(r.numero) === targetNum &&
+                (!!r.cartacea === isCartacea)
             );
             if (existingDups.length > 0) {
+                const tipoLabel = isCartacea ? 'Cartaceo 📋' : 'Digitale 💻';
                 const dupInfo = existingDups.map(r => `• ${r.socio_nome} (Data: ${this.formatDate(r.data)}, Importo: €${parseFloat(r.importo).toFixed(2)}, ${r.cartacea ? 'Cartaceo' : 'Digitale'})`).join('\n');
-                const warnMsg = `⚠️ ATTENZIONE: NUMERO RICEVUTA GIÀ ASSEGNATO!\n\nIl numero ${targetNum}/${app.formatAnno(targetAnno)} è già presente nel database per:\n${dupInfo}\n\n`;
+                const warnMsg = `⚠️ ATTENZIONE: NUMERO RICEVUTA GIÀ ASSEGNATO NEL REGISTRO ${tipoLabel.toUpperCase()}!\n\nIl numero ${targetNum}/${app.formatAnno(targetAnno)} è già presente per:\n${dupInfo}\n\n`;
                 if (this.state.debugMode) {
                     if (!confirm(warnMsg + "Sei in MODALITÀ DEBUG:\nVuoi forzare comunque il salvataggio con questo numero duplicato?\n\n(Premi ANNULLA per tornare indietro e correggere il numero)")) {
                         return;
                     }
                 } else {
-                    alert(warnMsg + "Non è consentito salvare due ricevute con lo stesso numero. Modifica il numero progressivo prima di procedere.");
+                    alert(warnMsg + "Non è consentito salvare due ricevute con lo stesso numero nello stesso registro. Modifica il numero progressivo prima di procedere.");
                     return;
                 }
             }
@@ -5718,14 +5737,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 
                 if (oldAnno === newAnno && oldNum !== newNum) {
                     if (newNum < oldNum) {
-                        const toShift = this.state.ricevute.filter(r => r.id != editId && r.anno === oldAnno && r.numero >= newNum && r.numero < oldNum)
+                        const toShift = this.state.ricevute.filter(r => r.id != editId && (!!r.cartacea === isCartacea) && r.anno === oldAnno && r.numero >= newNum && r.numero < oldNum)
                                                           .sort((a, b) => b.numero - a.numero);
                         toShift.forEach(r => {
                             r.numero += 1;
                             this.syncPrimaNotaFromRicevuta(r);
                         });
                     } else {
-                        const toShift = this.state.ricevute.filter(r => r.id != editId && r.anno === oldAnno && r.numero > oldNum && r.numero <= newNum)
+                        const toShift = this.state.ricevute.filter(r => r.id != editId && (!!r.cartacea === isCartacea) && r.anno === oldAnno && r.numero > oldNum && r.numero <= newNum)
                                                           .sort((a, b) => a.numero - b.numero);
                         toShift.forEach(r => {
                             r.numero -= 1;
@@ -5754,7 +5773,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 
                 // Se inserimento intermedio o su numero esistente, fai slittare i numeri >= targetNum
                 const existingToShift = this.state.ricevute
-                    .filter(r => r.anno === targetAnno && r.numero >= targetNum)
+                    .filter(r => (!!r.cartacea === isCartacea) && r.anno === targetAnno && r.numero >= targetNum)
                     .sort((a, b) => b.numero - a.numero);
                 
                 if (existingToShift.length > 0) {
@@ -5859,17 +5878,18 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             
             const deletedNum = parseInt(r.numero);
             const deletedAnno = parseInt(r.anno);
+            const isCartacea = !!r.cartacea;
             const socioNome = r.socio_nome || 'Socio';
             
-            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} di ${socioNome}.\n\nLa sequenza numerica delle ricevute successive per l'anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
+            if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} (${isCartacea ? 'Cartacea' : 'Digitale'}) di ${socioNome}.\n\nLa sequenza numerica delle ricevute successive per lo stesso registro e anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
                 
                 this.removePrimaNotaFromRicevuta(r.id);
                 this.state.ricevute = this.state.ricevute.filter(x => String(x.id) !== String(id) && x.id != id);
                 this.trackDeletion(r.id);
                 
-                // Scala di 1 tutte le ricevute dello stesso anno con numero > deletedNum
+                // Scala di 1 tutte le ricevute dello stesso anno e stesso tipo (cartaceo/digitale) con numero > deletedNum
                 const shiftedReceipts = this.state.ricevute
-                    .filter(x => parseInt(x.anno) === deletedAnno && parseInt(x.numero) > deletedNum)
+                    .filter(x => (!!x.cartacea === isCartacea) && parseInt(x.anno) === deletedAnno && parseInt(x.numero) > deletedNum)
                     .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
                     
                 shiftedReceipts.forEach(x => {
@@ -5958,6 +5978,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const idx = this.state.ricevute.findIndex(x => x.id == id || String(x.id) === String(id));
                 if (idx < 0) return;
 
+                const isCartacea = !!data.cartacea;
                 const oldNum = parseInt(this.state.ricevute[idx].numero);
                 const oldAnno = parseInt(this.state.ricevute[idx].anno);
                 const newNum = parseInt(data.numero);
@@ -5967,17 +5988,19 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     const existingDups = this.state.ricevute.filter(r => 
                         (String(r.id) !== String(id) && r.id != id) &&
                         parseInt(r.anno) === newAnno && 
-                        parseInt(r.numero) === newNum
+                        parseInt(r.numero) === newNum &&
+                        (!!r.cartacea === isCartacea)
                     );
                     if (existingDups.length > 0) {
+                        const tipoLabel = isCartacea ? 'Cartaceo 📋' : 'Digitale 💻';
                         const dupInfo = existingDups.map(r => `• ${r.socio_nome} (Data: ${this.formatDate(r.data)}, Importo: €${parseFloat(r.importo).toFixed(2)}, ${r.cartacea ? 'Cartaceo' : 'Digitale'})`).join('\n');
-                        const warnMsg = `⚠️ ATTENZIONE: NUMERO RICEVUTA GIÀ ASSEGNATO!\n\nIl numero ${newNum}/${app.formatAnno(newAnno)} è già presente nel database per:\n${dupInfo}\n\n`;
+                        const warnMsg = `⚠️ ATTENZIONE: NUMERO RICEVUTA GIÀ ASSEGNATO NEL REGISTRO ${tipoLabel.toUpperCase()}!\n\nIl numero ${newNum}/${app.formatAnno(newAnno)} è già presente per:\n${dupInfo}\n\n`;
                         if (this.state.debugMode) {
                             if (!confirm(warnMsg + "Sei in MODALITÀ DEBUG: vuoi forzare comunque il salvataggio con questo numero duplicato?\n(Premi ANNULLA per tornare indietro e correggere il numero)")) {
                                 return;
                             }
                         } else {
-                            alert(warnMsg + "Non è consentito salvare due ricevute con lo stesso numero. Modifica il numero progressivo prima di procedere.");
+                            alert(warnMsg + "Non è consentito salvare due ricevute con lo stesso numero nello stesso registro. Modifica il numero progressivo prima di procedere.");
                             return;
                         }
                     }
@@ -5985,14 +6008,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                 if (oldAnno === newAnno && oldNum !== newNum) {
                     if (newNum < oldNum) {
-                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && parseInt(r.anno) === oldAnno && parseInt(r.numero) >= newNum && parseInt(r.numero) < oldNum)
+                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && (!!r.cartacea === isCartacea) && parseInt(r.anno) === oldAnno && parseInt(r.numero) >= newNum && parseInt(r.numero) < oldNum)
                                                           .sort((a, b) => parseInt(b.numero) - parseInt(a.numero));
                         toShift.forEach(r => {
                             r.numero = parseInt(r.numero) + 1;
                             this.syncPrimaNotaFromRicevuta(r);
                         });
                     } else {
-                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && parseInt(r.anno) === oldAnno && parseInt(r.numero) > oldNum && parseInt(r.numero) <= newNum)
+                        const toShift = this.state.ricevute.filter(r => (r.id != id && String(r.id) !== String(id)) && (!!r.cartacea === isCartacea) && parseInt(r.anno) === oldAnno && parseInt(r.numero) > oldNum && parseInt(r.numero) <= newNum)
                                                           .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
                         toShift.forEach(r => {
                             r.numero = parseInt(r.numero) - 1;
