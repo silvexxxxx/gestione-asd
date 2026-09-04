@@ -8615,8 +8615,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div class="form-group">
                             <label>Metodo</label>
                             <select name="pagamento" class="form-control">
-                                <option value="Bonifico">Bonifico</option>
-                                <option value="Contanti">Contanti</option>
+                                ${this.getMetodiPagamento().map(m => `<option value="${m}">${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                             </select>
                         </div>
                         <button type="submit" class="btn btn-success" style="width: 100%;">Registra Pagamento</button>
@@ -9974,7 +9973,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${metodi.map(mName => {
+                                        ${metodi.map((mName, idx) => {
                                             const cfg = this.getMetodoConfig(mName);
                                             const isCassa = (cfg.tipo_registro === 'cassa');
                                             const percTbd = !!cfg.percentuale_da_definire;
@@ -10010,13 +10009,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                                     </td>
                                                     <td style="padding:12px;">
                                                         <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:12px; font-size:0.8rem; font-weight:500; ${isCassa ? 'background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3);' : 'background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'}">
-                                                            ${isCassa ? '🏷️ Cassa Reale' : '🏦 Conto Banca / POS'}
+                                                             ${isCassa ? '🏷️ Cassa Reale' : '🏦 Conto Banca / POS'}
                                                         </span>
                                                     </td>
                                                     <td style="padding:12px;">
                                                         ${commLabel}
                                                     </td>
                                                     <td style="padding:12px; text-align:right; white-space:nowrap;">
+                                                        <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.75rem; margin-right:3px; ${idx === 0 ? 'opacity:0.25; cursor:not-allowed;' : ''}" title="Sposta in alto" ${idx === 0 ? 'disabled' : ''} onclick="app.moveMetodo('${cfg.nome.replace(/'/g, "\\'")}', -1)">▲</button>
+                                                        <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.75rem; margin-right:8px; ${idx === metodi.length - 1 ? 'opacity:0.25; cursor:not-allowed;' : ''}" title="Sposta in basso" ${idx === metodi.length - 1 ? 'disabled' : ''} onclick="app.moveMetodo('${cfg.nome.replace(/'/g, "\\'")}', 1)">▼</button>
                                                         <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica metodo" onclick="app.openMetodoModal('${cfg.nome.replace(/'/g, "\\'")}')">✏️ Modifica</button>
                                                         ${cfg.nome.toLowerCase() === 'contanti' ? '' : `
                                                             <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina metodo" onclick="app.deleteMetodo('${cfg.nome.replace(/'/g, "\\'")}')">🗑️</button>
@@ -10681,6 +10682,32 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     fisso: { value: 0 }
                 }
             });
+        },
+
+        moveMetodo(m, direction) {
+            if (!m) return;
+            this.sanitizeSettings();
+            let list = this.state.settings.metodi_pagamento;
+            if (!Array.isArray(list) || list.length <= 1) return;
+
+            const nameStr = String(m).trim().toLowerCase();
+            const idx = list.findIndex(item => {
+                const n = (typeof item === 'object' && item !== null) ? item.nome : item;
+                return String(n).trim().toLowerCase() === nameStr;
+            });
+
+            if (idx < 0) return;
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= list.length) return;
+
+            const temp = list[idx];
+            list[idx] = list[targetIdx];
+            list[targetIdx] = temp;
+
+            this.state.settings.metodi_pagamento = list;
+            this.saveAll();
+            this.renderDatiOrganizzazione();
+            this.toast(`Ordine aggiornato: "${m}" spostato ${direction < 0 ? 'in alto' : 'in basso'}!`, 'info');
         },
 
         deleteMetodo(m) {
@@ -12474,9 +12501,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <div class="form-group">
                                 <label>Metodo di Pagamento</label>
                                 <select name="pagamento" class="form-control">
-                                    <option value="Bonifico Bancario">Bonifico Bancario</option>
-                                    <option value="Contanti">${this.getMetodoDisplayLabel('Contanti')}</option>
-                                    ${this.getMetodiPagamento().filter(m => m !== 'Contanti').map(m => `<option value="${m}">${this.getMetodoDisplayLabel(m)}</option>`).join('')}
+                                    ${this.getMetodiPagamento().map(m => `<option value="${m}">${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
