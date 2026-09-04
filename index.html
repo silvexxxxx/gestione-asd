@@ -3160,20 +3160,12 @@
         cloudSync: {
             tokenClient: null,
             accessToken: null,
-            fileId: null,
+            fileId: localStorage.getItem('asd_gdrive_file_id') || null,
             isSyncing: false,
             syncEnabled: localStorage.getItem('asd_cloud_sync') === 'true',
             clientId: '961700483511-vg2k314pthheku37adm3vlniothabuae.apps.googleusercontent.com',
 
-            
-        trackDeletion(id) {
-            if (!this.state.deletedIds) this.state.deletedIds = [];
-            if (id && !this.state.deletedIds.includes(id)) {
-                this.state.deletedIds.push(id);
-            }
-        },
-
-        init() {
+            init() {
                 if (typeof google === 'undefined' || !google.accounts) {
                     setTimeout(() => this.init(), 1000);
                     return;
@@ -3245,6 +3237,7 @@
                 localStorage.setItem('asd_cloud_sync', 'false');
                 localStorage.removeItem('asd_gdrive_token');
                 localStorage.removeItem('asd_gdrive_token_expiry');
+                localStorage.removeItem('asd_gdrive_file_id');
                 app.toast('Disconnesso dal Cloud. Modalità Offline attiva.', 'warning');
                 this.updateUIStatus();
             },
@@ -3306,6 +3299,7 @@
                     
                     if (searchData.files && searchData.files.length > 0) {
                         this.fileId = searchData.files[0].id;
+                        localStorage.setItem('asd_gdrive_file_id', this.fileId);
                         
                         const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
                         if (hasLocalData) {
@@ -3446,6 +3440,25 @@
                     return;
                 }
                 
+                // Se non abbiamo ancora il fileId e non siamo in creazione, cerchiamo il file su Drive
+                if (!isCreate && !this.fileId) {
+                    try {
+                        const searchRes = await fetch('https://www.googleapis.com/drive/v3/files?q=name="GestioneASD_CloudSync.json" and trashed=false&spaces=drive', {
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        });
+                        const searchData = await searchRes.json();
+                        if (searchData.files && searchData.files.length > 0) {
+                            this.fileId = searchData.files[0].id;
+                            localStorage.setItem('asd_gdrive_file_id', this.fileId);
+                        } else {
+                            isCreate = true;
+                        }
+                    } catch(err) {
+                        console.error('Errore ricerca fileId Drive:', err);
+                        return;
+                    }
+                }
+
                 // AUTO-MERGE PRIMA DELL'UPLOAD PER EVITARE SOVRASCRITTURE DISTRUTTIVE (se non siamo in fase di isCreate o se non esplicitamente skippato)
                 if (!isCreate && this.fileId && !skipMerge) {
                     await this.mergeBackup(true); 
@@ -3482,6 +3495,9 @@
                         });
                         const data = await res.json();
                         this.fileId = data.id;
+                        if (this.fileId) {
+                            localStorage.setItem('asd_gdrive_file_id', this.fileId);
+                        }
                     } else {
                         // Per il PATCH, usare uploadType=media è più sicuro ed evita problemi col multipart
                         res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this.fileId}?uploadType=media`, {
@@ -3502,6 +3518,12 @@
                         if (this.tokenClient) {
                             this.tokenClient.requestAccessToken({prompt: 'none'});
                         }
+                    } else if (res && res.status === 404) {
+                        // File non trovato su Drive (eliminato o ID obsoleto): ricrea automaticamente
+                        console.warn('File Cloud non trovato (404), ricreazione in corso...');
+                        this.fileId = null;
+                        localStorage.removeItem('asd_gdrive_file_id');
+                        return await this.uploadBackup(true, true);
                     } else if (res && res.status === 400) {
                         app.toast('Errore Cloud (Dati troppo grandi o formato non valido).', 'danger');
                         console.error('Upload error 400', res);
