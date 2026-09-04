@@ -1590,7 +1590,7 @@
                     vice_presidente: "",
                     metodi_pagamento: ["Contanti", "Bonifico", "PayPal", "SumUp", "CBILL", "Bancomat"],
                     categorie_entrate: ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"],
-                    categorie_uscite: ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie"],
+                    categorie_uscite: ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie", "Spese e Commissioni Bancarie", "Rimborsi Spese"],
                     autoSaveHours: 0,
                     maxSnapshots: 5
                 },
@@ -1836,11 +1836,17 @@
                 changed = true;
             }
             if (!this.state.settings.categorie_uscite || !Array.isArray(this.state.settings.categorie_uscite)) {
-                this.state.settings.categorie_uscite = ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie", "Spese e Commissioni Bancarie"];
+                this.state.settings.categorie_uscite = ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie", "Spese e Commissioni Bancarie", "Rimborsi Spese"];
                 changed = true;
-            } else if (!this.state.settings.categorie_uscite.includes("Spese e Commissioni Bancarie")) {
-                this.state.settings.categorie_uscite.push("Spese e Commissioni Bancarie");
-                changed = true;
+            } else {
+                if (!this.state.settings.categorie_uscite.includes("Spese e Commissioni Bancarie")) {
+                    this.state.settings.categorie_uscite.push("Spese e Commissioni Bancarie");
+                    changed = true;
+                }
+                if (!this.state.settings.categorie_uscite.includes("Rimborsi Spese")) {
+                    this.state.settings.categorie_uscite.push("Rimborsi Spese");
+                    changed = true;
+                }
             }
             if (!this.state.settings.costi_fissi_periodici || !Array.isArray(this.state.settings.costi_fissi_periodici)) {
                 this.state.settings.costi_fissi_periodici = [];
@@ -13373,50 +13379,107 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
         },
 
         // --- MODULO RIMBORSI ---
+        getRimborsoCategorie() {
+            return [
+                { value: 'Carburante', label: '⛽ Carburante / Viaggio' },
+                { value: 'Pasto', label: '🍽️ Pasto / Vitto' },
+                { value: 'Materiale', label: '🛒 Acquisto Materiale / Cancelleria' },
+                { value: 'Alloggio', label: '🏨 Alloggio / Pernottamento' },
+                { value: 'Trasporto', label: '🎟️ Pedaggi / Biglietti Trasporto' },
+                { value: 'Altro', label: '📦 Altro' }
+            ];
+        },
+
+        getRimborsoCategoriaLabel(val) {
+            const cat = this.getRimborsoCategorie().find(c => c.value === val);
+            return cat ? cat.label : (val || 'Altro');
+        },
+
         renderRimborsi() {
             const main = document.getElementById('main-content');
             let html = `
                 <div class="page-content" style="overflow-y:auto;">
-                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <div>
                             <h1>💸 Rimborsi Spese</h1>
-                            <p style="color:var(--text-muted); font-size:0.9rem;">Gestione rimborsi per collaboratori e dirigenti.</p>
+                            <p style="color:var(--text-muted); font-size:0.9rem;">Gestione note spese analitiche per collaboratori, volontari e dirigenti.</p>
                         </div>
-                        <button class="btn btn-primary" onclick="app.openRimborsoModal()">+ Nuovo Rimborso</button>
+                        <button class="btn btn-primary" onclick="app.openRimborsoModal()">+ Nuova Richiesta Rimborso</button>
                     </div>
-                    <div class="glass-card" style="padding:0;">
+                    <div class="glass-card" style="padding:0; overflow-x:auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Data</th>
-                                    <th>Richiedente</th>
-                                    <th>Motivo Spesa</th>
-                                    <th>Importo</th>
-                                    <th>Stato</th>
-                                    <th style="text-align:right;">Azioni</th>
+                                    <th style="min-width:100px;">Data</th>
+                                    <th style="min-width:160px;">Richiedente</th>
+                                    <th style="min-width:280px;">Dettaglio Voci di Spesa</th>
+                                    <th style="min-width:110px;">Importo Totale</th>
+                                    <th style="min-width:110px;">Stato</th>
+                                    <th style="text-align:right; min-width:170px;">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody>
             `;
-            if(this.state.rimborsi.length === 0) {
-                html += `<tr><td colspan="6" style="text-align:center; padding:2rem;">Nessuna richiesta di rimborso.</td></tr>`;
+            if(!this.state.rimborsi || this.state.rimborsi.length === 0) {
+                html += `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Nessuna richiesta di rimborso registrata.</td></tr>`;
             } else {
                 [...this.state.rimborsi].sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(r => {
+                    const isAnnullato = !!r.annullato;
+                    const isPagato = !!r.pagato && !isAnnullato;
+                    const voci = (r.voci && r.voci.length > 0) 
+                        ? r.voci 
+                        : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
+                    
+                    let rowStyle = '';
+                    if (isAnnullato) {
+                        rowStyle = 'background: rgba(239, 68, 68, 0.05); opacity: 0.6;';
+                    } else if (isPagato) {
+                        rowStyle = 'opacity: 0.85;';
+                    } else {
+                        rowStyle = 'background: rgba(234, 179, 8, 0.04);';
+                    }
+
+                    const vociBadgesHtml = voci.map(v => {
+                        const catLabel = this.getRimborsoCategoriaLabel(v.tipo);
+                        const cleanDesc = (v.desc || '').replace(/"/g, '&quot;');
+                        return `
+                            <div style="margin-bottom:4px; font-size:0.85rem; line-height:1.3; ${isAnnullato ? 'text-decoration:line-through;' : ''}">
+                                <span class="badge" style="background:rgba(59,130,246,0.15); color:var(--primary); font-size:0.75rem; padding:2px 6px; font-weight:600; margin-right:5px;">${catLabel}</span>
+                                <span>${cleanDesc}</span>
+                                <span style="font-weight:700; color:var(--text); margin-left:6px;">€${Number(v.importo || 0).toFixed(2)}</span>
+                            </div>
+                        `;
+                    }).join('');
+
                     html += `
-                        <tr style="${r.pagato ? 'opacity:0.7;' : 'background: rgba(234, 179, 8, 0.05);'}">
-                            <td>${this.formatDate(r.data)}</td>
-                            <td style="font-weight:bold;">${r.richiedente}</td>
-                            <td>${r.descrizione}</td>
-                            <td style="font-weight:bold;">€${r.importo.toFixed(2)}</td>
+                        <tr style="${rowStyle}">
+                            <td style="${isAnnullato ? 'text-decoration:line-through;' : ''}">${this.formatDate(r.data)}</td>
+                            <td style="font-weight:bold; ${isAnnullato ? 'text-decoration:line-through;' : ''}">${r.richiedente || '-'}</td>
                             <td>
-                                ${r.pagato 
-                                    ? '<span class="badge badge-active">PAGATO</span>' 
-                                    : '<span class="badge" style="background:#ca8a04; color:white;">DA PAGARE</span>'}
+                                ${vociBadgesHtml}
+                                ${r.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">📝 <i>${r.note.replace(/"/g, '&quot;')}</i></div>` : ''}
                             </td>
-                            <td style="text-align:right;">
-                                ${!r.pagato ? `<button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.segnaRimborsoPagato(${r.id})" title="Segna come pagato (Riversa in Prima Nota)">✅ Pagato</button>` : ''}
-                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id})" title="Stampa Modulo Rimborso">🖨️ Stampa</button>
-                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.deleteRimborso(${r.id})">🗑️</button>
+                            <td style="font-weight:bold; font-size:1rem; ${isAnnullato ? 'text-decoration:line-through; color:var(--danger);' : 'color:var(--primary);'}">
+                                €${Number(r.importo || 0).toFixed(2)}
+                            </td>
+                            <td>
+                                ${isAnnullato 
+                                    ? '<span class="badge" style="background:var(--danger); color:white;">ANNULLATO</span>' 
+                                    : (isPagato 
+                                        ? '<span class="badge badge-active">PAGATO</span>' 
+                                        : '<span class="badge" style="background:#ca8a04; color:white;">DA PAGARE</span>')}
+                            </td>
+                            <td style="text-align:right; white-space:nowrap;">
+                                ${!isAnnullato && !isPagato ? `
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.segnaRimborsoPagato(${r.id})" title="Segna come pagato (Riversa l'uscita in Prima Nota)">✅ Pagato</button>
+                                ` : ''}
+                                ${!isAnnullato ? `
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:#f59e0b; border-color:#f59e0b;" onclick="app.annullaRimborso(${r.id})" title="Annulla rimborso (Storna da Prima Nota se pagato)">🚫 Annulla</button>
+                                ` : ''}
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id})" title="Stampa Modulo / Nota Spese in PDF">🖨️ Stampa</button>
+                                ${this.state.debugMode ? `
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.permanentlyDeleteRimborso(${r.id})" title="Elimina definitivamente (Solo Debug Mode)">🗑️</button>
+                                ` : ''}
                             </td>
                         </tr>
                     `;
@@ -13425,129 +13488,420 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             html += `</tbody></table></div></div>`;
             main.innerHTML = html;
         },
+
         openRimborsoModal() {
+            const categories = this.getRimborsoCategorie();
+            const today = new Date().toISOString().split('T')[0];
+
             const html = `
-                <form onsubmit="app.saveRimborso(event)">
-                    <div style="margin-bottom:15px;">
-                        <label>Data Spesa</label>
-                        <input type="date" id="rim-data" class="form-control" required value="${new Date().toISOString().split('T')[0]}">
+                <form id="rimborso-form" onsubmit="app.saveRimborso(event)">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div>
+                            <label style="font-weight:600; font-size:0.85rem;">Data Spesa / Richiesta</label>
+                            <input type="date" id="rim-data" class="form-control" required value="${today}">
+                        </div>
+                        <div>
+                            <label style="font-weight:600; font-size:0.85rem;">Metodo di Pagamento Rimborso</label>
+                            <select id="rim-metodo" class="form-control">
+                                <option value="Bonifico" selected>Bonifico Bancario</option>
+                                <option value="Contanti">Contanti</option>
+                                <option value="Assegno">Assegno</option>
+                            </select>
+                        </div>
                     </div>
                     <div style="margin-bottom:15px;">
-                        <label>Nome Richiedente (Collaboratore/Socio)</label>
+                        <label style="font-weight:600; font-size:0.85rem;">Nome Richiedente (Collaboratore / Socio / Volontario)</label>
                         <input type="text" id="rim-nome" class="form-control" required placeholder="Es. Mario Rossi">
                     </div>
                     <div style="margin-bottom:15px;">
-                        <label>Motivo Spesa (Allegare Scontrini)</label>
-                        <input type="text" id="rim-desc" class="form-control" required placeholder="Es. Acquisto stampante e cancelleria">
+                        <label style="font-weight:600; font-size:0.85rem;">Note / Motivo Generale Trasferta (Opzionale)</label>
+                        <input type="text" id="rim-note" class="form-control" placeholder="Es. Trasferta gara regionale a Milano / Acquisto cancelleria">
                     </div>
-                    <div style="margin-bottom:20px;">
-                        <label>Importo Anticipato (€)</label>
-                        <input type="number" id="rim-imp" class="form-control" step="0.01" min="0.01" required placeholder="0.00">
+
+                    <div style="margin-top:20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <label style="font-weight:700; font-size:0.95rem; margin:0;">📋 Voci di Spesa da Rimborsare</label>
+                        <button type="button" class="btn btn-outline" style="font-size:0.8rem; padding:4px 10px;" onclick="app.addRimborsoVoceRow()">+ Aggiungi Voce</button>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%;">Salva Richiesta</button>
+
+                    <div id="rim-voci-container" style="display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; padding-right:5px;">
+                        <!-- Le righe verranno inserite dinamicamente -->
+                    </div>
+
+                    <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:12px 16px; margin-top:15px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:600; font-size:0.95rem;">Totale Rimborso Complessivo:</span>
+                        <span id="rim-totale-display" style="font-size:1.35rem; font-weight:800; color:var(--primary);">€ 0.00</span>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="min-width:140px;">Salva Richiesta</button>
+                    </div>
                 </form>
             `;
-            this.openModal('Nuova Richiesta Rimborso', html);
+            this.openModal('Nuova Richiesta Rimborso Spese', html);
+
+            // Inserisci prima riga vuota
+            this.addRimborsoVoceRow();
         },
+
+        addRimborsoVoceRow(voce = null) {
+            const container = document.getElementById('rim-voci-container');
+            if(!container) return;
+
+            const categories = this.getRimborsoCategorie();
+            const rowId = 'voce_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+
+            const row = document.createElement('div');
+            row.className = 'rim-voce-row';
+            row.id = rowId;
+            row.style.cssText = 'display:grid; grid-template-columns: 140px 1fr 100px 36px; gap:8px; align-items:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:8px;';
+
+            let catOptions = categories.map(c => 
+                `<option value="${c.value}" ${voce && voce.tipo === c.value ? 'selected' : ''}>${c.label}</option>`
+            ).join('');
+
+            row.innerHTML = `
+                <select class="form-control rim-voce-tipo" style="font-size:0.8rem; padding:6px 8px;">
+                    ${catOptions}
+                </select>
+                <input type="text" class="form-control rim-voce-desc" required placeholder="Descrizione / N. scontrino" value="${voce && voce.desc ? voce.desc.replace(/"/g, '&quot;') : ''}" style="font-size:0.85rem; padding:6px 8px;">
+                <input type="number" class="form-control rim-voce-imp" step="0.01" min="0.01" required placeholder="0.00" value="${voce && voce.importo ? Number(voce.importo).toFixed(2) : ''}" oninput="app.updateRimborsoTotale()" style="font-size:0.85rem; padding:6px 8px; font-weight:600; text-align:right;">
+                <button type="button" class="btn btn-outline" style="padding:6px; border-color:rgba(239,68,68,0.4); color:var(--danger); font-size:0.8rem; height:34px; display:flex; align-items:center; justify-content:center;" onclick="app.removeRimborsoVoceRow('${rowId}')" title="Rimuovi voce">❌</button>
+            `;
+
+            container.appendChild(row);
+            this.updateRimborsoTotale();
+        },
+
+        removeRimborsoVoceRow(rowId) {
+            const container = document.getElementById('rim-voci-container');
+            if(!container) return;
+            const rows = container.querySelectorAll('.rim-voce-row');
+            if(rows.length <= 1) {
+                this.toast('È necessaria almeno una voce di spesa', 'warning');
+                return;
+            }
+            const targetRow = document.getElementById(rowId);
+            if(targetRow) {
+                targetRow.remove();
+                this.updateRimborsoTotale();
+            }
+        },
+
+        updateRimborsoTotale() {
+            const inputs = document.querySelectorAll('.rim-voce-imp');
+            let total = 0;
+            inputs.forEach(inp => {
+                const val = parseFloat(inp.value);
+                if(!isNaN(val) && val > 0) {
+                    total += val;
+                }
+            });
+            const display = document.getElementById('rim-totale-display');
+            if(display) {
+                display.textContent = '€ ' + total.toFixed(2);
+            }
+            return total;
+        },
+
         saveRimborso(e) {
             e.preventDefault();
+            const dataVal = document.getElementById('rim-data').value;
+            const nomeVal = document.getElementById('rim-nome').value.trim();
+            const noteVal = (document.getElementById('rim-note').value || '').trim();
+            const metodoVal = document.getElementById('rim-metodo').value;
+
+            const rows = document.querySelectorAll('.rim-voce-row');
+            const voci = [];
+            let total = 0;
+
+            rows.forEach((row, idx) => {
+                const tipo = row.querySelector('.rim-voce-tipo').value;
+                const desc = row.querySelector('.rim-voce-desc').value.trim();
+                const imp = parseFloat(row.querySelector('.rim-voce-imp').value);
+                if(!isNaN(imp) && imp > 0) {
+                    voci.push({
+                        id: idx + 1,
+                        tipo: tipo,
+                        desc: desc,
+                        importo: Math.round(imp * 100) / 100
+                    });
+                    total += imp;
+                }
+            });
+
+            if(voci.length === 0 || total <= 0) {
+                this.toast('Inserisci almeno una voce con importo maggiore di zero', 'danger');
+                return;
+            }
+
+            total = Math.round(total * 100) / 100;
+
+            // Descrizione sintetica aggregata per Prima Nota e visualizzazioni veloci
+            const syntheticDesc = voci.map(v => `${v.tipo}: €${v.importo.toFixed(2)}${v.desc ? ' (' + v.desc + ')' : ''}`).join('; ');
+
+            if(!this.state.rimborsi) this.state.rimborsi = [];
+            
             this.state.rimborsi.push({
                 id: Date.now(),
-                data: document.getElementById('rim-data').value,
-                richiedente: document.getElementById('rim-nome').value,
-                descrizione: document.getElementById('rim-desc').value,
-                importo: parseFloat(document.getElementById('rim-imp').value),
-                pagato: false
+                data: dataVal,
+                richiedente: nomeVal,
+                note: noteVal,
+                metodo: metodoVal,
+                voci: voci,
+                descrizione: syntheticDesc,
+                importo: total,
+                pagato: false,
+                annullato: false
             });
+
             localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
             this.saveAll();
             this.closeModal();
             this.renderRimborsi();
-            this.toast('Richiesta salvata');
+            this.toast('Richiesta di rimborso salvata con successo');
         },
-        deleteRimborso(id) {
-            if(confirm("Eliminare la richiesta di rimborso?")) {
-                this.state.rimborsi = this.state.rimborsi.filter(x => x.id !== id);
-                    this.trackDeletion(id);
-                localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
-                this.saveAll();
-                this.renderRimborsi();
-            }
-        },
+
         segnaRimborsoPagato(id) {
-            if(confirm("Vuoi segnare il rimborso come pagato e riversare l'uscita in Prima Nota?")) {
-                const r = this.state.rimborsi.find(x => x.id === id);
-                if(!r) return;
+            const r = this.state.rimborsi.find(x => x.id === id);
+            if(!r || r.annullato || r.pagato) return;
+
+            if(confirm(`Vuoi segnare il rimborso di €${r.importo.toFixed(2)} a ${r.richiedente} come PAGATO e registrare l'uscita in Prima Nota?`)) {
                 r.pagato = true;
                 
-                // Riversa in prima nota
+                // Riversa in prima nota con riferimento sicuro per storno futuro
+                if(!this.state.primanota) this.state.primanota = [];
+                
+                const catUscita = (this.state.settings && this.state.settings.categorie_uscite && this.state.settings.categorie_uscite.includes('Rimborsi Spese'))
+                    ? 'Rimborsi Spese'
+                    : 'Manutenzioni Ordinarie';
+
                 this.state.primanota.push({
                     id: Date.now(),
                     data: new Date().toISOString().split('T')[0],
                     tipo: 'Uscita',
                     importo: r.importo,
-                    categoria: 'Manutenzioni Ordinarie', // Voce generica, l'utente può cambiarla dalla prima nota
+                    categoria: catUscita,
                     descrizione: `Rimborso Spese a ${r.richiedente}: ${r.descrizione}`,
-                    metodo: 'Bonifico'
+                    metodo: r.metodo || 'Bonifico',
+                    riferimento: 'RIMBORSO_' + r.id
                 });
-                localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
                 
+                localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
                 localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
                 this.saveAll();
                 this.renderRimborsi();
-                this.toast('Rimborso pagato e registrato in Prima Nota');
+                this.toast('Rimborso contrassegnato come pagato e riversato in Prima Nota');
             }
         },
+
+        removePrimaNotaFromRimborso(id) {
+            const rimIdStr = String(id);
+            if(!this.state.primanota) return;
+            const initialLen = this.state.primanota.length;
+            this.state.primanota = this.state.primanota.filter(t => {
+                const ref = t.riferimento || '';
+                if(ref === 'RIMBORSO_' + rimIdStr) return false;
+                if(t.descrizione && t.descrizione.includes(`RIMBORSO_${rimIdStr}`)) return false;
+                return true;
+            });
+            if(this.state.primanota.length !== initialLen) {
+                localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
+            }
+        },
+
+        annullaRimborso(id) {
+            const r = this.state.rimborsi.find(x => x.id === id);
+            if(!r || r.annullato) return;
+
+            let msg = `Sei sicuro di voler ANNULLARE questa richiesta di rimborso di €${r.importo.toFixed(2)} (${r.richiedente})?\n\nRimarrà registrata in archivio contrassegnata come annullata per la conformità contabile.`;
+            if(r.pagato) {
+                msg += `\n\nATTENZIONE: Il rimborso risulta già pagato. L'uscita registrata in Prima Nota verrà automaticamente stornata e rimossa.`;
+            }
+
+            if(confirm(msg)) {
+                r.annullato = true;
+                if(r.pagato) {
+                    this.removePrimaNotaFromRimborso(r.id);
+                    r.pagato = false;
+                }
+                localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+                this.saveAll();
+                this.renderRimborsi();
+                this.toast('Rimborso annullato correttamente (uscite stornate)', 'warning');
+            }
+        },
+
+        permanentlyDeleteRimborso(id) {
+            if(!this.state.debugMode) {
+                alert("Azione consentita esclusivamente in Modalità Debug.");
+                return;
+            }
+            const r = this.state.rimborsi.find(x => x.id === id);
+            if(!r) return;
+
+            if(confirm(`ATTENZIONE [MODALITÀ DEBUG]:\nStai per eliminare DEFINITIVAMENTE la richiesta di rimborso di ${r.richiedente} (€${r.importo.toFixed(2)}).\n\nQuesta operazione rimuove fisicamente il record dal database. Procedere?`)) {
+                this.removePrimaNotaFromRimborso(r.id);
+                this.state.rimborsi = this.state.rimborsi.filter(x => x.id !== id);
+                if(typeof this.trackDeletion === 'function') {
+                    this.trackDeletion(r.id);
+                }
+                localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+                this.saveAll();
+                this.renderRimborsi();
+                this.toast('Rimborso eliminato definitivamente (Debug Mode)', 'danger');
+            }
+        },
+
+        deleteRimborso(id) {
+            if(!this.state.debugMode) {
+                alert("I rimborsi spese emessi non possono essere cancellati direttamente per motivi di tracciabilità contabile.\n\nUtilizza il pulsante 'Annulla' per neutralizzare il rimborso e stornare la Prima Nota, oppure attiva la Modalità Debug per la rimozione definitiva.");
+                return;
+            }
+            this.permanentlyDeleteRimborso(id);
+        },
+
         stampaModuloRimborso(id) {
             const r = this.state.rimborsi.find(x => x.id === id);
             if(!r) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Intestazione Palestra
+            // Intestazione ASD
             doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
-            doc.text(this.state.settings.asdName.toUpperCase(), 20, 20);
+            doc.text((this.state.settings.asdName || "ASSOCIAZIONE SPORTIVA").toUpperCase(), 20, 20);
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text(this.state.settings.address, 20, 26);
-            doc.text("C.F. / P.IVA: " + this.state.settings.pIva, 20, 31);
+            doc.text(this.state.settings.address || "", 20, 26);
+            doc.text("C.F. / P.IVA: " + (this.state.settings.pIva || "-"), 20, 31);
             
+            // Linea divisoria
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.5);
+            doc.line(20, 36, 190, 36);
+
             // Titolo Documento
-            doc.setFontSize(14);
+            doc.setFontSize(15);
             doc.setFont("helvetica", "bold");
-            doc.text("MODULO RICHIESTA RIMBORSO SPESE", 105, 50, null, null, "center");
-            
-            // Corpo Documento
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-            doc.text("Il sottoscritto/a " + r.richiedente, 20, 70);
-            doc.text("richiede il rimborso per le spese anticipate per conto e nell'interesse", 20, 77);
-            doc.text("dell'associazione in oggetto, per il seguente motivo:", 20, 84);
-            
-            doc.setFont("helvetica", "bold");
-            doc.text(r.descrizione, 20, 95);
-            doc.setFont("helvetica", "normal");
-            
-            doc.text("Data della spesa: " + this.formatDate(r.data), 20, 105);
-            
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("IMPORTO TOTALE DA RIMBORSARE: E " + r.importo.toFixed(2), 20, 120);
-            
+            doc.text("NOTA SPESE E RICHIESTA RIMBORSO", 105, 46, null, null, "center");
+
+            if (r.annullato) {
+                doc.setTextColor(220, 38, 38);
+                doc.setFontSize(12);
+                doc.text("*** DOCUMENTO ANNULLATO ***", 105, 53, null, null, "center");
+                doc.setTextColor(0, 0, 0);
+            }
+
+            // Box Richiedente
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(20, 58, 170, 24, 'FD');
+
             doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text("Richiedente: ", 25, 66);
             doc.setFont("helvetica", "normal");
-            doc.text("Si allegano alla presente i giustificativi di spesa (scontrini, ricevute o fatture).", 20, 135);
+            doc.text(String(r.richiedente || "-"), 50, 66);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("Data Richiesta: ", 25, 74);
+            doc.setFont("helvetica", "normal");
+            doc.text(this.formatDate(r.data) + "    |    Metodo Liquidazione: " + (r.metodo || "Bonifico"), 55, 74);
+
+            let y = 90;
+            if(r.note) {
+                doc.setFont("helvetica", "italic");
+                doc.setFontSize(9);
+                doc.text("Oggetto / Motivo: " + r.note, 20, y);
+                y += 8;
+            }
+
+            // Intestazione Tabella Voci
+            doc.setFillColor(241, 245, 249);
+            doc.setDrawColor(203, 213, 225);
+            doc.rect(20, y, 170, 8, 'FD');
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("N.", 24, y + 5.5);
+            doc.text("Tipologia di Spesa", 36, y + 5.5);
+            doc.text("Dettaglio Giustificativo / Scontrino", 85, y + 5.5);
+            doc.text("Importo (EUR)", 185, y + 5.5, null, null, "right");
+
+            y += 8;
+
+            const voci = (r.voci && r.voci.length > 0)
+                ? r.voci
+                : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+
+            voci.forEach((v, index) => {
+                // Alterna sfondo riga
+                if (index % 2 === 1) {
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(20, y, 170, 7.5, 'F');
+                }
+                doc.setDrawColor(226, 232, 240);
+                doc.line(20, y + 7.5, 190, y + 7.5);
+
+                doc.text(String(index + 1), 24, y + 5);
+                doc.setFont("helvetica", "bold");
+                doc.text(this.getRimborsoCategoriaLabel(v.tipo), 36, y + 5);
+                doc.setFont("helvetica", "normal");
+                
+                // Troncamento se troppo lungo
+                const descStr = (v.desc || "-");
+                const safeDesc = descStr.length > 55 ? descStr.substring(0, 52) + '...' : descStr;
+                doc.text(safeDesc, 85, y + 5);
+
+                doc.setFont("helvetica", "bold");
+                doc.text("E " + Number(v.importo || 0).toFixed(2), 185, y + 5, null, null, "right");
+                doc.setFont("helvetica", "normal");
+
+                y += 7.5;
+            });
+
+            // Riga Totale
+            y += 3;
+            doc.setFillColor(241, 245, 249);
+            doc.setDrawColor(148, 163, 184);
+            doc.rect(100, y, 90, 10, 'FD');
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text("TOTALE RIMBORSO:", 105, y + 6.5);
+            doc.text("E " + Number(r.importo || 0).toFixed(2), 185, y + 6.5, null, null, "right");
+
+            y += 18;
+
+            // Dichiarazione di conformità e allegati
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "normal");
+            doc.text("Il/La sottoscritto/a richiede il rimborso delle spese sopra indicate anticipate per conto e nell'interesse", 20, y);
+            y += 5;
+            doc.text("dell'Associazione. Dichiara sotto la propria responsabilita che tali spese sono effettive, documentate", 20, y);
+            y += 5;
+            doc.text("dai giustificativi allegati in originale e conformi all'attivita istituzionale dell'ente (D.Lgs. 36/2021).", 20, y);
+
+            y += 25;
+
+            // Firme
+            doc.setFontSize(9.5);
+            doc.setFont("helvetica", "bold");
+            doc.text("Data: " + this.formatDate(new Date()), 20, y);
             
-            doc.text("Data: " + this.formatDate(new Date()), 20, 170);
-            
-            doc.text("Firma del Richiedente", 40, 190);
-            doc.line(30, 210, 80, 210); // Linea firma
-            
-            doc.text("Visto per Approvazione (Il Presidente)", 120, 190);
-            doc.line(110, 210, 180, 210); // Linea firma
-            
-            doc.save(`Modulo_Rimborso_${r.richiedente.replace(/\s+/g,'_')}.pdf`);
+            doc.text("Firma del Richiedente", 50, y + 15, null, null, "center");
+            doc.setDrawColor(100, 100, 100);
+            doc.line(25, y + 32, 75, y + 32);
+
+            doc.text("Visto per Approvazione", 145, y + 12, null, null, "center");
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.text("(Il Presidente / Legale Rappresentante)", 145, y + 16, null, null, "center");
+            doc.line(120, y + 32, 175, y + 32);
+
+            doc.save(`Modulo_Rimborso_${(r.richiedente || 'Collaboratore').replace(/\s+/g,'_')}_${r.data || 'data'}.pdf`);
         }
 
         };
