@@ -1870,7 +1870,9 @@
                     nome: found.nome || searchName,
                     tipo_registro: found.tipo_registro || (found.nome?.toLowerCase() === 'contanti' ? 'cassa' : 'banca'),
                     percentuale: typeof found.percentuale === 'number' ? found.percentuale : (parseFloat(found.percentuale) || 0),
+                    percentuale_da_definire: !!(found.percentuale_da_definire || found.percentuale_tbd),
                     fisso: typeof found.fisso === 'number' ? found.fisso : (parseFloat(found.fisso) || 0),
+                    fisso_da_definire: !!(found.fisso_da_definire || found.fisso_tbd),
                     is_default: !!found.is_default
                 };
             }
@@ -1883,7 +1885,9 @@
                     nome: searchName || 'SumUp',
                     tipo_registro: 'banca',
                     percentuale: 1.95,
+                    percentuale_da_definire: false,
                     fisso: 0.00,
+                    fisso_da_definire: false,
                     is_default: false
                 };
             }
@@ -1892,7 +1896,9 @@
                 nome: searchName,
                 tipo_registro: isContanti ? 'cassa' : 'banca',
                 percentuale: 0,
+                percentuale_da_definire: false,
                 fisso: 0,
+                fisso_da_definire: false,
                 is_default: false
             };
         },
@@ -2006,10 +2012,12 @@
                     const cfg = this.getMetodoConfig(t.metodo);
                     const amt = parseFloat(t.importo) || 0;
                     let comm = 0;
-                    if (cfg && (parseFloat(cfg.percentuale) > 0 || parseFloat(cfg.fisso) > 0)) {
-                        const perc = parseFloat(cfg.percentuale) || 0;
-                        const fisso = parseFloat(cfg.fisso) || 0;
-                        comm = Math.round((amt * (perc / 100) + fisso) * 100) / 100;
+                    if (cfg) {
+                        const perc = !cfg.percentuale_da_definire ? (parseFloat(cfg.percentuale) || 0) : 0;
+                        const fisso = !cfg.fisso_da_definire ? (parseFloat(cfg.fisso) || 0) : 0;
+                        if (perc > 0 || fisso > 0) {
+                            comm = Math.round((amt * (perc / 100) + fisso) * 100) / 100;
+                        }
                     }
 
                     const existingComm = commTxnMap.get(String(t.id));
@@ -2179,11 +2187,23 @@
             if (!nomeMetodo) return '';
             const cfg = this.getMetodoConfig(nomeMetodo);
             const nome = cfg.nome || (typeof nomeMetodo === 'object' && nomeMetodo !== null ? nomeMetodo.nome : String(nomeMetodo));
-            const perc = parseFloat(cfg.percentuale) || 0;
-            const fisso = parseFloat(cfg.fisso) || 0;
+            const percTbd = !!cfg.percentuale_da_definire;
+            const fissoTbd = !!cfg.fisso_da_definire;
+            const perc = percTbd ? 0 : (parseFloat(cfg.percentuale) || 0);
+            const fisso = fissoTbd ? 0 : (parseFloat(cfg.fisso) || 0);
             
             let commPart = '';
-            if (perc > 0 && fisso > 0) {
+            if (percTbd && fissoTbd) {
+                commPart = 'da definire';
+            } else if (percTbd && fisso > 0) {
+                commPart = `% da definire + € ${fisso.toFixed(2).replace('.', ',')}`;
+            } else if (percTbd) {
+                commPart = '% da definire';
+            } else if (fissoTbd && perc > 0) {
+                commPart = `${perc.toString().replace('.', ',')}% + fisso da definire`;
+            } else if (fissoTbd) {
+                commPart = 'fisso da definire';
+            } else if (perc > 0 && fisso > 0) {
                 commPart = `${perc.toString().replace('.', ',')}% + € ${fisso.toFixed(2).replace('.', ',')}`;
             } else if (perc > 0) {
                 commPart = `${perc.toString().replace('.', ',')}%`;
@@ -5994,13 +6014,23 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if (!commInput) return;
             if (!val || this.isCassaMetodo(val)) {
                 commInput.value = '';
+                commInput.placeholder = 'Es. 0.75';
                 return;
             }
             const cfg = this.getMetodoConfig(val);
             const importo = parseFloat(document.getElementById('receipt-amount')?.value) || 0;
+            const percTbd = !!cfg.percentuale_da_definire;
+            const fissoTbd = !!cfg.fisso_da_definire;
+
+            if (percTbd || fissoTbd) {
+                commInput.placeholder = 'Da definire (inserisci importo manuale)';
+            } else {
+                commInput.placeholder = 'Es. 0.75';
+            }
+
             if (importo > 0 && cfg) {
-                const perc = parseFloat(cfg.percentuale) || 0;
-                const fisso = parseFloat(cfg.fisso) || 0;
+                const perc = percTbd ? 0 : (parseFloat(cfg.percentuale) || 0);
+                const fisso = fissoTbd ? 0 : (parseFloat(cfg.fisso) || 0);
                 if (perc > 0 || fisso > 0) {
                     const comm = (importo * (perc / 100)) + fisso;
                     const commArrotondata = Math.round(comm * 100) / 100;
@@ -8212,10 +8242,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         const commRef = 'COMM_TXN_' + targetTxnId;
                         const cfg = this.getMetodoConfig(metodoVal);
                         let comm = 0;
-                        if (tipoVal === 'Uscita' && cfg && (parseFloat(cfg.percentuale) > 0 || parseFloat(cfg.fisso) > 0)) {
-                            const perc = parseFloat(cfg.percentuale) || 0;
-                            const fisso = parseFloat(cfg.fisso) || 0;
-                            comm = Math.round((importoVal * (perc / 100) + fisso) * 100) / 100;
+                        if (tipoVal === 'Uscita' && cfg) {
+                            const perc = !cfg.percentuale_da_definire ? (parseFloat(cfg.percentuale) || 0) : 0;
+                            const fisso = !cfg.fisso_da_definire ? (parseFloat(cfg.fisso) || 0) : 0;
+                            if (perc > 0 || fisso > 0) {
+                                comm = Math.round((importoVal * (perc / 100) + fisso) * 100) / 100;
+                            }
                         }
 
                         const commIdx = this.state.primanota.findIndex(t => t.riferimento === commRef);
@@ -9945,11 +9977,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                         ${metodi.map(mName => {
                                             const cfg = this.getMetodoConfig(mName);
                                             const isCassa = (cfg.tipo_registro === 'cassa');
+                                            const percTbd = !!cfg.percentuale_da_definire;
+                                            const fissoTbd = !!cfg.fisso_da_definire;
                                             const perc = parseFloat(cfg.percentuale) || 0;
                                             const fisso = parseFloat(cfg.fisso) || 0;
                                             
                                             let commLabel = '';
-                                            if (perc > 0 && fisso > 0) {
+                                            if (percTbd && fissoTbd) {
+                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ Da definire</span>`;
+                                            } else if (percTbd && fisso > 0) {
+                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:600; font-size:0.8rem; border:1px solid rgba(245,158,11,0.3);">⏳ % da definire</span> + €${fisso.toFixed(2)}`;
+                                            } else if (percTbd) {
+                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ % da definire</span>`;
+                                            } else if (fissoTbd && perc > 0) {
+                                                commLabel = `<strong>${perc.toFixed(2)}%</strong> + <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:600; font-size:0.8rem; border:1px solid rgba(245,158,11,0.3);">⏳ Fisso da definire</span>`;
+                                            } else if (fissoTbd) {
+                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ Quota fissa da definire</span>`;
+                                            } else if (perc > 0 && fisso > 0) {
                                                 commLabel = `<strong>${perc.toFixed(2)}%</strong> + €${fisso.toFixed(2)}`;
                                             } else if (perc > 0) {
                                                 commLabel = `<strong>${perc.toFixed(2)}%</strong>`;
@@ -10419,11 +10463,37 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <li><strong>Bollettini / CBill / PagoPA:</strong> cerca <em>"Commissione pagamenti CBill / PagoPA tramite home banking"</em>.</li>
                         <li><strong>Costi fissi e periodici:</strong> cerca le voci <em>"Canone mensile/trimestrale tenuta conto"</em>, <em>"Spese liquidazione competenze"</em> e <em>"Imposta di bollo"</em> (applicata se la giacenza media supera i 5.000 €).</li>
                     </ul>
+                    <div style="background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.3); border-radius:6px; padding:10px 12px; margin-bottom:1.25rem; font-size:0.85rem; color:#f59e0b; line-height:1.45;">
+                        💡 <strong>Non conosci ancora le tariffe esatte?</strong><br>
+                        Puoi contrassegnare la commissione percentuale o la quota fissa come <em>"Da definire"</em>. Il gestionale te lo evidenzierà nell'elenco metodi e non applicherà trattenute automatiche finché non le imposti.
+                    </div>
                     <div style="display:flex; justify-content:flex-end;">
                         <button type="button" class="btn btn-primary" onclick="app.closeModal()">Ho capito</button>
                     </div>
                 </div>
             `);
+        },
+
+        toggleMetodoCommissioneTbd(type, isTbd) {
+            const input = document.getElementById(type === 'perc' ? 'metodo-perc-input' : 'metodo-fisso-input');
+            if (!input) return;
+            if (isTbd) {
+                input.dataset.prevValue = input.value;
+                input.value = '';
+                input.disabled = true;
+                input.placeholder = 'Da definire';
+                input.style.background = 'rgba(245, 158, 11, 0.08)';
+                input.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                input.style.opacity = '0.85';
+            } else {
+                input.disabled = false;
+                input.placeholder = type === 'perc' ? 'es. 1.95' : 'es. 0.00';
+                input.value = (input.dataset.prevValue !== undefined && input.dataset.prevValue !== '') ? input.dataset.prevValue : (type === 'perc' ? '0' : '0.00');
+                input.style.background = '';
+                input.style.borderColor = '';
+                input.style.opacity = '1';
+                input.focus();
+            }
         },
 
         fillMetodoPreset(key) {
@@ -10433,6 +10503,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const regSelect = form.querySelector('select[name="tipo_registro"]');
             const percInput = form.querySelector('input[name="percentuale"]');
             const fissoInput = form.querySelector('input[name="fisso"]');
+            const percTbd = form.querySelector('input[name="percentuale_da_definire"]');
+            const fissoTbd = form.querySelector('input[name="fisso_da_definire"]');
 
             const presets = {
                 bonifico_ordinario: { nome: 'Bonifico Ordinario', tipo_registro: 'banca', perc: 0, fisso: 0 },
@@ -10447,6 +10519,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             const p = presets[key];
             if (!p) return;
+
+            if (percTbd && percTbd.checked) {
+                percTbd.checked = false;
+                this.toggleMetodoCommissioneTbd('perc', false);
+            }
+            if (fissoTbd && fissoTbd.checked) {
+                fissoTbd.checked = false;
+                this.toggleMetodoCommissioneTbd('fisso', false);
+            }
+
             if (nomeInput && !nomeInput.readOnly) nomeInput.value = p.nome;
             if (regSelect && !regSelect.disabled) regSelect.value = p.tipo_registro;
             if (percInput) percInput.value = p.perc;
@@ -10455,8 +10537,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         openMetodoModal(nomeMetodo = null) {
             const isEdit = !!nomeMetodo;
-            const cfg = isEdit ? this.getMetodoConfig(nomeMetodo) : { nome: '', tipo_registro: 'banca', percentuale: 0, fisso: 0 };
+            const cfg = isEdit ? this.getMetodoConfig(nomeMetodo) : { nome: '', tipo_registro: 'banca', percentuale: 0, fisso: 0, percentuale_da_definire: false, fisso_da_definire: false };
             const isContanti = (cfg.nome || '').trim().toLowerCase() === 'contanti';
+            const percTbd = !isContanti && !!cfg.percentuale_da_definire;
+            const fissoTbd = !isContanti && !!cfg.fisso_da_definire;
 
             this.openModal(isEdit ? `✏️ Modifica Metodo: ${cfg.nome}` : '➕ Nuovo Metodo di Pagamento', `
                 <form id="save-metodo-form" onsubmit="app.handleSaveMetodo(event, '${isEdit ? cfg.nome.replace(/'/g, "\\'") : ''}')" style="display:flex; flex-direction:column; gap:14px;">
@@ -10493,19 +10577,33 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         <div class="form-group">
-                            <label>Trattenuta / Commissione (%)</label>
-                            <input type="number" step="0.01" min="0" max="100" name="percentuale" class="form-control" placeholder="es. 1.95" value="${parseFloat(cfg.percentuale) || 0}">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label style="margin:0;">Trattenuta / Commissione (%)</label>
+                                ${!isContanti ? `
+                                    <label style="margin:0; font-size:0.75rem; font-weight:500; display:inline-flex; align-items:center; gap:4px; cursor:pointer; color:#f59e0b; user-select:none;">
+                                        <input type="checkbox" name="percentuale_da_definire" id="metodo-perc-tbd" ${percTbd ? 'checked' : ''} onchange="app.toggleMetodoCommissioneTbd('perc', this.checked)"> Da definire
+                                    </label>
+                                ` : ''}
+                            </div>
+                            <input type="number" step="0.01" min="0" max="100" name="percentuale" id="metodo-perc-input" class="form-control" placeholder="${percTbd ? 'Da definire' : 'es. 1.95'}" value="${percTbd ? '' : (parseFloat(cfg.percentuale) || 0)}" ${percTbd ? 'disabled style="background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.3); opacity:0.85;"' : ''}>
                             <small style="color:var(--text-muted); font-size:0.75rem;">Es: 1.95 per SumUp</small>
                         </div>
                         <div class="form-group">
-                            <label>Costo Fisso per Operazione (€)</label>
-                            <input type="number" step="0.01" min="0" name="fisso" class="form-control" placeholder="es. 0.00" value="${(parseFloat(cfg.fisso) || 0).toFixed(2)}">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label style="margin:0;">Costo Fisso per Operazione (€)</label>
+                                ${!isContanti ? `
+                                    <label style="margin:0; font-size:0.75rem; font-weight:500; display:inline-flex; align-items:center; gap:4px; cursor:pointer; color:#f59e0b; user-select:none;">
+                                        <input type="checkbox" name="fisso_da_definire" id="metodo-fisso-tbd" ${fissoTbd ? 'checked' : ''} onchange="app.toggleMetodoCommissioneTbd('fisso', this.checked)"> Da definire
+                                    </label>
+                                ` : ''}
+                            </div>
+                            <input type="number" step="0.01" min="0" name="fisso" id="metodo-fisso-input" class="form-control" placeholder="${fissoTbd ? 'Da definire' : 'es. 0.00'}" value="${fissoTbd ? '' : (parseFloat(cfg.fisso) || 0).toFixed(2)}" ${fissoTbd ? 'disabled style="background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.3); opacity:0.85;"' : ''}>
                             <small style="color:var(--text-muted); font-size:0.75rem;">Es: 0.20 per micropagamenti</small>
                         </div>
                     </div>
 
                     <div style="background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:6px; font-size:0.82rem; color:var(--text-muted);">
-                        💡 <em>Se impostate, le commissioni verranno scorporate automaticamente registrando l'uscita in Prima Nota all'emissione della ricevuta.</em>
+                        💡 <em>Se impostate, le commissioni verranno scorporate automaticamente registrando l'uscita in Prima Nota all'emissione della ricevuta. Se spunti "Da definire", potrai completarle in qualsiasi momento.</em>
                     </div>
 
                     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
@@ -10522,8 +10620,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const formData = new FormData(form);
             const nome = (formData.get('nome') || '').trim();
             const tipo_registro = formData.get('tipo_registro') || 'banca';
-            const percentuale = parseFloat(formData.get('percentuale')) || 0;
-            const fisso = parseFloat(formData.get('fisso')) || 0;
+            const percTbd = form.querySelector('input[name="percentuale_da_definire"]')?.checked || false;
+            const fissoTbd = form.querySelector('input[name="fisso_da_definire"]')?.checked || false;
+            const percentuale = percTbd ? 0 : (parseFloat(formData.get('percentuale')) || 0);
+            const fisso = fissoTbd ? 0 : (parseFloat(formData.get('fisso')) || 0);
 
             if (!nome) return;
 
@@ -10534,7 +10634,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 nome: nome,
                 tipo_registro: tipo_registro,
                 percentuale: percentuale,
+                percentuale_da_definire: percTbd,
                 fisso: fisso,
+                fisso_da_definire: fissoTbd,
                 is_default: (nome.toLowerCase() === 'contanti')
             };
 
