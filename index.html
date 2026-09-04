@@ -7275,6 +7275,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let currentAS = currentD.getMonth() >= 8 ? currentY + "/" + (currentY + 1) : (currentY - 1) + "/" + currentY;
                 
                 const prevSearch = document.getElementById('pn-search')?.value || '';
+                const prevSearchImporto = document.getElementById('pn-search-importo')?.value || '';
                 const prevYear = document.getElementById('pn-year')?.value || currentAS;
                 const prevQuarter = document.getElementById('pn-quarter')?.value || 'all';
                 const prevTipo = document.getElementById('pn-tipo')?.value || 'all';
@@ -7335,7 +7336,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                         <!-- Tabella Unificata nella Member-Card -->
                         <div class="glass-card member-card">
-                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0;">
+                            <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0;">
                                 <select id="pn-year" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutto lo storico</option>
                                     <option value="${nextAS}" ${prevYear === nextAS ? 'selected' : ''}>${nextAS}</option>
@@ -7356,7 +7357,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <option value="Uscita">Uscite</option>
                                     <option value="Giroconto">Giroconti</option>
                                 </select>
-                                <input type="text" id="pn-search" class="form-control search-input" placeholder="Cerca descrizione o categoria..." value="${prevSearch}" oninput="app.filterPrimaNota()">
+                                <input type="text" id="pn-search" class="form-control search-input" style="flex: 1; min-width: 170px;" placeholder="Cerca descrizione o categoria..." value="${prevSearch}" oninput="app.filterPrimaNota()">
+                                <div style="position: relative; display: flex; align-items: center;">
+                                    <input type="text" id="pn-search-importo" class="form-control" style="width: 140px; padding-left: 1.8rem;" placeholder="Importo (€)..." value="${prevSearchImporto}" oninput="app.filterPrimaNota()">
+                                    <span style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">€</span>
+                                </div>
                             </div>
 
                             <div class="table-container" onscroll="app.onPrimaNotaTableScroll(this)">
@@ -7394,8 +7399,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 if(document.getElementById('pn-search')) {
                      document.getElementById('pn-search').value = prevSearch;
                 }
+                if(document.getElementById('pn-search-importo')) {
+                     document.getElementById('pn-search-importo').value = prevSearchImporto;
+                }
 
-                if (prevSearch || prevYear !== currentAS || prevQuarter !== 'all' || prevTipo !== 'all') {
+                if (prevSearch || prevSearchImporto || prevYear !== currentAS || prevQuarter !== 'all' || prevTipo !== 'all') {
                     this.filterPrimaNota();
                 }
 
@@ -7481,7 +7489,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let year = document.getElementById('pn-year') ? document.getElementById('pn-year').value : currentAS;
                 let quarter = document.getElementById('pn-quarter') ? document.getElementById('pn-quarter').value : 'all';
                 let tipo = document.getElementById('pn-tipo') ? document.getElementById('pn-tipo').value : 'all';
-                let search = document.getElementById('pn-search') ? document.getElementById('pn-search').value.toLowerCase() : '';
+                let search = document.getElementById('pn-search') ? document.getElementById('pn-search').value.toLowerCase().trim() : '';
+                let searchImporto = document.getElementById('pn-search-importo') ? document.getElementById('pn-search-importo').value.trim() : '';
 
                 let filtered = this.state.primanota.filter(t => {
                     let d = new Date(t.data);
@@ -7513,11 +7522,29 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     if (metodoFilter === 'cassa' && !this.isCassaMetodo(t.metodo)) return false;
                     if (metodoFilter === 'banca' && this.isCassaMetodo(t.metodo)) return false;
 
-                    // Ricerca
+                    // Ricerca testo (descrizione, categoria, riferimento)
                     if (search) {
-                        return (t.descrizione || '').toLowerCase().includes(search) || 
-                               (t.categoria || '').toLowerCase().includes(search) ||
-                               (t.riferimento || '').toLowerCase().includes(search);
+                        const matchText = (t.descrizione || '').toLowerCase().includes(search) || 
+                                          (t.categoria || '').toLowerCase().includes(search) ||
+                                          (t.riferimento || '').toLowerCase().includes(search);
+                        if (!matchText) return false;
+                    }
+
+                    // Ricerca per importo
+                    if (searchImporto) {
+                        const cleanQuery = searchImporto.replace(/[^0-9.,]/g, '').replace(',', '.');
+                        if (cleanQuery) {
+                            const val = parseFloat(t.importo) || 0;
+                            const valStr = val.toFixed(2);
+                            const valStrRaw = val.toString();
+                            const valStrComma = valStr.replace('.', ',');
+                            const queryComma = cleanQuery.replace('.', ',');
+
+                            const matchAmount = valStr.includes(cleanQuery) || 
+                                               valStrRaw.includes(cleanQuery) || 
+                                               valStrComma.includes(queryComma);
+                            if (!matchAmount) return false;
+                        }
                     }
 
                     return true;
