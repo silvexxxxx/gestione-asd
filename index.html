@@ -3864,6 +3864,23 @@ closeModal() {
                 this.renderDatabase(); // Refresh UI in settings
             },
 
+            toggleDbGuideBalloon() {
+                const cur = localStorage.getItem('asd_db_guide_open') === 'true';
+                const next = !cur;
+                localStorage.setItem('asd_db_guide_open', next ? 'true' : 'false');
+                const el = document.getElementById('db-guide-balloon');
+                const btnText = document.getElementById('db-guide-toggle-text');
+                if (el) {
+                    el.style.display = next ? 'block' : 'none';
+                    if (next) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+                if (btnText) {
+                    btnText.textContent = next ? 'Nascondi Guida Pulsanti Database' : 'Guida Rapida Pulsanti Database';
+                }
+            },
+
             renderGuida() {
                 const main = document.getElementById('main-content');
                 main.innerHTML = `
@@ -9682,17 +9699,102 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const s = this.state.settings;
             main.innerHTML = `
                     <div class="page-content" style="overflow-y:auto;">
-                        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap:wrap; gap:12px;">
                             <div>
                                 <h1>⚙️ Impostazioni <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 8px;">v${APP_VERSION}</span></h1>
                                 <p>Configura i dati della tua associazione.</p>
                             </div>
-                            <div style="display:flex; gap:10px; flex-direction:column; align-items:flex-end;">
+                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                                <button class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6; font-weight:600; display:flex; align-items:center; gap:6px;" onclick="app.toggleDbGuideBalloon()">
+                                    💡 <span id="db-guide-toggle-text">${localStorage.getItem('asd_db_guide_open') === 'true' ? 'Nascondi Guida Pulsanti Database' : 'Guida Rapida Pulsanti Database'}</span>
+                                </button>
                                 <button id="license-btn" class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6;" onclick="document.getElementById('paywall-overlay').style.display='flex'">
                                     🔑 Inserisci/Cambia Licenza
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Balloon Informativo Pulsanti Database (A comparsa / scomparsa) -->
+                        <div id="db-guide-balloon" class="glass-card" style="display: ${localStorage.getItem('asd_db_guide_open') === 'true' ? 'block' : 'none'}; border-left: 4px solid #3b82f6; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); margin-bottom: 1.5rem; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid rgba(59, 130, 246, 0.3);">
+                            <button onclick="app.toggleDbGuideBalloon()" style="position: absolute; top: 12px; right: 14px; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);" title="Chiudi guida">✖</button>
+                            
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.8rem;">
+                                <span style="font-size: 1.6rem;">💡</span>
+                                <div>
+                                    <h3 style="margin: 0; color: #60a5fa;">Guida Rapida & Differenze Tecniche: Pulsanti del Database</h3>
+                                    <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Comprendi come vengono salvati i tuoi dati, la differenza tra Snapshot e file JSON, e gli strumenti di manutenzione.</p>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                                
+                                <!-- 1. Snapshots vs Backup Fisico -->
+                                <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                                    <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #93c5fd; display: flex; align-items: center; gap: 6px;">
+                                        <span>💾</span> Snapshot in Memoria (Browser)
+                                    </h4>
+                                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+                                        <strong>Dove risiedono:</strong> Nella memoria interna locale del browser (<code>localStorage</code>). Non sono file su disco Windows.
+                                    </p>
+                                    <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
+                                        <li><strong>➕ Crea Salvataggio Manuale:</strong> scatta un punto di ripristino istantaneo del momento attuale.</li>
+                                        <li><strong>🔄 Undo:</strong> riporta all'istante l'intero gestionale allo stato esatto di quello snapshot sovrascrivendo la versione attuale.</li>
+                                        <li><strong>AUTO-EXIT:</strong> salvataggi automatici generati ogni volta che esci o chiudi l'app per prevenire perdite.</li>
+                                        <li><strong>PRE-SHIFT / PRE-RESEQUENCE:</strong> salvataggi automatici creati un attimo prima di spostamenti o rinumerazioni.</li>
+                                        <li><strong>Max conservati:</strong> mantiene gli ultimi N salvataggi a rotazione (i più vecchi si eliminano da soli).</li>
+                                    </ul>
+                                </div>
+
+                                <!-- 2. File Fisici JSON su Disco -->
+                                <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                                    <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #a7f3d0; display: flex; align-items: center; gap: 6px;">
+                                        <span>📁</span> File Backup JSON su Disco
+                                    </h4>
+                                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+                                        <strong>Dove risiedono:</strong> Veri file <code>.json</code> scaricati nella cartella <em>Download</em> del tuo PC.
+                                    </p>
+                                    <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
+                                        <li><strong>⬇️ Esporta Backup JSON (Sicuro):</strong> crea una copia fisica completa del database da mettere su chiavetta USB o archiviare. Non tocca i dati esistenti.</li>
+                                        <li><strong>📊 Esporta Soci XLSX (Sicuro):</strong> esporta l'anagrafica in foglio Excel.</li>
+                                        <li><strong>⬆️ Importa Backup JSON (⚠️ Sovrascrittura):</strong> legge un file <code>.json</code> e sovrascrive tutto il database locale. Richiede conferma a doppio clic.</li>
+                                        <li><strong>🗑️ Azzera Database Iscritti (⚠️ Distruttivo):</strong> cancella tutti i soci registrati.</li>
+                                    </ul>
+                                </div>
+
+                                <!-- 3. Cloud e Google Drive -->
+                                <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                                    <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #fde047; display: flex; align-items: center; gap: 6px;">
+                                        <span>☁️</span> Sincronizzazione Google Drive
+                                    </h4>
+                                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+                                        <strong>Come funziona:</strong> Mantiene una copia cloud del file <code>GestioneASD_CloudSync.json</code> su Google Drive.
+                                    </p>
+                                    <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
+                                        <li><strong>Passa a Modalità Cloud:</strong> si collega con OAuth al tuo account Google per il salvataggio automatico.</li>
+                                        <li><strong>⬆️ Sovrascrivi Cloud con Dati Locali:</strong> invia la versione del PC a Google Drive <em>senza</em> fare fusioni (evita che il cloud reinserisca vecchi dati o doppioni).</li>
+                                        <li><strong>Passa a Modalità Offline:</strong> disattiva la connessione al cloud per lavorare al 100% in locale.</li>
+                                    </ul>
+                                </div>
+
+                                <!-- 4. Modalità Utente vs Modalità Debug -->
+                                <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                                    <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #c4b5fd; display: flex; align-items: center; gap: 6px;">
+                                        <span>🛠️</span> Modalità Utente vs Debug
+                                    </h4>
+                                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+                                        <strong>Protezione attiva:</strong> Le funzioni strutturali sono nascoste all'utente comune e disponibili solo sbloccando la Modalità Debug.
+                                    </p>
+                                    <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
+                                        <li><strong>🪄 Ripara Ricevute (Opz. 1):</strong> riallinea i due registri separando Cartaceo (1-199) e Digitale (1-74) e sincronizzando la Prima Nota.</li>
+                                        <li><strong>🔄 Rinumera Sequenza (Debug):</strong> ricompatta i numeri delle ricevute per eliminare buchi numerici intermedi.</li>
+                                        <li><strong>⏩ Sposta Sequenza (Debug):</strong> sposta in avanti o indietro (+1 / -1) una serie di ricevute a partire da una data. Include il tasto verde di riallineamento automatico reale.</li>
+                                        <li><strong>➕ / ✏️ / 🗑️ (Tabella Ricevute Debug):</strong> permettono di inserire ricevute intermedie (con slittamento +1) o eliminare singole ricevute (con slittamento -1).</li>
+                                    </ul>
+                                </div>
+
+                            </div>
+                        </div>
+
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
 
                             <!-- Sincronizzazione e Modalità -->
