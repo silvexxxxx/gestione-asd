@@ -2153,6 +2153,27 @@
             return raw.map(m => (typeof m === 'object' && m !== null ? m.nome : m)).filter(Boolean);
         },
 
+        getMetodoDisplayLabel(nomeMetodo) {
+            if (!nomeMetodo) return '';
+            const cfg = this.getMetodoConfig(nomeMetodo);
+            const nome = cfg.nome || (typeof nomeMetodo === 'object' && nomeMetodo !== null ? nomeMetodo.nome : String(nomeMetodo));
+            const perc = parseFloat(cfg.percentuale) || 0;
+            const fisso = parseFloat(cfg.fisso) || 0;
+            
+            let commPart = '';
+            if (perc > 0 && fisso > 0) {
+                commPart = `${perc.toString().replace('.', ',')}% + € ${fisso.toFixed(2).replace('.', ',')}`;
+            } else if (perc > 0) {
+                commPart = `${perc.toString().replace('.', ',')}%`;
+            } else if (fisso > 0) {
+                commPart = `€ ${fisso.toFixed(2).replace('.', ',')}`;
+            } else {
+                commPart = `€ 0,0`;
+            }
+
+            return `${nome} (comm. ${commPart})`;
+        },
+
         trackDeletion(id) {
             if (!this.state.deletedIds) this.state.deletedIds = [];
             if (id && !this.state.deletedIds.includes(id)) {
@@ -5154,7 +5175,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label>Metodo di Pagamento</label>
                                 <select name="pagamento" class="form-control" onchange="app.onReceiptPagamentoChange(this.value)">
-                                    ${this.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
+                                    ${this.getMetodiPagamento().map(m => `<option value="${m}">${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                                 </select>
                             </div>
 
@@ -7510,7 +7531,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     ${defaultTipo === 'Giroconto' ? `
                                         <option value="Contanti" ${defaultMetodo === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
                                         <option value="Banca" ${defaultMetodo === 'Banca' ? 'selected' : ''}>Banca</option>
-                                    ` : this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${m}</option>`).join('')}
+                                    ` : this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
@@ -7643,7 +7664,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     if (metodoSelect) {
                         metodoSelect.onchange = null;
                         const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
-                        metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('');
+                        metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('');
                     }
                     catSelect.onchange = null;
                     this.state.settings.categorie_entrate.forEach(c => {
@@ -7655,7 +7676,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     labelCat.innerText = 'Categoria Uscita*';
                     if (metodoSelect) {
                         const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
-                        metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('');
+                        metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('');
                         metodoSelect.onchange = (e) => {
                             checkBankPresetVisibility(e.target.value);
                         };
@@ -8727,7 +8748,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <div class="form-group" style="grid-column: span 2;">
                                         <label>Metodo di Pagamento Base (Quote Auto)</label>
                                         <select name="metodo" class="form-control">
-                                            ${app.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
+                                            ${app.getMetodiPagamento().map(m => `<option value="${m}">${app.getMetodoDisplayLabel(m)}</option>`).join('')}
                                         </select>
                                     </div>
                                 </div>
@@ -8803,7 +8824,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label style="font-size: 0.8rem;">Metodo di Pagamento</label>
                                         <select id="automanual-metodo" class="form-control">
-                                            ${app.getMetodiPagamento().map(m => `<option value="${m}">${m}</option>`).join('')}
+                                            ${app.getMetodiPagamento().map(m => `<option value="${m}">${app.getMetodoDisplayLabel(m)}</option>`).join('')}
                                         </select>
                                     </div>
                                     
@@ -11944,8 +11965,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <label>Metodo di Pagamento</label>
                                 <select name="pagamento" class="form-control">
                                     <option value="Bonifico Bancario">Bonifico Bancario</option>
-                                    <option value="Contanti">Contanti</option>
-                                    ${this.getMetodiPagamento().filter(m => m !== 'Contanti').map(m => `<option value="${m}">${m}</option>`).join('')}
+                                    <option value="Contanti">${this.getMetodoDisplayLabel('Contanti')}</option>
+                                    ${this.getMetodiPagamento().filter(m => m !== 'Contanti').map(m => `<option value="${m}">${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
