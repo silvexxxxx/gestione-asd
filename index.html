@@ -1580,6 +1580,8 @@
                 dismissed_quotes: [], // Array of socio IDs whose expired quote alert was dismissed
                 sortConfig: { key: 'cognome', direction: 'asc' },
                 lastSociScroll: 0,
+                lastRicevuteScroll: 0,
+                lastPrimaNotaScroll: 0,
                 sociVisibleCount: 50,
                 debugMode: false,
                 currentWeekOffset: 0, // Navigazione settimane calendario
@@ -2437,6 +2439,8 @@
                 if (storedScroll) this.state.lastSociScroll = parseFloat(storedScroll);
                 const storedRicevuteScroll = localStorage.getItem('asd_last_ricevute_scroll');
                 if (storedRicevuteScroll) this.state.lastRicevuteScroll = parseFloat(storedRicevuteScroll);
+                const storedPnScroll = localStorage.getItem('asd_last_primanota_scroll');
+                if (storedPnScroll) this.state.lastPrimaNotaScroll = parseFloat(storedPnScroll);
                 if (storedSort) this.state.sortConfig = JSON.parse(storedSort);
                 if (storedPage) this.state.currentPage = storedPage;
                 if (storedDebug) {
@@ -3122,6 +3126,7 @@
                 this.syncAthletesIframe();
                 if(this.state.lastSociScroll) localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
                 if(this.state.lastRicevuteScroll !== undefined) localStorage.setItem('asd_last_ricevute_scroll', this.state.lastRicevuteScroll.toString());
+                if(this.state.lastPrimaNotaScroll !== undefined) localStorage.setItem('asd_last_primanota_scroll', this.state.lastPrimaNotaScroll.toString());
             },
             
             async exitApp() {
@@ -3815,13 +3820,16 @@
                 const main = document.getElementById('main-content');
                 const tableContainer = document.querySelector('.table-container');
 
-                // Salva posizione scroll se usciamo da soci o ricevute
+                // Salva posizione scroll se usciamo da soci, ricevute o primanota
                 if (this.state.currentPage === 'soci' && tableContainer) {
                     this.state.lastSociScroll = tableContainer.scrollTop;
                     localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
                 } else if (this.state.currentPage === 'ricevute' && tableContainer) {
                     this.state.lastRicevuteScroll = tableContainer.scrollTop;
                     localStorage.setItem('asd_last_ricevute_scroll', this.state.lastRicevuteScroll.toString());
+                } else if (this.state.currentPage === 'primanota' && tableContainer) {
+                    this.state.lastPrimaNotaScroll = tableContainer.scrollTop;
+                    localStorage.setItem('asd_last_primanota_scroll', this.state.lastPrimaNotaScroll.toString());
                 }
 
                 this.state.currentPage = pageId;
@@ -3861,7 +3869,18 @@
                                 if (newContainer && targetRicevuteScroll) newContainer.scrollTop = targetRicevuteScroll;
                             }, 120);
                             break;
-                        case 'primanota': this.renderPrimaNota(); break;
+                        case 'primanota':
+                            this.renderPrimaNota(false);
+                            const targetPnScroll = this.state.lastPrimaNotaScroll || parseFloat(localStorage.getItem('asd_last_primanota_scroll')) || 0;
+                            setTimeout(() => {
+                                const newContainer = document.querySelector('.table-container');
+                                if (newContainer && targetPnScroll) newContainer.scrollTop = targetPnScroll;
+                            }, 30);
+                            setTimeout(() => {
+                                const newContainer = document.querySelector('.table-container');
+                                if (newContainer && targetPnScroll) newContainer.scrollTop = targetPnScroll;
+                            }, 120);
+                            break;
                         case 'sala-pesi': this.renderSalaPesi(); break;
                         case 'corsi': this.renderCorsi(); break;
                         case 'istruttori': this.renderIstruttori(); break;
@@ -7183,19 +7202,84 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         
             // --- PRIMA NOTA MANAGEMENT ---
-            renderPrimaNota() {
+
+            onPrimaNotaTableScroll(el) {
+                if (!el) return;
+                this.state.lastPrimaNotaScroll = el.scrollTop;
+                localStorage.setItem('asd_last_primanota_scroll', el.scrollTop.toString());
+            },
+
+            highlightPrimaNotaRow(id) {
+                const row = document.getElementById('pn-row-' + id) || document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.style.transition = 'background-color 0.4s ease';
+                    const origBg = row.style.backgroundColor;
+                    row.style.backgroundColor = 'rgba(59, 130, 246, 0.28)';
+                    setTimeout(() => {
+                        row.style.backgroundColor = origBg;
+                    }, 1800);
+                }
+            },
+
+            updatePrimaNotaSaldiCards() {
+                const { cassaReale, bancaDigitale, totale } = this.calculateSaldiPrimaNota();
+                const cardCassa = document.getElementById('pn-card-cassa');
+                const cardBanca = document.getElementById('pn-card-banca');
+                const cardTotale = document.getElementById('pn-card-totale');
+                if (cardCassa) {
+                    cardCassa.textContent = `€ ${cassaReale.toFixed(2)}`;
+                    cardCassa.style.color = cassaReale >= 0 ? 'var(--success)' : 'var(--danger)';
+                }
+                if (cardBanca) {
+                    cardBanca.textContent = `€ ${bancaDigitale.toFixed(2)}`;
+                    cardBanca.style.color = bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)';
+                }
+                if (cardTotale) {
+                    cardTotale.textContent = `€ ${totale.toFixed(2)}`;
+                }
+            },
+
+            renderPrimaNota(preserveState = true, highlightId = null) {
                 this.syncCostiPeriodici(true);
                 this.sanitizePrimaNota();
                 const main = document.getElementById('main-content');
-                
+                const tbody = document.getElementById('pn-tbody');
+                const tableContainer = document.querySelector('.table-container');
+                const targetHighlight = highlightId || localStorage.getItem('asd_last_pn_id');
+
+                // Se la tabella di prima nota è già attiva nel DOM e vogliamo preservare la posizione
+                if (preserveState && tbody && tableContainer && this.state.currentPage === 'primanota') {
+                    const scrollY = tableContainer.scrollTop;
+                    const winScrollY = window.scrollY;
+
+                    this.updatePrimaNotaSaldiCards();
+                    this.filterPrimaNota();
+
+                    // Ripristina lo scroll istantaneamente
+                    tableContainer.scrollTop = scrollY;
+                    window.scrollTo(0, winScrollY);
+
+                    if (targetHighlight) {
+                        this.highlightPrimaNotaRow(targetHighlight);
+                    }
+                    return;
+                }
+
                 // Calcoli saldi
                 let { cassaReale, bancaDigitale, totale } = this.calculateSaldiPrimaNota();
 
                 let currentD = new Date();
                 let currentY = currentD.getFullYear();
                 let currentAS = currentD.getMonth() >= 8 ? currentY + "/" + (currentY + 1) : (currentY - 1) + "/" + currentY;
-                let yearFilter = document.getElementById('pn-year') ? document.getElementById('pn-year').value : currentAS;
                 
+                const prevSearch = document.getElementById('pn-search')?.value || '';
+                const prevYear = document.getElementById('pn-year')?.value || currentAS;
+                const prevQuarter = document.getElementById('pn-quarter')?.value || 'all';
+                const prevTipo = document.getElementById('pn-tipo')?.value || 'all';
+                const savedScroll = parseFloat(localStorage.getItem('asd_last_primanota_scroll')) || 0;
+                const prevScroll = tableContainer ? tableContainer.scrollTop : (savedScroll || this.state.lastPrimaNotaScroll || 0);
+
                 let [y1, y2] = currentAS.split('/').map(Number);
                 let nextAS = (y1+1) + "/" + (y2+1);
                 let prevAS1 = (y1-1) + "/" + (y2-1);
@@ -7220,21 +7304,21 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div class="stats-row">
                             <div class="glass-card stat-card stat-card-clickable" style="${this.pnMetodoFilter === 'cassa' ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('cassa')">
                                 <span class="label">Cassa Reale (Contanti)</span>
-                                <span class="value" style="color: ${cassaReale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${cassaReale.toFixed(2)}</span>
+                                <span id="pn-card-cassa" class="value" style="color: ${cassaReale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${cassaReale.toFixed(2)}</span>
                             </div>
                             <div class="glass-card stat-card stat-card-clickable" style="${this.pnMetodoFilter === 'banca' ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('banca')">
                                 <span class="label">Banca / Digitale</span>
-                                <span class="value" style="color: ${bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${bancaDigitale.toFixed(2)}</span>
+                                <span id="pn-card-banca" class="value" style="color: ${bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${bancaDigitale.toFixed(2)}</span>
                                 <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #f59e0b; margin-top: 6px; line-height: 1.2;">
                                     <span>⚠️</span> <span>Far fede all'estratto conto per rettifiche</span>
                                 </div>
                             </div>
                             <div class="glass-card stat-card stat-card-clickable" style="${(!this.pnMetodoFilter || this.pnMetodoFilter === 'all') ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('all')">
                                 <span class="label">Tutti i Movimenti (Totale)</span>
-                                <span class="value" style="color: var(--primary);">€ ${totale.toFixed(2)}</span>
+                                <span id="pn-card-totale" class="value" style="color: var(--primary);">€ ${totale.toFixed(2)}</span>
                             </div>
                             <div class="glass-card stat-card stat-card-clickable" onclick="app.mostraRendiconto()">
-                                <span class="label">Rendiconto ${yearFilter} (Stagione Sportiva)</span>
+                                <span class="label">Rendiconto ${prevYear} (Stagione Sportiva)</span>
                                 <span class="value" style="font-size: 1.2rem; margin-top: 10px; color: var(--accent);">Vedi Dettaglio &rarr;</span>
                             </div>
                         </div>
@@ -7253,10 +7337,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <div class="toolbar" style="padding: 1.5rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0;">
                                 <select id="pn-year" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutto lo storico</option>
-                                    <option value="${nextAS}" ${yearFilter === nextAS ? 'selected' : ''}>${nextAS}</option>
-                                    <option value="${currentAS}" ${yearFilter === currentAS ? 'selected' : ''}>${currentAS}</option>
-                                    <option value="${prevAS1}" ${yearFilter === prevAS1 ? 'selected' : ''}>${prevAS1}</option>
-                                    <option value="${prevAS2}" ${yearFilter === prevAS2 ? 'selected' : ''}>${prevAS2}</option>
+                                    <option value="${nextAS}" ${prevYear === nextAS ? 'selected' : ''}>${nextAS}</option>
+                                    <option value="${currentAS}" ${prevYear === currentAS ? 'selected' : ''}>${currentAS}</option>
+                                    <option value="${prevAS1}" ${prevYear === prevAS1 ? 'selected' : ''}>${prevAS1}</option>
+                                    <option value="${prevAS2}" ${prevYear === prevAS2 ? 'selected' : ''}>${prevAS2}</option>
                                 </select>
                                 <select id="pn-quarter" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutti i Trimestri</option>
@@ -7271,10 +7355,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <option value="Uscita">Uscite</option>
                                     <option value="Giroconto">Giroconti</option>
                                 </select>
-                                <input type="text" id="pn-search" class="form-control search-input" placeholder="Cerca descrizione o categoria..." oninput="app.filterPrimaNota()">
+                                <input type="text" id="pn-search" class="form-control search-input" placeholder="Cerca descrizione o categoria..." value="${prevSearch}" oninput="app.filterPrimaNota()">
                             </div>
 
-                            <div class="table-container">
+                            <div class="table-container" onscroll="app.onPrimaNotaTableScroll(this)">
                                 <table id="pn-table" style="margin-top: 0;">
                                     <thead>
                                         <tr>
@@ -7298,7 +7382,35 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 
                 // Ripristina valore del filtro anno se presente
                 if(document.getElementById('pn-year')) {
-                     document.getElementById('pn-year').value = yearFilter;
+                     document.getElementById('pn-year').value = prevYear;
+                }
+                if(document.getElementById('pn-quarter')) {
+                     document.getElementById('pn-quarter').value = prevQuarter;
+                }
+                if(document.getElementById('pn-tipo')) {
+                     document.getElementById('pn-tipo').value = prevTipo;
+                }
+                if(document.getElementById('pn-search')) {
+                     document.getElementById('pn-search').value = prevSearch;
+                }
+
+                if (prevSearch || prevYear !== currentAS || prevQuarter !== 'all' || prevTipo !== 'all') {
+                    this.filterPrimaNota();
+                }
+
+                if (prevScroll > 0) {
+                    setTimeout(() => {
+                        const newContainer = document.querySelector('.table-container');
+                        if (newContainer) newContainer.scrollTop = prevScroll;
+                    }, 30);
+                    setTimeout(() => {
+                        const newContainer = document.querySelector('.table-container');
+                        if (newContainer) newContainer.scrollTop = prevScroll;
+                    }, 120);
+                }
+
+                if (targetHighlight) {
+                    setTimeout(() => this.highlightPrimaNotaRow(targetHighlight), 150);
                 }
             },
 
@@ -7452,7 +7564,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     let sign = t.tipo === 'Uscita' ? '-' : (t.tipo === 'Entrata' ? '+' : '');
 
                     return `
-                        <tr>
+                        <tr id="pn-row-${t.id}" data-id="${t.id}">
                             <td style="padding-left: 1.5rem;">${this.formatDate(t.data)}</td>
                             <td><span class="badge ${badgeClass}">${t.tipo}</span></td>
                             <td>${t.metodo}</td>
@@ -7888,9 +8000,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const descrizioneVal = formData.get('descrizione');
                 const importoVal = parseFloat(formData.get('importo')) || 0;
 
+                let highlightId = null;
+
                 if (tipoVal === 'Giroconto') {
                     const isFromCassa = (metodoVal === 'Contanti');
                     const groupId = existingGcGroup || ('gc_' + Date.now() + Math.random().toString(36).substr(2, 4));
+                    highlightId = 'txn_' + groupId + '_OUT';
 
                     if (existingGcGroup) {
                         this.state.primanota = this.state.primanota.filter(t => t.giroconto_group !== existingGcGroup && !t.riferimento?.startsWith('GIROCONTO_' + existingGcGroup));
@@ -7956,6 +8071,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         });
                         this.toast('Movimento salvato con successo', 'success');
                     }
+                    highlightId = targetTxnId;
 
                     // Gestione automatica commissioni sul metodo di pagamento (per Uscite)
                     if (targetTxnId) {
@@ -7993,9 +8109,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
                 }
                 
+                if (highlightId) {
+                    localStorage.setItem('asd_last_pn_id', highlightId);
+                }
                 this.saveAll();
                 this.closeModal();
-                this.renderPrimaNota();
+                this.renderPrimaNota(true, highlightId);
             },
 
             deletePrimaNota(id) {
@@ -8007,7 +8126,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         this.state.primanota = this.state.primanota.filter(t => t.giroconto_group !== gcGroup && !t.riferimento?.startsWith('GIROCONTO_' + gcGroup) && String(t.id) !== String(id) && t.riferimento !== ('COMM_TXN_' + id));
                         this.trackDeletion(id);
                         this.saveAll();
-                        this.renderPrimaNota();
+                        this.renderPrimaNota(true);
                         this.toast('Giroconto eliminato (rimosse entrambe le voci collegate)', 'success');
                     }
                 } else {
@@ -8015,7 +8134,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         this.state.primanota = this.state.primanota.filter(t => String(t.id) !== String(id) && t.riferimento !== ('COMM_TXN_' + id));
                         this.trackDeletion(id);
                         this.saveAll();
-                        this.renderPrimaNota();
+                        this.renderPrimaNota(true);
                         this.toast('Movimento eliminato', 'success');
                     }
                 }
