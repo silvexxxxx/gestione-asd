@@ -7534,11 +7534,25 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     ` : this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label id="label-categoria">${defaultTipo === 'Giroconto' ? 'A (Destinazione)*' : (defaultTipo === 'Entrata' ? 'Categoria Entrata*' : 'Categoria Uscita*')}</label>
-                                <select id="new-pn-categoria" name="categoria" class="form-control" required>
+                            <div class="form-group" id="pn-categoria-group">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <label id="label-categoria" style="margin:0;">${defaultTipo === 'Giroconto' ? 'A (Destinazione)*' : (defaultTipo === 'Entrata' ? 'Categoria Entrata*' : 'Categoria Uscita*')}</label>
+                                    <button type="button" id="btn-add-cat-pn" class="btn btn-outline" style="display:${defaultTipo === 'Giroconto' ? 'none' : 'inline-flex'}; align-items:center; gap:3px; padding:2px 7px; font-size:0.75rem; color:#60a5fa; border-color:rgba(59,130,246,0.35); background:rgba(59,130,246,0.08); cursor:pointer;" onclick="app.showNewPrimaNotaCategoriaInput()">➕ Nuova</button>
+                                </div>
+                                <select id="new-pn-categoria" name="categoria" class="form-control" required onchange="app.onPrimaNotaCategoriaChange(this.value)">
                                     <!-- Injected based on type -->
                                 </select>
+                                <div id="pn-new-cat-box" style="display:none; margin-top:8px; background:rgba(59,130,246,0.08); border:1px dashed rgba(59,130,246,0.4); border-radius:6px; padding:8px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                        <span style="font-size:0.75rem; font-weight:600; color:#60a5fa;">➕ Scrivi nuova categoria:</span>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">(verrà salvata tra le opzioni standard)</span>
+                                    </div>
+                                    <div style="display:flex; gap:6px;">
+                                        <input type="text" id="pn-new-cat-input" class="form-control" placeholder="Es. Cancelleria e Stampati" style="font-size:0.85rem; padding:6px 10px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); event.stopPropagation(); app.saveNewPrimaNotaCategoria();}">
+                                        <button type="button" class="btn btn-primary" style="padding:6px 12px; font-size:0.82rem; white-space:nowrap;" onclick="app.saveNewPrimaNotaCategoria()">Salva</button>
+                                        <button type="button" class="btn btn-outline" style="padding:6px 10px; font-size:0.82rem;" title="Annulla" onclick="app.cancelNewPrimaNotaCategoria()">✕</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -7635,6 +7649,82 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             },
 
+            showNewPrimaNotaCategoriaInput() {
+                const box = document.getElementById('pn-new-cat-box');
+                const input = document.getElementById('pn-new-cat-input');
+                const catSelect = document.getElementById('new-pn-categoria');
+                if (box && input) {
+                    box.style.display = 'block';
+                    input.value = '';
+                    setTimeout(() => input.focus(), 60);
+                }
+                if (catSelect) {
+                    catSelect.value = '__NEW__';
+                }
+            },
+
+            onPrimaNotaCategoriaChange(val) {
+                if (val === '__NEW__') {
+                    this.showNewPrimaNotaCategoriaInput();
+                } else {
+                    const box = document.getElementById('pn-new-cat-box');
+                    if (box) box.style.display = 'none';
+                }
+            },
+
+            cancelNewPrimaNotaCategoria() {
+                const box = document.getElementById('pn-new-cat-box');
+                const catSelect = document.getElementById('new-pn-categoria');
+                if (box) box.style.display = 'none';
+                if (catSelect && catSelect.value === '__NEW__') {
+                    if (catSelect.options.length > 1) {
+                        catSelect.selectedIndex = 0;
+                    }
+                }
+            },
+
+            saveNewPrimaNotaCategoria() {
+                const input = document.getElementById('pn-new-cat-input');
+                const catSelect = document.getElementById('new-pn-categoria');
+                const tipoSelect = document.getElementById('new-pn-tipo');
+                const tipo = tipoSelect ? tipoSelect.value : 'Uscita';
+                if (!input) return;
+
+                const newCat = input.value.trim();
+                if (!newCat) {
+                    this.toast('Inserisci il nome della nuova categoria', 'warning');
+                    input.focus();
+                    return;
+                }
+
+                if (tipo === 'Entrata') {
+                    if (!this.state.settings.categorie_entrate) this.state.settings.categorie_entrate = [];
+                    const exists = this.state.settings.categorie_entrate.some(c => c.toLowerCase() === newCat.toLowerCase());
+                    if (!exists) {
+                        this.state.settings.categorie_entrate.push(newCat);
+                        this.saveAll();
+                        this.toast(`Categoria "${newCat}" aggiunta alle Entrate standard!`, 'success');
+                    } else {
+                        this.toast(`Categoria "${newCat}" già presente nelle Entrate.`, 'info');
+                    }
+                } else if (tipo === 'Uscita') {
+                    if (!this.state.settings.categorie_uscite) this.state.settings.categorie_uscite = [];
+                    const exists = this.state.settings.categorie_uscite.some(c => c.toLowerCase() === newCat.toLowerCase());
+                    if (!exists) {
+                        this.state.settings.categorie_uscite.push(newCat);
+                        this.saveAll();
+                        this.toast(`Categoria "${newCat}" aggiunta alle Uscite standard!`, 'success');
+                    } else {
+                        this.toast(`Categoria "${newCat}" già presente nelle Uscite.`, 'info');
+                    }
+                }
+
+                this.updatePrimaNotaFormFields(tipo, newCat);
+                const box = document.getElementById('pn-new-cat-box');
+                if (box) box.style.display = 'none';
+                if (catSelect) catSelect.value = newCat;
+            },
+
             updatePrimaNotaFormFields(tipo, preselectedCat = '', preselectedMetodo = '') {
                 const catSelect = document.getElementById('new-pn-categoria');
                 const metodoSelect = document.getElementById('new-pn-metodo');
@@ -7642,10 +7732,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const labelCat = document.getElementById('label-categoria');
                 const descInput = document.getElementById('new-pn-descrizione');
                 const presetRow = document.getElementById('pn-bank-presets-row');
+                const addCatBtn = document.getElementById('btn-add-cat-pn');
+                const newCatBox = document.getElementById('pn-new-cat-box');
                 
                 if (!catSelect || !labelMetodo || !labelCat) return;
 
-                catSelect.innerHTML = '';
+                if (newCatBox) newCatBox.style.display = 'none';
 
                 const checkBankPresetVisibility = (currentMethod) => {
                     if (!presetRow) return;
@@ -7659,6 +7751,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 
                 if (tipo === 'Entrata') {
                     if (presetRow) presetRow.style.display = 'none';
+                    if (addCatBtn) addCatBtn.style.display = 'inline-flex';
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Entrata*';
                     if (metodoSelect) {
@@ -7666,12 +7759,17 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
                         metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('');
                     }
-                    catSelect.onchange = null;
-                    this.state.settings.categorie_entrate.forEach(c => {
-                        catSelect.innerHTML += `<option value="${c}" ${preselectedCat === c ? 'selected' : ''}>${c}</option>`;
-                    });
+                    catSelect.onchange = (e) => this.onPrimaNotaCategoriaChange(e.target.value);
+                    const cats = this.state.settings.categorie_entrate || [];
+                    let catOpts = cats.map(c => `<option value="${c}" ${preselectedCat === c ? 'selected' : ''}>${c}</option>`).join('');
+                    if (preselectedCat && !cats.includes(preselectedCat)) {
+                        catOpts = `<option value="${preselectedCat}" selected>${preselectedCat}</option>` + catOpts;
+                    }
+                    catOpts += `<option value="__NEW__" style="color:#60a5fa; font-weight:600;">➕ Scrivi nuova categoria...</option>`;
+                    catSelect.innerHTML = catOpts;
                     if (descInput && !descInput.value) descInput.placeholder = 'Es. Donazione liberale / Sponsor';
                 } else if (tipo === 'Uscita') {
+                    if (addCatBtn) addCatBtn.style.display = 'inline-flex';
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Uscita*';
                     if (metodoSelect) {
@@ -7682,13 +7780,18 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         };
                         checkBankPresetVisibility(curM);
                     }
-                    catSelect.onchange = null;
-                    this.state.settings.categorie_uscite.forEach(c => {
-                        catSelect.innerHTML += `<option value="${c}" ${preselectedCat === c ? 'selected' : ''}>${c}</option>`;
-                    });
+                    catSelect.onchange = (e) => this.onPrimaNotaCategoriaChange(e.target.value);
+                    const cats = this.state.settings.categorie_uscite || [];
+                    let catOpts = cats.map(c => `<option value="${c}" ${preselectedCat === c ? 'selected' : ''}>${c}</option>`).join('');
+                    if (preselectedCat && !cats.includes(preselectedCat)) {
+                        catOpts = `<option value="${preselectedCat}" selected>${preselectedCat}</option>` + catOpts;
+                    }
+                    catOpts += `<option value="__NEW__" style="color:#60a5fa; font-weight:600;">➕ Scrivi nuova categoria...</option>`;
+                    catSelect.innerHTML = catOpts;
                     if (descInput && !descInput.value) descInput.placeholder = 'Es. Pagamento affitto / Bolletta';
                 } else if (tipo === 'Giroconto') {
                     if (presetRow) presetRow.style.display = 'none';
+                    if (addCatBtn) addCatBtn.style.display = 'none';
                     labelMetodo.innerText = 'Da (Origine)*';
                     labelCat.innerText = 'A (Destinazione)*';
                     if (metodoSelect) {
@@ -7729,7 +7832,37 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const dataVal = formData.get('data');
                 const tipoVal = formData.get('tipo');
                 const metodoVal = formData.get('metodo');
-                const categoriaVal = formData.get('categoria');
+                let categoriaVal = (formData.get('categoria') || '').trim();
+                const newCatBox = document.getElementById('pn-new-cat-box');
+                const newCatInput = document.getElementById('pn-new-cat-input');
+                if (newCatBox && newCatBox.style.display !== 'none' && newCatInput && newCatInput.value.trim()) {
+                    categoriaVal = newCatInput.value.trim();
+                } else if (categoriaVal === '__NEW__' && newCatInput && newCatInput.value.trim()) {
+                    categoriaVal = newCatInput.value.trim();
+                }
+
+                if (categoriaVal === '__NEW__') {
+                    this.toast('Inserisci il nome della nuova categoria o scegline una esistente.', 'warning');
+                    if (newCatInput) {
+                        this.showNewPrimaNotaCategoriaInput();
+                        newCatInput.focus();
+                    }
+                    return;
+                }
+
+                // Salva permanentemente la nuova categoria nelle impostazioni per le future compilazioni
+                if (tipoVal === 'Entrata' && categoriaVal) {
+                    if (!this.state.settings.categorie_entrate) this.state.settings.categorie_entrate = [];
+                    if (!this.state.settings.categorie_entrate.some(c => c.toLowerCase() === categoriaVal.toLowerCase())) {
+                        this.state.settings.categorie_entrate.push(categoriaVal);
+                    }
+                } else if (tipoVal === 'Uscita' && categoriaVal) {
+                    if (!this.state.settings.categorie_uscite) this.state.settings.categorie_uscite = [];
+                    if (!this.state.settings.categorie_uscite.some(c => c.toLowerCase() === categoriaVal.toLowerCase())) {
+                        this.state.settings.categorie_uscite.push(categoriaVal);
+                    }
+                }
+
                 const descrizioneVal = formData.get('descrizione');
                 const importoVal = parseFloat(formData.get('importo')) || 0;
 
