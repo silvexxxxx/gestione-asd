@@ -1846,6 +1846,70 @@
                 this.state.settings.costi_fissi_periodici = [];
                 changed = true;
             }
+
+            // Predisposizione voci di default Costi Fissi e Spese Bancarie (solo configurazione, nessun movimento inserito)
+            const listCosti = this.state.settings.costi_fissi_periodici;
+
+            // 1. Canone carta di debito (-3.00 € | Mensile fine mese | Destinazione: Conto Banca / POS | Attivo)
+            const hasCarta = listCosti.some(x => {
+                const n = (x && x.nome ? x.nome : '').toLowerCase();
+                return n.includes('carta') || n.includes('debito');
+            });
+            if (!hasCarta) {
+                listCosti.push({
+                    id: 'costo_carta_debito',
+                    nome: 'Canone carta di debito',
+                    importo: 3.00,
+                    periodicita: 'mensile',
+                    giorno: 'fine_mese',
+                    data_inizio: '2025-09-01',
+                    metodo: 'Banca',
+                    categoria: 'Spese e Commissioni Bancarie',
+                    attivo: true
+                });
+                changed = true;
+            }
+
+            // 2. Conteggio interessi e competenze (-6.00 € | Trimestrale fine trimestre | Destinazione: Conto Banca / POS | Predisposto non registrato)
+            const hasInteressi = listCosti.some(x => {
+                const n = (x && x.nome ? x.nome : '').toLowerCase();
+                return n.includes('interessi') || n.includes('competenze');
+            });
+            if (!hasInteressi) {
+                listCosti.push({
+                    id: 'costo_interessi_competenze',
+                    nome: 'Conteggio interessi e competenze',
+                    importo: 6.00,
+                    periodicita: 'trimestrale',
+                    giorno: 'fine_mese',
+                    data_inizio: '2025-09-01',
+                    metodo: 'Banca',
+                    categoria: 'Spese e Commissioni Bancarie',
+                    attivo: false
+                });
+                changed = true;
+            }
+
+            // 3. Imposta di bollo C/C (-0.00 € | Trimestrale fine trimestre | Destinazione: Conto Banca / POS | Esente ETS / ASD)
+            const hasBollo = listCosti.some(x => {
+                const n = (x && x.nome ? x.nome : '').toLowerCase();
+                return n.includes('bollo');
+            });
+            if (!hasBollo) {
+                listCosti.push({
+                    id: 'costo_imposta_bollo',
+                    nome: 'Imposta di bollo C/C',
+                    importo: 0.00,
+                    periodicita: 'trimestrale',
+                    giorno: 'fine_mese',
+                    data_inizio: '2025-09-01',
+                    metodo: 'Banca',
+                    categoria: 'Spese e Commissioni Bancarie',
+                    attivo: false
+                });
+                changed = true;
+            }
+
             if (changed && typeof this.saveAll === 'function') {
                 this.saveAll();
             }
@@ -2130,8 +2194,65 @@
 
                         if (isDue && periodKey && targetDate) {
                             const ref = `RICORRENTE_${costo.id}_${periodKey}`;
-                            if (!existingRefs.has(ref)) {
-                                const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+                            const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+
+                            // IDEMPOTENZA PREVENTIVA: Controllo per riferimento, data e causale (ignora canoni già presenti per 2025/2026)
+                            const nomeNorm = (costo.nome || '').trim().toLowerCase();
+                            const isCarta = nomeNorm.includes('carta') || nomeNorm.includes('debito');
+                            const isInteressi = nomeNorm.includes('interessi') || nomeNorm.includes('competenze');
+                            const isBollo = nomeNorm.includes('bollo');
+
+                            const alreadyExists = existingRefs.has(ref) || this.state.primanota.some(t => {
+                                if (!t) return false;
+
+                                // 1. Match diretto su riferimento
+                                if (t.riferimento) {
+                                    if (t.riferimento === ref) return true;
+                                    if (t.riferimento.includes(periodKey) && (t.riferimento.includes(costo.id) || (isCarta && t.riferimento.toLowerCase().includes('carta')))) {
+                                        return true;
+                                    }
+                                }
+
+                                const tDesc = (t.descrizione || '').toLowerCase();
+                                const tDate = t.data || '';
+
+                                // 2. Match su causale / descrizione
+                                let descMatches = false;
+                                if (tDesc.includes(nomeNorm)) {
+                                    descMatches = true;
+                                } else if (isCarta && (tDesc.includes('canone') || tDesc.includes('debito') || tDesc.includes('carta')) && (tDesc.includes('carta') || tDesc.includes('debito') || tDesc.includes('bancomat'))) {
+                                    descMatches = true;
+                                } else if (isInteressi && (tDesc.includes('interessi') || tDesc.includes('competenze') || tDesc.includes('liquidazione'))) {
+                                    descMatches = true;
+                                } else if (isBollo && tDesc.includes('bollo')) {
+                                    descMatches = true;
+                                }
+
+                                if (!descMatches) return false;
+
+                                // 3. Match temporale (data esatta, stesso mese o stesso trimestre)
+                                if (tDate === dateStr) return true;
+
+                                const yearMonth = `${y}-${String(m + 1).padStart(2, '0')}`;
+                                if (periodicita === 'mensile' && tDate.startsWith(yearMonth)) {
+                                    return true;
+                                }
+
+                                if (periodicita === 'trimestrale' && tDate.startsWith(`${y}-`)) {
+                                    const txMonth = parseInt(tDate.split('-')[1], 10) - 1;
+                                    if (Math.floor(txMonth / 3) === Math.floor(m / 3)) {
+                                        return true;
+                                    }
+                                }
+
+                                if (periodicita === 'annuale' && tDate.startsWith(`${y}-`)) {
+                                    return true;
+                                }
+
+                                return false;
+                            });
+
+                            if (!alreadyExists) {
                                 const mesiNomi = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
                                 let descPeriodo = '';
                                 if (periodicita === 'mensile') {
@@ -10061,6 +10182,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </div>
                             </div>
 
+                            <!-- Box Informativo Commercialista -->
+                            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-left:4px solid #818cf8; padding:12px 16px; border-radius:8px; margin-bottom:1.25rem; font-size:0.85rem; line-height:1.5; color:var(--text-light);">
+                                <strong>💡 Nota contabile facoltativa:</strong> La gestione di queste registrazioni periodiche e dei costi bancari a consumo (es. scritture extra franchigia) è facoltativa. Se non desideri appesantire il lavoro di inserimento, puoi lasciare la registrazione e riconciliazione di queste voci al commercialista/consulente in sede di rendiconto annuale, prendendo come riferimento l'Estratto Conto ufficiale.
+                            </div>
+
                             <div style="overflow-x:auto;">
                                 <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
                                     <thead>
@@ -10082,36 +10208,75 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                             </tr>
                                         ` : costiFissi.map(c => {
                                             const isAttivo = (c.attivo !== false);
-                                            const cadenzaStr = c.periodicita === 'mensile' 
-                                                ? (c.giorno === 'fine_mese' ? 'Mensile (Fine Mese)' : `Mensile (il ${c.giorno} del mese)`)
-                                                : (c.periodicita === 'trimestrale' ? 'Trimestrale (Fine Trimestre)' : 'Annuale');
+                                            const nomeLower = (c.nome || '').toLowerCase();
+                                            const isCarta = nomeLower.includes('carta') || nomeLower.includes('debito');
+                                            const isInteressi = nomeLower.includes('interessi') || nomeLower.includes('competenze');
+                                            const isBollo = nomeLower.includes('bollo') || parseFloat(c.importo || 0) === 0;
+
+                                            let cadenzaStr = '';
+                                            if (c.periodicita === 'mensile') {
+                                                cadenzaStr = (c.giorno === 'fine_mese' || !c.giorno) ? 'Mensile (Fine Mese)' : `Mensile (il ${c.giorno} del mese)`;
+                                            } else if (c.periodicita === 'trimestrale') {
+                                                cadenzaStr = (isInteressi || isBollo) 
+                                                    ? 'Trimestrale (Fine Trimestre: 31/03, 30/06, 30/09, 31/12)'
+                                                    : 'Trimestrale (Fine Trimestre)';
+                                            } else {
+                                                cadenzaStr = 'Annuale';
+                                            }
+
+                                            // Destinazione display label
+                                            const isBanca = !c.metodo || c.metodo === 'Banca' || c.metodo.toLowerCase().includes('banca');
+                                            const destLabel = isBanca ? 'Conto Banca / POS' : c.metodo;
+
+                                            // Stato badge
+                                            let statoBadge = '';
+                                            if (isBollo) {
+                                                statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(14,165,233,0.15); color:#38bdf8; border:1px solid rgba(14,165,233,0.3);" title="Esente da imposta di bollo ex art. 82 D.Lgs. 117/2017 per ETS/ASD">🏛️ Esente ETS / ASD</span>`;
+                                            } else if (isCarta) {
+                                                if (isAttivo) {
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">● Attivo (sincronizzato 25/26)</span>`;
+                                                } else {
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(107,114,128,0.2); color:#9ca3af; border:1px solid rgba(107,114,128,0.3);">⏸️ In Pausa</span>`;
+                                                }
+                                            } else if (isInteressi) {
+                                                if (isAttivo) {
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">● Attivo (Auto-ins)</span>`;
+                                                } else {
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(99,102,241,0.15); color:#a5b4fc; border:1px solid rgba(99,102,241,0.3);">⚪ Predisposto (non registrato)</span>`;
+                                                }
+                                            } else {
+                                                if (isAttivo) {
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">● Attivo (Auto-ins)</span>`;
+                                                } else {
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(107,114,128,0.2); color:#9ca3af; border:1px solid rgba(107,114,128,0.3);">⏸️ In Pausa</span>`;
+                                                }
+                                            }
+
                                             return `
-                                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                                <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
                                                     <td style="padding:12px; font-weight:600; color:var(--text-light);">
                                                         ${c.nome}
                                                         <div style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">${c.categoria || 'Spese e Commissioni Bancarie'}</div>
                                                     </td>
-                                                    <td style="padding:12px; font-weight:700; color:var(--danger);">
-                                                        -€ ${parseFloat(c.importo).toFixed(2)}
+                                                    <td style="padding:12px; font-weight:700; color:${parseFloat(c.importo || 0) > 0 ? 'var(--danger)' : 'var(--text-muted)'};">
+                                                        -€ ${parseFloat(c.importo || 0).toFixed(2)}
                                                     </td>
                                                     <td style="padding:12px;">
                                                         <span style="font-size:0.85rem; color:var(--text-light);">${cadenzaStr}</span>
                                                     </td>
                                                     <td style="padding:12px;">
-                                                        <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:10px; font-size:0.75rem; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
-                                                            🏦 ${c.metodo || 'Banca'}
+                                                        <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:10px; font-size:0.75rem; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                                                            🏦 ${destLabel}
                                                         </span>
                                                     </td>
                                                     <td style="padding:12px;">
-                                                        <button type="button" onclick="app.toggleCostoFisso('${c.id}')" style="background:none; border:none; cursor:pointer; padding:0;" title="Clicca per attivare o mettere in pausa">
-                                                            <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:10px; font-size:0.75rem; font-weight:600; ${isAttivo ? 'background:rgba(16,185,129,0.15); color:#10b981;' : 'background:rgba(107,114,128,0.2); color:#9ca3af;'}">
-                                                                ${isAttivo ? '● Attivo (Auto-ins)' : '⏸️ In Pausa'}
-                                                            </span>
+                                                        <button type="button" onclick="app.toggleCostoFisso('${c.id}')" style="background:none; border:none; cursor:pointer; padding:0;" title="Clicca per cambiare stato">
+                                                            ${statoBadge}
                                                         </button>
                                                     </td>
                                                     <td style="padding:12px; text-align:right; white-space:nowrap;">
-                                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica" onclick="app.openCostoFissoModal('${c.id}')">✏️ Modifica</button>
-                                                        <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina" onclick="app.deleteCostoFisso('${c.id}')">🗑️</button>
+                                                        <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica" onclick="app.openCostoFissoModal('${c.id}')">✏️ Modifica</button>
+                                                        <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina" onclick="app.deleteCostoFisso('${c.id}')">🗑️</button>
                                                     </td>
                                                 </tr>
                                             `;
@@ -10777,8 +10942,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const c = isEdit ? (list.find(x => String(x.id) === String(editId)) || {}) : {};
             const curDate = new Date();
             const curMonthStr = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+            const isAttivoChecked = isEdit ? (c.attivo === true) : true;
 
-            this.openModal(isEdit ? `✏️ Modifica Costo Periodico: ${c.nome}` : '➕ Nuovo Costo Periodico / Spesa Fissa', `
+            this.openModal(isEdit ? `✏️ Modifica Spesa Periodica: ${c.nome}` : '➕ Nuova Spesa Periodica / Costo Fisso', `
                 <form id="costo-fisso-form" onsubmit="app.handleSaveCostoFisso(event, '${isEdit ? editId : ''}')" style="display:flex; flex-direction:column; gap:14px;">
                     ${!isEdit ? `
                         <div class="form-group" style="background:rgba(99,102,241,0.08); padding:10px 12px; border-radius:8px; border:1px dashed rgba(99,102,241,0.35); margin-bottom:0;">
@@ -10786,29 +10952,29 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <select class="form-control" style="font-size:0.85rem;" onchange="app.fillCostoFissoPreset(this.value)">
                                 <option value="">-- Seleziona spesa ricorrente tipica --</option>
                                 <option value="carta_debito">Canone carta di debito (3.00 € / mese - fine mese)</option>
+                                <option value="interessi_competenze">Conteggio interessi e competenze (6.00 € / trimestre - fine trimestre)</option>
+                                <option value="bollo_trimestre">Imposta di bollo C/C (0.00 € / trimestre - Esente ETS/ASD)</option>
                                 <option value="canone_cc">Canone tenuta conto corrente (5.00 € / mese - fine mese)</option>
                                 <option value="canone_pos">Canone noleggio terminale POS (10.00 € / mese - fine mese)</option>
-                                <option value="bollo_trimestre">Imposta di bollo conto corrente (25.00 € / trimestre)</option>
-                                <option value="competenze_trimestre">Spese competenze trimestrali (15.00 € / trimestre)</option>
                             </select>
                         </div>
                     ` : ''}
 
                     <div class="form-group">
-                        <label>Nome Spesa / Descrizione*</label>
-                        <input type="text" name="nome" class="form-control" required placeholder="Es: Canone carta di debito, Canone c/c..." value="${c.nome || ''}">
+                        <label>Descrizione / Nome Spesa*</label>
+                        <input type="text" name="nome" class="form-control" required placeholder="Es: Canone carta di debito, Conteggio interessi e competenze..." value="${c.nome || ''}">
                     </div>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         <div class="form-group">
-                            <label>Importo Fisso (€)*</label>
-                            <input type="number" step="0.01" min="0.01" name="importo" class="form-control" required placeholder="0.00" value="${c.importo ? parseFloat(c.importo).toFixed(2) : ''}">
+                            <label>Importo (€)*</label>
+                            <input type="number" step="0.01" min="0" name="importo" class="form-control" required placeholder="0.00" value="${c.importo !== undefined && c.importo !== null ? parseFloat(c.importo).toFixed(2) : ''}">
                         </div>
                         <div class="form-group">
                             <label>Cadenza / Periodicità*</label>
                             <select name="periodicita" class="form-control" required>
                                 <option value="mensile" ${c.periodicita === 'mensile' ? 'selected' : ''}>Mensile (ogni mese)</option>
-                                <option value="trimestrale" ${c.periodicita === 'trimestrale' ? 'selected' : ''}>Trimestrale (Marzo, Giugno, Settembre, Dicembre)</option>
+                                <option value="trimestrale" ${c.periodicita === 'trimestrale' ? 'selected' : ''}>Trimestrale (Fine Trimestre: 31/03, 30/06, 30/09, 31/12)</option>
                                 <option value="annuale" ${c.periodicita === 'annuale' ? 'selected' : ''}>Annuale (a fine anno)</option>
                             </select>
                         </div>
@@ -10818,7 +10984,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div class="form-group">
                             <label>Giorno di Addebito (Indicativo)*</label>
                             <select name="giorno" class="form-control" required>
-                                <option value="fine_mese" ${(!c.giorno || c.giorno === 'fine_mese') ? 'selected' : ''}>Fine mese (Consigliato / Standard)</option>
+                                <option value="fine_mese" ${(!c.giorno || c.giorno === 'fine_mese') ? 'selected' : ''}>Fine mese / Fine trimestre (Consigliato / Standard)</option>
                                 <option value="1" ${c.giorno === '1' ? 'selected' : ''}>Il 1° del mese</option>
                                 <option value="5" ${c.giorno === '5' ? 'selected' : ''}>Il 5 del mese</option>
                                 <option value="10" ${c.giorno === '10' ? 'selected' : ''}>Il 10 del mese</option>
@@ -10829,15 +10995,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         </div>
                         <div class="form-group">
                             <label>A partire da (Mese iniziale)*</label>
-                            <input type="month" name="data_inizio" class="form-control" required value="${c.data_inizio ? c.data_inizio.substring(0, 7) : curMonthStr}">
+                            <input type="month" name="data_inizio" class="form-control" required value="${c.data_inizio ? c.data_inizio.substring(0, 7) : '2025-09'}">
                         </div>
                     </div>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         <div class="form-group">
-                            <label>Registro / Metodo di Addebito*</label>
+                            <label>Destinazione / Metodo di Addebito*</label>
                             <select name="metodo" class="form-control" required>
-                                <option value="Banca" ${(!c.metodo || c.metodo === 'Banca') ? 'selected' : ''}>🏦 Banca (Conto Corrente)</option>
+                                <option value="Banca" ${(!c.metodo || c.metodo === 'Banca') ? 'selected' : ''}>🏦 Conto Banca / POS</option>
                                 <option value="Contanti" ${c.metodo === 'Contanti' ? 'selected' : ''}>🏷️ Contanti (Cassa Reale)</option>
                             </select>
                         </div>
@@ -10851,15 +11017,25 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         </div>
                     </div>
 
+                    <!-- Switch di Attivazione -->
+                    <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); padding:12px 14px; border-radius:8px;">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; margin-bottom:0;">
+                            <input type="checkbox" name="attivo" value="1" ${isAttivoChecked ? 'checked' : ''} style="width:18px; height:18px; accent-color:#6366f1; cursor:pointer;">
+                            <span style="font-size:0.9rem;">Stato: Attivo (abilita auto-registrazione in Prima Nota)</span>
+                        </label>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; margin-left:28px;">
+                            Se non selezionato, la spesa rimane memorizzata/predisposta senza registrare alcun movimento in automatico.
+                        </div>
+                    </div>
+
                     <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); padding:10px 12px; border-radius:8px; font-size:0.82rem; line-height:1.5; color:var(--text-muted);">
-                        <strong style="color:#a5b4fc; display:block; margin-bottom:4px;">ℹ️ Nota sul giorno di addebito (Estratto Conto):</strong>
-                        Molti istituti bancari addebitano canoni e carte in giorni variabili (es. ultimo giorno lavorativo o primi giorni del mese successivo).
-                        Il sistema genera convenzionalmente il movimento con causale standard <em>"per il mese di [Mese Anno]"</em>. Potrai in qualsiasi momento perfezionare la data esatta o l'importo con un clic (pulsante ✏️) dall'elenco di Prima Nota una volta verificato l'estratto conto.
+                        <strong style="color:#a5b4fc; display:block; margin-bottom:4px;">ℹ️ Nota sul giorno di addebito e Riconciliazione:</strong>
+                        Il gestionale assegna la scadenza convenzionalmente a fine periodo (es. fine mese o fine trimestre). Tramite la protezione di idempotenza, le registrazioni già presenti non vengono mai duplicate. La registrazione è facoltativa e può essere riconciliata a consuntivo sull'estratto conto.
                     </div>
 
                     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
                         <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary" style="background:#6366f1; border-color:#6366f1;">💾 Salva Costo Periodico</button>
+                        <button type="submit" class="btn btn-primary" style="background:#6366f1; border-color:#6366f1;">💾 Salva Spesa Periodica</button>
                     </div>
                 </form>
             `);
@@ -10873,13 +11049,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const perSelect = form.querySelector('select[name="periodicita"]');
             const gioSelect = form.querySelector('select[name="giorno"]');
             const catSelect = form.querySelector('select[name="categoria"]');
+            const attCheck = form.querySelector('input[name="attivo"]');
 
             const presets = {
-                carta_debito: { nome: 'Canone carta di debito', imp: '3.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' },
-                canone_cc: { nome: 'Canone tenuta conto corrente', imp: '5.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' },
-                canone_pos: { nome: 'Canone noleggio terminale POS', imp: '10.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' },
-                bollo_trimestre: { nome: 'Imposta di bollo conto corrente', imp: '25.00', per: 'trimestrale', gio: 'fine_mese', cat: 'SIAE e Tasse' },
-                competenze_trimestre: { nome: 'Spese competenze liquidazione', imp: '15.00', per: 'trimestrale', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie' }
+                carta_debito: { nome: 'Canone carta di debito', imp: '3.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie', attivo: true },
+                interessi_competenze: { nome: 'Conteggio interessi e competenze', imp: '6.00', per: 'trimestrale', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie', attivo: false },
+                bollo_trimestre: { nome: 'Imposta di bollo C/C', imp: '0.00', per: 'trimestrale', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie', attivo: false },
+                canone_cc: { nome: 'Canone tenuta conto corrente', imp: '5.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie', attivo: false },
+                canone_pos: { nome: 'Canone noleggio terminale POS', imp: '10.00', per: 'mensile', gio: 'fine_mese', cat: 'Spese e Commissioni Bancarie', attivo: false }
             };
 
             const p = presets[key];
@@ -10891,6 +11068,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             if (catSelect && Array.from(catSelect.options).some(o => o.value === p.cat)) {
                 catSelect.value = p.cat;
             }
+            if (attCheck) {
+                attCheck.checked = !!p.attivo;
+            }
         },
 
         handleSaveCostoFisso(e, editId = '') {
@@ -10898,15 +11078,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const form = e.target;
             const formData = new FormData(form);
             const nome = (formData.get('nome') || '').trim();
-            const importo = parseFloat(formData.get('importo')) || 0;
+            const importo = parseFloat(formData.get('importo'));
             const periodicita = formData.get('periodicita') || 'mensile';
             const giorno = formData.get('giorno') || 'fine_mese';
-            const data_inizio = formData.get('data_inizio') ? (formData.get('data_inizio') + '-01') : (new Date().toISOString().substring(0, 7) + '-01');
+            const data_inizio = formData.get('data_inizio') ? (formData.get('data_inizio') + '-01') : '2025-09-01';
             const metodo = formData.get('metodo') || 'Banca';
             const categoria = formData.get('categoria') || 'Spese e Commissioni Bancarie';
+            const attivo = formData.get('attivo') === '1';
 
-            if (!nome || importo <= 0) {
-                this.toast('Inserisci un nome valido e un importo maggiore di zero.', 'warning');
+            if (!nome || isNaN(importo) || importo < 0) {
+                this.toast('Inserisci una descrizione valida e un importo non negativo (>= 0).', 'warning');
                 return;
             }
 
@@ -10922,7 +11103,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 data_inizio: data_inizio,
                 metodo: metodo,
                 categoria: categoria,
-                attivo: true
+                attivo: attivo
             };
 
             if (editId) {
@@ -10932,18 +11113,19 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 } else {
                     list.push(item);
                 }
-                this.toast(`Costo periodico "${nome}" aggiornato!`, 'success');
+                this.toast(`Spesa periodica "${nome}" aggiornata!`, 'success');
             } else {
                 list.push(item);
-                this.toast(`Costo periodico "${nome}" configurato!`, 'success');
+                this.toast(`Spesa periodica "${nome}" configurata!`, 'success');
             }
 
             this.state.settings.costi_fissi_periodici = list;
             this.saveAll();
             this.closeModal();
 
-            // Esegui la sincronizzazione immediata per registrare eventuali scadenze già maturate
-            this.syncCostiPeriodici(true);
+            if (attivo && importo > 0) {
+                this.syncCostiPeriodici(true);
+            }
             this.renderDatiOrganizzazione();
         },
 
