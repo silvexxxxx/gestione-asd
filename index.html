@@ -1879,12 +1879,13 @@
         },
 
         isCassaMetodo(metodo) {
-            if (!metodo) return false;
+            if (!metodo) return true;
             const cfg = this.getMetodoConfig(metodo);
             if (cfg && cfg.tipo_registro) {
                 return cfg.tipo_registro === 'cassa';
             }
-            return metodo.toString().trim().toLowerCase() === 'contanti';
+            const s = metodo.toString().trim().toLowerCase();
+            return s === 'contanti' || s === 'non specificato' || s === 'cassa';
         },
 
         sanitizePrimaNota() {
@@ -7567,7 +7568,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <tr id="pn-row-${t.id}" data-id="${t.id}">
                             <td style="padding-left: 1.5rem;">${this.formatDate(t.data)}</td>
                             <td><span class="badge ${badgeClass}">${t.tipo}</span></td>
-                            <td>${t.metodo}</td>
+                            <td>${t.metodo || '<span style="color: var(--text-muted);">-</span>'}</td>
                             <td>${t.categoria}</td>
                             <td>
                                 ${t.descrizione}
@@ -7660,12 +7661,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;" id="pn-metodo-cat-row">
                             <div class="form-group">
-                                <label id="label-metodo">${defaultTipo === 'Giroconto' ? 'Da (Origine)*' : 'Metodo Pagamento*'}</label>
-                                <select id="new-pn-metodo" name="metodo" class="form-control" required>
+                                <label id="label-metodo">${defaultTipo === 'Giroconto' ? 'Da (Origine)*' : (defaultTipo === 'Entrata' ? 'Metodo Pagamento <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(opzionale)</span>' : 'Metodo Pagamento*')}</label>
+                                <select id="new-pn-metodo" name="metodo" class="form-control" ${defaultTipo === 'Entrata' ? '' : 'required'}>
                                     ${defaultTipo === 'Giroconto' ? `
                                         <option value="Contanti" ${defaultMetodo === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
                                         <option value="Banca" ${defaultMetodo === 'Banca' ? 'selected' : ''}>Banca</option>
-                                    ` : this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('')}
+                                    ` : (defaultTipo === 'Entrata' ? `
+                                        <option value="" ${!defaultMetodo ? 'selected' : ''}>-- Nessuno / Non specificato --</option>
+                                        ${this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${m}</option>`).join('')}
+                                    ` : this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join(''))}
                                 </select>
                             </div>
                             <div class="form-group" id="pn-categoria-group">
@@ -7886,12 +7890,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 if (tipo === 'Entrata') {
                     if (presetRow) presetRow.style.display = 'none';
                     if (addCatBtn) addCatBtn.style.display = 'inline-flex';
-                    labelMetodo.innerText = 'Metodo Pagamento*';
+                    labelMetodo.innerHTML = 'Metodo Pagamento <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(opzionale)</span>';
                     labelCat.innerText = 'Categoria Entrata*';
                     if (metodoSelect) {
+                        metodoSelect.required = false;
                         metodoSelect.onchange = null;
-                        const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
-                        metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('');
+                        const curM = preselectedMetodo !== undefined && preselectedMetodo !== null ? preselectedMetodo : '';
+                        metodoSelect.innerHTML = `
+                            <option value="" ${!curM ? 'selected' : ''}>-- Nessuno / Non specificato --</option>
+                            ${this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('')}
+                        `;
                     }
                     catSelect.onchange = (e) => this.onPrimaNotaCategoriaChange(e.target.value);
                     const cats = this.state.settings.categorie_entrate || [];
@@ -7907,7 +7915,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     labelMetodo.innerText = 'Metodo Pagamento*';
                     labelCat.innerText = 'Categoria Uscita*';
                     if (metodoSelect) {
-                        const curM = preselectedMetodo || (metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
+                        metodoSelect.required = true;
+                        const curM = preselectedMetodo || (metodoSelect.value && metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
                         metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('');
                         metodoSelect.onchange = (e) => {
                             checkBankPresetVisibility(e.target.value);
@@ -7929,6 +7938,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     labelMetodo.innerText = 'Da (Origine)*';
                     labelCat.innerText = 'A (Destinazione)*';
                     if (metodoSelect) {
+                        metodoSelect.required = true;
                         const curM = preselectedMetodo || 'Contanti';
                         metodoSelect.innerHTML = `
                             <option value="Contanti" ${curM === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
@@ -7965,7 +7975,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 
                 const dataVal = formData.get('data');
                 const tipoVal = formData.get('tipo');
-                const metodoVal = formData.get('metodo');
+                const metodoVal = (formData.get('metodo') || '').trim();
                 let categoriaVal = (formData.get('categoria') || '').trim();
                 const newCatBox = document.getElementById('pn-new-cat-box');
                 const newCatInput = document.getElementById('pn-new-cat-input');
