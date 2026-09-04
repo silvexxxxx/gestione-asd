@@ -4817,40 +4817,51 @@ closeModal() {
                 const k = this.ricevuteSortKey || 'data';
                 const dir = (this.ricevuteSortDir || 'asc') === 'asc' ? 1 : -1;
                 
+                const compareReceiptsCascade = (a, b, d = 1) => {
+                    // 1. Data
+                    const dateA = new Date(a.data).getTime() || 0;
+                    const dateB = new Date(b.data).getTime() || 0;
+                    if (dateA !== dateB) return (dateA - dateB) * d;
+
+                    // 2. Ora (con fallback a fine giornata '23:59')
+                    const timeA = (a.ora && a.ora.trim()) ? a.ora.trim() : '23:59';
+                    const timeB = (b.ora && b.ora.trim()) ? b.ora.trim() : '23:59';
+                    const timeCmp = timeA.localeCompare(timeB);
+                    if (timeCmp !== 0) return timeCmp * d;
+
+                    // 3. Registro / Origine (Cartaceo prima 0, Digitale dopo 1)
+                    const origA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
+                    const origB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
+                    if (origA !== origB) return (origA - origB) * d;
+
+                    // 4. Numero progressivo (CAST ad intero)
+                    const numA = parseInt(a.numero) || 0;
+                    const numB = parseInt(b.numero) || 0;
+                    return (numA - numB) * d;
+                };
+
                 sorted.sort((a, b) => {
                     let diff = 0;
                     
-                    if (k === 'numero') {
+                    if (k === 'data') {
+                        // Gerarchia multi-livello a cascata: Data -> Ora -> Origine -> Numero
+                        diff = compareReceiptsCascade(a, b, dir);
+                    } else if (k === 'numero') {
                         const regEl = document.getElementById('receipt-filter-registro');
                         const isAll = !regEl || regEl.value === 'all';
                         if (isAll) {
-                            const isCartA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
-                            const isCartB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
-                            if (isCartA !== isCartB) {
-                                return isCartA - isCartB;
+                            const origA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
+                            const origB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
+                            if (origA !== origB) {
+                                return (origA - origB);
                             }
                         }
                         const numA = parseInt(a.numero) || 0;
                         const numB = parseInt(b.numero) || 0;
                         diff = (numA - numB) * dir;
                         
-                        // A parità di numero, ordina per data
                         if (diff === 0) {
-                            const dateA = new Date(a.data).getTime() || 0;
-                            const dateB = new Date(b.data).getTime() || 0;
-                            diff = (dateA - dateB) * dir;
-                        }
-                    } else if (k === 'data') {
-                        // Ordinamento combinato Data + Numero: mantiene la coerenza cronologica e sequenziale
-                        const dateA = new Date(a.data).getTime() || 0;
-                        const dateB = new Date(b.data).getTime() || 0;
-                        diff = (dateA - dateB) * dir;
-                        
-                        // A parità di data, ordina per numero ricevuta
-                        if (diff === 0) {
-                            const numA = parseInt(a.numero) || 0;
-                            const numB = parseInt(b.numero) || 0;
-                            diff = (numA - numB) * dir;
+                            diff = compareReceiptsCascade(a, b, dir);
                         }
                     } else if (k === 'socio_nome') {
                         const valA = (a.socio_nome || '').toLowerCase();
@@ -4874,16 +4885,9 @@ closeModal() {
                         diff = (valA - valB) * dir;
                     }
                     
-                    // Se c'è parità sulla colonna selezionata, spareggia sempre con Data e poi Numero
+                    // Spareggio a cascata se c'è parità sulla colonna primaria
                     if (diff === 0) {
-                        const dateA = new Date(a.data).getTime() || 0;
-                        const dateB = new Date(b.data).getTime() || 0;
-                        diff = (dateA - dateB) * dir;
-                        if (diff === 0) {
-                            const numA = parseInt(a.numero) || 0;
-                            const numB = parseInt(b.numero) || 0;
-                            diff = (numA - numB) * dir;
-                        }
+                        diff = compareReceiptsCascade(a, b, dir);
                     }
                     
                     return diff;
@@ -4909,7 +4913,7 @@ closeModal() {
                     <tr id="receipt-row-${r.id}" data-id="${r.id}" onclick="localStorage.setItem('asd_last_receipt_id', '${r.id}')" style="cursor: pointer;">
                         <td>${r.numero}/${app.formatAnno(r.anno)}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
-                        <td>${this.formatDate(r.data)}</td>
+                        <td>${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
                         <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">${r.tipo}</span></td>
                         <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
                         <td>${displayMetodo}</td>
@@ -5107,8 +5111,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <label>Data</label>
-                                    <input type="date" name="data" id="receipt-data" class="form-control" value="${defaultDate}" required>
+                                    <div style="display:flex; gap:0.5rem;">
+                                        <div style="flex:1;">
+                                            <label>Data</label>
+                                            <input type="date" name="data" id="receipt-data" class="form-control" value="${defaultDate}" required>
+                                        </div>
+                                        <div style="width:115px;">
+                                            <label style="white-space:nowrap;">Ora <span style="font-size:0.75rem; color:var(--text-muted);">(fac.)</span></label>
+                                            <input type="time" name="ora" id="receipt-ora" class="form-control" placeholder="HH:mm">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label>N. Ricevuta / Anno</label>
@@ -6126,6 +6138,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 receipt.socio_nome = socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto';
                 receipt.importo = importo;
                 receipt.data = data.data;
+                receipt.ora = (data.ora && data.ora.trim()) ? data.ora.trim() : null;
                 receipt.tipo = tipoCausale;
                 receipt.pagamento = pagamento;
                 receipt.metodo_pagamento = pagamento;
@@ -6158,6 +6171,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     socio_nome: socio ? `${socio.cognome} ${socio.nome}` : 'Socio Sconosciuto',
                     importo: importo,
                     data: data.data,
+                    ora: (data.ora && data.ora.trim()) ? data.ora.trim() : null,
                     tipo: tipoCausale,
                     pagamento: pagamento,
                     metodo_pagamento: pagamento,
@@ -6296,6 +6310,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 'numero': r.numero,
                 'anno': r.anno,
                 'data': r.data,
+                'ora': r.ora || '',
                 'importo': r.importo,
                 'tipo': r.tipo,
                 'pagamento': r.pagamento || r.metodo_pagamento,
@@ -6398,6 +6413,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     socio_nome: (this.state.soci.find(s => s.id == data.socio_id) || { cognome: '', nome: '' }).cognome + ' ' + (this.state.soci.find(s => s.id == data.socio_id) || { nome: '' }).nome,
                     importo: parseFloat(data.importo),
                     data: data.data,
+                    ora: (data.ora && data.ora.trim()) ? data.ora.trim() : null,
                     tipo: tipoCausale,
                     pagamento: pagamento,
                     metodo_pagamento: pagamento,
