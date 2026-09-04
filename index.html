@@ -1847,69 +1847,6 @@
                 changed = true;
             }
 
-            // Predisposizione voci di default Costi Fissi e Spese Bancarie (solo configurazione, nessun movimento inserito)
-            const listCosti = this.state.settings.costi_fissi_periodici;
-
-            // 1. Canone carta di debito (-3.00 € | Mensile fine mese | Destinazione: Conto Banca / POS | Attivo)
-            const hasCarta = listCosti.some(x => {
-                const n = (x && x.nome ? x.nome : '').toLowerCase();
-                return n.includes('carta') || n.includes('debito');
-            });
-            if (!hasCarta) {
-                listCosti.push({
-                    id: 'costo_carta_debito',
-                    nome: 'Canone carta di debito',
-                    importo: 3.00,
-                    periodicita: 'mensile',
-                    giorno: 'fine_mese',
-                    data_inizio: '2025-09-01',
-                    metodo: 'Banca',
-                    categoria: 'Spese e Commissioni Bancarie',
-                    attivo: true
-                });
-                changed = true;
-            }
-
-            // 2. Conteggio interessi e competenze (-6.00 € | Trimestrale fine trimestre | Destinazione: Conto Banca / POS | Predisposto non registrato)
-            const hasInteressi = listCosti.some(x => {
-                const n = (x && x.nome ? x.nome : '').toLowerCase();
-                return n.includes('interessi') || n.includes('competenze');
-            });
-            if (!hasInteressi) {
-                listCosti.push({
-                    id: 'costo_interessi_competenze',
-                    nome: 'Conteggio interessi e competenze',
-                    importo: 6.00,
-                    periodicita: 'trimestrale',
-                    giorno: 'fine_mese',
-                    data_inizio: '2025-09-01',
-                    metodo: 'Banca',
-                    categoria: 'Spese e Commissioni Bancarie',
-                    attivo: false
-                });
-                changed = true;
-            }
-
-            // 3. Imposta di bollo C/C (-0.00 € | Trimestrale fine trimestre | Destinazione: Conto Banca / POS | Esente ETS / ASD)
-            const hasBollo = listCosti.some(x => {
-                const n = (x && x.nome ? x.nome : '').toLowerCase();
-                return n.includes('bollo');
-            });
-            if (!hasBollo) {
-                listCosti.push({
-                    id: 'costo_imposta_bollo',
-                    nome: 'Imposta di bollo C/C',
-                    importo: 0.00,
-                    periodicita: 'trimestrale',
-                    giorno: 'fine_mese',
-                    data_inizio: '2025-09-01',
-                    metodo: 'Banca',
-                    categoria: 'Spese e Commissioni Bancarie',
-                    attivo: false
-                });
-                changed = true;
-            }
-
             if (changed && typeof this.saveAll === 'function') {
                 this.saveAll();
             }
@@ -10234,7 +10171,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                                 statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(14,165,233,0.15); color:#38bdf8; border:1px solid rgba(14,165,233,0.3);" title="Esente da imposta di bollo ex art. 82 D.Lgs. 117/2017 per ETS/ASD">🏛️ Esente ETS / ASD</span>`;
                                             } else if (isCarta) {
                                                 if (isAttivo) {
-                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">● Attivo (sincronizzato 25/26)</span>`;
+                                                    statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">● Attivo</span>`;
                                                 } else {
                                                     statoBadge = `<span style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; background:rgba(107,114,128,0.2); color:#9ca3af; border:1px solid rgba(107,114,128,0.3);">⏸️ In Pausa</span>`;
                                                 }
@@ -10995,7 +10932,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         </div>
                         <div class="form-group">
                             <label>A partire da (Mese iniziale)*</label>
-                            <input type="month" name="data_inizio" class="form-control" required value="${c.data_inizio ? c.data_inizio.substring(0, 7) : '2025-09'}">
+                            <input type="month" name="data_inizio" class="form-control" required value="${c.data_inizio ? c.data_inizio.substring(0, 7) : curMonthStr}">
                         </div>
                     </div>
 
