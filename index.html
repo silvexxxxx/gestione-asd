@@ -9872,12 +9872,72 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         // DATABASE & IMPOSTAZIONI
         // =========================================================
 
+        renderMetodiPagamentoRowsHTML() {
+            const metodi = this.getMetodiPagamento();
+            return metodi.map((mName, idx) => {
+                const cfg = this.getMetodoConfig(mName);
+                const isCassa = (cfg.tipo_registro === 'cassa');
+                const percTbd = !!cfg.percentuale_da_definire;
+                const fissoTbd = !!cfg.fisso_da_definire;
+                const perc = parseFloat(cfg.percentuale) || 0;
+                const fisso = parseFloat(cfg.fisso) || 0;
+                
+                let commLabel = '';
+                if (percTbd && fissoTbd) {
+                    commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ Da definire</span>`;
+                } else if (percTbd && fisso > 0) {
+                    commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:600; font-size:0.8rem; border:1px solid rgba(245,158,11,0.3);">⏳ % da definire</span> + €${fisso.toFixed(2)}`;
+                } else if (percTbd) {
+                    commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ % da definire</span>`;
+                } else if (fissoTbd && perc > 0) {
+                    commLabel = `<strong>${perc.toFixed(2)}%</strong> + <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:600; font-size:0.8rem; border:1px solid rgba(245,158,11,0.3);">⏳ Fisso da definire</span>`;
+                } else if (fissoTbd) {
+                    commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ Quota fissa da definire</span>`;
+                } else if (perc > 0 && fisso > 0) {
+                    commLabel = `<strong>${perc.toFixed(2)}%</strong> + €${fisso.toFixed(2)}`;
+                } else if (perc > 0) {
+                    commLabel = `<strong>${perc.toFixed(2)}%</strong>`;
+                } else if (fisso > 0) {
+                    commLabel = `€${fisso.toFixed(2)} <span style="font-size:0.8rem; color:var(--text-muted);">(quota fissa)</span>`;
+                } else {
+                    commLabel = `<span style="color:var(--text-muted);">Nessuna (0%)</span>`;
+                }
+
+                return `
+                    <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
+                        <td style="padding:12px; font-weight:600; color:var(--text-light);">
+                            ${cfg.nome}
+                        </td>
+                        <td style="padding:12px;">
+                            <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:12px; font-size:0.8rem; font-weight:500; ${isCassa ? 'background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3);' : 'background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'}">
+                                 ${isCassa ? '🏷️ Cassa Reale' : '🏦 Conto Banca / POS'}
+                            </span>
+                        </td>
+                        <td style="padding:12px;">
+                            ${commLabel}
+                        </td>
+                        <td style="padding:12px; text-align:right; white-space:nowrap;">
+                            <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.75rem; margin-right:3px; ${idx === 0 ? 'opacity:0.25; cursor:not-allowed;' : ''}" title="Sposta in alto" ${idx === 0 ? 'disabled' : ''} onclick="event.preventDefault(); event.stopPropagation(); app.moveMetodo('${cfg.nome.replace(/'/g, "\\'")}', -1)">▲</button>
+                            <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.75rem; margin-right:8px; ${idx === metodi.length - 1 ? 'opacity:0.25; cursor:not-allowed;' : ''}" title="Sposta in basso" ${idx === metodi.length - 1 ? 'disabled' : ''} onclick="event.preventDefault(); event.stopPropagation(); app.moveMetodo('${cfg.nome.replace(/'/g, "\\'")}', 1)">▼</button>
+                            <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica metodo" onclick="app.openMetodoModal('${cfg.nome.replace(/'/g, "\\'")}')">✏️ Modifica</button>
+                            ${cfg.nome.toLowerCase() === 'contanti' ? '' : `
+                                <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina metodo" onclick="app.deleteMetodo('${cfg.nome.replace(/'/g, "\\'")}')">🗑️</button>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        },
+
         renderDatiOrganizzazione() {
+            const pageContainer = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
+            const savedScroll = pageContainer ? pageContainer.scrollTop : 0;
+            const savedWindowScroll = window.scrollY || document.documentElement.scrollTop || 0;
+
             const main = document.getElementById('main-content');
             const s = this.state.settings;
             const sale = this.state.sale || [];
             const presets = this.state.quote_presets || [];
-            const metodi = this.getMetodiPagamento();
             const costiFissi = this.state.settings.costi_fissi_periodici || [];
             main.innerHTML = `
                 <div class="page-content" style="overflow-y:auto;">
@@ -9972,60 +10032,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                             <th style="padding:10px 12px; text-align:right;">Azioni</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        ${metodi.map((mName, idx) => {
-                                            const cfg = this.getMetodoConfig(mName);
-                                            const isCassa = (cfg.tipo_registro === 'cassa');
-                                            const percTbd = !!cfg.percentuale_da_definire;
-                                            const fissoTbd = !!cfg.fisso_da_definire;
-                                            const perc = parseFloat(cfg.percentuale) || 0;
-                                            const fisso = parseFloat(cfg.fisso) || 0;
-                                            
-                                            let commLabel = '';
-                                            if (percTbd && fissoTbd) {
-                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ Da definire</span>`;
-                                            } else if (percTbd && fisso > 0) {
-                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:600; font-size:0.8rem; border:1px solid rgba(245,158,11,0.3);">⏳ % da definire</span> + €${fisso.toFixed(2)}`;
-                                            } else if (percTbd) {
-                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ % da definire</span>`;
-                                            } else if (fissoTbd && perc > 0) {
-                                                commLabel = `<strong>${perc.toFixed(2)}%</strong> + <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:rgba(245,158,11,0.12); color:#f59e0b; font-weight:600; font-size:0.8rem; border:1px solid rgba(245,158,11,0.3);">⏳ Fisso da definire</span>`;
-                                            } else if (fissoTbd) {
-                                                commLabel = `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; background:rgba(245,158,11,0.15); color:#f59e0b; font-weight:600; font-size:0.82rem; border:1px solid rgba(245,158,11,0.35);">⏳ Quota fissa da definire</span>`;
-                                            } else if (perc > 0 && fisso > 0) {
-                                                commLabel = `<strong>${perc.toFixed(2)}%</strong> + €${fisso.toFixed(2)}`;
-                                            } else if (perc > 0) {
-                                                commLabel = `<strong>${perc.toFixed(2)}%</strong>`;
-                                            } else if (fisso > 0) {
-                                                commLabel = `€${fisso.toFixed(2)} <span style="font-size:0.8rem; color:var(--text-muted);">(quota fissa)</span>`;
-                                            } else {
-                                                commLabel = `<span style="color:var(--text-muted);">Nessuna (0%)</span>`;
-                                            }
-
-                                            return `
-                                                <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;">
-                                                    <td style="padding:12px; font-weight:600; color:var(--text-light);">
-                                                        ${cfg.nome}
-                                                    </td>
-                                                    <td style="padding:12px;">
-                                                        <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:12px; font-size:0.8rem; font-weight:500; ${isCassa ? 'background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3);' : 'background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);'}">
-                                                             ${isCassa ? '🏷️ Cassa Reale' : '🏦 Conto Banca / POS'}
-                                                        </span>
-                                                    </td>
-                                                    <td style="padding:12px;">
-                                                        ${commLabel}
-                                                    </td>
-                                                    <td style="padding:12px; text-align:right; white-space:nowrap;">
-                                                        <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.75rem; margin-right:3px; ${idx === 0 ? 'opacity:0.25; cursor:not-allowed;' : ''}" title="Sposta in alto" ${idx === 0 ? 'disabled' : ''} onclick="app.moveMetodo('${cfg.nome.replace(/'/g, "\\'")}', -1)">▲</button>
-                                                        <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.75rem; margin-right:8px; ${idx === metodi.length - 1 ? 'opacity:0.25; cursor:not-allowed;' : ''}" title="Sposta in basso" ${idx === metodi.length - 1 ? 'disabled' : ''} onclick="app.moveMetodo('${cfg.nome.replace(/'/g, "\\'")}', 1)">▼</button>
-                                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; margin-right:6px;" title="Modifica metodo" onclick="app.openMetodoModal('${cfg.nome.replace(/'/g, "\\'")}')">✏️ Modifica</button>
-                                                        ${cfg.nome.toLowerCase() === 'contanti' ? '' : `
-                                                            <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" title="Elimina metodo" onclick="app.deleteMetodo('${cfg.nome.replace(/'/g, "\\'")}')">🗑️</button>
-                                                        `}
-                                                    </td>
-                                                </tr>
-                                            `;
-                                        }).join('')}
+                                    <tbody id="metodi-pagamento-tbody">
+                                        ${this.renderMetodiPagamentoRowsHTML()}
                                     </tbody>
                                 </table>
                             </div>
@@ -10162,6 +10170,19 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             `;
             this.updateLicenseUI();
             this.cloudSync.updateUIStatus();
+
+            const newPageContainer = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
+            if (newPageContainer && savedScroll > 0) {
+                newPageContainer.scrollTop = savedScroll;
+            }
+            if (savedWindowScroll > 0) {
+                window.scrollTo(0, savedWindowScroll);
+            }
+            requestAnimationFrame(() => {
+                const pc = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
+                if (pc && savedScroll > 0) pc.scrollTop = savedScroll;
+                if (savedWindowScroll > 0) window.scrollTo(0, savedWindowScroll);
+            });
         },
 
         renderDatabase() {
@@ -10169,6 +10190,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 this.renderDatiOrganizzazione();
                 return;
             }
+            const pageContainer = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
+            const savedScroll = pageContainer ? pageContainer.scrollTop : 0;
+            const savedWindowScroll = window.scrollY || document.documentElement.scrollTop || 0;
+
             const main = document.getElementById('main-content');
             const s = this.state.settings;
             main.innerHTML = `
@@ -10423,6 +10448,19 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 `;
                 this.updateLicenseUI();
                 this.cloudSync.updateUIStatus();
+
+                const newPageContainer = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
+                if (newPageContainer && savedScroll > 0) {
+                    newPageContainer.scrollTop = savedScroll;
+                }
+                if (savedWindowScroll > 0) {
+                    window.scrollTo(0, savedWindowScroll);
+                }
+                requestAnimationFrame(() => {
+                    const pc = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
+                    if (pc && savedScroll > 0) pc.scrollTop = savedScroll;
+                    if (savedWindowScroll > 0) window.scrollTo(0, savedWindowScroll);
+                });
         },
 
         updateSetting(key, val) {
@@ -10706,8 +10744,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             this.state.settings.metodi_pagamento = list;
             this.saveAll();
-            this.renderDatiOrganizzazione();
-            this.toast(`Ordine aggiornato: "${m}" spostato ${direction < 0 ? 'in alto' : 'in basso'}!`, 'info');
+
+            const tbody = document.getElementById('metodi-pagamento-tbody');
+            if (tbody) {
+                tbody.innerHTML = this.renderMetodiPagamentoRowsHTML();
+            } else {
+                this.renderDatiOrganizzazione();
+            }
         },
 
         deleteMetodo(m) {
