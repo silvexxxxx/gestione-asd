@@ -7209,11 +7209,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         exportFullDatabase() {
-            const dataStr = JSON.stringify(this.state, null, 2);
-            const exportFileDefaultName = `asd_database_${new Date().toISOString().split('T')[0]}.json`;
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const yearStr = this.getSportsYear(new Date());
-            this.saveDocumentFS(exportFileDefaultName, blob, 'backup', yearStr);
+            this.exportData();
         },
 
         sendDatabaseEmail() {
@@ -7226,34 +7222,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             // Mailto with attachment is not standard, so we give info
             window.location.href = `mailto:?subject=${subject}&body=${body}`;
             this.toast("Componi email... Ricorda di allegare il file JSON manualmente se necessario.");
-            this.exportFullDatabase(); // Offer the file download immediately
+            this.exportData(); // Offer the file download immediately
         },
 
         importDatabase() {
             const fileInput = document.getElementById('import-file');
-            if (!fileInput.files.length) {
+            if (!fileInput || !fileInput.files.length) {
                 this.toast("Seleziona un file!", "warning");
                 return;
             }
-
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (!imported.soci || !imported.ricevute) throw new Error("Formato non valido");
-
-                    if (confirm(`Il file contiene ${imported.soci.length} soci e ${imported.ricevute.length} ricevute. Vuoi procedere con il ripristino totale?`)) {
-                        this.state = imported;
-                        this.saveAll();
-                        this.toast("Ripristino completato con successo!");
-                        this.showPage('dashboard');
-                    }
-                } catch (err) {
-                    this.toast("Errore durante l'importazione: file corrotto o non compatibile.", "danger");
-                }
-            };
-            reader.readAsText(file);
+            this.importData({ target: fileInput });
         },
 
         handleSettingsSubmit(e) {
@@ -11973,39 +11951,160 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             }
         },
         exportData() {
-            const data = {
-                soci: this.state.soci, ricevute: this.state.ricevute, corsi: this.state.corsi,
-                corsi_disponibili: this.state.corsi_disponibili, sale: this.state.sale,
-                istruttori: this.state.istruttori, settings: this.state.settings,
-                quote_presets: this.state.quote_presets
+            // Backup completo e omnicomprensivo di TUTTO lo stato applicativo
+            const fullBackup = {
+                _backup_meta: {
+                    app_name: "Gestione ASD",
+                    app_version: this.version || APP_VERSION,
+                    timestamp: new Date().toISOString(),
+                    data_creazione: new Date().toLocaleString('it-IT'),
+                    conteggi: {
+                        soci: (this.state.soci || []).length,
+                        ricevute: (this.state.ricevute || []).length,
+                        primanota: (this.state.primanota || []).length,
+                        corsi: (this.state.corsi || []).length,
+                        corsi_disponibili: (this.state.corsi_disponibili || []).length,
+                        sale: (this.state.sale || []).length,
+                        istruttori: (this.state.istruttori || []).length,
+                        magazzino: (this.state.magazzino || []).length,
+                        eventi: (this.state.eventi || []).length,
+                        rimborsi: (this.state.rimborsi || []).length,
+                        quote_presets: (this.state.quote_presets || []).length
+                    }
+                },
+                soci: this.state.soci || [],
+                ricevute: this.state.ricevute || [],
+                primanota: this.state.primanota || [],
+                corsi: this.state.corsi || [],
+                corsi_disponibili: this.state.corsi_disponibili || [],
+                sale: this.state.sale || [],
+                istruttori: this.state.istruttori || [],
+                magazzino: this.state.magazzino || [],
+                eventi: this.state.eventi || [],
+                rimborsi: this.state.rimborsi || [],
+                quote_presets: this.state.quote_presets || [],
+                settings: this.state.settings || {},
+                corsi_colori: this.state.corsi_colori || {},
+                sent_reminders: this.state.sent_reminders || {},
+                dismissed_quotes: this.state.dismissed_quotes || [],
+                deletedIds: this.state.deletedIds || [],
+                _localStorageBackup: {
+                    asd_custom_logo: localStorage.getItem('asd_custom_logo') || null,
+                    asd_esercizi_images: localStorage.getItem('asd_esercizi_images') || null
+                }
             };
+
             const fileName = `asd_backup_${new Date().toISOString().split('T')[0]}.json`;
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: 'application/json' });
             const yearStr = this.getSportsYear(new Date());
             this.saveDocumentFS(fileName, blob, 'backup', yearStr);
+            this.toast(`✅ Backup JSON esportato con successo (${fullBackup._backup_meta.conteggi.primanota} movimenti Prima Nota e tutti i moduli inclusi)!`, 'success');
         },
 
         importData(event) {
-            const file = event.target.files[0];
+            const file = event.target ? event.target.files[0] : null;
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (confirm('Importare il backup? Sovrascriverà tutti i dati attuali!')) {
-                        if (data.soci) this.state.soci = data.soci;
-                        if (data.ricevute) this.state.ricevute = data.ricevute;
-                        if (data.corsi) this.state.corsi = data.corsi;
-                        if (data.corsi_disponibili) this.state.corsi_disponibili = data.corsi_disponibili;
-                        if (data.sale) this.state.sale = data.sale;
-                        if (data.istruttori) this.state.istruttori = data.istruttori;
-                        if (data.settings) this.state.settings = { ...this.state.settings, ...data.settings };
-                        if (data.quote_presets) this.state.quote_presets = data.quote_presets;
-                        this.saveAll();
-                        this.toast('Backup importato con successo!');
-                        this.renderDatabase();
+                    if (!data || typeof data !== 'object') {
+                        throw new Error("Formato file non valido");
                     }
-                } catch (err) { this.toast('File non valido!', 'danger'); }
+
+                    // Conteggi di riscontro
+                    const numSoci = Array.isArray(data.soci) ? data.soci.length : (this.state.soci || []).length;
+                    const numRicevute = Array.isArray(data.ricevute) ? data.ricevute.length : (this.state.ricevute || []).length;
+                    const hasPrimaNota = Array.isArray(data.primanota);
+                    const numPn = hasPrimaNota ? data.primanota.length : (this.state.primanota || []).length;
+                    const numCorsi = Array.isArray(data.corsi) ? data.corsi.length : (this.state.corsi || []).length;
+                    const numIstruttori = Array.isArray(data.istruttori) ? data.istruttori.length : (this.state.istruttori || []).length;
+                    const numRimborsi = Array.isArray(data.rimborsi) ? data.rimborsi.length : (this.state.rimborsi || []).length;
+                    const numMagazzino = Array.isArray(data.magazzino) ? data.magazzino.length : (this.state.magazzino || []).length;
+
+                    let pnMsg = hasPrimaNota 
+                        ? `${numPn} movimenti (Tutti inclusi)` 
+                        : `${numPn} movimenti (ATTENZIONE: non presenti nel file vecchio, verranno mantenuti quelli attuali)`;
+
+                    let confirmMsg = `Confermi il ripristino dei dati dal file selezionato?\n\nElementi rilevati nel backup:\n• Soci: ${numSoci}\n• Ricevute: ${numRicevute}\n• Prima Nota & Cassa: ${pnMsg}\n• Corsi: ${numCorsi}\n• Istruttori: ${numIstruttori}\n• Rimborsi Spese: ${Array.isArray(data.rimborsi) ? numRimborsi : 'N/D'}\n• Magazzino Articoli: ${Array.isArray(data.magazzino) ? numMagazzino : 'N/D'}\n\nOperazione di ripristino e sincronizzazione totale.`;
+
+                    if (confirm(confirmMsg)) {
+                        // 1. Ripristino entità principali
+                        if (Array.isArray(data.soci)) this.state.soci = data.soci;
+                        if (Array.isArray(data.ricevute)) this.state.ricevute = data.ricevute;
+                        
+                        // CRITICO: se il file ha primanota, ripristinala. Se è un backup vecchio privo di primanota, PRESERVA i movimenti correnti!
+                        if (Array.isArray(data.primanota)) {
+                            this.state.primanota = data.primanota;
+                        } else {
+                            console.warn("[Import] 'primanota' assente nel backup, mantenuta la contabilità attuale.");
+                        }
+
+                        if (Array.isArray(data.corsi)) this.state.corsi = data.corsi;
+                        if (Array.isArray(data.corsi_disponibili)) this.state.corsi_disponibili = data.corsi_disponibili;
+                        if (Array.isArray(data.sale)) this.state.sale = data.sale;
+                        if (Array.isArray(data.istruttori)) this.state.istruttori = data.istruttori;
+                        if (Array.isArray(data.magazzino)) this.state.magazzino = data.magazzino;
+                        if (Array.isArray(data.eventi)) this.state.eventi = data.eventi;
+                        if (Array.isArray(data.rimborsi)) this.state.rimborsi = data.rimborsi;
+                        if (Array.isArray(data.quote_presets)) this.state.quote_presets = data.quote_presets;
+
+                        // 2. Settings (merge con predefiniti per non perdere campi)
+                        if (data.settings && typeof data.settings === 'object') {
+                            this.state.settings = { ...this.state.settings, ...data.settings };
+                        }
+
+                        // 3. Configurazioni secondarie e metadati
+                        if (data.corsi_colori && typeof data.corsi_colori === 'object') {
+                            this.state.corsi_colori = { ...this.state.corsi_colori, ...data.corsi_colori };
+                        }
+                        if (data.sent_reminders && typeof data.sent_reminders === 'object') {
+                            this.state.sent_reminders = data.sent_reminders;
+                        }
+                        if (Array.isArray(data.dismissed_quotes)) {
+                            this.state.dismissed_quotes = data.dismissed_quotes;
+                        }
+                        if (Array.isArray(data.deletedIds)) {
+                            this.state.deletedIds = Array.from(new Set([...(this.state.deletedIds || []), ...data.deletedIds]));
+                        }
+
+                        // 4. Immagini locali (custom_logo, esercizi_images)
+                        if (data._localStorageBackup && typeof data._localStorageBackup === 'object') {
+                            if (data._localStorageBackup.asd_custom_logo) {
+                                localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
+                            }
+                            if (data._localStorageBackup.asd_esercizi_images) {
+                                localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
+                            }
+                        }
+
+                        // 5. Normalizzazioni, migrazioni e pulizia
+                        this.sanitizeSettings();
+                        this.sanitizePrimaNota();
+                        this.migrateSoci();
+                        this.migrateIstruttori();
+                        this.migrateCorsiNames();
+
+                        // 6. Salvataggio definitivo su IndexedDB, Cloud e localStorage
+                        this.saveAll();
+
+                        this.toast('🎉 Backup completo ripristinato con successo!', 'success');
+
+                        // 7. Aggiorna schermata corrente
+                        if (this.state.currentPage === 'primanota') {
+                            this.renderPrimaNota();
+                        } else if (this.state.currentPage === 'database') {
+                            this.renderDatabase();
+                        } else {
+                            this.showPage(this.state.currentPage || 'dashboard');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Errore importazione backup:", err);
+                    this.toast("Errore durante l'importazione: file non valido o corrotto.", 'danger');
+                } finally {
+                    if (event.target) event.target.value = '';
+                }
             };
             reader.readAsText(file);
         },
