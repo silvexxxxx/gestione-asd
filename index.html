@@ -1885,8 +1885,10 @@
             }
 
             // Se non trovato o se presente come semplice stringa:
-            const isSumUp = searchName.toLowerCase().replace(/\s/g, '').includes('sumup');
-            const isContanti = searchName.toLowerCase() === 'contanti';
+            const sLower = searchName.toLowerCase();
+            const isSumUp = sLower.replace(/\s/g, '').includes('sumup');
+            const isBancaKey = sLower === 'banca' || sLower.includes('banc') || sLower.includes('bonifico') || sLower.includes('pos') || sLower.includes('carta') || sLower.includes('bancomat');
+            const isContanti = !isBancaKey && (sLower === 'contanti' || sLower === 'cassa' || sLower.includes('contant') || sLower.includes('cassa reale'));
             if (isSumUp) {
                 return {
                     nome: searchName || 'SumUp',
@@ -1912,12 +1914,15 @@
 
         isCassaMetodo(metodo) {
             if (!metodo) return true;
+            const s = metodo.toString().trim().toLowerCase();
+            if (s === 'banca' || s.includes('banca') || s.includes('bonifico') || s.includes('pos') || s.includes('bancomat') || s.includes('carta') || s.includes('paypal') || s.includes('sumup') || s.includes('cbill')) {
+                return false;
+            }
             const cfg = this.getMetodoConfig(metodo);
             if (cfg && cfg.tipo_registro) {
                 return cfg.tipo_registro === 'cassa';
             }
-            const s = metodo.toString().trim().toLowerCase();
-            return s === 'contanti' || s === 'non specificato' || s === 'cassa';
+            return s === 'contanti' || s === 'non specificato' || s === 'cassa' || s.includes('contant') || s.includes('cassa');
         },
 
         sanitizePrimaNota() {
@@ -8058,11 +8063,162 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             },
 
+            getPrimaNotaMetodiOptions(selectedVal = '', tipo = 'Entrata') {
+                const cur = (selectedVal || '').trim();
+
+                // Banche e pagamenti digitali di base
+                let bankOptions = [
+                    { value: 'Banca', label: '🏦 Banca (Conto Corrente)' },
+                    { value: 'Bonifico', label: '🏛️ Bonifico Bancario' }
+                ];
+
+                // Cassa contanti di base
+                let cassaOptions = [
+                    { value: 'Contanti', label: '💵 Contanti (Cassa Reale)' }
+                ];
+
+                // Aggiungi gli altri metodi configurati nelle impostazioni
+                const allMetodi = this.getMetodiPagamento();
+                allMetodi.forEach(mName => {
+                    const lower = (mName || '').toLowerCase();
+                    if (lower === 'contanti' || lower === 'cassa' || lower === 'banca' || lower === 'bonifico') return;
+                    if (this.isCassaMetodo(mName)) {
+                        if (!cassaOptions.some(o => o.value.toLowerCase() === lower)) {
+                            cassaOptions.push({ value: mName, label: `💵 ${mName}` });
+                        }
+                    } else {
+                        if (!bankOptions.some(o => o.value.toLowerCase() === lower)) {
+                            bankOptions.push({ value: mName, label: `💳 ${this.getMetodoDisplayLabel(mName)}` });
+                        }
+                    }
+                });
+
+                // Se il valore attuale del movimento non è nei preset standard, preservalo
+                if (cur && !bankOptions.some(o => o.value.toLowerCase() === cur.toLowerCase()) && !cassaOptions.some(o => o.value.toLowerCase() === cur.toLowerCase())) {
+                    if (this.isCassaMetodo(cur)) {
+                        cassaOptions.push({ value: cur, label: `💵 ${cur}` });
+                    } else {
+                        bankOptions.push({ value: cur, label: `🏦 ${cur}` });
+                    }
+                }
+
+                let html = '';
+                if (!cur) {
+                    html += `<option value="" selected disabled>-- Seleziona se Banca o Cassa --</option>`;
+                }
+
+                html += `<optgroup label="🏦 BANCA E CONTI DIGITALI">`;
+                bankOptions.forEach(opt => {
+                    const sel = (cur && cur.toLowerCase() === opt.value.toLowerCase()) ? 'selected' : '';
+                    html += `<option value="${opt.value}" ${sel}>${opt.label}</option>`;
+                });
+                html += `</optgroup>`;
+
+                html += `<optgroup label="💵 CASSA REALE">`;
+                cassaOptions.forEach(opt => {
+                    const sel = (cur && cur.toLowerCase() === opt.value.toLowerCase()) ? 'selected' : '';
+                    html += `<option value="${opt.value}" ${sel}>${opt.label}</option>`;
+                });
+                html += `</optgroup>`;
+
+                return html;
+            },
+
+            setPrimaNotaFormMetodo(targetAccount) {
+                const metodoSelect = document.getElementById('new-pn-metodo');
+                if (!metodoSelect) return;
+                if (targetAccount === 'Banca') {
+                    if (this.isCassaMetodo(metodoSelect.value) || !metodoSelect.value) {
+                        metodoSelect.value = 'Banca';
+                    }
+                } else {
+                    if (!this.isCassaMetodo(metodoSelect.value) || !metodoSelect.value) {
+                        metodoSelect.value = 'Contanti';
+                    }
+                }
+                this.onPrimaNotaMetodoChange(metodoSelect.value);
+            },
+
+            onPrimaNotaMetodoChange(val) {
+                const btnBanca = document.getElementById('btn-dest-banca');
+                const btnCassa = document.getElementById('btn-dest-cassa');
+                const badge = document.getElementById('pn-conto-badge');
+                const presetRow = document.getElementById('pn-bank-presets-row');
+                const tipoSelect = document.getElementById('new-pn-tipo');
+                const tipo = tipoSelect ? tipoSelect.value : '';
+
+                const isCassa = this.isCassaMetodo(val);
+                const isValSet = !!(val && String(val).trim());
+
+                if (btnBanca && btnCassa) {
+                    if (!isValSet) {
+                        btnBanca.style.background = 'transparent';
+                        btnBanca.style.borderColor = 'var(--border-color)';
+                        btnBanca.style.color = 'var(--text-muted)';
+                        btnBanca.style.fontWeight = 'normal';
+
+                        btnCassa.style.background = 'transparent';
+                        btnCassa.style.borderColor = 'var(--border-color)';
+                        btnCassa.style.color = 'var(--text-muted)';
+                        btnCassa.style.fontWeight = 'normal';
+                    } else if (!isCassa) {
+                        // Banca selezionata
+                        btnBanca.style.background = 'rgba(59, 130, 246, 0.2)';
+                        btnBanca.style.borderColor = '#3b82f6';
+                        btnBanca.style.color = '#60a5fa';
+                        btnBanca.style.fontWeight = '700';
+
+                        btnCassa.style.background = 'transparent';
+                        btnCassa.style.borderColor = 'var(--border-color)';
+                        btnCassa.style.color = 'var(--text-muted)';
+                        btnCassa.style.fontWeight = 'normal';
+                    } else {
+                        // Cassa selezionata
+                        btnCassa.style.background = 'rgba(16, 185, 129, 0.2)';
+                        btnCassa.style.borderColor = '#10b981';
+                        btnCassa.style.color = '#34d399';
+                        btnCassa.style.fontWeight = '700';
+
+                        btnBanca.style.background = 'transparent';
+                        btnBanca.style.borderColor = 'var(--border-color)';
+                        btnBanca.style.color = 'var(--text-muted)';
+                        btnBanca.style.fontWeight = 'normal';
+                    }
+                }
+
+                if (badge) {
+                    if (!isValSet) {
+                        badge.style.display = 'none';
+                    } else if (!isCassa) {
+                        badge.style.display = 'inline-block';
+                        badge.textContent = tipo === 'Entrata' ? '🏦 Entrata su Conto Banca' : '🏦 Pagato da Conto Banca';
+                        badge.style.background = 'rgba(59, 130, 246, 0.15)';
+                        badge.style.color = '#60a5fa';
+                        badge.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+                    } else {
+                        badge.style.display = 'inline-block';
+                        badge.textContent = tipo === 'Entrata' ? '💵 Entrata in Cassa Contanti' : '💵 Pagato da Cassa Contanti';
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        badge.style.color = '#34d399';
+                        badge.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                    }
+                }
+
+                if (presetRow && tipo === 'Uscita') {
+                    const isBanca = !isCassa;
+                    presetRow.style.display = isBanca ? 'block' : 'none';
+                    if (!isBanca) {
+                        const sel = document.getElementById('pn-bank-preset-select');
+                        if (sel) sel.value = '';
+                    }
+                }
+            },
+
             showPrimaNotaForm(editId = null) {
                 let txn = null;
                 let isGiroconto = false;
                 let gcGroup = null;
-                let defaultMetodo = 'Contanti';
+                let defaultMetodo = '';
                 let defaultCat = '';
 
                 if (editId) {
@@ -8090,8 +8246,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         defaultCat = 'Contanti';
                     }
                 } else if (isEdit) {
-                    defaultMetodo = txn.metodo || 'Contanti';
+                    defaultMetodo = txn.metodo || '';
                     defaultCat = txn.categoria || '';
+                } else {
+                    defaultMetodo = (defaultTipo === 'Entrata') ? 'Banca' : 'Contanti';
                 }
 
                 this.openModal(modalTitle, `
@@ -8118,15 +8276,28 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;" id="pn-metodo-cat-row">
                             <div class="form-group">
-                                <label id="label-metodo">${defaultTipo === 'Giroconto' ? 'Da (Origine)*' : (defaultTipo === 'Entrata' ? 'Metodo Pagamento <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(opzionale)</span>' : 'Metodo Pagamento*')}</label>
-                                <select id="new-pn-metodo" name="metodo" class="form-control" ${defaultTipo === 'Entrata' ? '' : 'required'}>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <label id="label-metodo" style="margin:0; font-weight:600;">
+                                        ${defaultTipo === 'Giroconto' ? 'Da (Origine)*' : (defaultTipo === 'Entrata' ? 'Accredito / Metodo*' : 'Addebito / Metodo*')}
+                                    </label>
+                                    <span id="pn-conto-badge" style="font-size:0.72rem; padding:2px 6px; border-radius:4px; font-weight:600; display:none;"></span>
+                                </div>
+
+                                <!-- Pulsanti Rapidi Cassa / Banca -->
+                                <div id="pn-quick-destination" style="display: ${defaultTipo === 'Giroconto' ? 'none' : 'flex'}; gap: 6px; margin-bottom: 6px;">
+                                    <button type="button" id="btn-dest-banca" class="btn btn-outline" style="flex: 1; padding: 6px 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.2s ease;" onclick="app.setPrimaNotaFormMetodo('Banca')">
+                                        🏦 <span>Banca (c/c)</span>
+                                    </button>
+                                    <button type="button" id="btn-dest-cassa" class="btn btn-outline" style="flex: 1; padding: 6px 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.2s ease;" onclick="app.setPrimaNotaFormMetodo('Contanti')">
+                                        💵 <span>Cassa (Contanti)</span>
+                                    </button>
+                                </div>
+
+                                <select id="new-pn-metodo" name="metodo" class="form-control" required onchange="app.onPrimaNotaMetodoChange(this.value)">
                                     ${defaultTipo === 'Giroconto' ? `
                                         <option value="Contanti" ${defaultMetodo === 'Contanti' ? 'selected' : ''}>Contanti (Cassa Reale)</option>
                                         <option value="Banca" ${defaultMetodo === 'Banca' ? 'selected' : ''}>Banca</option>
-                                    ` : (defaultTipo === 'Entrata' ? `
-                                        <option value="" ${!defaultMetodo ? 'selected' : ''}>-- Nessuno / Non specificato --</option>
-                                        ${this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${m}</option>`).join('')}
-                                    ` : this.getMetodiPagamento().map(m => `<option value="${m}" ${defaultMetodo === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join(''))}
+                                    ` : this.getPrimaNotaMetodiOptions(defaultMetodo, defaultTipo)}
                                 </select>
                             </div>
                             <div class="form-group" id="pn-categoria-group">
@@ -8187,6 +8358,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
 
                 this.updatePrimaNotaFormFields(defaultTipo, defaultCat, defaultMetodo);
+                this.onPrimaNotaMetodoChange(defaultMetodo);
             },
 
             applyPrimaNotaBankPreset(val) {
@@ -8329,6 +8501,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const presetRow = document.getElementById('pn-bank-presets-row');
                 const addCatBtn = document.getElementById('btn-add-cat-pn');
                 const newCatBox = document.getElementById('pn-new-cat-box');
+                const quickDest = document.getElementById('pn-quick-destination');
                 
                 if (!catSelect || !labelMetodo || !labelCat) return;
 
@@ -8347,16 +8520,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 if (tipo === 'Entrata') {
                     if (presetRow) presetRow.style.display = 'none';
                     if (addCatBtn) addCatBtn.style.display = 'inline-flex';
-                    labelMetodo.innerHTML = 'Metodo Pagamento <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(opzionale)</span>';
+                    if (quickDest) quickDest.style.display = 'flex';
+                    labelMetodo.innerHTML = 'Accredito Fondi / Metodo*';
                     labelCat.innerText = 'Categoria Entrata*';
                     if (metodoSelect) {
-                        metodoSelect.required = false;
-                        metodoSelect.onchange = null;
-                        const curM = preselectedMetodo !== undefined && preselectedMetodo !== null ? preselectedMetodo : '';
-                        metodoSelect.innerHTML = `
-                            <option value="" ${!curM ? 'selected' : ''}>-- Nessuno / Non specificato --</option>
-                            ${this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${m}</option>`).join('')}
-                        `;
+                        metodoSelect.required = true;
+                        const curM = (preselectedMetodo !== undefined && preselectedMetodo !== null && preselectedMetodo !== '') ? preselectedMetodo : (metodoSelect.value || 'Banca');
+                        metodoSelect.innerHTML = this.getPrimaNotaMetodiOptions(curM, 'Entrata');
+                        metodoSelect.onchange = (e) => this.onPrimaNotaMetodoChange(e.target.value);
                     }
                     catSelect.onchange = (e) => this.onPrimaNotaCategoriaChange(e.target.value);
                     const cats = this.state.settings.categorie_entrate || [];
@@ -8366,16 +8537,18 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
                     catOpts += `<option value="__NEW__" style="color:#60a5fa; font-weight:600;">➕ Scrivi nuova categoria...</option>`;
                     catSelect.innerHTML = catOpts;
-                    if (descInput && !descInput.value) descInput.placeholder = 'Es. Donazione liberale / Sponsor';
+                    if (descInput && !descInput.value) descInput.placeholder = 'Es. Donazione liberale / Sponsor / Quota';
                 } else if (tipo === 'Uscita') {
                     if (addCatBtn) addCatBtn.style.display = 'inline-flex';
-                    labelMetodo.innerText = 'Metodo Pagamento*';
+                    if (quickDest) quickDest.style.display = 'flex';
+                    labelMetodo.innerText = 'Addebito Fondi / Metodo*';
                     labelCat.innerText = 'Categoria Uscita*';
                     if (metodoSelect) {
                         metodoSelect.required = true;
-                        const curM = preselectedMetodo || (metodoSelect.value && metodoSelect.value !== 'Banca' ? metodoSelect.value : 'Contanti');
-                        metodoSelect.innerHTML = this.getMetodiPagamento().map(m => `<option value="${m}" ${curM === m ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('');
+                        const curM = (preselectedMetodo !== undefined && preselectedMetodo !== null && preselectedMetodo !== '') ? preselectedMetodo : (metodoSelect.value || 'Contanti');
+                        metodoSelect.innerHTML = this.getPrimaNotaMetodiOptions(curM, 'Uscita');
                         metodoSelect.onchange = (e) => {
+                            this.onPrimaNotaMetodoChange(e.target.value);
                             checkBankPresetVisibility(e.target.value);
                         };
                         checkBankPresetVisibility(curM);
@@ -8388,10 +8561,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
                     catOpts += `<option value="__NEW__" style="color:#60a5fa; font-weight:600;">➕ Scrivi nuova categoria...</option>`;
                     catSelect.innerHTML = catOpts;
-                    if (descInput && !descInput.value) descInput.placeholder = 'Es. Pagamento affitto / Bolletta';
+                    if (descInput && !descInput.value) descInput.placeholder = 'Es. Pagamento affitto / Bolletta / Compenso';
                 } else if (tipo === 'Giroconto') {
                     if (presetRow) presetRow.style.display = 'none';
                     if (addCatBtn) addCatBtn.style.display = 'none';
+                    if (quickDest) quickDest.style.display = 'none';
+                    const badge = document.getElementById('pn-conto-badge');
+                    if (badge) badge.style.display = 'none';
                     labelMetodo.innerText = 'Da (Origine)*';
                     labelCat.innerText = 'A (Destinazione)*';
                     if (metodoSelect) {
@@ -8420,6 +8596,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     if (descInput && !descInput.value) {
                         descInput.placeholder = 'Es. Versamento contanti allo sportello bancario';
                     }
+                }
+
+                if (tipo !== 'Giroconto' && metodoSelect) {
+                    this.onPrimaNotaMetodoChange(metodoSelect.value);
                 }
             },
 
