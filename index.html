@@ -1873,12 +1873,18 @@
             });
 
             if (found && typeof found === 'object') {
+                let perc = typeof found.percentuale === 'number' ? found.percentuale : (parseFloat(found.percentuale) || 0);
+                let fisso = typeof found.fisso === 'number' ? found.fisso : (parseFloat(found.fisso) || 0);
+                const sLow = (found.nome || searchName).toLowerCase();
+                if ((sLow.includes('cbill') || sLow.includes('pagopa')) && fisso === 0 && perc === 0 && !found.fisso_da_definire && !found.percentuale_da_definire) {
+                    fisso = 1.50;
+                }
                 return {
                     nome: found.nome || searchName,
                     tipo_registro: found.tipo_registro || (found.nome?.toLowerCase() === 'contanti' ? 'cassa' : 'banca'),
-                    percentuale: typeof found.percentuale === 'number' ? found.percentuale : (parseFloat(found.percentuale) || 0),
+                    percentuale: perc,
                     percentuale_da_definire: !!(found.percentuale_da_definire || found.percentuale_tbd),
-                    fisso: typeof found.fisso === 'number' ? found.fisso : (parseFloat(found.fisso) || 0),
+                    fisso: fisso,
                     fisso_da_definire: !!(found.fisso_da_definire || found.fisso_tbd),
                     is_default: !!found.is_default
                 };
@@ -1887,7 +1893,8 @@
             // Se non trovato o se presente come semplice stringa:
             const sLower = searchName.toLowerCase();
             const isSumUp = sLower.replace(/\s/g, '').includes('sumup');
-            const isBancaKey = sLower === 'banca' || sLower.includes('banc') || sLower.includes('bonifico') || sLower.includes('pos') || sLower.includes('carta') || sLower.includes('bancomat');
+            const isCBILL = sLower.includes('cbill') || sLower.includes('pagopa');
+            const isBancaKey = sLower === 'banca' || sLower.includes('banc') || sLower.includes('bonifico') || sLower.includes('pos') || sLower.includes('carta') || sLower.includes('bancomat') || isCBILL;
             const isContanti = !isBancaKey && (sLower === 'contanti' || sLower === 'cassa' || sLower.includes('contant') || sLower.includes('cassa reale'));
             if (isSumUp) {
                 return {
@@ -1896,6 +1903,17 @@
                     percentuale: 1.95,
                     percentuale_da_definire: false,
                     fisso: 0.00,
+                    fisso_da_definire: false,
+                    is_default: false
+                };
+            }
+            if (isCBILL) {
+                return {
+                    nome: searchName || 'CBILL',
+                    tipo_registro: 'banca',
+                    percentuale: 0,
+                    percentuale_da_definire: false,
+                    fisso: 1.50,
                     fisso_da_definire: false,
                     is_default: false
                 };
@@ -7766,108 +7784,132 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let search = document.getElementById('pn-search') ? document.getElementById('pn-search').value.toLowerCase().trim() : '';
                 let searchImporto = document.getElementById('pn-search-importo') ? document.getElementById('pn-search-importo').value.trim() : '';
 
-                // Se è attiva la ricerca per importo, calcoliamo gli ID dei movimenti corrispondenti
-                // Se è attiva la ricerca per importo, calcoliamo gli ID dei movimenti corrispondenti
-                // e includiamo anche le relative commissioni collegate (e i relativi movimenti padre).
-                let matchedByAmountIds = null;
-                if (searchImporto) {
-                    const cleanQuery = searchImporto.replace(/[^0-9.,]/g, '').replace(',', '.');
-                    if (cleanQuery) {
-                        matchedByAmountIds = new Set();
-                        
-                        const isAmountMatch = (t) => {
-                            const val = Math.abs(parseFloat(t.importo) || 0);
-                            const valStr = val.toFixed(2); // es: "3.00", "300.00", "1.37"
+                // Verifica se è attiva una qualsiasi ricerca testuale o per importo
+                const hasSearch = !!(search || searchImporto);
+                let matchedSearchIds = null;
 
-                            // Se l'utente scrive solo i centesimi (es. ".37" o ",37")
-                            if (cleanQuery.startsWith('.')) {
-                                return valStr.endsWith(cleanQuery) || valStr.includes(cleanQuery);
-                            }
-                            
-                            // Se la query non ha decimali (es. "3", "30", "300")
-                            if (!cleanQuery.includes('.')) {
-                                // Match esatto o per intero (es. "3.00" o "3.xx", MA NON "300.00" o "1.37")
-                                return valStr.startsWith(cleanQuery + '.') || valStr === cleanQuery;
-                            }
-                            
-                            // Se la query include decimali (es. "3.", "3.0", "3.00", "1.37")
-                            return valStr.startsWith(cleanQuery) || valStr === cleanQuery;
-                        };
+                if (hasSearch) {
+                    matchedSearchIds = new Set();
 
-                        const directMatches = this.state.primanota.filter(t => isAmountMatch(t));
-
-                        directMatches.forEach(t => {
-                            matchedByAmountIds.add(String(t.id));
-
-                            const tId = String(t.id);
-                            const tRef = t.riferimento || '';
-                            const tDesc = (t.descrizione || '').toLowerCase().trim();
-
-                            // A. Se t ha una commissione manuale collegata (COMM_TXN_<t.id>)
-                            this.state.primanota.forEach(other => {
-                                const oRef = other.riferimento || '';
-                                if (oRef === 'COMM_TXN_' + tId) {
-                                    matchedByAmountIds.add(String(other.id));
+                    const isDirectMatch = (t) => {
+                        // 1. Match per importo specifico (se compilato campo searchImporto)
+                        if (searchImporto) {
+                            const cleanQuery = searchImporto.replace(/[^0-9.,]/g, '').replace(',', '.');
+                            if (cleanQuery) {
+                                const val = Math.abs(parseFloat(t.importo) || 0);
+                                const valStr = val.toFixed(2);
+                                let amtOk = false;
+                                if (cleanQuery.startsWith('.')) {
+                                    amtOk = valStr.endsWith(cleanQuery) || valStr.includes(cleanQuery);
+                                } else if (!cleanQuery.includes('.')) {
+                                    amtOk = valStr.startsWith(cleanQuery + '.') || valStr === cleanQuery;
+                                } else {
+                                    amtOk = valStr.startsWith(cleanQuery) || valStr === cleanQuery;
                                 }
-                            });
-
-                            // B. Se t è una commissione manuale collegata (COMM_TXN_<parentId>)
-                            if (tRef.startsWith('COMM_TXN_')) {
-                                const parentId = tRef.replace('COMM_TXN_', '');
-                                matchedByAmountIds.add(parentId);
+                                if (!amtOk) return false;
                             }
+                        }
 
-                            // C. Se t è un'entrata da ricevuta (RICEVUTA_<id>) -> aggiungi commissione (COMM_RICEVUTA_<id>)
-                            if (tRef.startsWith('RICEVUTA_')) {
-                                const recId = tRef.replace('RICEVUTA_', '');
-                                this.state.primanota.forEach(other => {
-                                    const oRef = other.riferimento || '';
-                                    if (oRef === 'COMM_RICEVUTA_' + recId) {
-                                        matchedByAmountIds.add(String(other.id));
-                                    }
-                                });
-                            }
-
-                            // D. Se t è una commissione da ricevuta (COMM_RICEVUTA_<id>) -> aggiungi entrata collegata
-                            if (tRef.startsWith('COMM_RICEVUTA_')) {
-                                const recId = tRef.replace('COMM_RICEVUTA_', '');
-                                this.state.primanota.forEach(other => {
-                                    const oRef = other.riferimento || '';
-                                    if (oRef === 'RICEVUTA_' + recId) {
-                                        matchedByAmountIds.add(String(other.id));
-                                    }
-                                });
-                            }
-
-                            // E. Giroconto collegato
-                            const gcGroup = t.giroconto_group || (tRef.startsWith('GIROCONTO_') ? tRef.split('_')[1] : null);
-                            if (gcGroup) {
-                                this.state.primanota.forEach(other => {
-                                    const oGc = other.giroconto_group || (other.riferimento?.startsWith('GIROCONTO_') ? other.riferimento.split('_')[1] : null);
-                                    if (oGc === gcGroup) {
-                                        matchedByAmountIds.add(String(other.id));
-                                    }
-                                });
-                            }
-
-                            // F. Collegamento testuale mirato per commissioni: SOLO se t è una ricevuta o spesa principale (NON se t è già una commissione!)
-                            const isCommissioneT = tRef.startsWith('COMM_') || t.categoria === 'Spese e Commissioni Bancarie' || t.categoria === 'Commissioni Pagamento Digitale' || tDesc.startsWith('commissioni');
-                            if (tDesc && !isCommissioneT) {
-                                const tRecMatch = tDesc.match(/ric(?:evuta)?\.?\s*n\.?\s*([0-9]+)/i);
-                                const recNum = tRecMatch ? tRecMatch[1] : null;
-
-                                if (recNum) {
-                                    this.state.primanota.forEach(other => {
-                                        const oDesc = (other.descrizione || '').toLowerCase();
-                                        const isCommissione = (other.categoria === 'Spese e Commissioni Bancarie' || other.categoria === 'Commissioni Pagamento Digitale' || oDesc.startsWith('commissioni'));
-                                        if (isCommissione && (oDesc.includes('ric. n.' + recNum) || oDesc.includes('n.' + recNum) || oDesc.includes('n. ' + recNum))) {
-                                            matchedByAmountIds.add(String(other.id));
-                                        }
-                                    });
+                        // 2. Match generico testo / causale / importo (se compilato campo search)
+                        if (search) {
+                            const cleanS = search.replace(/[^0-9.,]/g, '').replace(',', '.');
+                            let matchAmt = false;
+                            if (cleanS) {
+                                const val = Math.abs(parseFloat(t.importo) || 0);
+                                const valStr = val.toFixed(2);
+                                if (!cleanS.includes('.')) {
+                                    matchAmt = valStr.startsWith(cleanS + '.') || valStr === cleanS;
+                                } else {
+                                    matchAmt = valStr.startsWith(cleanS) || valStr === cleanS;
                                 }
+                            }
+                            const matchText = (t.descrizione || '').toLowerCase().includes(search) || 
+                                              (t.categoria || '').toLowerCase().includes(search) ||
+                                              (t.metodo || '').toLowerCase().includes(search) ||
+                                              (t.riferimento || '').toLowerCase().includes(search) ||
+                                              matchAmt;
+                            if (!matchText) return false;
+                        }
+
+                        return true;
+                    };
+
+                    const directMatches = this.state.primanota.filter(isDirectMatch);
+                    directMatches.forEach(t => matchedSearchIds.add(String(t.id)));
+
+                    // Espansione automatica e bidirezionale:
+                    // Se un movimento padre (es. spesa o entrata digitale) corrisponde alla ricerca,
+                    // includi SEMPRE anche la relativa commissione o spesa bancaria collegata!
+                    // E viceversa: se la ricerca trova la commissione, includi il movimento padre.
+                    directMatches.forEach(t => {
+                        const tId = String(t.id);
+                        const tRef = t.riferimento || '';
+                        const tDesc = (t.descrizione || '').toLowerCase().trim();
+
+                        // A. Se t ha una commissione manuale collegata (COMM_TXN_<t.id>)
+                        this.state.primanota.forEach(other => {
+                            const oRef = other.riferimento || '';
+                            if (oRef === 'COMM_TXN_' + tId) {
+                                matchedSearchIds.add(String(other.id));
                             }
                         });
-                    }
+
+                        // B. Se t è una commissione manuale collegata (COMM_TXN_<parentId>) -> aggiungi padre
+                        if (tRef.startsWith('COMM_TXN_')) {
+                            const parentId = tRef.replace('COMM_TXN_', '');
+                            matchedSearchIds.add(parentId);
+                        }
+
+                        // C. Se t è un'entrata da ricevuta (RICEVUTA_<id>) -> aggiungi commissione (COMM_RICEVUTA_<id>)
+                        if (tRef.startsWith('RICEVUTA_')) {
+                            const recId = tRef.replace('RICEVUTA_', '');
+                            this.state.primanota.forEach(other => {
+                                const oRef = other.riferimento || '';
+                                if (oRef === 'COMM_RICEVUTA_' + recId) {
+                                    matchedSearchIds.add(String(other.id));
+                                }
+                            });
+                        }
+
+                        // D. Se t è una commissione da ricevuta (COMM_RICEVUTA_<id>) -> aggiungi ricevuta collegata
+                        if (tRef.startsWith('COMM_RICEVUTA_')) {
+                            const recId = tRef.replace('COMM_RICEVUTA_', '');
+                            this.state.primanota.forEach(other => {
+                                const oRef = other.riferimento || '';
+                                if (oRef === 'RICEVUTA_' + recId) {
+                                    matchedSearchIds.add(String(other.id));
+                                }
+                            });
+                        }
+
+                        // E. Giroconto collegato (entrambe le righe IN e OUT)
+                        const gcGroup = t.giroconto_group || (tRef.startsWith('GIROCONTO_') ? tRef.split('_')[1] : null);
+                        if (gcGroup) {
+                            this.state.primanota.forEach(other => {
+                                const oGc = other.giroconto_group || (other.riferimento?.startsWith('GIROCONTO_') ? other.riferimento.split('_')[1] : null);
+                                if (oGc === gcGroup) {
+                                    matchedSearchIds.add(String(other.id));
+                                }
+                            });
+                        }
+
+                        // F. Collegamento testuale mirato per ricevute
+                        const isCommissioneT = tRef.startsWith('COMM_') || t.categoria === 'Spese e Commissioni Bancarie' || t.categoria === 'Commissioni Pagamento Digitale' || tDesc.startsWith('commissioni');
+                        if (tDesc && !isCommissioneT) {
+                            const tRecMatch = tDesc.match(/ric(?:evuta)?\.?\s*n\.?\s*([0-9]+)/i);
+                            const recNum = tRecMatch ? tRecMatch[1] : null;
+
+                            if (recNum) {
+                                this.state.primanota.forEach(other => {
+                                    const oDesc = (other.descrizione || '').toLowerCase();
+                                    const isComm = (other.categoria === 'Spese e Commissioni Bancarie' || other.categoria === 'Commissioni Pagamento Digitale' || oDesc.startsWith('commissioni'));
+                                    if (isComm && (oDesc.includes('ric. n.' + recNum) || oDesc.includes('n.' + recNum) || oDesc.includes('n. ' + recNum))) {
+                                        matchedSearchIds.add(String(other.id));
+                                    }
+                                });
+                            }
+                        }
+                    });
                 }
 
                 let filtered = this.state.primanota.filter(t => {
@@ -7887,8 +7929,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         if (quarter === 'Q4' && m < 10) return false;
                     }
 
-                    // Se è attiva la ricerca per importo
-                    if (matchedByAmountIds && !matchedByAmountIds.has(String(t.id))) {
+                    // Se è attiva la ricerca (testo o importo), verifica appartenenza a matchedSearchIds
+                    if (matchedSearchIds && !matchedSearchIds.has(String(t.id))) {
                         return false;
                     }
 
@@ -7897,7 +7939,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         const isGc = (t.tipo === 'Giroconto') || !!t.giroconto_group || (t.riferimento && t.riferimento.startsWith('GIROCONTO_')) || (t.categoria && t.categoria.startsWith('Giroconto'));
                         if (!isGc) return false;
                     } else if (tipo !== 'all') {
-                        const isLinkedCommission = matchedByAmountIds && matchedByAmountIds.has(String(t.id)) && (t.categoria === 'Spese e Commissioni Bancarie' || t.categoria === 'Commissioni Pagamento Digitale' || (t.riferimento && (t.riferimento.startsWith('COMM_TXN_') || t.riferimento.startsWith('COMM_RICEVUTA_'))));
+                        const isLinkedCommission = matchedSearchIds && matchedSearchIds.has(String(t.id)) && (t.categoria === 'Spese e Commissioni Bancarie' || t.categoria === 'Commissioni Pagamento Digitale' || (t.riferimento && (t.riferimento.startsWith('COMM_TXN_') || t.riferimento.startsWith('COMM_RICEVUTA_'))));
                         if (t.tipo !== tipo && !isLinkedCommission) return false;
                     }
                     
@@ -7906,26 +7948,6 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     if (metodoFilter === 'cassa' && !this.isCassaMetodo(t.metodo)) return false;
                     if (metodoFilter === 'banca' && this.isCassaMetodo(t.metodo)) return false;
 
-                    // Ricerca testo (descrizione, categoria, riferimento, o importo se numerico)
-                    if (search) {
-                        const cleanS = search.replace(/[^0-9.,]/g, '').replace(',', '.');
-                        let matchAmt = false;
-                        if (cleanS) {
-                            const val = Math.abs(parseFloat(t.importo) || 0);
-                            const valStr = val.toFixed(2);
-                            if (!cleanS.includes('.')) {
-                                matchAmt = valStr.startsWith(cleanS + '.') || valStr === cleanS;
-                            } else {
-                                matchAmt = valStr.startsWith(cleanS) || valStr === cleanS;
-                            }
-                        }
-                        const matchText = (t.descrizione || '').toLowerCase().includes(search) || 
-                                          (t.categoria || '').toLowerCase().includes(search) ||
-                                          (t.riferimento || '').toLowerCase().includes(search) ||
-                                          matchAmt;
-                        if (!matchText) return false;
-                    }
-
                     return true;
                 });
 
@@ -7933,6 +7955,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const dir = this.pnSortDir || 'desc';
 
                 filtered.sort((a, b) => {
+                    // Mantieni la commissione collegata immediatamente dopo il rispettivo padre
+                    if (b.riferimento === 'COMM_TXN_' + a.id || (a.riferimento?.startsWith('RICEVUTA_') && b.riferimento === 'COMM_RICEVUTA_' + a.riferimento.replace('RICEVUTA_', ''))) {
+                        return -1;
+                    }
+                    if (a.riferimento === 'COMM_TXN_' + b.id || (b.riferimento?.startsWith('RICEVUTA_') && a.riferimento === 'COMM_RICEVUTA_' + b.riferimento.replace('RICEVUTA_', ''))) {
+                        return 1;
+                    }
+
                     let diff = 0;
                     if (key === 'data') {
                         const dateA = new Date(a.data).getTime() || 0;
@@ -7996,6 +8026,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         printBtn = `<button class="btn btn-outline" style="padding: 5px 8px; margin-right: 4px; color:var(--text-muted);" title="Stampa Giustificativo Contabile di Cassa" onclick="app.stampaGiustificativoMovimento('${t.id}')">🖨️</button>`;
                     }
 
+                    let linkedComm = null;
+                    if (t.riferimento && t.riferimento.startsWith('RICEVUTA_')) {
+                        const recId = t.riferimento.replace('RICEVUTA_', '');
+                        linkedComm = (this.state.primanota || []).find(x => x.riferimento === 'COMM_RICEVUTA_' + recId);
+                    } else if (t.id) {
+                        linkedComm = (this.state.primanota || []).find(x => x.riferimento === 'COMM_TXN_' + t.id);
+                    }
+
                     return `
                         <tr id="pn-row-${t.id}" data-id="${t.id}">
                             <td style="padding-left: 1.5rem;">${this.formatDate(t.data)}</td>
@@ -8004,9 +8042,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <td>${t.categoria}</td>
                             <td>
                                 ${t.descrizione}
+                                ${linkedComm ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.25);">⚡ Comm. ${t.metodo || 'digitale'}: -€${parseFloat(linkedComm.importo).toFixed(2)}</div>` : ''}
                                 ${t.riferimento && t.riferimento.startsWith('RICEVUTA_') ? `<div style="font-size: 0.7rem; color: var(--accent);">${t.riferimento}</div>` : ''}
                                 ${(t.giroconto_group || (t.riferimento && t.riferimento.startsWith('GIROCONTO_'))) ? `<div style="font-size: 0.7rem; color: #a78bfa; margin-top: 2px;">⇄ Giroconto Collegato</div>` : ''}
-                                ${(t.riferimento && t.riferimento.startsWith('COMM_TXN_')) ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">⚡ Spesa bancaria collegata</div>` : ''}
+                                ${(t.riferimento && t.riferimento.startsWith('COMM_TXN_')) ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">⚡ Spesa bancaria / commissione collegata</div>` : ''}
+                                ${(t.riferimento && t.riferimento.startsWith('COMM_RICEVUTA_')) ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">⚡ Commissione Ricevuta collegata</div>` : ''}
                             </td>
                             <td style="text-align: right; font-weight: 700; color: ${colorAmt};">
                                 ${sign}€ ${parseFloat(t.importo).toFixed(2)}
@@ -8190,6 +8230,49 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         if (sel) sel.value = '';
                     }
                 }
+
+                this.recalcPrimaNotaCommission();
+            },
+
+            recalcPrimaNotaCommission() {
+                const commBox = document.getElementById('pn-commissione-box');
+                const commInput = document.getElementById('new-pn-commissione');
+                const metodoSelect = document.getElementById('new-pn-metodo');
+                const tipoSelect = document.getElementById('new-pn-tipo');
+                const amtInput = document.querySelector('input[name="importo"]');
+                
+                if (!commBox || !commInput || !metodoSelect) return;
+                const tipo = tipoSelect ? tipoSelect.value : 'Uscita';
+                const metodo = metodoSelect.value;
+                const isCassa = this.isCassaMetodo(metodo);
+                const isDigital = !isCassa && !!metodo && (tipo !== 'Giroconto');
+
+                commBox.style.display = isDigital ? 'block' : 'none';
+                if (!isDigital) {
+                    commInput.value = '';
+                    return;
+                }
+
+                // Se l'utente ha modificato manualmente la commissione, preservala
+                if (commInput.dataset.manual === 'true' && commInput.value !== '') {
+                    return;
+                }
+
+                const amt = amtInput ? (parseFloat(amtInput.value) || 0) : 0;
+                const cfg = this.getMetodoConfig(metodo);
+                let comm = 0;
+                if (cfg) {
+                    const perc = !cfg.percentuale_da_definire ? (parseFloat(cfg.percentuale) || 0) : 0;
+                    const fisso = !cfg.fisso_da_definire ? (parseFloat(cfg.fisso) || 0) : 0;
+                    if (perc > 0 || fisso > 0) {
+                        comm = Math.round((amt * (perc / 100) + fisso) * 100) / 100;
+                    }
+                }
+                if (comm > 0) {
+                    commInput.value = comm.toFixed(2);
+                } else if (!commInput.dataset.manual) {
+                    commInput.value = '';
+                }
             },
 
             showPrimaNotaForm(editId = null) {
@@ -8198,6 +8281,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let gcGroup = null;
                 let defaultMetodo = '';
                 let defaultCat = '';
+                let defaultComm = '';
 
                 if (editId) {
                     txn = this.state.primanota.find(t => String(t.id) === String(editId));
@@ -8226,6 +8310,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 } else if (isEdit) {
                     defaultMetodo = txn.metodo || '';
                     defaultCat = txn.categoria || '';
+                    const existingComm = (this.state.primanota || []).find(t => t.riferimento === 'COMM_TXN_' + editId);
+                    if (existingComm) {
+                        defaultComm = parseFloat(existingComm.importo).toFixed(2);
+                    }
                 } else {
                     defaultMetodo = (defaultTipo === 'Entrata') ? 'Banca' : 'Contanti';
                 }
@@ -8248,7 +8336,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                             <div class="form-group">
                                 <label>Importo (€)*</label>
-                                <input type="number" step="0.01" name="importo" class="form-control" required placeholder="0.00" value="${defaultImporto}">
+                                <input type="number" step="0.01" name="importo" class="form-control" required placeholder="0.00" value="${defaultImporto}" oninput="app.recalcPrimaNotaCommission()">
                             </div>
                         </div>
 
@@ -8296,6 +8384,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                         <button type="button" class="btn btn-primary" style="padding:6px 12px; font-size:0.82rem; white-space:nowrap;" onclick="app.saveNewPrimaNotaCategoria()">Salva</button>
                                         <button type="button" class="btn btn-outline" style="padding:6px 10px; font-size:0.82rem;" title="Annulla" onclick="app.cancelNewPrimaNotaCategoria()">✕</button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Riga Commissione Pagamento Digitale -->
+                        <div id="pn-commissione-box" style="display:none; margin-bottom:1rem; background:rgba(245,158,11,0.08); border:1px dashed rgba(245,158,11,0.35); border-radius:8px; padding:10px 12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                                <div style="flex:1;">
+                                    <label style="margin:0; font-size:0.82rem; font-weight:600; color:#f59e0b; display:flex; align-items:center; gap:5px;">
+                                        ⚡ Commissione Pagamento Digitale / Spesa Bancaria (€)
+                                    </label>
+                                    <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+                                        Verrà registrata automaticamente in Prima Nota come spesa bancaria collegata
+                                    </div>
+                                </div>
+                                <div style="width:130px;">
+                                    <input type="number" step="0.01" min="0" id="new-pn-commissione" name="commissione" class="form-control" placeholder="0.00" value="${defaultComm}" ${defaultComm ? 'data-manual="true"' : ''} oninput="this.dataset.manual='true'">
                                 </div>
                             </div>
                         </div>
@@ -8698,16 +8803,24 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
                     highlightId = targetTxnId;
 
-                    // Gestione automatica commissioni sul metodo di pagamento (per Uscite)
+                    // Gestione automatica commissioni sul metodo di pagamento (digitale/bancario)
                     if (targetTxnId) {
                         const commRef = 'COMM_TXN_' + targetTxnId;
-                        const cfg = this.getMetodoConfig(metodoVal);
+                        const isCassa = this.isCassaMetodo(metodoVal);
+                        const commInput = document.getElementById('new-pn-commissione');
                         let comm = 0;
-                        if (tipoVal === 'Uscita' && cfg) {
-                            const perc = !cfg.percentuale_da_definire ? (parseFloat(cfg.percentuale) || 0) : 0;
-                            const fisso = !cfg.fisso_da_definire ? (parseFloat(cfg.fisso) || 0) : 0;
-                            if (perc > 0 || fisso > 0) {
-                                comm = Math.round((importoVal * (perc / 100) + fisso) * 100) / 100;
+                        if (!isCassa && tipoVal !== 'Giroconto') {
+                            if (commInput && commInput.value !== '') {
+                                comm = Math.round((parseFloat(commInput.value) || 0) * 100) / 100;
+                            } else {
+                                const cfg = this.getMetodoConfig(metodoVal);
+                                if (cfg) {
+                                    const perc = !cfg.percentuale_da_definire ? (parseFloat(cfg.percentuale) || 0) : 0;
+                                    const fisso = !cfg.fisso_da_definire ? (parseFloat(cfg.fisso) || 0) : 0;
+                                    if (perc > 0 || fisso > 0) {
+                                        comm = Math.round((importoVal * (perc / 100) + fisso) * 100) / 100;
+                                    }
+                                }
                             }
                         }
 
