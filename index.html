@@ -13979,67 +13979,188 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             if(!r) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
-            // Intestazione ASD
+
+            const cleanCat = (tipo) => {
+                const t = (tipo || 'Altro').trim();
+                const map = {
+                    'Carburante': 'Carburante / Viaggio',
+                    'Pasto': 'Pasto / Vitto',
+                    'Materiale': 'Acquisto Materiale / Cancelleria',
+                    'Alloggio': 'Alloggio / Pernottamento',
+                    'Trasporto': 'Pedaggi / Biglietti Trasporto',
+                    'Altro': 'Altre Spese'
+                };
+                if (map[t]) return map[t];
+                return t.replace(/[\u{1F300}-\u{1FAFF}|\u{2600}-\u{27BF}]/gu, '').replace(/[^\x20-\x7E\xA0-\xFF]/g, '').trim() || 'Spesa sostenuta';
+            };
+
+            // Trova Codice Fiscale del richiedente se presente nei soci o collaboratori
+            let persona = (this.state.istruttori || []).find(i => i.nome && i.nome.toLowerCase() === (r.richiedente || '').toLowerCase());
+            if (!persona) {
+                persona = (this.state.soci || []).find(s => {
+                    const f1 = `${s.cognome} ${s.nome}`.toLowerCase();
+                    const f2 = `${s.nome} ${s.cognome}`.toLowerCase();
+                    const req = (r.richiedente || '').toLowerCase().trim();
+                    return f1 === req || f2 === req;
+                });
+            }
+            const cfRichiedente = persona?.cf || persona?.codiceFiscale || "";
+
+            // Intestazione ASD (Sinistra)
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(16);
-            doc.text((this.state.settings.asdName || "ASSOCIAZIONE SPORTIVA").toUpperCase(), 20, 20);
-            doc.setFontSize(10);
+            doc.setFontSize(14);
+            doc.setTextColor(30, 41, 59);
+            doc.text((this.state.settings.asdName || "ASSOCIAZIONE SPORTIVA DILETTANTISTICA").toUpperCase(), 15, 18);
+
             doc.setFont("helvetica", "normal");
-            doc.text(this.state.settings.address || "", 20, 26);
-            doc.text("C.F. / P.IVA: " + (this.state.settings.pIva || "-"), 20, 31);
-            
-            // Linea divisoria
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.5);
-            doc.line(20, 36, 190, 36);
+            doc.setFontSize(8.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text(this.state.settings.address || "", 15, 23);
+            doc.text("Codice Fiscale / P.IVA: " + (this.state.settings.pIva || "-"), 15, 27.5);
+            const contact = [this.state.settings.email, this.state.settings.phone].filter(Boolean).join("  •  ");
+            if (contact) {
+                doc.text(contact, 15, 32);
+            }
+
+            // Box Protocollo Documento (Destra)
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(203, 213, 225);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(138, 12, 57, 21, 2, 2, 'FD');
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text("NOTA SPESE E RIMBORSO", 166.5, 17.5, null, null, "center");
+
+            doc.setFontSize(10);
+            doc.setTextColor(30, 58, 138);
+            doc.text("ID: #" + (r.id ? String(r.id).slice(-6) : "RIMB"), 166.5, 23.5, null, null, "center");
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text("Data: " + this.formatDate(r.data), 166.5, 29, null, null, "center");
+
+            // Linea divisoria estetica bicolore
+            doc.setFillColor(37, 99, 235); // Blu primario
+            doc.rect(15, 36, 180, 1.2, 'F');
 
             // Titolo Documento
-            doc.setFontSize(15);
+            let y = 46;
             doc.setFont("helvetica", "bold");
-            doc.text("NOTA SPESE E RICHIESTA RIMBORSO", 105, 46, null, null, "center");
+            doc.setFontSize(13);
+            doc.setTextColor(15, 23, 42);
+            doc.text("PROSPETTO LIQUIDAZIONE PIÈ DI LISTA", 105, y, null, null, "center");
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text("Modulo di rimborso analitico delle spese anticipate in nome e per conto dell'ente", 105, y + 5, null, null, "center");
+
+            y += 10;
 
             if (r.annullato) {
+                doc.setFillColor(254, 242, 242);
+                doc.setDrawColor(239, 68, 68);
+                doc.roundedRect(40, y, 130, 7, 1.5, 1.5, 'FD');
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
                 doc.setTextColor(220, 38, 38);
-                doc.setFontSize(12);
-                doc.text("*** DOCUMENTO ANNULLATO ***", 105, 53, null, null, "center");
-                doc.setTextColor(0, 0, 0);
+                doc.text("*** DOCUMENTO ANNULLATO E STORMATO ***", 105, y + 4.8, null, null, "center");
+                y += 11;
             }
 
-            // Box Richiedente
+            // Scheda Dati Beneficiario & Metodo Liquidazione
             doc.setFillColor(248, 250, 252);
-            doc.setDrawColor(226, 232, 240);
-            doc.rect(20, 58, 170, 24, 'FD');
+            doc.setDrawColor(203, 213, 225);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(15, y, 180, 22, 2, 2, 'FD');
 
-            doc.setFontSize(10);
+            // Colonna 1: Richiedente e CF
             doc.setFont("helvetica", "bold");
-            doc.text("Richiedente: ", 25, 66);
-            doc.setFont("helvetica", "normal");
-            doc.text(String(r.richiedente || "-"), 50, 66);
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text("BENEFICIARIO / RICHIEDENTE:", 20, y + 6);
 
             doc.setFont("helvetica", "bold");
-            doc.text("Data Richiesta: ", 25, 74);
-            doc.setFont("helvetica", "normal");
-            doc.text(this.formatDate(r.data) + "    |    Metodo Liquidazione: " + (r.metodo || "Bonifico"), 55, 74);
+            doc.setFontSize(10.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(String(r.richiedente || "-"), 20, y + 12);
 
-            let y = 90;
-            if(r.note) {
-                doc.setFont("helvetica", "italic");
-                doc.setFontSize(9);
-                doc.text("Oggetto / Motivo: " + r.note, 20, y);
-                y += 8;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            doc.setTextColor(71, 85, 105);
+            if (cfRichiedente) {
+                doc.text("C.F.: " + cfRichiedente, 20, y + 17.5);
+            } else {
+                doc.text("Socio / Collaboratore autorizzato", 20, y + 17.5);
             }
 
-            // Intestazione Tabella Voci
-            doc.setFillColor(241, 245, 249);
-            doc.setDrawColor(203, 213, 225);
-            doc.rect(20, y, 170, 8, 'FD');
+            // Colonna 2: Metodo e Stato Liquidazione
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.text("N.", 24, y + 5.5);
-            doc.text("Tipologia di Spesa", 36, y + 5.5);
-            doc.text("Dettaglio Giustificativo / Scontrino", 85, y + 5.5);
-            doc.text("Importo (EUR)", 185, y + 5.5, null, null, "right");
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text("MODALITÀ LIQUIDAZIONE:", 115, y + 6);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text(String(r.metodo || "Contanti"), 115, y + 12);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8.5);
+            if (r.pagato) {
+                doc.setTextColor(22, 163, 74);
+                doc.text("Stato: LIQUIDATO (Registrato in Cassa/Banca)", 115, y + 17.5);
+            } else {
+                doc.setTextColor(217, 119, 6);
+                doc.text("Stato: DA LIQUIDARE (In attesa di accredito)", 115, y + 17.5);
+            }
+
+            y += 26;
+
+            // Box Oggetto / Motivazione della missione
+            if (r.note && r.note.trim()) {
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8.5);
+                const noteLines = doc.splitTextToSize(r.note.trim(), 138);
+                const noteH = Math.max(9, noteLines.length * 4.2 + 5);
+
+                doc.setFillColor(241, 245, 249);
+                doc.setDrawColor(203, 213, 225);
+                doc.setLineWidth(0.3);
+                doc.roundedRect(15, y, 180, noteH, 1.5, 1.5, 'FD');
+
+                // Bordo azzurro a sinistra
+                doc.setFillColor(37, 99, 235);
+                doc.rect(15, y, 2.5, noteH, 'F');
+
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(30, 41, 59);
+                doc.text("Oggetto / Motivo:", 21, y + 5.5);
+
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(51, 65, 85);
+                doc.text(noteLines, 52, y + 5.5);
+
+                y += noteH + 5;
+            } else {
+                y += 2;
+            }
+
+            // Tabella Dettaglio Spese
+            // Intestazione Tabella
+            doc.setFillColor(30, 41, 59); // Dark slate header
+            doc.rect(15, y, 180, 8, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.text("N.", 20, y + 5.5, null, null, "center");
+            doc.text("TIPOLOGIA SPESA", 27, y + 5.5);
+            doc.text("DETTAGLIO GIUSTIFICATIVO / RICEVUTA", 76, y + 5.5);
+            doc.text("IMPORTO (€)", 190, y + 5.5, null, null, "right");
 
             y += 8;
 
@@ -14047,72 +14168,158 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                 ? r.voci
                 : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
 
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(9);
-
             voci.forEach((v, index) => {
-                // Alterna sfondo riga
-                if (index % 2 === 1) {
-                    doc.setFillColor(250, 250, 250);
-                    doc.rect(20, y, 170, 7.5, 'F');
+                const catText = cleanCat(v.tipo);
+                const descText = (v.desc && v.desc.trim()) ? v.desc.trim() : "-";
+                const impText = "€ " + Number(v.importo || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8.5);
+
+                const catLines = doc.splitTextToSize(catText, 44);
+                const descLines = doc.splitTextToSize(descText, 78);
+                const numLines = Math.max(catLines.length, descLines.length, 1);
+                const rowH = Math.max(7.5, numLines * 4.2 + 3.5);
+
+                // Alternanza sfondo riga
+                if (index % 2 === 0) {
+                    doc.setFillColor(255, 255, 255);
+                } else {
+                    doc.setFillColor(248, 250, 252);
                 }
+                doc.rect(15, y, 180, rowH, 'F');
+
+                // Bordo inferiore riga
                 doc.setDrawColor(226, 232, 240);
-                doc.line(20, y + 7.5, 190, y + 7.5);
+                doc.setLineWidth(0.3);
+                doc.line(15, y + rowH, 195, y + rowH);
 
-                doc.text(String(index + 1), 24, y + 5);
+                // Colonna 1: Numero
+                doc.setTextColor(100, 116, 139);
                 doc.setFont("helvetica", "bold");
-                doc.text(this.getRimborsoCategoriaLabel(v.tipo), 36, y + 5);
-                doc.setFont("helvetica", "normal");
-                
-                // Troncamento se troppo lungo
-                const descStr = (v.desc || "-");
-                const safeDesc = descStr.length > 55 ? descStr.substring(0, 52) + '...' : descStr;
-                doc.text(safeDesc, 85, y + 5);
+                doc.text(String(index + 1), 20, y + 5, null, null, "center");
 
+                // Colonna 2: Tipologia Spesa
+                doc.setTextColor(15, 23, 42);
                 doc.setFont("helvetica", "bold");
-                doc.text("E " + Number(v.importo || 0).toFixed(2), 185, y + 5, null, null, "right");
-                doc.setFont("helvetica", "normal");
+                doc.text(catLines, 27, y + 5);
 
-                y += 7.5;
+                // Colonna 3: Dettaglio / Scontrino
+                doc.setTextColor(51, 65, 85);
+                doc.setFont("helvetica", "normal");
+                doc.text(descLines, 76, y + 5);
+
+                // Colonna 4: Importo
+                doc.setTextColor(15, 23, 42);
+                doc.setFont("helvetica", "bold");
+                doc.text(impText, 190, y + 5, null, null, "right");
+
+                y += rowH;
             });
 
-            // Riga Totale
-            y += 3;
+            // Riga Totale integrata
+            const totH = 9.5;
             doc.setFillColor(241, 245, 249);
+            doc.rect(15, y, 140, totH, 'F');
+            doc.setFillColor(224, 242, 254); // Evidenziatore azzurro chiaro
+            doc.rect(155, y, 40, totH, 'F');
+
             doc.setDrawColor(148, 163, 184);
-            doc.rect(100, y, 90, 10, 'FD');
+            doc.setLineWidth(0.4);
+            doc.rect(15, y, 180, totH, 'D');
+
+            doc.setTextColor(30, 41, 59);
             doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("TOTALE COMPLESSIVO DA RIMBORSARE:", 150, y + 6.2, null, null, "right");
+
+            const formattedTot = "€ " + Number(r.importo || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            doc.setTextColor(3, 105, 161); // Sky 700
             doc.setFontSize(11);
-            doc.text("TOTALE RIMBORSO:", 105, y + 6.5);
-            doc.text("E " + Number(r.importo || 0).toFixed(2), 185, y + 6.5, null, null, "right");
+            doc.text(formattedTot, 190, y + 6.4, null, null, "right");
 
-            y += 18;
+            y += totH + 12;
 
-            // Dichiarazione di conformità e allegati
-            doc.setFontSize(8.5);
+            // Box dichiarazione di conformità (Riforma dello Sport D.Lgs. 36/2021)
+            doc.setFillColor(250, 250, 250);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(15, y, 180, 18, 1.5, 1.5, 'FD');
+
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(71, 85, 105);
+            const decl1 = "Il/La sottoscritto/a dichiara sotto la propria responsabilità che le spese sopra elencate sono state effettivamente sostenute per conto e";
+            const decl2 = "nell'esclusivo interesse dell'Associazione per le finalità istituzionali dell'ente. Si allegano in originale i relativi giustificativi";
+            const decl3 = "di spesa (scontrini, ricevute fiscali, fatture, biglietti) a comprova di quanto dichiarato ai sensi della normativa vigente (D.Lgs. 36/2021).";
+            doc.text(decl1, 18, y + 5);
+            doc.text(decl2, 18, y + 9.5);
+            doc.text(decl3, 18, y + 14);
+
+            y += 26;
+
+            // Riquadro Luogo, Data e Firme
+            doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
-            doc.text("Il/La sottoscritto/a richiede il rimborso delle spese sopra indicate anticipate per conto e nell'interesse", 20, y);
-            y += 5;
-            doc.text("dell'Associazione. Dichiara sotto la propria responsabilita che tali spese sono effettive, documentate", 20, y);
-            y += 5;
-            doc.text("dai giustificativi allegati in originale e conformi all'attivita istituzionale dell'ente (D.Lgs. 36/2021).", 20, y);
+            doc.setTextColor(51, 65, 85);
+            doc.text(`Luogo e Data: ________________________,  ${this.formatDate(r.data || new Date())}`, 15, y);
 
-            y += 25;
+            y += 10;
 
-            // Firme
-            doc.setFontSize(9.5);
+            const signColW = 80;
+            const col1X = 15;
+            const col2X = 115;
+
+            // Firma Richiedente
+            doc.setFontSize(9);
             doc.setFont("helvetica", "bold");
-            doc.text("Data: " + this.formatDate(new Date()), 20, y);
-            
-            doc.text("Firma del Richiedente", 50, y + 15, null, null, "center");
-            doc.setDrawColor(100, 100, 100);
-            doc.line(25, y + 32, 75, y + 32);
+            doc.setTextColor(15, 23, 42);
+            doc.text("Firma del Richiedente", col1X + signColW / 2, y, null, null, "center");
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(100, 116, 139);
+            doc.text("(dichiarazione di spesa e quietanza)", col1X + signColW / 2, y + 4.5, null, null, "center");
 
-            doc.text("Visto per Approvazione", 145, y + 12, null, null, "center");
-            doc.setFont("helvetica", "normal");
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.4);
+            doc.line(col1X + 5, y + 22, col1X + signColW - 5, y + 22);
+
             doc.setFontSize(8.5);
-            doc.text("(Il Presidente / Legale Rappresentante)", 145, y + 16, null, null, "center");
-            doc.line(120, y + 32, 175, y + 32);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+            doc.text(String(r.richiedente || "Firma leggibile"), col1X + signColW / 2, y + 26.5, null, null, "center");
+
+            // Firma Approvazione Presidente
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(15, 23, 42);
+            doc.text("Visto per Approvazione e Liquidazione", col2X + signColW / 2, y, null, null, "center");
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(100, 116, 139);
+            doc.text("(Il Presidente / Legale Rappresentante)", col2X + signColW / 2, y + 4.5, null, null, "center");
+
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.4);
+            doc.line(col2X + 5, y + 22, col2X + signColW - 5, y + 22);
+
+            const nomePresidente = this.state.settings.presidente || "Il Legale Rappresentante";
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+            doc.text(nomePresidente, col2X + signColW / 2, y + 26.5, null, null, "center");
+
+            // Footer a fondo pagina
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(15, 284, 195, 284);
+
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(148, 163, 184);
+            const asdFooter = (this.state.settings.asdName || "Associazione Sportiva Dilettantistica") + "  •  Documento Amministrativo Interno";
+            doc.text(asdFooter, 15, 289);
+            doc.text("Pagina 1 di 1", 195, 289, null, null, "right");
 
             doc.save(`Modulo_Rimborso_${(r.richiedente || 'Collaboratore').replace(/\s+/g,'_')}_${r.data || 'data'}.pdf`);
         }
