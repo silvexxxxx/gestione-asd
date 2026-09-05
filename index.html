@@ -7205,15 +7205,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         exportFullDatabase() {
             const dataStr = JSON.stringify(this.state, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-
             const exportFileDefaultName = `asd_database_${new Date().toISOString().split('T')[0]}.json`;
-
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-            this.toast("Database esportato!");
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const yearStr = this.getSportsYear(new Date());
+            this.saveDocumentFS(exportFileDefaultName, blob, 'backup', yearStr);
         },
 
         sendDatabaseEmail() {
@@ -7329,17 +7324,28 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             doc.setTextColor(150, 150, 150);
             doc.text("Documento non fiscale emesso in conformità alle norme vigenti per le ASD.", 20, 280);
 
-            const sportsYear = this.getSportsYear(r.anno);
+            const sportsYear = this.getSportsYear(r.anno || r.data);
             const fileName = `ricevuta_${r.numero}_${r.anno}_${r.socio_nome.replace(/\s+/g, '_')}.pdf`;
-            this.toast(`💾 Salva in: Ricevute ${sportsYear}/`, 'success');
-            this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', this.getSportsYear(new Date(r.data)));
+            this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
         },
 
-        getSportsYear(refYear) {
+        getSportsYear(ref) {
             const now = new Date();
-            const month = now.getMonth();
-            const year = refYear || now.getFullYear();
-            return month >= 8 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+            let d;
+            if (ref instanceof Date && !isNaN(ref.getTime())) {
+                d = ref;
+            } else if (typeof ref === 'string' && ref.includes('-') && ref.length >= 8) {
+                const parsed = new Date(ref);
+                d = isNaN(parsed.getTime()) ? now : parsed;
+            } else if (typeof ref === 'number' || (typeof ref === 'string' && /^\d{4}$/.test(ref))) {
+                const y = parseInt(ref, 10);
+                d = new Date(y, 8, 1);
+            } else {
+                d = now;
+            }
+            const y = d.getFullYear();
+            const m = d.getMonth();
+            return m >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
         },
 
         printReceipt(receiptId) {
@@ -7416,8 +7422,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const worksheet = XLSX.utils.json_to_sheet(this.state.ricevute);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ricevute");
-            XLSX.writeFile(workbook, "export_ricevute_asd.xlsx");
-            this.toast("Excel esportato!");
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const yearStr = this.getSportsYear(new Date());
+            this.saveDocumentFS("export_ricevute_asd.xlsx", blob, 'esportazioni_excel', yearStr);
         },
 
         generateMobileViewer() {
@@ -7473,12 +7481,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 </html>`;
 
             const blob = new Blob([viewerHtml], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'viewer_mobile_asd.html';
-            a.click();
-            this.toast("Viewer mobile generato!");
+            const yearStr = this.getSportsYear(new Date());
+            this.saveDocumentFS('viewer_mobile_asd.html', blob, 'altri_documenti', yearStr);
         },
 
         
@@ -8797,7 +8801,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let ws = XLSX.utils.aoa_to_sheet(ws_data);
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "PrimaNota");
-                XLSX.writeFile(wb, "PrimaNota_Export.xlsx");
+                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                const yearStr = this.getSportsYear(new Date());
+                this.saveDocumentFS("PrimaNota_Export.xlsx", blob, 'esportazioni_excel', yearStr);
             },
 
         // --- LOGIC ADDITIONS ---
@@ -8815,12 +8822,30 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 });
                 const tx = db.transaction('handles', 'readwrite');
                 tx.objectStore('handles').put(dirHandle, 'output_dir');
-                this.toast('Cartella di output impostata con successo!', 'success');
+                this.toast(`Cartella di output impostata su "${dirHandle.name}" con successo!`, 'success');
                 this.renderDatabase();
             } catch (e) {
                 if(e.name !== 'AbortError') this.toast('Errore FS: ' + e.message, 'danger');
             }
         },
+
+        async removeOutputFolder() {
+            try {
+                const db = await new Promise((resolve, reject) => {
+                    const req = indexedDB.open('GestioneASD_FS', 1);
+                    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = e => reject(e);
+                });
+                const tx = db.transaction('handles', 'readwrite');
+                tx.objectStore('handles').delete('output_dir');
+                this.toast('Collegamento cartella rimosso. I documenti verranno salvati nella cartella Download.', 'info');
+                this.renderDatabase();
+            } catch (e) {
+                this.toast('Errore rimozione: ' + e.message, 'danger');
+            }
+        },
+
         async getOutputFolder() {
             try {
                 const db = await new Promise((resolve, reject) => {
@@ -8837,41 +8862,126 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 });
             } catch(e) { return null; }
         },
-        async saveDocumentFS(filename, blob, category, yearStr) {
+
+        async testOutputFolder() {
             let dirHandle = await this.getOutputFolder();
             if (!dirHandle) {
-                // Fallback download
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.click();
-                URL.revokeObjectURL(url);
+                this.toast('Nessuna cartella impostata! Clicca su "Imposta Cartella".', 'warning');
                 return;
             }
             try {
-                if ((await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
-                    if ((await dirHandle.requestPermission({ mode: 'readwrite' })) !== 'granted') {
-                        throw new Error("Permesso negato");
-                    }
+                let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+                    if (perm !== 'granted') throw new Error("Permesso di scrittura non concesso");
                 }
-                const yearDir = await dirHandle.getDirectoryHandle('anno ' + yearStr, { create: true });
-                const catDir = await yearDir.getDirectoryHandle(category, { create: true });
-                const fileHandle = await catDir.getFileHandle(filename, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-                this.toast('Salvato in ' + yearStr + '/' + category + '/' + filename, 'success');
+                const testBlob = new Blob([`Test collegamento Gestione ASD effettuato con successo il ${new Date().toLocaleString('it-IT')}`], { type: 'text/plain;charset=utf-8' });
+                const yearStr = this.getSportsYear();
+                const ok = await this.saveDocumentFS('_test_collegamento.txt', testBlob, 'test', yearStr);
+                if (ok) {
+                    this.toast(`Test riuscito! Cartella "${dirHandle.name}" attiva e pronta al salvataggio.`, 'success');
+                }
             } catch (e) {
-                console.error(e);
-                this.toast('Errore salvataggio: ' + e.message, 'danger');
-                // Fallback
+                this.toast('Errore test cartella: ' + e.message, 'danger');
+            }
+        },
+
+        async updateOutputFolderUI() {
+            const container = document.getElementById('fs-folder-status-box');
+            if (!container) return;
+            const dirHandle = await this.getOutputFolder();
+            if (!dirHandle) {
+                container.innerHTML = `
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="badge" style="background:#ca8a04; color:white; font-size:0.85rem; padding:4px 10px; border-radius:6px;">⚠️ Cartella non impostata</span>
+                            <span style="font-size:0.85rem; color:var(--text-muted);">I documenti prodotti verranno scaricati nella cartella <strong>Download</strong> predefinita del tuo browser.</span>
+                        </div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">
+                            <button class="btn btn-primary" onclick="app.setupOutputFolder()">📂 Seleziona Cartella di Output</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let perm = 'unknown';
+            try {
+                perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+            } catch(e) {}
+
+            const isGranted = perm === 'granted';
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span class="badge ${isGranted ? 'badge-active' : ''}" style="font-size:0.85rem; padding:5px 12px; border-radius:6px; background:${isGranted ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color:${isGranted ? '#34d399' : '#fbbf24'}; border:1px solid ${isGranted ? '#059669' : '#d97706'};">
+                            ${isGranted ? '✅ Cartella attiva' : '⚠️ Permesso da confermare'}: <strong>${dirHandle.name}</strong>
+                        </span>
+                        <span style="font-size:0.85rem; color:var(--text-muted);">I documenti vengono salvati automaticamente nelle sottocartelle divise per Anno Sportivo.</span>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">
+                        <button class="btn btn-outline" onclick="app.setupOutputFolder()" title="Cambia cartella di salvataggio">🔄 Cambia Cartella</button>
+                        <button class="btn btn-outline" onclick="app.testOutputFolder()" title="Invia un file di prova per verificare i permessi di scrittura">🧪 Verifica e Salva File Test</button>
+                        <button class="btn btn-outline text-danger" style="border-color:rgba(239,68,68,0.3);" onclick="app.removeOutputFolder()" title="Rimuovi cartella e torna al download classico nel browser">❌ Rimuovi Cartella</button>
+                    </div>
+                </div>
+            `;
+        },
+
+        async saveDocumentFS(filename, blob, category, yearStr) {
+            if (!yearStr) yearStr = this.getSportsYear();
+            if (!category) category = 'documenti';
+
+            // Sanitizza nomi cartella e file per evitare caratteri illegali sul file system di Windows/Mac/Linux
+            const sanitize = (s) => (s || '').toString().replace(/[\\/:*?"<>|]/g, '_').trim();
+            const safeYear = sanitize(yearStr);
+            const safeCat = sanitize(category);
+            const safeFilename = sanitize(filename);
+
+            let dirHandle = await this.getOutputFolder();
+            if (!dirHandle) {
+                // Cartella non impostata: fallback garantito nella cartella Download del browser
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = filename;
+                a.download = safeFilename;
+                document.body.appendChild(a);
                 a.click();
-                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                this.toast(`File "${safeFilename}" scaricato nella cartella Download del browser.`, 'info');
+                return false;
+            }
+
+            try {
+                let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+                    if (perm !== 'granted') {
+                        throw new Error("Permesso di scrittura non concesso sulla cartella");
+                    }
+                }
+                const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: true });
+                const catDir = await yearDir.getDirectoryHandle(safeCat, { create: true });
+                const fileHandle = await catDir.getFileHandle(safeFilename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                this.toast(`💾 Salvato in: anno ${safeYear}/${safeCat}/${safeFilename}`, 'success');
+                return true;
+            } catch (e) {
+                console.warn('Salvataggio nella cartella non riuscito, fallback su Download browser:', e);
+                // Fallback automatico nella cartella Download del browser per non perdere il documento
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = safeFilename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                this.toast(`Cartella non accessibile (${e.message}). File scaricato in Download.`, 'warning');
+                return false;
             }
         },
 
@@ -10645,9 +10755,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                             <!-- FS Access -->
                             <div class="glass-card" style="border-left: 4px solid #10b981;">
-                                <h3>📂 Cartella Output Documenti</h3>
-                                <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Seleziona la cartella dove salvare automaticamente i file PDF generati (es. "Gestione ASD/Output Documenti"). Verranno create sottocartelle per anno sportivo e categoria.</p>
-                                <button class="btn btn-outline" onclick="app.setupOutputFolder()" data-guide="Seleziona la cartella locale (es. Output Documenti) per salvare in automatico i PDF di ricevute, prima nota e verbali divisi in sottocartelle per anno sportivo.">Imposta Cartella / Richiedi Permesso</button>
+                                <h3 style="margin-bottom:0.5rem; display:flex; align-items:center; gap:8px;">
+                                    <span>📂 Cartella Output Documenti</span>
+                                </h3>
+                                <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:1rem;">Tutti i documenti prodotti dal gestionale (Ricevute, Rimborsi, Prima Nota Cassa, Liberatorie, Magazzino, Report Eventi, Esportazioni Excel e Backup) confluiranno automaticamente in questa cartella, divisi per Anno Sportivo. Se non impostata, verranno salvati regolarmente nella cartella Download del browser.</p>
+                                <div id="fs-folder-status-box">
+                                    <span style="font-size:0.85rem; color:var(--text-muted);">Caricamento stato cartella...</span>
+                                </div>
                             </div>
 
                             <!-- Guide e Supporto -->
@@ -10769,6 +10883,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 `;
                 this.updateLicenseUI();
                 this.cloudSync.updateUIStatus();
+                this.updateOutputFolderUI();
 
                 const newPageContainer = document.querySelector('#main-content .page-content') || document.getElementById('main-content');
                 if (newPageContainer && savedScroll > 0) {
@@ -11549,12 +11664,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 istruttori: this.state.istruttori, settings: this.state.settings,
                 quote_presets: this.state.quote_presets
             };
+            const fileName = `asd_backup_${new Date().toISOString().split('T')[0]}.json`;
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `asd_backup_${new Date().toISOString().split('T')[0]}.json`;
-            a.click(); URL.revokeObjectURL(url);
-            this.toast('Backup esportato!');
+            const yearStr = this.getSportsYear(new Date());
+            this.saveDocumentFS(fileName, blob, 'backup', yearStr);
         },
 
         importData(event) {
@@ -11593,8 +11706,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Soci');
-            XLSX.writeFile(wb, `soci_asd_${new Date().toISOString().split('T')[0]}.xlsx`);
-            this.toast('File Excel esportato!');
+            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const yearStr = this.getSportsYear(new Date());
+            const fileName = `soci_asd_${new Date().toISOString().split('T')[0]}.xlsx`;
+            this.saveDocumentFS(fileName, blob, 'esportazioni_excel', yearStr);
         },
 
         // =========================================================
@@ -13167,7 +13283,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             doc.text("Firma 1 ________________________________", 20, y);
             doc.text("Firma 2 ________________________________", 110, y);
             
-            doc.save(`Liberatoria_Minori_${s.cognome}_${s.nome}.pdf`);
+            const fileName = `Liberatoria_Minori_${s.cognome}_${s.nome}.pdf`;
+            const yearStr = this.getSportsYear(new Date());
+            const blob = doc.output('blob');
+            this.saveDocumentFS(fileName, blob, 'liberatorie', yearStr);
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
         },
 
         // --- MODULO MAGAZZINO ---
@@ -13322,7 +13443,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                 y += 8;
                 if(y > 280) { doc.addPage(); y = 20; }
             });
-            doc.save("Magazzino.pdf");
+            const fileName = `Magazzino_${new Date().toISOString().split('T')[0]}.pdf`;
+            const yearStr = this.getSportsYear(new Date());
+            const blob = doc.output('blob');
+            this.saveDocumentFS(fileName, blob, 'magazzino', yearStr);
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
         },
 
         // --- MODULO EVENTI E SPONSOR ---
@@ -13588,7 +13714,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             doc.setFontSize(14);
             doc.text("BILANCIO NETTO: E " + utile.toFixed(2), 20, y);
             
-            doc.save(`Report_Evento_${ev.nome.replace(/\s+/g,'_')}.pdf`);
+            const fileName = `Report_Evento_${ev.nome.replace(/\s+/g,'_')}.pdf`;
+            const yearStr = this.getSportsYear(ev.data ? new Date(ev.data) : new Date());
+            const blob = doc.output('blob');
+            this.saveDocumentFS(fileName, blob, 'eventi', yearStr);
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
         },
 
         // --- MODULO RIMBORSI ---
@@ -13689,7 +13820,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
                                 ${!isAnnullato ? `
                                     <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:#f59e0b; border-color:#f59e0b;" onclick="app.annullaRimborso(${r.id})" title="Annulla rimborso (Storna da Prima Nota se pagato)">🚫 Annulla</button>
                                 ` : ''}
-                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id})" title="Stampa Modulo / Nota Spese in PDF">🖨️ Stampa</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id}, false)" title="Salva Modulo PDF nella cartella Documenti">💾 PDF</button>
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id}, true)" title="Stampa Modulo Spese (salva nella cartella e apre l'anteprima)">🖨️ Stampa</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.permanentlyDeleteRimborso(${r.id})" title="Elimina definitivamente (Solo Debug Mode)">🗑️</button>
                                 ` : ''}
@@ -13974,7 +14106,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             this.permanentlyDeleteRimborso(id);
         },
 
-        stampaModuloRimborso(id) {
+        stampaModuloRimborso(id, andPrint = true) {
             const r = this.state.rimborsi.find(x => x.id === id);
             if(!r) return;
             const { jsPDF } = window.jspdf;
@@ -14321,7 +14453,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:30px 40px;color:#111;
             doc.text(asdFooter, 15, 289);
             doc.text("Pagina 1 di 1", 195, 289, null, null, "right");
 
-            doc.save(`Modulo_Rimborso_${(r.richiedente || 'Collaboratore').replace(/\s+/g,'_')}_${r.data || 'data'}.pdf`);
+            const fileName = `Modulo_Rimborso_${(r.richiedente || 'Collaboratore').replace(/\s+/g,'_')}_${r.data || 'data'}.pdf`;
+            const yearStr = this.getSportsYear(r.data ? new Date(r.data) : new Date());
+            const blob = doc.output('blob');
+            this.saveDocumentFS(fileName, blob, 'rimborsi', yearStr);
+            if (andPrint) {
+                const blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, '_blank');
+            }
         }
 
         };
