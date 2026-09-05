@@ -7614,7 +7614,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <span id="pn-card-totale" class="value" style="color: var(--primary);">€ ${totale.toFixed(2)}</span>
                             </div>
                             <div class="glass-card stat-card stat-card-clickable" onclick="app.mostraRendiconto()">
-                                <span class="label">Rendiconto ${prevYear}</span>
+                                <span id="pn-card-rendiconto-label" class="label">Rendiconto ${prevYear === 'all' ? 'Storico' : prevYear}</span>
                                 <span class="value" style="font-size: 1.05rem; margin-top: 2px; color: var(--accent);">Vedi Dettaglio &rarr;</span>
                             </div>
                         </div>
@@ -8018,6 +8018,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             filterPrimaNota() {
                 const tbody = document.querySelector('#pn-tbody');
                 if(tbody) tbody.innerHTML = this.renderPrimaNotaRows(this.getFilteredPrimaNota());
+
+                const yearSelect = document.getElementById('pn-year');
+                const rendicontoLabel = document.getElementById('pn-card-rendiconto-label');
+                if (yearSelect && rendicontoLabel) {
+                    const selYear = yearSelect.value;
+                    rendicontoLabel.textContent = selYear === 'all' ? 'Rendiconto Storico' : `Rendiconto ${selYear}`;
+                }
             },
 
             showPrimaNotaForm(editId = null) {
@@ -8575,7 +8582,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let currentD = new Date();
                 let currentAS = currentD.getMonth() >= 8 ? currentD.getFullYear() + "/" + (currentD.getFullYear() + 1) : (currentD.getFullYear() - 1) + "/" + currentD.getFullYear();
                 let year = document.getElementById('pn-year') ? document.getElementById('pn-year').value : currentAS;
-                if (year === 'all') year = currentAS;
+                let isAll = (year === 'all');
+                let displayYear = isAll ? 'Tutto lo Storico' : year;
                 
                 let entrate = 0;
                 let uscite = 0;
@@ -8584,10 +8592,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let usciteByCat = {};
 
                 this.state.primanota.forEach(t => {
-                    let d = new Date(t.data);
-                    let y = d.getFullYear();
-                    let as = d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y;
-                    if (as !== year) return;
+                    if (!isAll) {
+                        let d = new Date(t.data);
+                        let y = d.getFullYear();
+                        let as = d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y;
+                        if (as !== year) return;
+                    }
                     if (t.tipo === 'Giroconto' || t.categoria?.startsWith('Giroconto') || t.riferimento?.startsWith('GIROCONTO_') || t.giroconto_group) return; // Exclude giroconti da rendiconto economico
                     
                     let amt = parseFloat(t.importo);
@@ -8606,7 +8616,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                 let renderCat = (obj) => Object.entries(obj).map(([cat, val]) => `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);"><span>${cat}</span><strong>€ ${val.toFixed(2)}</strong></div>`).join('');
 
-                this.openModal('Rendiconto Economico ' + year, `
+                this.openModal('Rendiconto Economico ' + displayYear, `
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                         <div class="glass-card">
                             <h3 style="color: var(--success); margin-bottom: 1rem;">Entrate Totali: € ${entrate.toFixed(2)}</h3>
@@ -8622,7 +8632,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         </div>
                     </div>
                     <div class="glass-card" style="text-align: center;">
-                        <h2 style="color: var(--text-muted); margin-bottom: 10px;">Risultato d'Esercizio ${year}</h2>
+                        <h2 style="color: var(--text-muted); margin-bottom: 10px;">Risultato d'Esercizio ${displayYear}</h2>
                         <div style="font-size: 2.5rem; font-weight: 700; color: ${colorRes};">€ ${risultato.toFixed(2)}</div>
                         <div style="font-size: 1.2rem; margin-top: 5px; color: ${colorRes};">${lblRes}</div>
                     </div>
