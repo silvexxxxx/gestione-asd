@@ -4983,15 +4983,15 @@
             renderRicevute(preserveState = true, highlightId = null) {
                 const main = document.getElementById('main-content');
                 const tbody = document.getElementById('receipts-tbody');
-                const tableContainer = document.querySelector('.table-container');
+                const tableContainer = tbody ? tbody.closest('.table-container') : (document.querySelector('#main-content .table-container') || document.querySelector('.table-container'));
                 const searchInput = document.getElementById('receipt-search');
                 const startInput = document.getElementById('receipt-date-start');
                 const endInput = document.getElementById('receipt-date-end');
                 
-                const targetHighlight = highlightId || localStorage.getItem('asd_last_receipt_id');
+                const targetHighlight = highlightId;
 
                 // Se la tabella delle ricevute è già attiva nel DOM e vogliamo preservare la posizione
-                if (preserveState && tbody && tableContainer) {
+                if (preserveState && tbody && tableContainer && this.state.currentPage === 'ricevute') {
                     const scrollY = tableContainer.scrollTop;
                     const winScrollY = window.scrollY;
                     
@@ -5002,7 +5002,7 @@
                     window.scrollTo(0, winScrollY);
                     
                     if (targetHighlight) {
-                        this.highlightReceiptRow(targetHighlight);
+                        this.highlightReceiptRow(targetHighlight, false);
                     }
                     return;
                 }
@@ -5084,7 +5084,7 @@
                 }
 
                 if (targetHighlight) {
-                    setTimeout(() => this.highlightReceiptRow(targetHighlight), 150);
+                    setTimeout(() => this.highlightReceiptRow(targetHighlight, false), 150);
                 }
             },
 
@@ -5209,7 +5209,7 @@
                     }
                     
                     return `
-                    <tr id="receipt-row-${r.id}" data-id="${r.id}" onclick="localStorage.setItem('asd_last_receipt_id', '${r.id}')" style="cursor: pointer;">
+                    <tr id="receipt-row-${r.id}" data-id="${r.id}">
                         <td>${r.numero}/${app.formatAnno(r.anno)}</td>
                         <td style="font-weight: 600;">${r.socio_nome}</td>
                         <td>${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
@@ -5259,10 +5259,22 @@
                 tbody.innerHTML = this.renderRicevuteRows(filtered);
             },
 
-            highlightReceiptRow(id) {
+            highlightReceiptRow(id, shouldScroll = false) {
                 const row = document.getElementById('receipt-row-' + id) || document.querySelector(`tr[data-id="${id}"]`);
                 if (row) {
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (shouldScroll) {
+                        const tableContainer = row.closest('.table-container');
+                        if (tableContainer) {
+                            const rect = row.getBoundingClientRect();
+                            const containerRect = tableContainer.getBoundingClientRect();
+                            const isVisible = (rect.top >= containerRect.top && rect.bottom <= containerRect.bottom);
+                            if (!isVisible) {
+                                row.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                            }
+                        } else {
+                            row.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                        }
+                    }
                     row.style.transition = 'background-color 0.4s ease';
                     const origBg = row.style.backgroundColor;
                     row.style.backgroundColor = 'rgba(59, 130, 246, 0.28)';
@@ -6576,6 +6588,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if (confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE la ricevuta n. ${deletedNum}/${app.formatAnno(deletedAnno)} (${isCartacea ? 'Cartacea' : 'Digitale'}) di ${socioNome}.\n\nLa sequenza numerica delle ricevute successive per lo stesso registro e anno ${app.formatAnno(deletedAnno)} scalerà automaticamente di 1 posto indietro. Procedere?`)) {
                 
                 this.removePrimaNotaFromRicevuta(r.id);
+                if (localStorage.getItem('asd_last_receipt_id') === String(r.id) || localStorage.getItem('asd_last_receipt_id') === String(id)) {
+                    localStorage.removeItem('asd_last_receipt_id');
+                }
                 this.state.ricevute = this.state.ricevute.filter(x => String(x.id) !== String(id) && x.id != id);
                 this.trackDeletion(r.id);
                 
@@ -7439,10 +7454,22 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 localStorage.setItem('asd_last_primanota_scroll', el.scrollTop.toString());
             },
 
-            highlightPrimaNotaRow(id) {
+            highlightPrimaNotaRow(id, shouldScroll = false) {
                 const row = document.getElementById('pn-row-' + id) || document.querySelector(`tr[data-id="${id}"]`);
                 if (row) {
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (shouldScroll) {
+                        const tableContainer = row.closest('.table-container');
+                        if (tableContainer) {
+                            const rect = row.getBoundingClientRect();
+                            const containerRect = tableContainer.getBoundingClientRect();
+                            const isVisible = (rect.top >= containerRect.top && rect.bottom <= containerRect.bottom);
+                            if (!isVisible) {
+                                row.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                            }
+                        } else {
+                            row.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                        }
+                    }
                     row.style.transition = 'background-color 0.4s ease';
                     const origBg = row.style.backgroundColor;
                     row.style.backgroundColor = 'rgba(59, 130, 246, 0.28)';
@@ -7475,8 +7502,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 this.sanitizePrimaNota();
                 const main = document.getElementById('main-content');
                 const tbody = document.getElementById('pn-tbody');
-                const tableContainer = document.querySelector('.table-container');
-                const targetHighlight = highlightId || localStorage.getItem('asd_last_pn_id');
+                const tableContainer = tbody ? tbody.closest('.table-container') : (document.querySelector('#main-content .table-container') || document.querySelector('.table-container'));
+                const targetHighlight = highlightId;
 
                 // Se la tabella di prima nota è già attiva nel DOM e vogliamo preservare la posizione
                 if (preserveState && tbody && tableContainer && this.state.currentPage === 'primanota') {
@@ -7491,7 +7518,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     window.scrollTo(0, winScrollY);
 
                     if (targetHighlight) {
-                        this.highlightPrimaNotaRow(targetHighlight);
+                        this.highlightPrimaNotaRow(targetHighlight, false);
                     }
                     return;
                 }
@@ -7648,7 +7675,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
 
                 if (targetHighlight) {
-                    setTimeout(() => this.highlightPrimaNotaRow(targetHighlight), 150);
+                    setTimeout(() => this.highlightPrimaNotaRow(targetHighlight, false), 150);
                 }
             },
 
