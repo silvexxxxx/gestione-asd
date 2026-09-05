@@ -10908,7 +10908,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                         <span>💰 Saldi Iniziali al Primo Utilizzo (Giacenze di Partenza)</span>
                                     </h3>
                                     <div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">
-                                        Configura le giacenze presenti su cassa e conti all'inizio dell'attività contabile nel gestionale (es. al 31/08/2025 per l'anno sportivo 2025/2026).
+                                        Configura le giacenze presenti su cassa e conti all'inizio dell'attività contabile nel gestionale (es. alla chiusura dell'anno precedente o alla data di acquisto/avvio).
                                     </div>
                                 </div>
                                 <button type="button" class="btn btn-primary" style="font-size:0.85rem;" onclick="app.openSaldoInizialeModal()">
@@ -12092,16 +12092,34 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
             const curD = new Date();
             const curAS = curD.getMonth() >= 8 ? curD.getFullYear() + "/" + (curD.getFullYear() + 1) : (curD.getFullYear() - 1) + "/" + curD.getFullYear();
-            let [y1, y2] = curAS.split('/').map(Number);
-            const years = [curAS, (y1 - 1) + "/" + (y2 - 1), (y1 - 2) + "/" + (y2 - 2), (y1 + 1) + "/" + (y2 + 1)];
-            if (c.anno_sportivo && !years.includes(c.anno_sportivo)) {
-                years.push(c.anno_sportivo);
+            
+            // Determina l'anno sportivo di contesto (se aperto con filtro da Prima Nota o dal dato esistente)
+            const pnYearEl = document.getElementById('pn-year');
+            const selectedFilterAS = (pnYearEl && pnYearEl.value && pnYearEl.value !== 'all') ? pnYearEl.value : null;
+
+            const activeAS = c.anno_sportivo || selectedFilterAS || curAS;
+            let [y1, y2] = activeAS.split('/').map(Number);
+            if (!y1 || isNaN(y1)) {
+                y1 = curD.getMonth() >= 8 ? curD.getFullYear() : curD.getFullYear() - 1;
+                y2 = y1 + 1;
             }
+
+            // Anni disponibili per il menu a tendina (dinamici attorno all'anno attivo e corrente)
+            const yearsSet = new Set([
+                curAS,
+                (y1 + 1) + "/" + (y2 + 1),
+                y1 + "/" + y2,
+                (y1 - 1) + "/" + (y2 - 1),
+                (y1 - 2) + "/" + (y2 - 2),
+                '2025/2026'
+            ]);
+            if (c.anno_sportivo) yearsSet.add(c.anno_sportivo);
+            const years = Array.from(yearsSet).sort().reverse();
 
             const defaultTipo = c.tipo || 'cassa';
             const defaultConto = c.conto || (defaultTipo === 'cassa' ? 'Cassa Contanti' : 'Banca c/c');
-            const defaultData = c.data || '2025-08-31';
-            const defaultAS = c.anno_sportivo || '2025/2026';
+            const defaultData = c.data || `${y1}-08-31`;
+            const defaultAS = c.anno_sportivo || activeAS;
             const defaultImporto = (c.importo !== undefined && c.importo !== null) ? parseFloat(c.importo).toFixed(2) : '';
             const defaultNote = c.note || '';
 
@@ -12109,14 +12127,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 <form id="saldo-iniziale-form" onsubmit="app.handleSaveSaldoIniziale(event, '${isEdit ? editId : ''}')" style="display:flex; flex-direction:column; gap:14px;">
                     ${!isEdit ? `
                         <div class="form-group" style="background:rgba(16,185,129,0.08); padding:10px 12px; border-radius:8px; border:1px dashed rgba(16,185,129,0.35); margin-bottom:0;">
-                            <label style="font-size:0.8rem; color:#10b981; font-weight:600; margin-bottom:4px; display:block;">⚡ Precompila con Modello Frequente (Es. Apertura al 31/08/2025 per AS 2025/2026):</label>
-                            <select class="form-control" style="font-size:0.85rem;" onchange="app.fillSaldoInizialePreset(this.value)">
+                            <label id="saldo-preset-label" style="font-size:0.8rem; color:#10b981; font-weight:600; margin-bottom:4px; display:block;">⚡ Precompila con Modello Frequente (Giacenza al 31/08/${y1} per AS ${defaultAS}):</label>
+                            <select id="saldo-preset-select" class="form-control" style="font-size:0.85rem;" onchange="app.fillSaldoInizialePreset(this.value)">
                                 <option value="">-- Seleziona preset per impostare rapidamente --</option>
-                                <option value="cassa">💵 Cassa Contanti (Giacenza al 31/08/2025 per AS 2025/2026)</option>
-                                <option value="banca_cc">🏦 Conto Corrente Principale (Giacenza al 31/08/2025 per AS 2025/2026)</option>
-                                <option value="banca_secondo">🏦 Secondo Conto Corrente (Giacenza al 31/08/2025 per AS 2025/2026)</option>
-                                <option value="paypal">💳 PayPal ASD (Giacenza al 31/08/2025 per AS 2025/2026)</option>
-                                <option value="satispay">📱 Satispay Business (Giacenza al 31/08/2025 per AS 2025/2026)</option>
+                                <option value="cassa">💵 Cassa Contanti (Giacenza al 31/08/${y1} per AS ${defaultAS})</option>
+                                <option value="banca_cc">🏦 Conto Corrente Principale (Giacenza al 31/08/${y1} per AS ${defaultAS})</option>
+                                <option value="banca_secondo">🏦 Secondo Conto Corrente (Giacenza al 31/08/${y1} per AS ${defaultAS})</option>
+                                <option value="paypal">💳 PayPal ASD (Giacenza al 31/08/${y1} per AS ${defaultAS})</option>
+                                <option value="satispay">📱 Satispay Business (Giacenza al 31/08/${y1} per AS ${defaultAS})</option>
                             </select>
                         </div>
                     ` : ''}
@@ -12149,11 +12167,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div class="form-group">
                             <label>Data Rilevazione Giacenza*</label>
                             <input type="date" name="data" id="saldo-data-input" class="form-control" required value="${defaultData}" onchange="app.onSaldoInizialeDataChange(this.value)">
-                            <small style="font-size:0.75rem; color:var(--text-muted);">Es: 31/08/2025 se inizi dal 01/09/2025, oppure la data di acquisto del gestionale.</small>
+                            <small id="saldo-data-helper" style="font-size:0.75rem; color:var(--text-muted);">Es: 31/08/${y1} se inizi dal 01/09/${y1}, oppure la data esatta di acquisto/avvio del gestionale.</small>
                         </div>
                         <div class="form-group">
                             <label>Anno Sportivo di Riferimento / Competenza*</label>
-                            <select name="anno_sportivo" id="saldo-as-select" class="form-control" required>
+                            <select name="anno_sportivo" id="saldo-as-select" class="form-control" required onchange="app.onSaldoInizialeASChange(this.value)">
                                 ${years.map(y => `<option value="${y}" ${defaultAS === y ? 'selected' : ''}>${y}</option>`).join('')}
                             </select>
                             <small style="font-size:0.75rem; color:var(--text-muted);">Anno in cui comparirà come saldo iniziale nei libri contabili.</small>
@@ -12167,7 +12185,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                     <div class="form-group">
                         <label>Note / Dettagli Aggiuntivi (Opzionale)</label>
-                        <input type="text" name="note" id="saldo-note-input" class="form-control" placeholder="Es: Saldo da vecchio gestionale o estratto conto al 31/08/2025" value="${defaultNote}">
+                        <input type="text" name="note" id="saldo-note-input" class="form-control" placeholder="Es: Saldo da vecchio gestionale o estratto conto" value="${defaultNote}">
                     </div>
 
                     <div style="background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:6px; font-size:0.82rem; color:var(--text-muted); line-height:1.4;">
@@ -12192,12 +12210,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const asSelect = form.querySelector('#saldo-as-select');
             const noteInput = form.querySelector('#saldo-note-input');
 
+            const currentAS = (asSelect && asSelect.value) ? asSelect.value : '2025/2026';
+            let [y1] = currentAS.split('/').map(Number);
+            if (!y1 || isNaN(y1)) {
+                const d = new Date();
+                y1 = d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1;
+            }
+            const dateGiacenza = `${y1}-08-31`;
+
             const presets = {
-                cassa: { tipo: 'cassa', conto: 'Cassa Contanti', data: '2025-08-31', as: '2025/2026', note: 'Giacenza cassa contanti al 31/08/2025 di partenza' },
-                banca_cc: { tipo: 'banca', conto: 'Banca c/c', data: '2025-08-31', as: '2025/2026', note: 'Saldo estratto conto bancario al 31/08/2025' },
-                banca_secondo: { tipo: 'banca', conto: 'Secondo c/c', data: '2025-08-31', as: '2025/2026', note: 'Saldo secondo c/c al 31/08/2025' },
-                paypal: { tipo: 'banca', conto: 'PayPal', data: '2025-08-31', as: '2025/2026', note: 'Saldo conto PayPal al 31/08/2025' },
-                satispay: { tipo: 'banca', conto: 'Satispay', data: '2025-08-31', as: '2025/2026', note: 'Saldo Satispay Business al 31/08/2025' }
+                cassa: { tipo: 'cassa', conto: 'Cassa Contanti', data: dateGiacenza, as: currentAS, note: `Giacenza cassa contanti al 31/08/${y1} di partenza` },
+                banca_cc: { tipo: 'banca', conto: 'Banca c/c', data: dateGiacenza, as: currentAS, note: `Saldo estratto conto bancario al 31/08/${y1}` },
+                banca_secondo: { tipo: 'banca', conto: 'Secondo c/c', data: dateGiacenza, as: currentAS, note: `Saldo secondo c/c al 31/08/${y1}` },
+                paypal: { tipo: 'banca', conto: 'PayPal', data: dateGiacenza, as: currentAS, note: `Saldo conto PayPal al 31/08/${y1}` },
+                satispay: { tipo: 'banca', conto: 'Satispay', data: dateGiacenza, as: currentAS, note: `Saldo Satispay Business al 31/08/${y1}` }
             };
 
             const p = presets[val];
@@ -12212,6 +12238,45 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 asSelect.value = p.as;
             }
             if (noteInput) noteInput.value = p.note;
+        },
+
+        onSaldoInizialeASChange(asVal) {
+            if (!asVal) return;
+            let [y1] = asVal.split('/').map(Number);
+            if (!y1 || isNaN(y1)) return;
+
+            const dataInput = document.getElementById('saldo-data-input');
+            if (dataInput) {
+                const curVal = dataInput.value;
+                if (!curVal || curVal.endsWith('-08-31')) {
+                    dataInput.value = `${y1}-08-31`;
+                }
+            }
+
+            const presetLabel = document.getElementById('saldo-preset-label');
+            if (presetLabel) {
+                presetLabel.textContent = `⚡ Precompila con Modello Frequente (Giacenza al 31/08/${y1} per AS ${asVal}):`;
+            }
+
+            const presetSelect = document.getElementById('saldo-preset-select');
+            if (presetSelect) {
+                const optCassa = presetSelect.querySelector('option[value="cassa"]');
+                const optBanca = presetSelect.querySelector('option[value="banca_cc"]');
+                const optSecondo = presetSelect.querySelector('option[value="banca_secondo"]');
+                const optPaypal = presetSelect.querySelector('option[value="paypal"]');
+                const optSatispay = presetSelect.querySelector('option[value="satispay"]');
+                
+                if (optCassa) optCassa.textContent = `💵 Cassa Contanti (Giacenza al 31/08/${y1} per AS ${asVal})`;
+                if (optBanca) optBanca.textContent = `🏦 Conto Corrente Principale (Giacenza al 31/08/${y1} per AS ${asVal})`;
+                if (optSecondo) optSecondo.textContent = `🏦 Secondo Conto Corrente (Giacenza al 31/08/${y1} per AS ${asVal})`;
+                if (optPaypal) optPaypal.textContent = `💳 PayPal ASD (Giacenza al 31/08/${y1} per AS ${asVal})`;
+                if (optSatispay) optSatispay.textContent = `📱 Satispay Business (Giacenza al 31/08/${y1} per AS ${asVal})`;
+            }
+
+            const smallHelper = document.getElementById('saldo-data-helper');
+            if (smallHelper) {
+                smallHelper.textContent = `Es: 31/08/${y1} se inizi dal 01/09/${y1}, oppure la data esatta di acquisto/avvio del gestionale.`;
+            }
         },
 
         onSaldoInizialeTipoChange(tipoVal) {
@@ -12249,14 +12314,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 suggestedAS = `${y - 1}/${y}`;
             }
 
-            if (suggestedAS && Array.from(asSelect.options).some(o => o.value === suggestedAS)) {
+            if (suggestedAS) {
+                if (!Array.from(asSelect.options).some(o => o.value === suggestedAS)) {
+                    const opt = document.createElement('option');
+                    opt.value = suggestedAS;
+                    opt.textContent = suggestedAS;
+                    asSelect.appendChild(opt);
+                }
                 asSelect.value = suggestedAS;
-            } else if (suggestedAS) {
-                const opt = document.createElement('option');
-                opt.value = suggestedAS;
-                opt.textContent = suggestedAS;
-                opt.selected = true;
-                asSelect.appendChild(opt);
+                this.onSaldoInizialeASChange(suggestedAS);
             }
         },
 
