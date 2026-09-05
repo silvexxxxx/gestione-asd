@@ -12240,16 +12240,18 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             if (noteInput) noteInput.value = p.note;
         },
 
-        onSaldoInizialeASChange(asVal) {
+        onSaldoInizialeASChange(asVal, updateDataField = true) {
             if (!asVal) return;
             let [y1] = asVal.split('/').map(Number);
-            if (!y1 || isNaN(y1)) return;
+            if (!y1 || isNaN(y1) || y1 < 1990 || y1 > 2099) return;
 
-            const dataInput = document.getElementById('saldo-data-input');
-            if (dataInput) {
-                const curVal = dataInput.value;
-                if (!curVal || curVal.endsWith('-08-31')) {
-                    dataInput.value = `${y1}-08-31`;
+            if (updateDataField) {
+                const dataInput = document.getElementById('saldo-data-input');
+                if (dataInput) {
+                    const curVal = dataInput.value;
+                    if (!curVal || curVal.endsWith('-08-31')) {
+                        dataInput.value = `${y1}-08-31`;
+                    }
                 }
             }
 
@@ -12295,15 +12297,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         onSaldoInizialeDataChange(dateVal) {
-            if (!dateVal) return;
+            if (!dateVal || typeof dateVal !== 'string') return;
+            const parts = dateVal.split('-');
+            if (parts.length !== 3) return;
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+
+            // Se l'anno non è a 4 cifre valido (tra 1990 e 2099), ignora: l'utente sta digitando!
+            if (isNaN(y) || y < 1990 || y > 2099 || isNaN(m) || m < 1 || m > 12 || isNaN(day) || day < 1 || day > 31) {
+                return;
+            }
+
             const asSelect = document.getElementById('saldo-as-select');
             if (!asSelect) return;
-
-            const d = new Date(dateVal);
-            if (isNaN(d.getTime())) return;
-            const y = d.getFullYear();
-            const m = d.getMonth() + 1; // 1-12
-            const day = d.getDate();
 
             let suggestedAS = '';
             if (m === 8 && day === 31) {
@@ -12322,7 +12329,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     asSelect.appendChild(opt);
                 }
                 asSelect.value = suggestedAS;
-                this.onSaldoInizialeASChange(suggestedAS);
+                // NON toccare dataInput: passa updateDataField = false
+                this.onSaldoInizialeASChange(suggestedAS, false);
             }
         },
 
@@ -12332,11 +12340,15 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const formData = new FormData(form);
             const tipo = formData.get('tipo') || 'cassa';
             const conto = (formData.get('conto') || '').trim();
-            const dataGiacenza = formData.get('data') || '2025-08-31';
+            const dataGiacenza = (formData.get('data') || '').trim();
             const annoSportivo = (formData.get('anno_sportivo') || '').trim();
             const importo = parseFloat(formData.get('importo'));
             const note = (formData.get('note') || '').trim();
 
+            if (!dataGiacenza) {
+                this.toast('Inserisci una data di rilevazione valida per la giacenza.', 'warning');
+                return;
+            }
             if (!conto) {
                 this.toast('Inserisci il nome del conto o strumento (es. Cassa Contanti, Banca c/c).', 'warning');
                 return;
