@@ -1852,10 +1852,86 @@
                 this.state.settings.costi_fissi_periodici = [];
                 changed = true;
             }
+            if (!this.state.settings.saldi_iniziali || !Array.isArray(this.state.settings.saldi_iniziali)) {
+                this.state.settings.saldi_iniziali = [];
+                changed = true;
+            }
 
             if (changed && typeof this.saveAll === 'function') {
                 this.saveAll();
             }
+        },
+
+        syncSaldiInizialiWithPrimaNota() {
+            if (!this.state || !this.state.primanota || !this.state.settings) return false;
+            const saldi = this.state.settings.saldi_iniziali || [];
+            if (!Array.isArray(saldi)) return false;
+
+            let changed = false;
+            const validRifs = new Set();
+
+            saldi.forEach(s => {
+                if (!s || !s.id) return;
+                const rif = 'SALDO_INIZIALE_' + s.id;
+                validRifs.add(rif);
+
+                const amt = parseFloat(s.importo) || 0;
+                const dt = s.data || '2025-08-31';
+                const as = s.anno_sportivo || '2025/2026';
+                const contoNome = s.conto || (s.tipo === 'cassa' ? 'Cassa Contanti' : 'Banca c/c');
+                const cat = 'Giacenza Iniziale / Saldo di Partenza';
+                const desc = `Saldo iniziale al primo utilizzo (${s.tipo === 'cassa' ? 'Cassa' : 'Banca/Digitale'} - ${contoNome}) [AS ${as}]`;
+
+                let existing = this.state.primanota.find(t => t.riferimento === rif);
+                if (!existing) {
+                    existing = this.state.primanota.find(t => t.id === rif || (t.is_saldo_iniziale && t.saldo_iniziale_id === s.id));
+                }
+
+                if (existing) {
+                    let dirty = false;
+                    if (existing.data !== dt) { existing.data = dt; dirty = true; }
+                    if (parseFloat(existing.importo) !== amt) { existing.importo = amt; dirty = true; }
+                    if (existing.metodo !== contoNome) { existing.metodo = contoNome; dirty = true; }
+                    if (existing.anno_sportivo !== as) { existing.anno_sportivo = as; dirty = true; }
+                    if (existing.descrizione !== desc) { existing.descrizione = desc; dirty = true; }
+                    if (existing.riferimento !== rif) { existing.riferimento = rif; dirty = true; }
+                    if (!existing.is_saldo_iniziale) { existing.is_saldo_iniziale = true; dirty = true; }
+                    if (existing.saldo_iniziale_id !== s.id) { existing.saldo_iniziale_id = s.id; dirty = true; }
+                    if (existing.tipo !== 'Entrata') { existing.tipo = 'Entrata'; dirty = true; }
+                    if (existing.categoria !== cat) { existing.categoria = cat; dirty = true; }
+                    if (dirty) changed = true;
+                } else {
+                    this.state.primanota.push({
+                        id: 'TXN_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        data: dt,
+                        tipo: 'Entrata',
+                        categoria: cat,
+                        descrizione: desc,
+                        importo: amt,
+                        metodo: contoNome,
+                        riferimento: rif,
+                        anno_sportivo: as,
+                        is_saldo_iniziale: true,
+                        saldo_iniziale_id: s.id
+                    });
+                    changed = true;
+                }
+            });
+
+            // Pulizia orfani
+            const beforeCount = this.state.primanota.length;
+            this.state.primanota = this.state.primanota.filter(t => {
+                if (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_')) {
+                    return validRifs.has(t.riferimento);
+                }
+                if (t.is_saldo_iniziale && t.saldo_iniziale_id) {
+                    return validRifs.has('SALDO_INIZIALE_' + t.saldo_iniziale_id);
+                }
+                return true;
+            });
+            if (this.state.primanota.length !== beforeCount) changed = true;
+
+            return changed;
         },
 
         getMetodoConfig(nomeMetodo) {
@@ -1933,7 +2009,7 @@
         isCassaMetodo(metodo) {
             if (!metodo) return true;
             const s = metodo.toString().trim().toLowerCase();
-            if (s === 'banca' || s.includes('banca') || s.includes('bonifico') || s.includes('pos') || s.includes('bancomat') || s.includes('carta') || s.includes('paypal') || s.includes('sumup') || s.includes('cbill')) {
+            if (s === 'banca' || s.includes('banca') || s.includes('bonifico') || s.includes('pos') || s.includes('bancomat') || s.includes('carta') || s.includes('paypal') || s.includes('sumup') || s.includes('cbill') || s.includes('satispay') || s.includes('stripe') || s.includes('digitale')) {
                 return false;
             }
             const cfg = this.getMetodoConfig(metodo);
@@ -7594,6 +7670,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 <span class="header-subtitle">Rendiconto finanziario e movimenti contabili.</span>
                             </div>
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-outline" style="border-color: rgba(16, 185, 129, 0.4); color: #10b981;" onclick="app.openSaldoInizialeModal()" title="Configura o inserisci le giacenze di partenza al primo utilizzo">💰 Saldi Iniziali</button>
                                 <button class="btn btn-outline" onclick="app.chiudiEsercizio()">Chiusura Esercizio</button>
                                 <button class="btn btn-outline" onclick="app.exportPrimaNotaExcel()" data-guide="Esporta la Prima Nota (entrate e uscite) in formato Excel per il commercialista.">Esporta Excel</button>
                                 <button class="btn btn-outline" onclick="app.exportPrimaNotaPDF()" data-guide="Esporta la Prima Nota cassa in PDF (con tutti i movimenti) e salvala automaticamente nella cartella Output Documenti.">Esporta PDF</button>
@@ -7716,6 +7793,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             },
 
             calculateSaldiPrimaNota() {
+                this.syncSaldiInizialiWithPrimaNota();
                 let cassaReale = 0;
                 let bancaDigitale = 0;
                 
@@ -7917,7 +7995,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     
                     // Anno Sportivo (1 Settembre - 31 Agosto)
                     let y = d.getFullYear();
-                    let as = d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y;
+                    let as = t.anno_sportivo || (d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y);
                     if (year !== 'all' && as !== year) return false;
                     
                     // Trimestre
@@ -8034,15 +8112,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         linkedComm = (this.state.primanota || []).find(x => x.riferimento === 'COMM_TXN_' + t.id);
                     }
 
+                    const isSaldoIniziale = t.is_saldo_iniziale || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_'));
+                    const saldoInizialeId = t.saldo_iniziale_id || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_') ? t.riferimento.replace('SALDO_INIZIALE_', '') : null);
+
+                    const badgeDisplay = isSaldoIniziale 
+                        ? `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-weight:600;">🏁 Saldo Iniziale</span>`
+                        : `<span class="badge ${badgeClass}">${t.tipo}</span>`;
+
                     return `
                         <tr id="pn-row-${t.id}" data-id="${t.id}">
                             <td style="padding-left: 1.5rem;">${this.formatDate(t.data)}</td>
-                            <td><span class="badge ${badgeClass}">${t.tipo}</span></td>
+                            <td>${badgeDisplay}</td>
                             <td>${t.metodo || '<span style="color: var(--text-muted);">-</span>'}</td>
                             <td>${t.categoria}</td>
                             <td>
                                 ${t.descrizione}
                                 ${linkedComm ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.25);">⚡ Comm. ${t.metodo || 'digitale'}: -€${parseFloat(linkedComm.importo).toFixed(2)}</div>` : ''}
+                                ${isSaldoIniziale ? `<div style="font-size: 0.72rem; color: #818cf8; margin-top: 2px;">🏁 Giacenza di Partenza (Anno Sportivo di Competenza: ${t.anno_sportivo || ''})</div>` : ''}
                                 ${t.riferimento && t.riferimento.startsWith('RICEVUTA_') ? `<div style="font-size: 0.7rem; color: var(--accent);">${t.riferimento}</div>` : ''}
                                 ${(t.giroconto_group || (t.riferimento && t.riferimento.startsWith('GIROCONTO_'))) ? `<div style="font-size: 0.7rem; color: #a78bfa; margin-top: 2px;">⇄ Giroconto Collegato</div>` : ''}
                                 ${(t.riferimento && t.riferimento.startsWith('COMM_TXN_')) ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">⚡ Spesa bancaria / commissione collegata</div>` : ''}
@@ -8053,7 +8139,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </td>
                             <td style="text-align: right; padding-right: 1.5rem; white-space: nowrap;">
                                 ${printBtn}
-                                ${(!t.riferimento || !t.riferimento.startsWith('RICEVUTA_')) ? `
+                                ${(isSaldoIniziale && saldoInizialeId) ? `
+                                    <button class="btn btn-outline" style="padding: 5px 8px; margin-right: 4px; border-color: rgba(99, 102, 241, 0.4); color: #818cf8;" title="Modifica Saldo Iniziale" onclick="app.openSaldoInizialeModal('${saldoInizialeId}')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    </button>
+                                    <button class="btn btn-outline text-danger" style="padding: 5px 8px;" title="Elimina Saldo Iniziale" onclick="app.deleteSaldoIniziale('${saldoInizialeId}')">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                                    </button>
+                                ` : (!t.riferimento || !t.riferimento.startsWith('RICEVUTA_')) ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; margin-right: 4px;" title="Modifica Movimento" onclick="app.showPrimaNotaForm('${t.id}')">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                     </button>
@@ -8285,6 +8378,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                 if (editId) {
                     txn = this.state.primanota.find(t => String(t.id) === String(editId));
+                    if (txn && (txn.is_saldo_iniziale || txn.riferimento?.startsWith('SALDO_INIZIALE_'))) {
+                        const sId = txn.saldo_iniziale_id || txn.riferimento?.replace('SALDO_INIZIALE_', '');
+                        this.openSaldoInizialeModal(sId);
+                        return;
+                    }
                     if (txn) {
                         gcGroup = txn.giroconto_group || (txn.riferimento?.startsWith('GIROCONTO_') ? txn.riferimento.split('_')[1] : null);
                         isGiroconto = !!gcGroup || (txn.tipo === 'Giroconto') || (txn.categoria && txn.categoria.startsWith('Giroconto'));
@@ -8870,6 +8968,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         this.toast('Giroconto eliminato (rimosse entrambe le voci collegate)', 'success');
                     }
                 } else {
+                    const tToDel = (this.state.primanota || []).find(x => String(x.id) === String(id));
+                    if (tToDel && (tToDel.is_saldo_iniziale || tToDel.riferimento?.startsWith('SALDO_INIZIALE_'))) {
+                        const sId = tToDel.saldo_iniziale_id || tToDel.riferimento?.replace('SALDO_INIZIALE_', '');
+                        this.deleteSaldoIniziale(sId);
+                        return;
+                    }
+
                     if (confirm("Sei sicuro di voler eliminare questo movimento manuale?")) {
                         this.state.primanota = this.state.primanota.filter(t => String(t.id) !== String(id) && t.riferimento !== ('COMM_TXN_' + id));
                         this.trackDeletion(id);
@@ -8887,6 +8992,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let isAll = (year === 'all');
                 let displayYear = isAll ? 'Tutto lo Storico' : year;
                 
+                let fondoInizialeCassa = 0;
+                let fondoInizialeBanca = 0;
                 let entrate = 0;
                 let uscite = 0;
                 
@@ -8897,12 +9004,23 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     if (!isAll) {
                         let d = new Date(t.data);
                         let y = d.getFullYear();
-                        let as = d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y;
+                        let as = t.anno_sportivo || (d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y);
                         if (as !== year) return;
                     }
                     if (t.tipo === 'Giroconto' || t.categoria?.startsWith('Giroconto') || t.riferimento?.startsWith('GIROCONTO_') || t.giroconto_group) return; // Exclude giroconti da rendiconto economico
                     
-                    let amt = parseFloat(t.importo);
+                    let amt = parseFloat(t.importo) || 0;
+
+                    // I saldi iniziali/fondo cassa non sono ricavi di gestione dell'esercizio corrente
+                    if (t.is_saldo_iniziale || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_')) || (t.categoria && t.categoria.includes('Saldo Iniziale')) || (t.categoria && t.categoria.includes('Giacenza Iniziale'))) {
+                        if (this.isCassaMetodo(t.metodo)) {
+                            fondoInizialeCassa += amt;
+                        } else {
+                            fondoInizialeBanca += amt;
+                        }
+                        return;
+                    }
+
                     if (t.tipo === 'Entrata') {
                         entrate += amt;
                         entrateByCat[t.categoria] = (entrateByCat[t.categoria] || 0) + amt;
@@ -8913,30 +9031,58 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 });
 
                 let risultato = entrate - uscite;
+                let fondoInizialeTotale = fondoInizialeCassa + fondoInizialeBanca;
+                let giacenzaFinale = fondoInizialeTotale + risultato;
                 let colorRes = risultato >= 0 ? 'var(--success)' : 'var(--danger)';
                 let lblRes = risultato >= 0 ? 'Avanzo di Gestione' : 'Disavanzo di Gestione';
 
                 let renderCat = (obj) => Object.entries(obj).map(([cat, val]) => `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);"><span>${cat}</span><strong>€ ${val.toFixed(2)}</strong></div>`).join('');
 
                 this.openModal('Rendiconto Economico ' + displayYear, `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    ${fondoInizialeTotale > 0 ? `
+                        <div class="glass-card" style="margin-bottom: 1.5rem; background: rgba(99, 102, 241, 0.06); border-left: 4px solid #818cf8;">
+                            <div style="font-size: 0.82rem; color: #818cf8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;">🏁 Giacenza Iniziale di Apertura (Fondo di Partenza)</div>
+                            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; align-items: center;">
+                                <div style="display: flex; gap: 24px; font-size: 0.92rem;">
+                                    <div>Cassa Contanti: <strong style="color: #10b981;">€ ${fondoInizialeCassa.toFixed(2)}</strong></div>
+                                    <div>Banca / Conti Digitali: <strong style="color: #3b82f6;">€ ${fondoInizialeBanca.toFixed(2)}</strong></div>
+                                </div>
+                                <div style="font-size: 1.15rem; font-weight: 700; color: #818cf8;">Totale Fondo Iniziale: € ${fondoInizialeTotale.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                         <div class="glass-card">
-                            <h3 style="color: var(--success); margin-bottom: 1rem;">Entrate Totali: € ${entrate.toFixed(2)}</h3>
+                            <h3 style="color: var(--success); margin-bottom: 1rem;">Entrate Totali Gestione: € ${entrate.toFixed(2)}</h3>
                             <div style="font-size: 0.9rem;">
                                 ${renderCat(entrateByCat)}
                             </div>
                         </div>
                         <div class="glass-card">
-                            <h3 style="color: var(--danger); margin-bottom: 1rem;">Uscite Totali: € ${uscite.toFixed(2)}</h3>
+                            <h3 style="color: var(--danger); margin-bottom: 1rem;">Uscite Totali Gestione: € ${uscite.toFixed(2)}</h3>
                             <div style="font-size: 0.9rem;">
                                 ${renderCat(usciteByCat)}
                             </div>
                         </div>
                     </div>
-                    <div class="glass-card" style="text-align: center;">
-                        <h2 style="color: var(--text-muted); margin-bottom: 10px;">Risultato d'Esercizio ${displayYear}</h2>
-                        <div style="font-size: 2.5rem; font-weight: 700; color: ${colorRes};">€ ${risultato.toFixed(2)}</div>
-                        <div style="font-size: 1.2rem; margin-top: 5px; color: ${colorRes};">${lblRes}</div>
+
+                    <div style="display: grid; grid-template-columns: ${fondoInizialeTotale > 0 ? '1fr 1fr' : '1fr'}; gap: 1.5rem;">
+                        <div class="glass-card" style="text-align: center;">
+                            <h3 style="color: var(--text-muted); margin-bottom: 8px; font-size: 1rem;">Risultato d'Esercizio ${displayYear}</h3>
+                            <div style="font-size: 2.2rem; font-weight: 700; color: ${colorRes};">€ ${risultato.toFixed(2)}</div>
+                            <div style="font-size: 1.1rem; margin-top: 4px; color: ${colorRes}; font-weight: 600;">${lblRes}</div>
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">(Entrate d'Esercizio - Uscite d'Esercizio)</div>
+                        </div>
+                        ${fondoInizialeTotale > 0 ? `
+                            <div class="glass-card" style="text-align: center; border-left: 4px solid var(--accent);">
+                                <h3 style="color: var(--text-muted); margin-bottom: 8px; font-size: 1rem;">Giacenza Finale Riconciliata</h3>
+                                <div style="font-size: 2.2rem; font-weight: 700; color: ${giacenzaFinale >= 0 ? 'var(--primary)' : 'var(--danger)'};">€ ${giacenzaFinale.toFixed(2)}</div>
+                                <div style="font-size: 0.88rem; margin-top: 4px; color: var(--text-muted);">
+                                    Fondo Iniziale (€ ${fondoInizialeTotale.toFixed(2)}) ${risultato >= 0 ? '+' : '-'} Risultato (€ ${Math.abs(risultato).toFixed(2)})
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 `);
                 
@@ -10754,6 +10900,67 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         </div>
 
+                        <!-- 1b. Saldi Iniziali al Primo Utilizzo (Giacenze di Partenza) -->
+                        <div class="glass-card" style="border-left: 4px solid #10b981; grid-column: 1 / -1;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:10px;">
+                                <div>
+                                    <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
+                                        <span>💰 Saldi Iniziali al Primo Utilizzo (Giacenze di Partenza)</span>
+                                    </h3>
+                                    <div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">
+                                        Configura le giacenze presenti su cassa e conti all'inizio dell'attività contabile nel gestionale (es. al 31/08/2025 per l'anno sportivo 2025/2026).
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary" style="font-size:0.85rem;" onclick="app.openSaldoInizialeModal()">
+                                    ➕ Aggiungi Saldo Iniziale
+                                </button>
+                            </div>
+
+                            <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px 14px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                                    <div>
+                                        <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Totale Giacenza Cassa:</span>
+                                        <div style="font-size:1.15rem; font-weight:700; color:#10b981;">
+                                            € ${((s.saldi_iniziali || []).filter(x => x.tipo === 'cassa').reduce((acc, c) => acc + (parseFloat(c.importo) || 0), 0)).toFixed(2)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Totale Banca / Conti Digitali:</span>
+                                        <div style="font-size:1.15rem; font-weight:700; color:#3b82f6;">
+                                            € ${((s.saldi_iniziali || []).filter(x => x.tipo === 'banca').reduce((acc, c) => acc + (parseFloat(c.importo) || 0), 0)).toFixed(2)}
+                                        </div>
+                                    </div>
+                                    <div style="border-left: 1px solid var(--border); padding-left: 15px;">
+                                        <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Patrimonio Iniziale Complessivo:</span>
+                                        <div style="font-size:1.15rem; font-weight:700; color:var(--text-main);">
+                                            € ${((s.saldi_iniziali || []).reduce((acc, c) => acc + (parseFloat(c.importo) || 0), 0)).toFixed(2)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="font-size:0.78rem; color:var(--text-muted); max-width: 340px;">
+                                    📌 I saldi registrati compaiono in Prima Nota, si sommano ai Libri Cassa e Banca dell'anno sportivo indicato e costituiscono il Fondo Iniziale nel Rendiconto Economico.
+                                </div>
+                            </div>
+
+                            <div style="overflow-x:auto;">
+                                <table class="table" style="width:100%; font-size:0.88rem; margin:0;">
+                                    <thead>
+                                        <tr style="border-bottom:1px solid var(--border); text-align:left;">
+                                            <th style="padding:8px;">Tipo</th>
+                                            <th style="padding:8px;">Conto / Strumento</th>
+                                            <th style="padding:8px;">Data Giacenza</th>
+                                            <th style="padding:8px;">Anno Sportivo Rif.</th>
+                                            <th style="padding:8px; text-align:right;">Importo</th>
+                                            <th style="padding:8px; text-align:right;">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="saldi-iniziali-tbody">
+                                        ${this.renderSaldiInizialiRowsHTML()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <!-- 2. Consiglio Direttivo -->
                         <div class="glass-card" style="border-left: 4px solid var(--accent); grid-column: 1 / -1;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -11832,6 +12039,310 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             this.renderDatiOrganizzazione();
         },
 
+        renderSaldiInizialiRowsHTML() {
+            const list = this.state.settings?.saldi_iniziali || [];
+            if (!list.length) {
+                return `
+                    <tr>
+                        <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">
+                            <em>Nessun saldo iniziale configurato. Clicca su "➕ Aggiungi Saldo Iniziale" per inserire la giacenza iniziale di cassa o dei tuoi conti bancari/digitali.</em>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            return list.map(item => {
+                const isCassa = item.tipo === 'cassa';
+                const badgeStyle = isCassa 
+                    ? 'background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-weight:600;'
+                    : 'background:rgba(59,130,246,0.15); color:#3b82f6; border:1px solid rgba(59,130,246,0.3); font-weight:600;';
+                const tipoLabel = isCassa ? '💵 Cassa Contanti' : '🏦 Banca / Digitale';
+                const contoLabel = item.conto || (isCassa ? 'Cassa Contanti' : 'Banca c/c');
+                const as = item.anno_sportivo || '2025/2026';
+                const formattedDate = this.formatDate ? this.formatDate(item.data) : item.data;
+                const formattedAmt = (parseFloat(item.importo) || 0).toFixed(2);
+
+                return `
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:10px 8px;"><span class="badge" style="${badgeStyle}">${tipoLabel}</span></td>
+                        <td style="padding:10px 8px; font-weight:600;">
+                            ${contoLabel}
+                            ${item.note ? `<div style="font-size:0.75rem; font-weight:normal; color:var(--text-muted); margin-top:2px;">${item.note}</div>` : ''}
+                        </td>
+                        <td style="padding:10px 8px;">${formattedDate}</td>
+                        <td style="padding:10px 8px;"><span class="badge" style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); font-weight:600;">${as}</span></td>
+                        <td style="padding:10px 8px; text-align:right; font-weight:700; color:var(--success);">€ ${formattedAmt}</td>
+                        <td style="padding:10px 8px; text-align:right; white-space:nowrap;">
+                            <button type="button" class="btn btn-outline" style="padding:4px 8px; margin-right:4px;" title="Modifica Saldo Iniziale" onclick="app.openSaldoInizialeModal('${item.id}')">
+                                ✏️ Modifica
+                            </button>
+                            <button type="button" class="btn btn-outline text-danger" style="padding:4px 8px;" title="Elimina Saldo Iniziale" onclick="app.deleteSaldoIniziale('${item.id}')">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        },
+
+        openSaldoInizialeModal(editId = null) {
+            const isEdit = !!editId;
+            const list = this.state.settings?.saldi_iniziali || [];
+            const c = isEdit ? (list.find(x => String(x.id) === String(editId)) || {}) : {};
+
+            const curD = new Date();
+            const curAS = curD.getMonth() >= 8 ? curD.getFullYear() + "/" + (curD.getFullYear() + 1) : (curD.getFullYear() - 1) + "/" + curD.getFullYear();
+            let [y1, y2] = curAS.split('/').map(Number);
+            const years = [curAS, (y1 - 1) + "/" + (y2 - 1), (y1 - 2) + "/" + (y2 - 2), (y1 + 1) + "/" + (y2 + 1)];
+            if (c.anno_sportivo && !years.includes(c.anno_sportivo)) {
+                years.push(c.anno_sportivo);
+            }
+
+            const defaultTipo = c.tipo || 'cassa';
+            const defaultConto = c.conto || (defaultTipo === 'cassa' ? 'Cassa Contanti' : 'Banca c/c');
+            const defaultData = c.data || '2025-08-31';
+            const defaultAS = c.anno_sportivo || '2025/2026';
+            const defaultImporto = (c.importo !== undefined && c.importo !== null) ? parseFloat(c.importo).toFixed(2) : '';
+            const defaultNote = c.note || '';
+
+            this.openModal(isEdit ? `✏️ Modifica Saldo Iniziale: ${defaultConto}` : '💰 Configura Saldo Iniziale al Primo Utilizzo', `
+                <form id="saldo-iniziale-form" onsubmit="app.handleSaveSaldoIniziale(event, '${isEdit ? editId : ''}')" style="display:flex; flex-direction:column; gap:14px;">
+                    ${!isEdit ? `
+                        <div class="form-group" style="background:rgba(16,185,129,0.08); padding:10px 12px; border-radius:8px; border:1px dashed rgba(16,185,129,0.35); margin-bottom:0;">
+                            <label style="font-size:0.8rem; color:#10b981; font-weight:600; margin-bottom:4px; display:block;">⚡ Precompila con Modello Frequente (Es. Apertura al 31/08/2025 per AS 2025/2026):</label>
+                            <select class="form-control" style="font-size:0.85rem;" onchange="app.fillSaldoInizialePreset(this.value)">
+                                <option value="">-- Seleziona preset per impostare rapidamente --</option>
+                                <option value="cassa">💵 Cassa Contanti (Giacenza al 31/08/2025 per AS 2025/2026)</option>
+                                <option value="banca_cc">🏦 Conto Corrente Principale (Giacenza al 31/08/2025 per AS 2025/2026)</option>
+                                <option value="banca_secondo">🏦 Secondo Conto Corrente (Giacenza al 31/08/2025 per AS 2025/2026)</option>
+                                <option value="paypal">💳 PayPal ASD (Giacenza al 31/08/2025 per AS 2025/2026)</option>
+                                <option value="satispay">📱 Satispay Business (Giacenza al 31/08/2025 per AS 2025/2026)</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Tipo Strumento / Destinazione*</label>
+                            <select name="tipo" id="saldo-tipo-select" class="form-control" required onchange="app.onSaldoInizialeTipoChange(this.value)">
+                                <option value="cassa" ${defaultTipo === 'cassa' ? 'selected' : ''}>💵 Cassa Contanti</option>
+                                <option value="banca" ${defaultTipo === 'banca' ? 'selected' : ''}>🏦 Banca / Digitale (c/c, PayPal, Satispay, POS)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nome Conto o Strumento*</label>
+                            <input type="text" name="conto" id="saldo-conto-input" list="saldo-conti-datalist" class="form-control" required placeholder="Es. Cassa Contanti, Banca c/c, PayPal..." value="${defaultConto}">
+                            <datalist id="saldo-conti-datalist">
+                                <option value="Cassa Contanti">
+                                <option value="Banca c/c">
+                                <option value="Banca (C/C Principale)">
+                                <option value="Secondo c/c">
+                                <option value="PayPal">
+                                <option value="Satispay">
+                                <option value="PostePay Business">
+                                ${(this.getMetodiPagamento ? this.getMetodiPagamento() : []).map(m => `<option value="${typeof m === 'object' ? m.nome : m}">`).join('')}
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Data Rilevazione Giacenza*</label>
+                            <input type="date" name="data" id="saldo-data-input" class="form-control" required value="${defaultData}" onchange="app.onSaldoInizialeDataChange(this.value)">
+                            <small style="font-size:0.75rem; color:var(--text-muted);">Es: 31/08/2025 se inizi dal 01/09/2025, oppure la data di acquisto del gestionale.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Anno Sportivo di Riferimento / Competenza*</label>
+                            <select name="anno_sportivo" id="saldo-as-select" class="form-control" required>
+                                ${years.map(y => `<option value="${y}" ${defaultAS === y ? 'selected' : ''}>${y}</option>`).join('')}
+                            </select>
+                            <small style="font-size:0.75rem; color:var(--text-muted);">Anno in cui comparirà come saldo iniziale nei libri contabili.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Importo Giacenza Iniziale (€)*</label>
+                        <input type="number" step="0.01" min="0" name="importo" id="saldo-importo-input" class="form-control" required placeholder="0.00" value="${defaultImporto}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Note / Dettagli Aggiuntivi (Opzionale)</label>
+                        <input type="text" name="note" id="saldo-note-input" class="form-control" placeholder="Es: Saldo da vecchio gestionale o estratto conto al 31/08/2025" value="${defaultNote}">
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.04); padding:10px 12px; border-radius:6px; font-size:0.82rem; color:var(--text-muted); line-height:1.4;">
+                        💡 <strong>Come funziona:</strong> Il saldo iniziale inserito non altera i ricavi d'esercizio del Rendiconto Economico, ma viene sommato al Libro Cassa o Libro Banca di competenza per garantire la perfetta corrispondenza con i saldi reali ed estratti conto bancari.
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">💾 Salva Saldo Iniziale</button>
+                    </div>
+                </form>
+            `);
+        },
+
+        fillSaldoInizialePreset(val) {
+            const form = document.getElementById('saldo-iniziale-form');
+            if (!form || !val) return;
+
+            const tipoSel = form.querySelector('#saldo-tipo-select');
+            const contoInput = form.querySelector('#saldo-conto-input');
+            const dataInput = form.querySelector('#saldo-data-input');
+            const asSelect = form.querySelector('#saldo-as-select');
+            const noteInput = form.querySelector('#saldo-note-input');
+
+            const presets = {
+                cassa: { tipo: 'cassa', conto: 'Cassa Contanti', data: '2025-08-31', as: '2025/2026', note: 'Giacenza cassa contanti al 31/08/2025 di partenza' },
+                banca_cc: { tipo: 'banca', conto: 'Banca c/c', data: '2025-08-31', as: '2025/2026', note: 'Saldo estratto conto bancario al 31/08/2025' },
+                banca_secondo: { tipo: 'banca', conto: 'Secondo c/c', data: '2025-08-31', as: '2025/2026', note: 'Saldo secondo c/c al 31/08/2025' },
+                paypal: { tipo: 'banca', conto: 'PayPal', data: '2025-08-31', as: '2025/2026', note: 'Saldo conto PayPal al 31/08/2025' },
+                satispay: { tipo: 'banca', conto: 'Satispay', data: '2025-08-31', as: '2025/2026', note: 'Saldo Satispay Business al 31/08/2025' }
+            };
+
+            const p = presets[val];
+            if (!p) return;
+            if (tipoSel) {
+                tipoSel.value = p.tipo;
+                this.onSaldoInizialeTipoChange(p.tipo);
+            }
+            if (contoInput) contoInput.value = p.conto;
+            if (dataInput) dataInput.value = p.data;
+            if (asSelect && Array.from(asSelect.options).some(o => o.value === p.as)) {
+                asSelect.value = p.as;
+            }
+            if (noteInput) noteInput.value = p.note;
+        },
+
+        onSaldoInizialeTipoChange(tipoVal) {
+            const contoInput = document.getElementById('saldo-conto-input');
+            if (!contoInput) return;
+            const curVal = contoInput.value.trim().toLowerCase();
+            if (tipoVal === 'cassa') {
+                if (!curVal || curVal.includes('banca') || curVal.includes('paypal') || curVal.includes('satispay') || curVal.includes('secondo')) {
+                    contoInput.value = 'Cassa Contanti';
+                }
+            } else {
+                if (!curVal || curVal.includes('cassa') || curVal.includes('contanti')) {
+                    contoInput.value = 'Banca c/c';
+                }
+            }
+        },
+
+        onSaldoInizialeDataChange(dateVal) {
+            if (!dateVal) return;
+            const asSelect = document.getElementById('saldo-as-select');
+            if (!asSelect) return;
+
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return;
+            const y = d.getFullYear();
+            const m = d.getMonth() + 1; // 1-12
+            const day = d.getDate();
+
+            let suggestedAS = '';
+            if (m === 8 && day === 31) {
+                suggestedAS = `${y}/${y + 1}`;
+            } else if (m >= 9) {
+                suggestedAS = `${y}/${y + 1}`;
+            } else {
+                suggestedAS = `${y - 1}/${y}`;
+            }
+
+            if (suggestedAS && Array.from(asSelect.options).some(o => o.value === suggestedAS)) {
+                asSelect.value = suggestedAS;
+            } else if (suggestedAS) {
+                const opt = document.createElement('option');
+                opt.value = suggestedAS;
+                opt.textContent = suggestedAS;
+                opt.selected = true;
+                asSelect.appendChild(opt);
+            }
+        },
+
+        handleSaveSaldoIniziale(e, editId = '') {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const tipo = formData.get('tipo') || 'cassa';
+            const conto = (formData.get('conto') || '').trim();
+            const dataGiacenza = formData.get('data') || '2025-08-31';
+            const annoSportivo = (formData.get('anno_sportivo') || '').trim();
+            const importo = parseFloat(formData.get('importo'));
+            const note = (formData.get('note') || '').trim();
+
+            if (!conto) {
+                this.toast('Inserisci il nome del conto o strumento (es. Cassa Contanti, Banca c/c).', 'warning');
+                return;
+            }
+            if (isNaN(importo) || importo < 0) {
+                this.toast('Inserisci un importo valido (>= 0).', 'warning');
+                return;
+            }
+            if (!annoSportivo) {
+                this.toast("Seleziona o specifica l'anno sportivo di riferimento.", 'warning');
+                return;
+            }
+
+            this.sanitizeSettings();
+            let list = this.state.settings.saldi_iniziali || [];
+
+            const id = editId || ('saldo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+            const newItem = {
+                id: id,
+                tipo: tipo, // 'cassa' | 'banca'
+                conto: conto,
+                data: dataGiacenza,
+                anno_sportivo: annoSportivo,
+                importo: importo,
+                note: note
+            };
+
+            if (editId) {
+                const idx = list.findIndex(x => String(x.id) === String(editId));
+                if (idx >= 0) {
+                    list[idx] = { ...list[idx], ...newItem };
+                } else {
+                    list.push(newItem);
+                }
+                this.toast(`Saldo iniziale per "${conto}" aggiornato!`, 'success');
+            } else {
+                list.push(newItem);
+                this.toast(`Saldo iniziale per "${conto}" registrato!`, 'success');
+            }
+
+            this.state.settings.saldi_iniziali = list;
+            this.syncSaldiInizialiWithPrimaNota();
+            this.saveAll();
+            this.closeModal();
+
+            if (this.state.currentPage === 'primanota') {
+                this.renderPrimaNota();
+            } else {
+                this.renderDatiOrganizzazione();
+            }
+        },
+
+        deleteSaldoIniziale(id) {
+            this.sanitizeSettings();
+            const list = this.state.settings.saldi_iniziali || [];
+            const item = list.find(x => String(x.id) === String(id));
+            if (!item) return;
+
+            if (!confirm(`Sei sicuro di voler eliminare il saldo iniziale di € ${parseFloat(item.importo).toFixed(2)} per "${item.conto}"? Verrà rimosso anche il movimento correlato in Prima Nota.`)) return;
+
+            this.state.settings.saldi_iniziali = list.filter(x => String(x.id) !== String(id));
+            this.syncSaldiInizialiWithPrimaNota();
+            this.saveAll();
+            this.toast(`Saldo iniziale "${item.conto}" eliminato.`, 'danger');
+
+            if (this.state.currentPage === 'primanota') {
+                this.renderPrimaNota();
+            } else {
+                this.renderDatiOrganizzazione();
+            }
+        },
+
         openAddPresetModal(insertAtIndex = null) {
             const isInsert = (insertAtIndex !== null && insertAtIndex !== undefined);
             this.openModal(isInsert ? `➕ Inserisci Nuovo Pacchetto (Posizione ${insertAtIndex + 1})` : 'Nuovo Pacchetto Quota e Tesseramento', `
@@ -12193,6 +12704,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                         // 5. Normalizzazioni, migrazioni e pulizia
                         this.sanitizeSettings();
+                        this.syncSaldiInizialiWithPrimaNota();
                         this.sanitizePrimaNota();
                         this.migrateSoci();
                         this.migrateIstruttori();
