@@ -1592,7 +1592,9 @@
                     categorie_entrate: ["Quote Associative", "Iscrizioni Corsi", "Contributi", "Altre Entrate"],
                     categorie_uscite: ["Compensi / Stipendi", "Affitto Locale", "Energia Elettrica / Luce", "Consumi Idrici / Acqua", "Abbonamenti Internet / Tlc", "SIAE e Tasse", "Attrezzatura di Consumo Sala", "Manutenzioni Ordinarie", "Spese e Commissioni Bancarie", "Rimborsi Spese"],
                     autoSaveHours: 0,
-                    maxSnapshots: 5
+                    maxSnapshots: 5,
+                    saldi_iniziali: [],
+                    backup_sequence_counter: 0
                 },
                 guideMode: false,
                 sent_reminders: {}, // Structure: { "YYYY-MM-DD": ["socioId_type", ...] }
@@ -1855,6 +1857,10 @@
             if (!this.state.settings.saldi_iniziali || !Array.isArray(this.state.settings.saldi_iniziali)) {
                 this.state.settings.saldi_iniziali = [];
                 changed = true;
+            }
+            if (typeof this.state.settings.backup_sequence_counter !== 'number') {
+                const parsed = parseInt(this.state.settings.backup_sequence_counter, 10);
+                this.state.settings.backup_sequence_counter = (!isNaN(parsed) && parsed >= 0) ? parsed : 0;
             }
 
             if (changed && typeof this.saveAll === 'function') {
@@ -9505,6 +9511,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 return false;
             }
 
+            let targetFilename = safeFilename;
             try {
                 let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
                 if (perm !== 'granted') {
@@ -9515,11 +9522,32 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
                 const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: true });
                 const catDir = await yearDir.getDirectoryHandle(safeCat, { create: true });
-                const fileHandle = await catDir.getFileHandle(safeFilename, { create: true });
+
+                if (category === 'backup') {
+                    // Prevenzione collisione: non sovrascrivere mai file di backup già presenti sul disco
+                    let counter = 1;
+                    let fileExists = true;
+                    while (fileExists && counter <= 1000) {
+                        try {
+                            await catDir.getFileHandle(targetFilename, { create: false });
+                            // Se getFileHandle ha successo senza errore, il file esiste già: incrementa il suffisso
+                            const dotIndex = safeFilename.lastIndexOf('.');
+                            const baseName = dotIndex !== -1 ? safeFilename.substring(0, dotIndex) : safeFilename;
+                            const ext = dotIndex !== -1 ? safeFilename.substring(dotIndex) : '';
+                            targetFilename = `${baseName}_(${counter})${ext}`;
+                            counter++;
+                        } catch (e) {
+                            // File non presente: nome libero e disponibile!
+                            fileExists = false;
+                        }
+                    }
+                }
+
+                const fileHandle = await catDir.getFileHandle(targetFilename, { create: true });
                 const writable = await fileHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
-                this.toast(`💾 Salvato in: anno ${safeYear}/${safeCat}/${safeFilename}`, 'success');
+                this.toast(`💾 Salvato in: anno ${safeYear}/${safeCat}/${targetFilename}`, 'success');
                 return true;
             } catch (e) {
                 console.warn('Salvataggio nella cartella non riuscito, fallback su Download browser:', e);
@@ -9527,7 +9555,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = safeFilename;
+                a.download = targetFilename || safeFilename;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -11295,7 +11323,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                         <strong>Dove risiedono:</strong> Veri file <code>.json</code> scaricati nella cartella <em>Download</em> del tuo PC.
                                     </p>
                                     <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
-                                        <li><strong>⬇️ Esporta Backup JSON (Sicuro):</strong> crea una copia fisica completa del database da mettere su chiavetta USB o archiviare. Non tocca i dati esistenti.</li>
+                                        <li><strong>⬇️ Esporta Backup JSON (Sicuro & Sequenziato):</strong> crea una copia fisica completa con data, orario al secondo e contatore sequenziale univoco (es. <code>#001</code>). Non sovrascrive mai i backup precedenti.</li>
                                         <li><strong>📊 Esporta Soci XLSX (Sicuro):</strong> esporta l'anagrafica in foglio Excel.</li>
                                         <li><strong>⬆️ Importa Backup JSON (⚠️ Sovrascrittura):</strong> legge un file <code>.json</code> e sovrascrive tutto il database locale. Richiede conferma a doppio clic.</li>
                                         <li><strong>🗑️ Azzera Database Iscritti (⚠️ Distruttivo):</strong> cancella tutti i soci registrati.</li>
@@ -12653,13 +12681,30 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             }
         },
         exportData() {
+            // Incrementa il contatore progressivo di sequenza backup per garantire file univoci e sequenziali
+            if (!this.state.settings) this.state.settings = {};
+            const nextSeq = ((parseInt(this.state.settings.backup_sequence_counter, 10) || 0) + 1);
+            this.state.settings.backup_sequence_counter = nextSeq;
+            if (typeof this.saveAll === 'function') {
+                this.saveAll();
+            }
+
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const datePart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            const timePart = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+            const seqPart = String(nextSeq).padStart(3, '0');
+            const fileName = `asd_backup_${datePart}_${timePart}_#${seqPart}.json`;
+
             // Backup completo e omnicomprensivo di TUTTO lo stato applicativo
             const fullBackup = {
                 _backup_meta: {
                     app_name: "Gestione ASD",
                     app_version: this.version || APP_VERSION,
-                    timestamp: new Date().toISOString(),
-                    data_creazione: new Date().toLocaleString('it-IT'),
+                    timestamp: now.toISOString(),
+                    data_creazione: now.toLocaleString('it-IT'),
+                    sequenza_backup: nextSeq,
+                    nome_file: fileName,
                     conteggi: {
                         soci: (this.state.soci || []).length,
                         ricevute: (this.state.ricevute || []).length,
@@ -12696,11 +12741,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             };
 
-            const fileName = `asd_backup_${new Date().toISOString().split('T')[0]}.json`;
             const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: 'application/json' });
-            const yearStr = this.getSportsYear(new Date());
+            const yearStr = this.getSportsYear(now);
             this.saveDocumentFS(fileName, blob, 'backup', yearStr);
-            this.toast(`✅ Backup JSON esportato con successo (${fullBackup._backup_meta.conteggi.primanota} movimenti Prima Nota e tutti i moduli inclusi)!`, 'success');
+            this.toast(`✅ Backup JSON sequenziale #${seqPart} esportato con successo (${fullBackup._backup_meta.conteggi.primanota} movimenti Prima Nota e tutti i moduli inclusi)!`, 'success');
         },
 
         importData(event) {
@@ -12754,6 +12798,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         // 2. Settings (merge con predefiniti per non perdere campi)
                         if (data.settings && typeof data.settings === 'object') {
                             this.state.settings = { ...this.state.settings, ...data.settings };
+                        }
+                        if (data._backup_meta && typeof data._backup_meta.sequenza_backup === 'number') {
+                            const curSeq = parseInt(this.state.settings.backup_sequence_counter, 10) || 0;
+                            this.state.settings.backup_sequence_counter = Math.max(curSeq, data._backup_meta.sequenza_backup);
                         }
 
                         // 3. Configurazioni secondarie e metadati
