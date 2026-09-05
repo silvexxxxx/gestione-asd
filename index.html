@@ -4028,18 +4028,24 @@
 
             showPage(pageId) {
                 const main = document.getElementById('main-content');
-                const tableContainer = document.querySelector('.table-container');
+                const tableContainer = document.querySelector('#main-content .table-container') || document.querySelector('.table-container');
 
                 // Salva posizione scroll se usciamo da soci, ricevute o primanota
                 if (this.state.currentPage === 'soci' && tableContainer) {
-                    this.state.lastSociScroll = tableContainer.scrollTop;
-                    localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
+                    if (tableContainer.scrollTop > 0 || !this._restoringSociScroll) {
+                        this.state.lastSociScroll = tableContainer.scrollTop;
+                        localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
+                    }
                 } else if (this.state.currentPage === 'ricevute' && tableContainer) {
-                    this.state.lastRicevuteScroll = tableContainer.scrollTop;
-                    localStorage.setItem('asd_last_ricevute_scroll', this.state.lastRicevuteScroll.toString());
+                    if (tableContainer.scrollTop > 0 || !this._restoringRicevuteScroll) {
+                        this.state.lastRicevuteScroll = tableContainer.scrollTop;
+                        localStorage.setItem('asd_last_ricevute_scroll', this.state.lastRicevuteScroll.toString());
+                    }
                 } else if (this.state.currentPage === 'primanota' && tableContainer) {
-                    this.state.lastPrimaNotaScroll = tableContainer.scrollTop;
-                    localStorage.setItem('asd_last_primanota_scroll', this.state.lastPrimaNotaScroll.toString());
+                    if (tableContainer.scrollTop > 0 || !this._restoringPnScroll) {
+                        this.state.lastPrimaNotaScroll = tableContainer.scrollTop;
+                        localStorage.setItem('asd_last_primanota_scroll', this.state.lastPrimaNotaScroll.toString());
+                    }
                 }
 
                 this.state.currentPage = pageId;
@@ -4060,36 +4066,25 @@
                     switch (pageId) {
                         case 'dashboard': this.renderDashboard(); break;
                         case 'soci':
+                            const targetSociScroll = this.state.lastSociScroll || parseFloat(localStorage.getItem('asd_last_soci_scroll')) || 0;
                             this.renderSoci();
-                            // Restore scroll after a brief delay to ensure DOM is updated
-                            setTimeout(() => {
-                                const newContainer = document.querySelector('.table-container');
-                                if (newContainer) newContainer.scrollTop = this.state.lastSociScroll;
-                            }, 10);
+                            if (targetSociScroll > 0) {
+                                this.restoreTableScroll('soci', targetSociScroll);
+                            }
                             break;
                         case 'ricevute':
-                            this.renderRicevute(false);
                             const targetRicevuteScroll = this.state.lastRicevuteScroll || parseFloat(localStorage.getItem('asd_last_ricevute_scroll')) || 0;
-                            setTimeout(() => {
-                                const newContainer = document.querySelector('.table-container');
-                                if (newContainer && targetRicevuteScroll) newContainer.scrollTop = targetRicevuteScroll;
-                            }, 30);
-                            setTimeout(() => {
-                                const newContainer = document.querySelector('.table-container');
-                                if (newContainer && targetRicevuteScroll) newContainer.scrollTop = targetRicevuteScroll;
-                            }, 120);
+                            this.renderRicevute(false);
+                            if (targetRicevuteScroll > 0) {
+                                this.restoreTableScroll('ricevute', targetRicevuteScroll);
+                            }
                             break;
                         case 'primanota':
-                            this.renderPrimaNota(false);
                             const targetPnScroll = this.state.lastPrimaNotaScroll || parseFloat(localStorage.getItem('asd_last_primanota_scroll')) || 0;
-                            setTimeout(() => {
-                                const newContainer = document.querySelector('.table-container');
-                                if (newContainer && targetPnScroll) newContainer.scrollTop = targetPnScroll;
-                            }, 30);
-                            setTimeout(() => {
-                                const newContainer = document.querySelector('.table-container');
-                                if (newContainer && targetPnScroll) newContainer.scrollTop = targetPnScroll;
-                            }, 120);
+                            this.renderPrimaNota(false);
+                            if (targetPnScroll > 0) {
+                                this.restoreTableScroll('primanota', targetPnScroll);
+                            }
                             break;
                         case 'sala-pesi': this.renderSalaPesi(); break;
                         case 'corsi': this.renderCorsi(); break;
@@ -4443,7 +4438,7 @@
                                 </select>
                             </div>
 
-                            <div class="table-container">
+                            <div class="table-container" onscroll="app.onSociTableScroll(this)">
                                 <table id="soci-table" style="margin-top: 0;">
                                     <thead>
                                         <tr>
@@ -4972,10 +4967,56 @@
                 }
             },
 
-            // --- RICEVUTE MANAGEMENT ---
+            // --- SCROLL & RICEVUTE MANAGEMENT ---
+
+            restoreTableScroll(page, targetScroll) {
+                if (!targetScroll || targetScroll <= 0) return;
+
+                if (page === 'soci') {
+                    this._restoringSociScroll = true;
+                } else if (page === 'ricevute') {
+                    this._restoringRicevuteScroll = true;
+                } else if (page === 'primanota') {
+                    this._restoringPnScroll = true;
+                }
+
+                const applyScroll = () => {
+                    const c = document.querySelector('#main-content .table-container') || document.querySelector('.table-container');
+                    if (c) {
+                        c.scrollTop = targetScroll;
+                    }
+                };
+
+                applyScroll();
+                requestAnimationFrame(() => applyScroll());
+                setTimeout(applyScroll, 20);
+                setTimeout(applyScroll, 60);
+                setTimeout(applyScroll, 120);
+                setTimeout(applyScroll, 250);
+
+                setTimeout(() => {
+                    applyScroll();
+                    if (page === 'soci') {
+                        this._restoringSociScroll = false;
+                        this.state.lastSociScroll = targetScroll;
+                    } else if (page === 'ricevute') {
+                        this._restoringRicevuteScroll = false;
+                        this.state.lastRicevuteScroll = targetScroll;
+                    } else if (page === 'primanota') {
+                        this._restoringPnScroll = false;
+                        this.state.lastPrimaNotaScroll = targetScroll;
+                    }
+                }, 400);
+            },
+
+            onSociTableScroll(el) {
+                if (!el || this._restoringSociScroll) return;
+                this.state.lastSociScroll = el.scrollTop;
+                localStorage.setItem('asd_last_soci_scroll', el.scrollTop.toString());
+            },
 
             onRicevuteTableScroll(el) {
-                if (!el) return;
+                if (!el || this._restoringRicevuteScroll) return;
                 this.state.lastRicevuteScroll = el.scrollTop;
                 localStorage.setItem('asd_last_ricevute_scroll', el.scrollTop.toString());
             },
@@ -4998,7 +5039,7 @@
                     this.filterRicevute();
                     
                     // Ripristina lo scroll istantaneamente
-                    tableContainer.scrollTop = scrollY;
+                    this.restoreTableScroll('ricevute', scrollY);
                     window.scrollTo(0, winScrollY);
                     
                     if (targetHighlight) {
@@ -5013,7 +5054,9 @@
                 const prevEnd = endInput ? endInput.value : '';
                 const prevRegistro = document.getElementById('receipt-filter-registro')?.value || 'all';
                 const savedScroll = parseFloat(localStorage.getItem('asd_last_ricevute_scroll')) || 0;
-                const prevScroll = tableContainer ? tableContainer.scrollTop : (savedScroll || this.state.lastRicevuteScroll || 0);
+                const prevScroll = (this.state.currentPage === 'ricevute' && tableContainer && tableContainer.scrollTop > 0)
+                    ? tableContainer.scrollTop
+                    : (this.state.lastRicevuteScroll || savedScroll || 0);
 
                 main.innerHTML = `
                     <div class="page-content">
@@ -5073,14 +5116,7 @@
                 }
 
                 if (prevScroll > 0) {
-                    setTimeout(() => {
-                        const newContainer = document.querySelector('.table-container');
-                        if (newContainer) newContainer.scrollTop = prevScroll;
-                    }, 30);
-                    setTimeout(() => {
-                        const newContainer = document.querySelector('.table-container');
-                        if (newContainer) newContainer.scrollTop = prevScroll;
-                    }, 120);
+                    this.restoreTableScroll('ricevute', prevScroll);
                 }
 
                 if (targetHighlight) {
@@ -7449,7 +7485,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             // --- PRIMA NOTA MANAGEMENT ---
 
             onPrimaNotaTableScroll(el) {
-                if (!el) return;
+                if (!el || this._restoringPnScroll) return;
                 this.state.lastPrimaNotaScroll = el.scrollTop;
                 localStorage.setItem('asd_last_primanota_scroll', el.scrollTop.toString());
             },
@@ -7514,7 +7550,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     this.filterPrimaNota();
 
                     // Ripristina lo scroll istantaneamente
-                    tableContainer.scrollTop = scrollY;
+                    this.restoreTableScroll('primanota', scrollY);
                     window.scrollTo(0, winScrollY);
 
                     if (targetHighlight) {
@@ -7536,7 +7572,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const prevQuarter = document.getElementById('pn-quarter')?.value || 'all';
                 const prevTipo = document.getElementById('pn-tipo')?.value || 'all';
                 const savedScroll = parseFloat(localStorage.getItem('asd_last_primanota_scroll')) || 0;
-                const prevScroll = tableContainer ? tableContainer.scrollTop : (savedScroll || this.state.lastPrimaNotaScroll || 0);
+                const prevScroll = (this.state.currentPage === 'primanota' && tableContainer && tableContainer.scrollTop > 0)
+                    ? tableContainer.scrollTop
+                    : (this.state.lastPrimaNotaScroll || savedScroll || 0);
 
                 let [y1, y2] = currentAS.split('/').map(Number);
                 let nextAS = (y1+1) + "/" + (y2+1);
@@ -7664,14 +7702,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
 
                 if (prevScroll > 0) {
-                    setTimeout(() => {
-                        const newContainer = document.querySelector('.table-container');
-                        if (newContainer) newContainer.scrollTop = prevScroll;
-                    }, 30);
-                    setTimeout(() => {
-                        const newContainer = document.querySelector('.table-container');
-                        if (newContainer) newContainer.scrollTop = prevScroll;
-                    }, 120);
+                    this.restoreTableScroll('primanota', prevScroll);
                 }
 
                 if (targetHighlight) {
