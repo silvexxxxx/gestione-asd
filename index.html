@@ -1858,6 +1858,10 @@
                 this.state.settings.saldi_iniziali = [];
                 changed = true;
             }
+            if (!this.state.settings.verifiche_bancarie || !Array.isArray(this.state.settings.verifiche_bancarie)) {
+                this.state.settings.verifiche_bancarie = [];
+                changed = true;
+            }
             if (typeof this.state.settings.backup_sequence_counter !== 'number') {
                 const parsed = parseInt(this.state.settings.backup_sequence_counter, 10);
                 this.state.settings.backup_sequence_counter = (!isNaN(parsed) && parsed >= 0) ? parsed : 0;
@@ -7759,11 +7763,97 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             },
 
+            renderBancaVerificaBadgeHtml() {
+                const verifiche = (this.state.settings && this.state.settings.verifiche_bancarie) ? this.state.settings.verifiche_bancarie : [];
+                if (verifiche.length > 0) {
+                    const ult = verifiche[verifiche.length - 1];
+                    const diff = parseFloat(ult.scostamento_banca) || 0;
+                    const diffText = Math.abs(diff) < 0.005 ? '' : ` (rett. ${diff > 0 ? '+' : ''}${diff.toFixed(2)}€)`;
+                    return `<span style="color: #10b981; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;" onclick="event.stopPropagation(); app.mostraStoricoVerificheBanca();" title="Ultima verifica contabile: estratto conto al ${this.formatDate(ult.data_chiusura)} per AS ${ult.anno_sportivo}${diffText}. Clicca per visualizzare lo storico delle verifiche">
+                        <span>✅</span> <span>Estratto conto ${ult.anno_sportivo} verificato</span>
+                    </span>`;
+                }
+                return `<span style="color: #f59e0b; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;" onclick="event.stopPropagation(); app.mostraStoricoVerificheBanca();" title="I movimenti registrati sono a scopo consultativo interno. Per riscontri fai fede all'estratto conto ufficiale. La verifica contabile viene effettuata a chiusura esercizio.">
+                    <span>⚠️</span> <span>Far fede all'estratto conto (Verifica a Chiusura AS)</span>
+                </span>`;
+            },
+
+            mostraStoricoVerificheBanca() {
+                const verifiche = (this.state.settings && this.state.settings.verifiche_bancarie) ? [...this.state.settings.verifiche_bancarie].reverse() : [];
+                
+                let content = `
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 12px 14px; font-size: 0.84rem; color: #93c5fd; line-height: 1.45;">
+                            ℹ️ <strong>Registro delle Verifiche Contabili & Estratti Conto Bancari:</strong><br>
+                            In conformità con le buone pratiche per ASD, la verifica e la quadratura con l'<strong>estratto conto bancario ufficiale</strong> vengono effettuate ad ogni chiusura di anno sportivo (31 agosto). Eventuali differenze (imposte di bollo, commissioni POS, canoni conto) vengono registrate come rettifica di quadratura per garantire che i saldi futuri non accumulino disavanzi.
+                        </div>
+                `;
+
+                if (verifiche.length === 0) {
+                    content += `
+                        <div class="glass-card" style="text-align:center; padding: 2.2rem; color: var(--text-muted);">
+                            <div style="font-size: 2.2rem; margin-bottom: 8px;">📑</div>
+                            <h4 style="margin-bottom: 6px; color: var(--text-main);">Nessuna verifica contabile registrata</h4>
+                            <p style="font-size: 0.85rem; margin: 0; line-height: 1.4;">Non è stata ancora eseguita alcuna Chiusura Esercizio con verifica dell'estratto conto.<br>Potrai effettuare la prima verifica al termine dell'anno sportivo cliccando sul pulsante <strong>"Chiusura Esercizio"</strong> in Prima Nota.</p>
+                        </div>
+                    `;
+                } else {
+                    content += `
+                        <div style="overflow-x: auto;">
+                            <table class="table" style="width: 100%; font-size: 0.86rem; margin: 0;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                                        <th style="padding: 8px;">Anno Sportivo</th>
+                                        <th style="padding: 8px;">Data Chiusura E/C</th>
+                                        <th style="padding: 8px; text-align: right;">Saldo Contabile</th>
+                                        <th style="padding: 8px; text-align: right;">Estratto Conto Reale</th>
+                                        <th style="padding: 8px; text-align: right;">Scostamento</th>
+                                        <th style="padding: 8px;">Note / Estremi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${verifiche.map(v => {
+                                        const scost = parseFloat(v.scostamento_banca) || 0;
+                                        const scostColor = Math.abs(scost) < 0.005 ? 'var(--success)' : (scost < 0 ? 'var(--danger)' : 'var(--primary)');
+                                        const scostBadge = Math.abs(scost) < 0.005 
+                                            ? '<span style="color:var(--success); font-weight:600;">€ 0.00 (Quadrato)</span>' 
+                                            : `<span style="color:${scostColor}; font-weight:700;">${scost > 0 ? '+' : ''}€ ${scost.toFixed(2)}</span>`;
+                                        
+                                        return `
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding: 8px; font-weight: 600; color: var(--accent);">${v.anno_sportivo}</td>
+                                                <td style="padding: 8px;">${this.formatDate(v.data_chiusura)}</td>
+                                                <td style="padding: 8px; text-align: right;">€ ${parseFloat(v.saldo_banca_contabile || 0).toFixed(2)}</td>
+                                                <td style="padding: 8px; text-align: right; font-weight: 700; color: var(--success);">€ ${parseFloat(v.saldo_banca_estratto_conto || 0).toFixed(2)}</td>
+                                                <td style="padding: 8px; text-align: right;">${scostBadge}</td>
+                                                <td style="padding: 8px; font-size: 0.78rem; color: var(--text-muted);">${v.note || 'Quadratura regolare'}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                content += `
+                        <div style="display:flex; justify-content:flex-end; margin-top: 8px;">
+                            <button class="btn btn-outline" onclick="app.closeModal()">Chiudi</button>
+                        </div>
+                    </div>
+                `;
+
+                this.openModal('📑 Storico Verifiche Contabili & Estratti Conto', content);
+                const mc = document.getElementById('modal-content');
+                if (mc) mc.classList.add('modal-wide');
+            },
+
             updatePrimaNotaSaldiCards() {
                 const { cassaReale, bancaDigitale, totale } = this.calculateSaldiPrimaNota();
                 const cardCassa = document.getElementById('pn-card-cassa');
                 const cardBanca = document.getElementById('pn-card-banca');
                 const cardTotale = document.getElementById('pn-card-totale');
+                const badgeBanca = document.getElementById('pn-card-banca-badge');
                 if (cardCassa) {
                     cardCassa.textContent = `€ ${cassaReale.toFixed(2)}`;
                     cardCassa.style.color = cassaReale >= 0 ? 'var(--success)' : 'var(--danger)';
@@ -7771,6 +7861,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 if (cardBanca) {
                     cardBanca.textContent = `€ ${bancaDigitale.toFixed(2)}`;
                     cardBanca.style.color = bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)';
+                }
+                if (badgeBanca) {
+                    badgeBanca.innerHTML = this.renderBancaVerificaBadgeHtml();
                 }
                 if (cardTotale) {
                     cardTotale.textContent = `€ ${totale.toFixed(2)}`;
@@ -7850,8 +7943,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <div class="glass-card stat-card stat-card-clickable" style="${this.pnMetodoFilter === 'banca' ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('banca')">
                                 <span class="label">Banca / Digitale</span>
                                 <span id="pn-card-banca" class="value" style="color: ${bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)'};">€ ${bancaDigitale.toFixed(2)}</span>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.68rem; color: #f59e0b; margin-top: 2px; line-height: 1.1;">
-                                    <span>⚠️</span> <span>Far fede all'estratto conto</span>
+                                <div id="pn-card-banca-badge" style="display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.68rem; margin-top: 2px; line-height: 1.1;">
+                                    ${this.renderBancaVerificaBadgeHtml()}
                                 </div>
                             </div>
                             <div class="glass-card stat-card stat-card-clickable" style="${(!this.pnMetodoFilter || this.pnMetodoFilter === 'all') ? 'border: 2px solid var(--primary);' : ''}" onclick="app.setPnMetodoFilter('all')">
@@ -7961,6 +8054,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let bancaDigitale = 0;
                 
                 this.state.primanota.forEach(t => {
+                    // Ignora i movimenti di riporto chiusura generati per l'apertura del nuovo anno:
+                    // il saldo cumulativo reale include già i movimenti effettivi e la rettifica di quadratura al 31/08!
+                    if (t.riferimento && t.riferimento.startsWith('CHIUSURA_')) return;
+
                     let amt = parseFloat(t.importo) || 0;
                     if (t.tipo === 'Uscita') amt = -amt;
                     
@@ -8275,12 +8372,21 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         linkedComm = (this.state.primanota || []).find(x => x.riferimento === 'COMM_TXN_' + t.id);
                     }
 
-                    const isSaldoIniziale = t.is_saldo_iniziale || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_'));
+                    const isSaldoIniziale = t.is_saldo_iniziale || (t.riferimento && (t.riferimento.startsWith('SALDO_INIZIALE_') || t.riferimento.startsWith('CHIUSURA_')));
                     const saldoInizialeId = t.saldo_iniziale_id || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_') ? t.riferimento.replace('SALDO_INIZIALE_', '') : null);
+                    const isChiusuraRiporto = t.riferimento && t.riferimento.startsWith('CHIUSURA_');
+                    const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_'));
 
-                    const badgeDisplay = isSaldoIniziale 
-                        ? `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-weight:600;">🏁 Saldo Iniziale</span>`
-                        : `<span class="badge ${badgeClass}">${t.tipo}</span>`;
+                    let badgeDisplay = '';
+                    if (isSaldoIniziale) {
+                        badgeDisplay = isChiusuraRiporto 
+                            ? `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-weight:600;">🏁 Riporto Chiusura</span>`
+                            : `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-weight:600;">🏁 Saldo Iniziale</span>`;
+                    } else if (isRiconciliazione) {
+                        badgeDisplay = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight:600;">⚖️ Rettifica E/C</span>`;
+                    } else {
+                        badgeDisplay = `<span class="badge ${badgeClass}">${t.tipo}</span>`;
+                    }
 
                     return `
                         <tr id="pn-row-${t.id}" data-id="${t.id}">
@@ -8291,7 +8397,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             <td>
                                 ${t.descrizione}
                                 ${linkedComm ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.25);">⚡ Comm. ${t.metodo || 'digitale'}: -€${parseFloat(linkedComm.importo).toFixed(2)}</div>` : ''}
-                                ${isSaldoIniziale ? `<div style="font-size: 0.72rem; color: #818cf8; margin-top: 2px;">🏁 Giacenza di Partenza (Anno Sportivo di Competenza: ${t.anno_sportivo || ''})</div>` : ''}
+                                ${isRiconciliazione ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 2px;">⚖️ Quadratura Contabile da Estratto Conto Bancario</div>` : ''}
+                                ${isChiusuraRiporto ? `<div style="font-size: 0.72rem; color: #818cf8; margin-top: 2px;">🏁 Riporto di Apertura Nuovo Anno Sportivo ${t.anno_sportivo || ''}</div>` : ''}
+                                ${(isSaldoIniziale && !isChiusuraRiporto) ? `<div style="font-size: 0.72rem; color: #818cf8; margin-top: 2px;">🏁 Giacenza di Partenza (Anno Sportivo di Competenza: ${t.anno_sportivo || ''})</div>` : ''}
                                 ${t.riferimento && t.riferimento.startsWith('RICEVUTA_') ? `<div style="font-size: 0.7rem; color: var(--accent);">${t.riferimento}</div>` : ''}
                                 ${(t.giroconto_group || (t.riferimento && t.riferimento.startsWith('GIROCONTO_'))) ? `<div style="font-size: 0.7rem; color: #a78bfa; margin-top: 2px;">⇄ Giroconto Collegato</div>` : ''}
                                 ${(t.riferimento && t.riferimento.startsWith('COMM_TXN_')) ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">⚡ Spesa bancaria / commissione collegata</div>` : ''}
@@ -9261,63 +9369,320 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 if (selectedAS === 'all') selectedAS = currentAS;
                 
                 let [y1, y2] = selectedAS.split('/').map(Number);
+                if (!y1 || !y2 || isNaN(y1) || isNaN(y2)) {
+                    this.toast("Seleziona un anno sportivo valido dal filtro prima di procedere alla chiusura.", "warning");
+                    return;
+                }
                 let nextAS = (y1+1) + "/" + (y2+1);
                 
                 let refChiusura = 'CHIUSURA_' + selectedAS.replace('/','_');
                 let giaChiuso = this.state.primanota.find(t => t.riferimento === refChiusura);
                 if (giaChiuso) {
-                    this.toast("Errore: Esercizio " + selectedAS + " già chiuso!", "danger");
+                    this.openEsercizioGiaChiusoModal(selectedAS, nextAS, refChiusura);
                     return;
                 }
 
-                if(confirm("Vuoi chiudere l'esercizio sportivo " + selectedAS + " e generare i saldi iniziali per il " + nextAS + "? (Operazione irreversibile)")) {
-                    let cassaReale = 0;
-                    let bancaDigitale = 0;
-                    
-                    this.state.primanota.forEach(t => {
-                        if (new Date(t.data) <= new Date(y2 + "-08-31")) {
-                            let amt = parseFloat(t.importo);
-                            if (t.tipo === 'Uscita') amt = -amt;
-                            
-                            if (t.tipo === 'Giroconto') {
-                                if (this.isCassaMetodo(t.metodo)) { cassaReale -= amt; bancaDigitale += amt; }
-                                else { bancaDigitale -= amt; cassaReale += amt; }
-                            } else {
-                                if (this.isCassaMetodo(t.metodo)) cassaReale += amt;
-                                else bancaDigitale += amt;
-                            }
+                // Calcolo giacenze contabili al 31/08/y2
+                let cassaReale = 0;
+                let bancaDigitale = 0;
+                
+                this.state.primanota.forEach(t => {
+                    if (t.riferimento && t.riferimento.startsWith('CHIUSURA_')) return;
+                    if (new Date(t.data) <= new Date(y2 + "-08-31T23:59:59")) {
+                        let amt = parseFloat(t.importo) || 0;
+                        if (t.tipo === 'Uscita') amt = -amt;
+                        
+                        if (t.tipo === 'Giroconto') {
+                            if (this.isCassaMetodo(t.metodo)) { cassaReale -= amt; bancaDigitale += amt; }
+                            else { bancaDigitale -= amt; cassaReale += amt; }
+                        } else {
+                            if (this.isCassaMetodo(t.metodo)) cassaReale += amt;
+                            else bancaDigitale += amt;
                         }
-                    });
-                    
-                    let dataInizio = y2 + "-09-01";
-                    
-                    // Fondo Cassa Reale
-                    this.state.primanota.push({
-                        id: 'txn_' + Date.now() + 'C',
-                        data: dataInizio,
-                        tipo: 'Entrata',
-                        metodo: 'Contanti',
-                        categoria: 'Saldo Iniziale / Fondo Cassa',
-                        descrizione: 'Riporto saldo di cassa anno ' + selectedAS,
-                        importo: cassaReale,
-                        riferimento: refChiusura
-                    });
+                    }
+                });
 
-                    // Fondo Banca Digitale
+                this.openChiusuraEsercizioModal(selectedAS, nextAS, y1, y2, cassaReale, bancaDigitale);
+            },
+
+            openChiusuraEsercizioModal(selectedAS, nextAS, y1, y2, cassaReale, bancaDigitale) {
+                const modalHtml = `
+                    <form id="form-chiusura-esercizio" onsubmit="app.handleConfermaChiusuraEsercizio(event)" style="display: flex; flex-direction: column; gap: 16px;">
+                        <input type="hidden" id="chiusura-as-selected" value="${selectedAS}">
+                        <input type="hidden" id="chiusura-as-next" value="${nextAS}">
+                        <input type="hidden" id="chiusura-y2" value="${y2}">
+                        <input type="hidden" id="chiusura-cassa-calc" value="${cassaReale.toFixed(2)}">
+                        <input type="hidden" id="chiusura-banca-calc" value="${bancaDigitale.toFixed(2)}">
+
+                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; line-height: 1.45;">
+                            🔒 <strong>Procedura di Chiusura & Riconciliazione Annuale:</strong><br>
+                            Stai consolidando i conti dell'anno sportivo <strong>${selectedAS}</strong> con data contabile <strong>31/08/${y2}</strong>.<br>
+                            Inserisci il saldo esatto riportato sul tuo <strong>Estratto Conto Bancario ufficiale</strong> al 31/08/${y2} per quadratura automatica e prevenire l'accumulo di disavanzi.
+                        </div>
+
+                        <!-- Cassa Contanti -->
+                        <div class="glass-card" style="padding: 12px 16px; border-left: 4px solid #10b981;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #10b981; font-size: 0.95rem;">💵 Cassa Contanti (Giacenza Fisica)</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Al 31/08/${y2}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center;">
+                                <div>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Saldo Contabile a Sistema:</span>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">€ ${cassaReale.toFixed(2)}</div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-size: 0.8rem;">Contante Effettivo Riconciliato (€)*</label>
+                                    <input type="number" step="0.01" class="form-control" id="chiusura-cassa-reale" required value="${cassaReale.toFixed(2)}" oninput="app.onChiusuraSaldiChange()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Banca / Digitale (Confronto Estratto Conto) -->
+                        <div class="glass-card" style="padding: 12px 16px; border-left: 4px solid #3b82f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #3b82f6; font-size: 0.95rem;">🏦 Banca / Conti Digitali (Riconciliazione Estratto Conto)</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Al 31/08/${y2}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; margin-bottom: 10px;">
+                                <div>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Saldo Contabile a Sistema:</span>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: #3b82f6;">€ ${bancaDigitale.toFixed(2)}</div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Saldo da Estratto Conto Ufficiale al 31/08/${y2} (€)*</label>
+                                    <input type="number" step="0.01" class="form-control" id="chiusura-banca-reale" required value="${bancaDigitale.toFixed(2)}" oninput="app.onChiusuraSaldiChange()" style="border-color: rgba(59, 130, 246, 0.5); font-weight: 700;">
+                                </div>
+                            </div>
+
+                            <!-- Scostamento e anteprima rettifica -->
+                            <div id="chiusura-banca-diff-box" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 8px 12px; font-size: 0.82rem;">
+                                <span style="color: #10b981; font-weight: 600;">✅ Nessun scostamento: il saldo contabile coincide perfettamente con l'estratto conto bancario.</span>
+                            </div>
+                        </div>
+
+                        <!-- Note / Riferimento E/C -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">Note di Chiusura / Estremi Estratto Conto (Opzionale)</label>
+                            <input type="text" class="form-control" id="chiusura-note" placeholder="Es. Verificato con Estratto Conto Banca Intesa al 31/08/${y2}">
+                        </div>
+
+                        <!-- Riepilogo Saldi Iniziali Nuovo Anno -->
+                        <div style="background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--border); border-radius: 8px; padding: 12px 14px;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">
+                                🏁 Saldi di Partenza che verranno generati al 01/09/${y2} per il ${nextAS}:
+                            </div>
+                            <div style="display: flex; gap: 20px; font-size: 0.95rem; flex-wrap: wrap;">
+                                <div>Cassa: <strong id="preview-nuovo-cassa" style="color: #10b981;">€ ${cassaReale.toFixed(2)}</strong></div>
+                                <div>Banca: <strong id="preview-nuovo-banca" style="color: #3b82f6;">€ ${bancaDigitale.toFixed(2)}</strong></div>
+                                <div>Totale Fondo Iniziale: <strong id="preview-nuovo-totale" style="color: var(--accent);">€ ${(cassaReale + bancaDigitale).toFixed(2)}</strong></div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">🔒 Conferma Chiusura & Quadratura Conti</button>
+                        </div>
+                    </form>
+                `;
+
+                this.openModal(`🔒 Chiusura Esercizio ${selectedAS} & Quadratura Conti`, modalHtml);
+                const mc = document.getElementById('modal-content');
+                if (mc) mc.classList.add('modal-wide');
+            },
+
+            onChiusuraSaldiChange() {
+                const cassaCalc = parseFloat(document.getElementById('chiusura-cassa-calc')?.value) || 0;
+                const bancaCalc = parseFloat(document.getElementById('chiusura-banca-calc')?.value) || 0;
+                const cassaReale = parseFloat(document.getElementById('chiusura-cassa-reale')?.value) || 0;
+                const bancaReale = parseFloat(document.getElementById('chiusura-banca-reale')?.value) || 0;
+                const y2 = document.getElementById('chiusura-y2')?.value || '';
+
+                const diffBanca = Math.round((bancaReale - bancaCalc) * 100) / 100;
+                const diffBox = document.getElementById('chiusura-banca-diff-box');
+
+                if (diffBox) {
+                    if (Math.abs(diffBanca) < 0.005) {
+                        diffBox.style.background = 'rgba(16, 185, 129, 0.08)';
+                        diffBox.style.borderColor = 'rgba(16, 185, 129, 0.25)';
+                        diffBox.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Nessun scostamento: il saldo contabile coincide perfettamente con l'estratto conto.</span>`;
+                    } else if (diffBanca < 0) {
+                        const absDiff = Math.abs(diffBanca).toFixed(2);
+                        diffBox.style.background = 'rgba(239, 68, 68, 0.08)';
+                        diffBox.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        diffBox.innerHTML = `
+                            <div style="color: #f87171; font-weight: 600; margin-bottom: 2px;">
+                                ⚠️ Scostamento rilevato: -€ ${absDiff} (il conto reale ha € ${absDiff} in meno rispetto al gestionale).
+                            </div>
+                            <div style="font-size: 0.76rem; color: var(--text-muted);">
+                                Verrà generata una registrazione di rettifica al 31/08/${y2} in Uscita (Categoria: <em>Rettifica Saldo / Spese Bancarie</em>) per quadrare il rendiconto all'estratto conto ed evitare accumulo di disavanzi.
+                            </div>
+                        `;
+                    } else {
+                        const absDiff = diffBanca.toFixed(2);
+                        diffBox.style.background = 'rgba(59, 130, 246, 0.08)';
+                        diffBox.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                        diffBox.innerHTML = `
+                            <div style="color: #60a5fa; font-weight: 600; margin-bottom: 2px;">
+                                ℹ️ Scostamento rilevato: +€ ${absDiff} (il conto reale ha € ${absDiff} in più rispetto al gestionale).
+                            </div>
+                            <div style="font-size: 0.76rem; color: var(--text-muted);">
+                                Verrà generata una registrazione di rettifica al 31/08/${y2} in Entrata (Categoria: <em>Rettifica Saldo / Interessi e Arrotondamenti</em>) per pareggiare il rendiconto.
+                            </div>
+                        `;
+                    }
+                }
+
+                const prevCassa = document.getElementById('preview-nuovo-cassa');
+                const prevBanca = document.getElementById('preview-nuovo-banca');
+                const prevTot = document.getElementById('preview-nuovo-totale');
+                if (prevCassa) prevCassa.textContent = `€ ${cassaReale.toFixed(2)}`;
+                if (prevBanca) prevBanca.textContent = `€ ${bancaReale.toFixed(2)}`;
+                if (prevTot) prevTot.textContent = `€ ${(cassaReale + bancaReale).toFixed(2)}`;
+            },
+
+            handleConfermaChiusuraEsercizio(event) {
+                if (event) event.preventDefault();
+
+                const selectedAS = document.getElementById('chiusura-as-selected')?.value;
+                const nextAS = document.getElementById('chiusura-as-next')?.value;
+                const y2 = document.getElementById('chiusura-y2')?.value;
+                const bancaCalc = parseFloat(document.getElementById('chiusura-banca-calc')?.value) || 0;
+                const cassaReale = parseFloat(document.getElementById('chiusura-cassa-reale')?.value) || 0;
+                const bancaReale = parseFloat(document.getElementById('chiusura-banca-reale')?.value) || 0;
+                const note = (document.getElementById('chiusura-note')?.value || '').trim();
+
+                const diffBanca = Math.round((bancaReale - bancaCalc) * 100) / 100;
+
+                const refChiusura = 'CHIUSURA_' + selectedAS.replace('/','_');
+                const refRiconciliazione = 'RICONCILIAZIONE_' + refChiusura;
+
+                // 1. Se c'è scostamento con l'estratto conto al 31/08, generiamo la scrittura di rettifica
+                if (Math.abs(diffBanca) >= 0.01) {
+                    const isSpesa = diffBanca < 0;
+                    const absAmt = Math.abs(diffBanca);
+                    const cat = isSpesa ? 'Rettifica Saldo / Spese Bancarie' : 'Rettifica Saldo / Interessi e Arrotondamenti';
+                    const desc = `Rettifica quadratura estratto conto bancario al 31/08/${y2}${note ? ' - ' + note : ' (oneri/arrotondamenti)'}`;
+
                     this.state.primanota.push({
-                        id: 'txn_' + Date.now() + 'B',
-                        data: dataInizio,
-                        tipo: 'Entrata',
-                        metodo: 'Bonifico', // Rappresentativo per la banca
-                        categoria: 'Saldo Iniziale / Fondo Cassa',
-                        descrizione: 'Riporto saldo banca anno ' + selectedAS,
-                        importo: bancaDigitale,
-                        riferimento: refChiusura
+                        id: 'txn_riconciliazione_' + Date.now(),
+                        data: `${y2}-08-31`,
+                        tipo: isSpesa ? 'Uscita' : 'Entrata',
+                        metodo: 'Bonifico',
+                        categoria: cat,
+                        descrizione: desc,
+                        importo: absAmt,
+                        riferimento: refRiconciliazione,
+                        anno_sportivo: selectedAS,
+                        is_riconciliazione: true
                     });
+                }
+
+                // 2. Generazione Saldi Iniziali al 01/09 per il nuovo anno sportivo
+                const dataInizio = `${y2}-09-01`;
+
+                // Riporto Fondo Cassa
+                this.state.primanota.push({
+                    id: 'txn_' + Date.now() + 'C',
+                    data: dataInizio,
+                    tipo: 'Entrata',
+                    metodo: 'Contanti',
+                    categoria: 'Saldo Iniziale / Fondo Cassa',
+                    descrizione: 'Riporto saldo di cassa anno ' + selectedAS,
+                    importo: cassaReale,
+                    riferimento: refChiusura,
+                    anno_sportivo: nextAS,
+                    is_saldo_iniziale: true
+                });
+
+                // Riporto Fondo Banca (esattamente allineato all'estratto conto reale)
+                this.state.primanota.push({
+                    id: 'txn_' + Date.now() + 'B',
+                    data: dataInizio,
+                    tipo: 'Entrata',
+                    metodo: 'Bonifico',
+                    categoria: 'Saldo Iniziale / Fondo Cassa',
+                    descrizione: 'Riporto saldo banca anno ' + selectedAS + ' (allineato ad estratto conto)',
+                    importo: bancaReale,
+                    riferimento: refChiusura,
+                    anno_sportivo: nextAS,
+                    is_saldo_iniziale: true
+                });
+
+                // 3. Registrazione audit verifica bancaria
+                if (!this.state.settings.verifiche_bancarie || !Array.isArray(this.state.settings.verifiche_bancarie)) {
+                    this.state.settings.verifiche_bancarie = [];
+                }
+                this.state.settings.verifiche_bancarie.push({
+                    id: 'VERIFICA_' + Date.now(),
+                    anno_sportivo: selectedAS,
+                    next_anno_sportivo: nextAS,
+                    data_chiusura: `${y2}-08-31`,
+                    timestamp: new Date().toISOString(),
+                    saldo_banca_contabile: bancaCalc,
+                    saldo_banca_estratto_conto: bancaReale,
+                    scostamento_banca: diffBanca,
+                    saldo_cassa: cassaReale,
+                    note: note || `Verifica quadratura estratto conto al 31/08/${y2}`
+                });
+
+                this.saveAll();
+                this.closeModal();
+
+                // Aggiorna la vista impostando il filtro sul nuovo anno sportivo
+                const pnYear = document.getElementById('pn-year');
+                if (pnYear) {
+                    pnYear.value = nextAS;
+                }
+                this.renderPrimaNota(false);
+                this.toast(`Esercizio ${selectedAS} chiuso con successo. Saldi riconciliati e riportati al ${nextAS}`, 'success');
+            },
+
+            openEsercizioGiaChiusoModal(selectedAS, nextAS, refChiusura) {
+                const txnsChiusura = this.state.primanota.filter(t => t.riferimento === refChiusura);
+                const refRiconciliazione = 'RICONCILIAZIONE_' + refChiusura;
+                const txnRettifica = this.state.primanota.find(t => t.riferimento === refRiconciliazione);
+
+                const cassa = txnsChiusura.find(t => this.isCassaMetodo(t.metodo));
+                const banca = txnsChiusura.find(t => !this.isCassaMetodo(t.metodo));
+
+                this.openModal(`⚠️ Esercizio ${selectedAS} Già Chiuso`, `
+                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; color: #fbbf24; line-height: 1.45;">
+                            L'esercizio sportivo <strong>${selectedAS}</strong> risulta già chiuso e consolidato.<br>
+                            I saldi iniziali di riporto per l'anno <strong>${nextAS}</strong> sono già presenti in Prima Nota.
+                        </div>
+
+                        <div class="glass-card" style="font-size: 0.88rem;">
+                            <div style="font-weight: 600; margin-bottom: 6px; color: var(--accent);">Dettaglio Chiusura Esistente:</div>
+                            <div style="margin-bottom: 4px;">• Fondo Cassa Riportato: <strong style="color:#10b981;">€ ${cassa ? parseFloat(cassa.importo).toFixed(2) : '0.00'}</strong></div>
+                            <div style="margin-bottom: 4px;">• Fondo Banca Riportato: <strong style="color:#3b82f6;">€ ${banca ? parseFloat(banca.importo).toFixed(2) : '0.00'}</strong></div>
+                            ${txnRettifica ? `<div>• Rettifica Quadratura E/C al 31/08: <strong style="color:${txnRettifica.tipo === 'Uscita' ? 'var(--danger)' : 'var(--success)'};">${txnRettifica.tipo === 'Uscita' ? '-' : '+'}€ ${parseFloat(txnRettifica.importo).toFixed(2)}</strong> (${txnRettifica.categoria})</div>` : '<div>• Scostamento con estratto conto: <em>Nessuna rettifica necessaria (già perfettamente allineato)</em></div>'}
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-outline text-danger" style="border-color: rgba(239, 68, 68, 0.4);" onclick="app.riapriEsercizio('${selectedAS}', '${refChiusura}')">
+                                🔄 Annulla Chiusura & Riapri Esercizio
+                            </button>
+                            <button class="btn btn-primary" onclick="app.closeModal()">Chiudi</button>
+                        </div>
+                    </div>
+                `);
+            },
+
+            riapriEsercizio(selectedAS, refChiusura) {
+                if (confirm(`Sei sicuro di voler annullare la chiusura dell'esercizio ${selectedAS}? Verranno rimossi i saldi di riporto e l'eventuale rettifica di quadratura, consentendoti di correggere i movimenti o rieseguire la chiusura.`)) {
+                    const refRiconciliazione = 'RICONCILIAZIONE_' + refChiusura;
+                    this.state.primanota = this.state.primanota.filter(t => t.riferimento !== refChiusura && t.riferimento !== refRiconciliazione);
                     
+                    if (this.state.settings && Array.isArray(this.state.settings.verifiche_bancarie)) {
+                        this.state.settings.verifiche_bancarie = this.state.settings.verifiche_bancarie.filter(v => v.anno_sportivo !== selectedAS);
+                    }
+
                     this.saveAll();
+                    this.closeModal();
                     this.renderPrimaNota();
-                    this.toast('Esercizio ' + selectedAS + ' chiuso. Saldi riportati al ' + nextAS, 'success');
+                    this.toast(`Chiusura dell'esercizio ${selectedAS} annullata con successo.`, 'info');
                 }
             },
 
