@@ -5182,15 +5182,24 @@
                         </div>
 
                         <div class="glass-card member-card">
-                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                <input type="text" id="receipt-search" class="form-control search-input" placeholder="Cerca socio o numero ricevuta..." value="${prevSearch}" oninput="app.filterRicevute()">
+                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="receipt-search" class="form-control search-input" style="min-width: 200px; flex: 1;" placeholder="Cerca socio o numero ricevuta..." value="${prevSearch}" oninput="app.filterRicevute()">
                                 <select id="receipt-filter-registro" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterRicevute()">
                                     <option value="all" ${prevRegistro === 'all' ? 'selected' : ''}>📑 Tutti i Registri</option>
                                     <option value="cartaceo" ${prevRegistro === 'cartaceo' ? 'selected' : ''}>📋 Solo Cartaceo</option>
                                     <option value="digitale" ${prevRegistro === 'digitale' ? 'selected' : ''}>💻 Solo Digitale</option>
                                 </select>
-                                <input type="date" id="receipt-date-start" class="form-control" style="width: 150px;" value="${prevStart}" onchange="app.filterRicevute()">
-                                <input type="date" id="receipt-date-end" class="form-control" style="width: 150px;" value="${prevEnd}" onchange="app.filterRicevute()">
+                                <div class="date-filter-group" style="display:inline-flex; align-items:center; gap:8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px;" title="Isola le ricevute per data di emissione (Da - A)">
+                                    <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap; display:flex; align-items:center; gap:5px;">
+                                        📅 <span>Isola Da:</span>
+                                    </span>
+                                    <input type="date" id="receipt-date-start" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevStart}" oninput="app.filterRicevute()" onchange="app.filterRicevute()" title="Data iniziale periodo">
+                                    <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap;">
+                                        A:
+                                    </span>
+                                    <input type="date" id="receipt-date-end" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevEnd}" oninput="app.filterRicevute()" onchange="app.filterRicevute()" title="Data finale periodo">
+                                    <button type="button" id="receipt-date-clear-btn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: rgba(255,255,255,0.2); color: var(--text-muted); display: ${prevStart || prevEnd ? 'inline-flex' : 'none'}; align-items:center; gap:3px;" onclick="app.clearRicevuteDateFilter()" title="Azzera filtro date">✕ Azzera</button>
+                                </div>
                             </div>
 
                             <div class="table-container" onscroll="app.onRicevuteTableScroll(this)">
@@ -5216,7 +5225,7 @@
                     </div>
                 `;
 
-                if (prevSearch || prevStart || prevEnd) {
+                if (prevSearch || prevStart || prevEnd || prevRegistro !== 'all') {
                     this.filterRicevute();
                 }
 
@@ -5375,11 +5384,20 @@
                 `; }).join('');
             },
 
+            clearRicevuteDateFilter() {
+                const startEl = document.getElementById('receipt-date-start');
+                const endEl = document.getElementById('receipt-date-end');
+                if (startEl) startEl.value = '';
+                if (endEl) endEl.value = '';
+                this.filterRicevute();
+            },
+
             filterRicevute() {
                 const searchEl = document.getElementById('receipt-search');
                 const startEl = document.getElementById('receipt-date-start');
                 const endEl = document.getElementById('receipt-date-end');
                 const regEl = document.getElementById('receipt-filter-registro');
+                const clearBtn = document.getElementById('receipt-date-clear-btn');
                 const tbody = document.getElementById('receipts-tbody');
                 if (!tbody) return;
 
@@ -5388,11 +5406,16 @@
                 const end = endEl ? endEl.value : '';
                 const reg = regEl ? regEl.value : 'all';
 
+                if (clearBtn) {
+                    clearBtn.style.display = (start || end) ? 'inline-flex' : 'none';
+                }
+
                 const filtered = this.state.ricevute.filter(r => {
                     const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
                     const matchSearch = (r.socio_nome || '').toLowerCase().includes(search) || `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
-                    const matchStart = !start || r.data >= start;
-                    const matchEnd = !end || r.data <= end;
+                    const rDate = r.data ? String(r.data).substring(0, 10) : '';
+                    const matchStart = !start || rDate >= start;
+                    const matchEnd = !end || rDate <= end;
                     const matchReg = (reg === 'all') || (reg === 'cartaceo' && isCart) || (reg === 'digitale' && !isCart);
                     return matchSearch && matchStart && matchEnd && matchReg;
                 });
