@@ -1401,6 +1401,97 @@
             }
         }
 
+        /* --- POST-IT GIALLO FLUO SYSTEM --- */
+        .postit-note {
+            position: absolute;
+            width: 255px;
+            min-height: 225px;
+            background: linear-gradient(155deg, #fffbeb 0%, #fef08a 20%, #fef08a 85%, #fde047 100%);
+            border: 1px solid rgba(234, 179, 8, 0.55);
+            border-radius: 4px 4px 18px 4px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2), 0 0 18px rgba(250, 204, 21, 0.35);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            user-select: none;
+            transition: box-shadow 0.2s, transform 0.15s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            z-index: 99998;
+        }
+        .postit-note:hover {
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.25), 0 0 24px rgba(250, 204, 21, 0.55);
+        }
+        .postit-note.postit-highlight {
+            animation: postitPulse 1.2s infinite alternate;
+        }
+        @keyframes postitPulse {
+            0% { box-shadow: 0 0 15px rgba(234, 179, 8, 0.6), 0 0 30px rgba(250, 204, 21, 0.5); transform: scale(1); }
+            100% { box-shadow: 0 0 25px rgba(234, 179, 8, 0.9), 0 0 45px rgba(250, 204, 21, 0.8); transform: scale(1.03); }
+        }
+        .postit-header {
+            cursor: move;
+            padding: 6px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(250, 204, 21, 0.35);
+            border-bottom: 1px dashed rgba(202, 138, 4, 0.4);
+            border-radius: 4px 4px 0 0;
+        }
+        .postit-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.82rem;
+            color: #713f12;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .postit-btn:hover {
+            background: rgba(161, 98, 7, 0.15);
+            transform: scale(1.12);
+        }
+        .postit-textarea {
+            flex: 1;
+            width: 100%;
+            min-height: 145px;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: 0.92rem;
+            font-weight: 600;
+            line-height: 1.4;
+            color: #422006;
+            padding: 8px 10px;
+            user-select: text;
+        }
+        .postit-textarea::placeholder {
+            color: rgba(161, 98, 7, 0.65);
+            font-weight: 500;
+            font-style: italic;
+        }
+        .postit-footer {
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: #854d0e;
+            border-top: 1px dashed rgba(202, 138, 4, 0.25);
+            background: rgba(254, 240, 138, 0.4);
+            border-radius: 0 0 18px 4px;
+        }
+        .postit-done .postit-textarea {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
     </style>
 </head>
 
@@ -1483,6 +1574,43 @@
             </nav>
 
             <div class="aside-actions" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; justify-content: flex-end;">
+                <!-- Post-it Giallo Fluo -->
+                <div id="postit-topbar-container" style="display: flex; align-items: center; gap: 3px; flex-shrink: 0;">
+                    <button id="postit-toggle-btn"
+                        onclick="app.togglePostitVisibility()"
+                        title="Note rapide Post-it (Mostra / Nascondi tutti)"
+                        style="
+                            display: flex; align-items: center; gap: 5px;
+                            padding: 5px 9px; font-size: 0.76rem; font-weight: 700;
+                            background: linear-gradient(135deg, #fef08a, #facc15); color: #713f12;
+                            border: 1px solid #eab308; border-radius: 8px;
+                            cursor: pointer; box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+                            transition: all 0.2s; white-space: nowrap;
+                        "
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 0 14px rgba(250, 204, 21, 0.6)';"
+                        onmouseout="this.style.transform=''; this.style.boxShadow='0 0 10px rgba(250, 204, 21, 0.4)';"
+                    >
+                        <span style="font-size: 0.92rem;">📌</span>
+                        <span>Post-it</span>
+                        <span id="postit-badge" style="background: rgba(113, 63, 18, 0.2); border-radius: 10px; padding: 1px 6px; font-size: 0.7rem; font-weight: 800; display: none;">0</span>
+                    </button>
+                    <button id="postit-add-btn"
+                        onclick="app.nuovoPostit()"
+                        title="Nuovo Post-it giallo fluo"
+                        style="
+                            display: flex; align-items: center; justify-content: center;
+                            padding: 5px 8px; font-size: 0.85rem; font-weight: 800;
+                            background: #fef08a; color: #854d0e;
+                            border: 1px solid #eab308; border-radius: 8px;
+                            cursor: pointer; transition: all 0.15s;
+                        "
+                        onmouseover="this.style.background='#facc15'; this.style.transform='scale(1.06)';"
+                        onmouseout="this.style.background='#fef08a'; this.style.transform='';"
+                    >
+                        ➕
+                    </button>
+                </div>
+
                 <button id="cloud-indicator-btn" class="btn btn-outline" title="Stato Sincronizzazione" onclick="app.cloudSync.syncEnabled && !app.cloudSync.accessToken ? app.cloudSync.login() : app.showPage('database')"
                     style="padding: 5px 8px; font-size: 0.74rem; border-color: rgba(239, 68, 68, 0.5); color: var(--danger); display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                     <span id="cloud-indicator-icon">☁️</span>
@@ -1534,6 +1662,9 @@
         </div>
     </div>
 
+    <!-- Floating Post-it Container -->
+    <div id="postit-floating-container" style="position: fixed; inset: 0; pointer-events: none; z-index: 99998; overflow: hidden;"></div>
+
     <script>
         // --- Versione Applicazione & Cache-Busting ---
         const APP_VERSION = "2.4.7";
@@ -1577,6 +1708,7 @@
                 eventi: [],
                 rimborsi: [],
                 quote_presets: [],
+                postit: [],
                 settings: {
                     asdName: "Mia ASD S.R.L.",
                     pIva: "01234567890",
@@ -1860,6 +1992,10 @@
             }
             if (!this.state.settings.verifiche_bancarie || !Array.isArray(this.state.settings.verifiche_bancarie)) {
                 this.state.settings.verifiche_bancarie = [];
+                changed = true;
+            }
+            if (!this.state.postit || !Array.isArray(this.state.postit)) {
+                this.state.postit = [];
                 changed = true;
             }
             if (typeof this.state.settings.backup_sequence_counter !== 'number') {
@@ -2508,6 +2644,9 @@
                 if (this.state.guideMode) document.body.classList.add('guide-mode-active');
                 this.setupGuideTooltips();
 
+                // Inizializza Sistema Post-it Giallo Fluo & Promemoria
+                this.initPostitSystem();
+
 
                 
                 // Force maximize window size if in app mode
@@ -2634,6 +2773,7 @@
                 const storedMagazzino = localStorage.getItem('asd_magazzino');
                 const storedEventi = localStorage.getItem('asd_eventi');
                 const storedRimborsi = localStorage.getItem('asd_rimborsi');
+                const storedPostit = localStorage.getItem('asd_postit');
 
                 if (storedSoci) this.state.soci = JSON.parse(storedSoci);
                 if (storedRicevute) this.state.ricevute = JSON.parse(storedRicevute);
@@ -2641,6 +2781,7 @@
                 if (storedMagazzino) this.state.magazzino = JSON.parse(storedMagazzino);
                 if (storedEventi) this.state.eventi = JSON.parse(storedEventi);
                 if (storedRimborsi) this.state.rimborsi = JSON.parse(storedRimborsi);
+                if (storedPostit) this.state.postit = JSON.parse(storedPostit);
                 if (storedCorsi) {
                     this.state.corsi = JSON.parse(storedCorsi).map(c => ({
                         ...c,
@@ -3340,6 +3481,7 @@
                 if(this.state.lastSociScroll) localStorage.setItem('asd_last_soci_scroll', this.state.lastSociScroll.toString());
                 if(this.state.lastRicevuteScroll !== undefined) localStorage.setItem('asd_last_ricevute_scroll', this.state.lastRicevuteScroll.toString());
                 if(this.state.lastPrimaNotaScroll !== undefined) localStorage.setItem('asd_last_primanota_scroll', this.state.lastPrimaNotaScroll.toString());
+                if(this.state.postit) localStorage.setItem('asd_postit', JSON.stringify(this.state.postit));
             },
             
             async exitApp() {
@@ -9686,8 +9828,473 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 }
             },
 
-            
-        exportPrimaNotaPDF() {
+            // ==========================================
+            // SISTEMA POST-IT GIALLO FLUO & PROMEMORIA
+            // ==========================================
+            initPostitSystem() {
+                if (!this.state.postit || !Array.isArray(this.state.postit)) {
+                    this.state.postit = [];
+                }
+                this.postitVisible = localStorage.getItem('asd_postit_visible') !== 'false';
+                this.renderPostit();
+                this.updatePostitBadge();
+
+                // Controllo periodico promemoria a data/ora ogni 20 secondi
+                if (this._postitInterval) clearInterval(this._postitInterval);
+                this._postitInterval = setInterval(() => this.checkPostitReminders(), 20000);
+            },
+
+            updatePostitBadge() {
+                const list = this.state.postit || [];
+                const badge = document.getElementById('postit-badge');
+                const btn = document.getElementById('postit-toggle-btn');
+                if (badge) {
+                    if (list.length > 0) {
+                        badge.textContent = list.length;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+                if (btn) {
+                    if (!this.postitVisible && list.length > 0) {
+                        btn.style.opacity = '0.65';
+                        btn.style.filter = 'grayscale(0.2)';
+                    } else {
+                        btn.style.opacity = '1';
+                        btn.style.filter = 'none';
+                    }
+                }
+            },
+
+            togglePostitVisibility() {
+                const list = this.state.postit || [];
+                if (list.length === 0) {
+                    this.nuovoPostit();
+                    return;
+                }
+
+                this.postitVisible = !this.postitVisible;
+                localStorage.setItem('asd_postit_visible', this.postitVisible.toString());
+
+                const container = document.getElementById('postit-floating-container');
+                if (container) {
+                    container.style.display = this.postitVisible ? 'block' : 'none';
+                }
+                this.updatePostitBadge();
+
+                if (this.postitVisible) {
+                    this.toast(`📌 ${list.length} Post-it a schermo`, 'info');
+                } else {
+                    this.toast('📌 Post-it nascosti (clicca sul pulsante per riaprirli)', 'info');
+                }
+            },
+
+            nuovoPostit(testo = '') {
+                if (!this.state.postit || !Array.isArray(this.state.postit)) {
+                    this.state.postit = [];
+                }
+
+                const count = this.state.postit.length;
+                const offset = (count % 8) * 28;
+                const screenW = window.innerWidth || 1200;
+                const screenH = window.innerHeight || 800;
+
+                const initialX = Math.max(20, Math.min(screenW - 280, (screenW - 290) - offset));
+                const initialY = Math.max(75, Math.min(screenH - 260, 80 + offset));
+
+                const postit = {
+                    id: 'postit_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                    testo: testo || '',
+                    data_creazione: new Date().toISOString(),
+                    x: initialX,
+                    y: initialY,
+                    fatto: false,
+                    remember_data_ora: null,
+                    remember_triggered: false,
+                    nascosto: false
+                };
+
+                this.state.postit.push(postit);
+                this.postitVisible = true;
+                localStorage.setItem('asd_postit_visible', 'true');
+
+                this.saveAll();
+                this.renderPostit();
+                this.updatePostitBadge();
+
+                setTimeout(() => {
+                    const el = document.getElementById('postit-text-' + postit.id);
+                    if (el) el.focus();
+                }, 60);
+            },
+
+            renderPostit() {
+                let container = document.getElementById('postit-floating-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'postit-floating-container';
+                    container.style.cssText = 'position: fixed; inset: 0; pointer-events: none; z-index: 99998; overflow: hidden;';
+                    document.body.appendChild(container);
+                }
+
+                container.style.display = this.postitVisible ? 'block' : 'none';
+
+                const list = (this.state.postit || []).filter(p => !p.nascosto);
+                
+                if (list.length === 0) {
+                    container.innerHTML = '';
+                    this.updatePostitBadge();
+                    return;
+                }
+
+                const escapeStr = (s) => {
+                    if (!s) return '';
+                    return String(s)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                };
+
+                container.innerHTML = list.map((p, idx) => {
+                    const rot = ((idx % 3) - 1) * 1.2;
+                    const left = (typeof p.x === 'number') ? `${p.x}px` : `${Math.max(20, (window.innerWidth || 1000) - 290)}px`;
+                    const top = (typeof p.y === 'number') ? `${p.y}px` : `${80 + (idx * 25)}px`;
+
+                    const d = new Date(p.data_creazione);
+                    const oraStr = !isNaN(d.getTime()) ? `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '';
+
+                    let rememberHtml = '';
+                    if (p.remember_data_ora) {
+                        const rD = new Date(p.remember_data_ora);
+                        const rStr = !isNaN(rD.getTime()) ? `${String(rD.getDate()).padStart(2,'0')}/${String(rD.getMonth()+1).padStart(2,'0')} ${String(rD.getHours()).padStart(2,'0')}:${String(rD.getMinutes()).padStart(2,'0')}` : '';
+                        rememberHtml = `
+                            <div style="display:inline-flex; align-items:center; gap:3px; background:rgba(234,179,8,0.28); padding:1px 6px; border-radius:4px; font-weight:700; color:#713f12;">
+                                <span>⏰ ${rStr}</span>
+                                <button class="postit-btn" style="padding:0; font-size:0.65rem;" onclick="app.removePostitRemember('${p.id}')" title="Rimuovi promemoria">✖</button>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div id="postit-box-${p.id}" class="postit-note ${p.fatto ? 'postit-done' : ''} ${p._highlight ? 'postit-highlight' : ''}"
+                            style="left: ${left}; top: ${top}; transform: rotate(${rot}deg);"
+                        >
+                            <div class="postit-header" onmousedown="app.startPostitDrag(event, '${p.id}')" ontouchstart="app.startPostitDrag(event, '${p.id}')">
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <span style="font-size:0.95rem;">📌</span>
+                                    <span style="font-size:0.7rem; font-weight:700; color:#854d0e;">${oraStr}</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:2px;">
+                                    <button class="postit-btn" onclick="app.openPostitRememberModal('${p.id}')" title="Imposta Promemoria / Remember (data e ora)">
+                                        ${p.remember_data_ora ? '🔔' : '⏰'}
+                                    </button>
+                                    <button class="postit-btn" onclick="app.copyPostitText('${p.id}')" title="Copia appunto negli appunti">
+                                        📋
+                                    </button>
+                                    <button class="postit-btn" onclick="app.togglePostitFatto('${p.id}')" title="${p.fatto ? 'Segna come da fare' : 'Segna come fatto / trascritto'}">
+                                        ${p.fatto ? '↩️' : '☑️'}
+                                    </button>
+                                    <button class="postit-btn" onclick="app.nuovoPostit()" title="Aggiungi un altro Post-it">
+                                        ➕
+                                    </button>
+                                    <button class="postit-btn" onclick="app.deletePostit('${p.id}')" title="Elimina questo Post-it">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+
+                            <textarea id="postit-text-${p.id}" class="postit-textarea"
+                                placeholder="Scrivi un appunto al volo (socio, quota, tel, promemoria)..."
+                                oninput="app.updatePostitText('${p.id}', this.value)"
+                            >${escapeStr(p.testo || '')}</textarea>
+
+                            <div class="postit-footer">
+                                <div>${rememberHtml || '<span style="opacity:0.7;">Nota rapida</span>'}</div>
+                                <div style="font-size:0.68rem; opacity:0.65;">Salvato autom.</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                this.updatePostitBadge();
+            },
+
+            updatePostitText(id, text) {
+                const p = (this.state.postit || []).find(x => x.id === id);
+                if (p) {
+                    p.testo = text;
+                    if (this._postitSaveTimeout) clearTimeout(this._postitSaveTimeout);
+                    this._postitSaveTimeout = setTimeout(() => {
+                        this.saveAll();
+                    }, 600);
+                }
+            },
+
+            deletePostit(id) {
+                const p = (this.state.postit || []).find(x => x.id === id);
+                const hasText = p && p.testo && p.testo.trim().length > 0;
+                
+                const doDelete = () => {
+                    this.state.postit = (this.state.postit || []).filter(x => x.id !== id);
+                    this.saveAll();
+                    this.renderPostit();
+                    this.updatePostitBadge();
+                    this.toast('🗑️ Post-it eliminato', 'info');
+                };
+
+                if (hasText) {
+                    if (confirm('Vuoi eliminare questo Post-it?')) {
+                        doDelete();
+                    }
+                } else {
+                    doDelete();
+                }
+            },
+
+            togglePostitFatto(id) {
+                const p = (this.state.postit || []).find(x => x.id === id);
+                if (p) {
+                    p.fatto = !p.fatto;
+                    this.saveAll();
+                    this.renderPostit();
+                    if (p.fatto) {
+                        this.toast('✅ Appunto segnato come completato/trascritto', 'success');
+                    }
+                }
+            },
+
+            async copyPostitText(id) {
+                const p = (this.state.postit || []).find(x => x.id === id);
+                if (p && p.testo && p.testo.trim()) {
+                    try {
+                        await navigator.clipboard.writeText(p.testo);
+                        this.toast('📋 Appunto copiato negli appunti!', 'success');
+                    } catch (e) {
+                        const el = document.getElementById('postit-text-' + id);
+                        if (el) {
+                            el.select();
+                            document.execCommand('copy');
+                            this.toast('📋 Appunto copiato!', 'success');
+                        }
+                    }
+                } else {
+                    this.toast('Nessun testo da copiare nel Post-it', 'warning');
+                }
+            },
+
+            startPostitDrag(e, id) {
+                if (e.target.closest('button')) return;
+
+                const box = document.getElementById('postit-box-' + id);
+                if (!box) return;
+
+                const isTouch = !!e.touches;
+                const startX = isTouch ? e.touches[0].clientX : e.clientX;
+                const startY = isTouch ? e.touches[0].clientY : e.clientY;
+                const origLeft = box.offsetLeft;
+                const origTop = box.offsetTop;
+
+                document.querySelectorAll('.postit-note').forEach(el => el.style.zIndex = '99998');
+                box.style.zIndex = '99999';
+
+                const onMove = (moveEvt) => {
+                    const curX = isTouch ? moveEvt.touches[0].clientX : moveEvt.clientX;
+                    const curY = isTouch ? moveEvt.touches[0].clientY : moveEvt.clientY;
+                    const screenW = window.innerWidth || 1200;
+                    const screenH = window.innerHeight || 800;
+                    const newLeft = Math.max(10, Math.min(screenW - 270, origLeft + (curX - startX)));
+                    const newTop = Math.max(60, Math.min(screenH - 80, origTop + (curY - startY)));
+                    
+                    box.style.left = newLeft + 'px';
+                    box.style.top = newTop + 'px';
+                };
+
+                const onEnd = () => {
+                    window.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onMove);
+                    window.removeEventListener(isTouch ? 'touchend' : 'mouseup', onEnd);
+
+                    const p = (this.state.postit || []).find(x => x.id === id);
+                    if (p) {
+                        p.x = box.offsetLeft;
+                        p.y = box.offsetTop;
+                        this.saveAll();
+                    }
+                };
+
+                window.addEventListener(isTouch ? 'touchmove' : 'mousemove', onMove, { passive: false });
+                window.addEventListener(isTouch ? 'touchend' : 'mouseup', onEnd, { once: true });
+            },
+
+            openPostitRememberModal(id) {
+                const p = (this.state.postit || []).find(x => x.id === id);
+                if (!p) return;
+
+                const now = new Date();
+                const in1Ora = new Date(now.getTime() + 60 * 60 * 1000);
+                const pad = (n) => String(n).padStart(2, '0');
+                const defaultVal = p.remember_data_ora || `${in1Ora.getFullYear()}-${pad(in1Ora.getMonth()+1)}-${pad(in1Ora.getDate())}T${pad(in1Ora.getHours())}:${pad(in1Ora.getMinutes())}`;
+
+                const anteprima = (p.testo || 'Nota vuota').substring(0, 60);
+
+                this.openModal('⏰ Imposta Promemoria Post-it', `
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+                        <div style="background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.3); border-radius:8px; padding:12px; font-size:0.85rem; color:#854d0e; line-height:1.45;">
+                            📌 <strong>Funzione Remember (Promemoria):</strong><br>
+                            Anche se nascondi il Post-it o navighi tra le pagine del gestionale, allo scoccare dell'orario impostato il Post-it <strong>ricomparirà automaticamente in primo piano</strong> con avviso visivo e sonoro.
+                        </div>
+
+                        <div style="font-size:0.88rem; font-style:italic; color:var(--text-muted); background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:6px;">
+                            "${anteprima}${(p.testo && p.testo.length > 60) ? '...' : ''}"
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-size:0.82rem; font-weight:600;">Data e Ora di Notifica*</label>
+                            <input type="datetime-local" id="postit-remember-input" class="form-control" value="${defaultVal}" required style="font-size:1rem; font-weight:600;">
+                        </div>
+
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px;" onclick="app.quickSetPostitRememberInput(15)">⚡ Tra 15 min</button>
+                            <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px;" onclick="app.quickSetPostitRememberInput(60)">⚡ Tra 1 ora</button>
+                            <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px;" onclick="app.quickSetPostitRememberInput('domani_9')">⚡ Domani ore 09:00</button>
+                            <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px;" onclick="app.quickSetPostitRememberInput('domani_17')">⚡ Domani ore 17:00</button>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                            <div>
+                                ${p.remember_data_ora ? `
+                                    <button type="button" class="btn btn-outline text-danger" style="border-color:rgba(239,68,68,0.4);" onclick="app.removePostitRemember('${p.id}'); app.closeModal();">
+                                        Rimuovi Promemoria
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                                <button type="button" class="btn btn-primary" onclick="app.savePostitRemember('${p.id}')">⏰ Salva Promemoria</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            },
+
+            quickSetPostitRememberInput(preset) {
+                const input = document.getElementById('postit-remember-input');
+                if (!input) return;
+                const pad = (n) => String(n).padStart(2, '0');
+                const now = new Date();
+                let target = new Date();
+
+                if (typeof preset === 'number') {
+                    target = new Date(now.getTime() + preset * 60 * 1000);
+                } else if (preset === 'domani_9') {
+                    target.setDate(target.getDate() + 1);
+                    target.setHours(9, 0, 0, 0);
+                } else if (preset === 'domani_17') {
+                    target.setDate(target.getDate() + 1);
+                    target.setHours(17, 0, 0, 0);
+                }
+
+                input.value = `${target.getFullYear()}-${pad(target.getMonth()+1)}-${pad(target.getDate())}T${pad(target.getHours())}:${pad(target.getMinutes())}`;
+            },
+
+            savePostitRemember(id) {
+                const input = document.getElementById('postit-remember-input');
+                if (!input || !input.value) {
+                    this.toast('Seleziona una data e ora valida', 'warning');
+                    return;
+                }
+
+                const p = (this.state.postit || []).find(x => x.id === id);
+                if (p) {
+                    p.remember_data_ora = input.value;
+                    p.remember_triggered = false;
+                    this.saveAll();
+                    this.closeModal();
+                    this.renderPostit();
+                    this.toast('⏰ Promemoria impostato con successo!', 'success');
+                }
+            },
+
+            removePostitRemember(id) {
+                const p = (this.state.postit || []).find(x => x.id === id);
+                if (p) {
+                    p.remember_data_ora = null;
+                    p.remember_triggered = false;
+                    this.saveAll();
+                    this.renderPostit();
+                    this.toast('Promemoria rimosso dal Post-it', 'info');
+                }
+            },
+
+            checkPostitReminders() {
+                const list = this.state.postit || [];
+                if (list.length === 0) return;
+
+                const now = new Date();
+                let triggeredCount = 0;
+
+                list.forEach(p => {
+                    if (p.remember_data_ora && !p.remember_triggered) {
+                        const rDate = new Date(p.remember_data_ora);
+                        if (!isNaN(rDate.getTime()) && now >= rDate) {
+                            p.remember_triggered = true;
+                            p.nascosto = false;
+                            p._highlight = true;
+                            triggeredCount++;
+
+                            this.playPostitBeep();
+
+                            const anteprima = (p.testo || 'Nota rapida').substring(0, 45);
+                            this.toast(`⏰ PROMEMORIA POST-IT: "${anteprima}"`, 'warning');
+
+                            setTimeout(() => {
+                                p._highlight = false;
+                                const box = document.getElementById('postit-box-' + p.id);
+                                if (box) box.classList.remove('postit-highlight');
+                            }, 8000);
+                        }
+                    }
+                });
+
+                if (triggeredCount > 0) {
+                    this.postitVisible = true;
+                    localStorage.setItem('asd_postit_visible', 'true');
+                    this.saveAll();
+                    this.renderPostit();
+                    this.updatePostitBadge();
+                }
+            },
+
+            playPostitBeep() {
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    const ctx = new AudioCtx();
+                    const now = ctx.currentTime;
+
+                    const playTone = (freq, time, dur) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, time);
+                        gain.gain.setValueAtTime(0.2, time);
+                        gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(time);
+                        osc.stop(time + dur);
+                    };
+
+                    playTone(587.33, now, 0.22);        // D5
+                    playTone(880.00, now + 0.14, 0.38); // A5
+                } catch (e) {
+                    // Ignora se audio policy non consente autoplay
+                }
+            },
+
+            exportPrimaNotaPDF() {
             const txns = this.getFilteredPrimaNota();
             if (txns.length === 0) {
                 this.toast('Nessun movimento da esportare', 'warning');
