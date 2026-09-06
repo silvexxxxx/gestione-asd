@@ -5133,6 +5133,8 @@
                 const searchInput = document.getElementById('receipt-search');
                 const startInput = document.getElementById('receipt-date-start');
                 const endInput = document.getElementById('receipt-date-end');
+                const regInput = document.getElementById('receipt-filter-registro');
+                const annoInput = document.getElementById('receipt-filter-anno');
                 
                 const targetHighlight = highlightId;
 
@@ -5157,7 +5159,28 @@
                 const prevSearch = searchInput ? searchInput.value : '';
                 const prevStart = startInput ? startInput.value : '';
                 const prevEnd = endInput ? endInput.value : '';
-                const prevRegistro = document.getElementById('receipt-filter-registro')?.value || 'all';
+                const prevRegistro = regInput ? regInput.value : 'all';
+
+                const availableYears = [...new Set(this.state.ricevute.map(r => parseInt(r.anno)).filter(y => !isNaN(y) && y > 0))].sort((a,b) => b - a);
+                const now = new Date();
+                const currentSportsYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+                const selectYears = [...availableYears];
+                if (!selectYears.includes(currentSportsYear)) {
+                    selectYears.unshift(currentSportsYear);
+                }
+                selectYears.sort((a, b) => b - a);
+
+                if (!this.selectedRicevuteAnno) {
+                    if (this.state.ricevute.some(r => parseInt(r.anno) === currentSportsYear)) {
+                        this.selectedRicevuteAnno = String(currentSportsYear);
+                    } else if (availableYears.length > 0) {
+                        this.selectedRicevuteAnno = String(availableYears[0]);
+                    } else {
+                        this.selectedRicevuteAnno = String(currentSportsYear);
+                    }
+                }
+                const prevAnno = annoInput ? annoInput.value : (this.selectedRicevuteAnno || String(currentSportsYear));
+
                 const savedScroll = parseFloat(localStorage.getItem('asd_last_ricevute_scroll')) || 0;
                 const prevScroll = (this.state.currentPage === 'ricevute' && tableContainer && tableContainer.scrollTop > 0)
                     ? tableContainer.scrollTop
@@ -5171,7 +5194,7 @@
                                 <span class="header-subtitle">Emissione e archivio ricevute non fiscali.</span>
                             </div>
                             <div class="header-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta la tabella delle ricevute in formato Excel.">Esporta Excel</button>
+                                <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta le ricevute in formato Excel (considera l'anno sportivo o l'intervallo temporale isolato).">Esporta Excel</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea Cartacee (1-199) e Digitali (1-74)">🪄 Ripara Registri (Opz. 1)</button>
                                     <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
@@ -5183,12 +5206,19 @@
 
                         <div class="glass-card member-card">
                             <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                                <input type="text" id="receipt-search" class="form-control search-input" style="min-width: 200px; flex: 1;" placeholder="Cerca socio o numero ricevuta..." value="${prevSearch}" oninput="app.filterRicevute()">
+                                <input type="text" id="receipt-search" class="form-control search-input" style="min-width: 180px; flex: 1;" placeholder="Cerca socio o numero ricevuta..." value="${prevSearch}" oninput="app.filterRicevute()">
+                                
+                                <select id="receipt-filter-anno" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.onRicevuteAnnoFilterChange(this.value)" title="Filtra ricevute per Anno / Stagione Sportiva">
+                                    ${selectYears.map(y => `<option value="${y}" ${String(y) === String(prevAnno) ? 'selected' : ''}>🏆 Stagione ${y}/${y+1} (${app.formatAnno(y)})${y === currentSportsYear ? ' (In corso)' : ''}</option>`).join('')}
+                                    <option value="all" ${prevAnno === 'all' ? 'selected' : ''}>🌐 Tutte le Stagioni</option>
+                                </select>
+
                                 <select id="receipt-filter-registro" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterRicevute()">
                                     <option value="all" ${prevRegistro === 'all' ? 'selected' : ''}>📑 Tutti i Registri</option>
                                     <option value="cartaceo" ${prevRegistro === 'cartaceo' ? 'selected' : ''}>📋 Solo Cartaceo</option>
                                     <option value="digitale" ${prevRegistro === 'digitale' ? 'selected' : ''}>💻 Solo Digitale</option>
                                 </select>
+
                                 <div class="date-filter-group" style="display:inline-flex; align-items:center; gap:8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px;" title="Isola le ricevute per data di emissione (Da - A)">
                                     <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap; display:flex; align-items:center; gap:5px;">
                                         📅 <span>Isola Da:</span>
@@ -5225,7 +5255,7 @@
                     </div>
                 `;
 
-                if (prevSearch || prevStart || prevEnd || prevRegistro !== 'all') {
+                if (prevSearch || prevStart || prevEnd || prevRegistro !== 'all' || (prevAnno && prevAnno !== 'all')) {
                     this.filterRicevute();
                 }
 
@@ -5384,6 +5414,11 @@
                 `; }).join('');
             },
 
+            onRicevuteAnnoFilterChange(val) {
+                this.selectedRicevuteAnno = val;
+                this.filterRicevute();
+            },
+
             clearRicevuteDateFilter() {
                 const startEl = document.getElementById('receipt-date-start');
                 const endEl = document.getElementById('receipt-date-end');
@@ -5392,34 +5427,65 @@
                 this.filterRicevute();
             },
 
-            filterRicevute() {
+            getFilteredRicevute() {
                 const searchEl = document.getElementById('receipt-search');
+                const annoEl = document.getElementById('receipt-filter-anno');
+                const regEl = document.getElementById('receipt-filter-registro');
                 const startEl = document.getElementById('receipt-date-start');
                 const endEl = document.getElementById('receipt-date-end');
-                const regEl = document.getElementById('receipt-filter-registro');
+
+                const search = (searchEl ? searchEl.value : '').toLowerCase().trim();
+                const anno = annoEl ? annoEl.value : (this.selectedRicevuteAnno || 'all');
+                const reg = regEl ? regEl.value : 'all';
+                const start = startEl ? startEl.value : '';
+                const end = endEl ? endEl.value : '';
+
+                const hasDateRange = Boolean(start || end);
+
+                return this.state.ricevute.filter(r => {
+                    const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
+                    const matchSearch = !search || 
+                        (r.socio_nome || '').toLowerCase().includes(search) || 
+                        `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
+
+                    const matchReg = (reg === 'all') || 
+                        (reg === 'cartaceo' && isCart) || 
+                        (reg === 'digitale' && !isCart);
+
+                    const rDate = r.data ? String(r.data).substring(0, 10) : '';
+
+                    let matchDateOrAnno = true;
+                    if (hasDateRange) {
+                        // Se è specificato l'intervallo temporale, esporta / isola solo quello
+                        const matchStart = !start || rDate >= start;
+                        const matchEnd = !end || rDate <= end;
+                        matchDateOrAnno = matchStart && matchEnd;
+                    } else {
+                        // Senza indicazioni di data, considera l'anno sportivo selezionato
+                        if (anno !== 'all') {
+                            matchDateOrAnno = (parseInt(r.anno) === parseInt(anno));
+                        }
+                    }
+
+                    return matchSearch && matchReg && matchDateOrAnno;
+                });
+            },
+
+            filterRicevute() {
+                const startEl = document.getElementById('receipt-date-start');
+                const endEl = document.getElementById('receipt-date-end');
                 const clearBtn = document.getElementById('receipt-date-clear-btn');
                 const tbody = document.getElementById('receipts-tbody');
                 if (!tbody) return;
 
-                const search = (searchEl ? searchEl.value : '').toLowerCase();
                 const start = startEl ? startEl.value : '';
                 const end = endEl ? endEl.value : '';
-                const reg = regEl ? regEl.value : 'all';
 
                 if (clearBtn) {
                     clearBtn.style.display = (start || end) ? 'inline-flex' : 'none';
                 }
 
-                const filtered = this.state.ricevute.filter(r => {
-                    const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
-                    const matchSearch = (r.socio_nome || '').toLowerCase().includes(search) || `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
-                    const rDate = r.data ? String(r.data).substring(0, 10) : '';
-                    const matchStart = !start || rDate >= start;
-                    const matchEnd = !end || rDate <= end;
-                    const matchReg = (reg === 'all') || (reg === 'cartaceo' && isCart) || (reg === 'digitale' && !isCart);
-                    return matchSearch && matchStart && matchEnd && matchReg;
-                });
-
+                const filtered = this.getFilteredRicevute();
                 tbody.innerHTML = this.renderRicevuteRows(filtered);
             },
 
@@ -7525,13 +7591,81 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         exportRicevuteExcel() {
-            const worksheet = XLSX.utils.json_to_sheet(this.state.ricevute);
+            const startEl = document.getElementById('receipt-date-start');
+            const endEl = document.getElementById('receipt-date-end');
+            const annoEl = document.getElementById('receipt-filter-anno');
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+            const anno = annoEl ? annoEl.value : (this.selectedRicevuteAnno || 'all');
+
+            const receipts = this.getFilteredRicevute ? this.getFilteredRicevute() : this.state.ricevute;
+            if (receipts.length === 0) {
+                this.toast('Nessuna ricevuta da esportare con i filtri selezionati.', 'warning');
+                return;
+            }
+
+            const rows = receipts.map(r => {
+                const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
+                const socio = this.state.soci.find(s => String(s.id) === String(r.socio_id));
+                return {
+                    'N. Ricevuta': `${r.numero}/${app.formatAnno(r.anno)}`,
+                    'Numero': r.numero,
+                    'Stagione': `${r.anno}/${parseInt(r.anno) + 1}`,
+                    'Data Emissione': app.formatDate(r.data),
+                    'Ora': r.ora || '',
+                    'Socio': r.socio_nome || (socio ? socio.nome : ''),
+                    'Codice Fiscale': socio ? socio.cf : '',
+                    'Importo (€)': parseFloat(r.importo || 0).toFixed(2),
+                    'Quota Corso (€)': parseFloat(r.quota || 0).toFixed(2),
+                    'Tesseramento (€)': parseFloat(r.tess || 0).toFixed(2),
+                    'Descrizione / Tipo': r.tipo || '',
+                    'Metodo Pagamento': r.metodo_pagamento || r.pagamento || 'Contanti',
+                    'Registro': isCart ? 'Cartaceo' : 'Digitale',
+                    'Stato': r.annullata ? 'ANNULLATA' : 'Valida',
+                    'Note': r.note || ''
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            worksheet['!cols'] = [
+                { wch: 14 },
+                { wch: 8 },
+                { wch: 12 },
+                { wch: 14 },
+                { wch: 8 },
+                { wch: 26 },
+                { wch: 18 },
+                { wch: 12 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 35 },
+                { wch: 18 },
+                { wch: 12 },
+                { wch: 10 },
+                { wch: 25 }
+            ];
+
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ricevute");
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            const yearStr = this.getSportsYear(new Date());
-            this.saveDocumentFS("export_ricevute_asd.xlsx", blob, 'esportazioni_excel', yearStr);
+
+            let fileName = "export_ricevute";
+            if (start || end) {
+                fileName += `_dal_${start || 'inizio'}_al_${end || 'oggi'}`;
+            } else if (anno !== 'all') {
+                fileName += `_stagione_${anno}-${parseInt(anno) + 1}`;
+            } else {
+                fileName += `_tutte_le_stagioni`;
+            }
+            fileName += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+            const sportsYear = (anno !== 'all' && !isNaN(parseInt(anno))) 
+                ? `${anno}-${parseInt(anno) + 1}` 
+                : this.getSportsYear(new Date());
+
+            this.saveDocumentFS(fileName, blob, 'esportazioni_excel', sportsYear);
+            this.toast(`✅ Esportate ${receipts.length} ricevute in Excel (${fileName})`, 'success');
         },
 
         generateMobileViewer() {
