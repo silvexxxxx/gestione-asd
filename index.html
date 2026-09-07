@@ -11864,77 +11864,175 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 acc[c.nome] = (acc[c.nome] || 0) + 1;
                 return acc;
             }, {});
-            const uniqueCourseCount = Object.keys(courseCounts).length;
             const totalSessions = this.state.corsi.length;
-            let plannedTitle = '📅 Corsi Pianificati in Calendario';
+            let breakdownStr = '';
             if (totalSessions > 0) {
                 const breakdowns = Object.entries(courseCounts).map(([nome, count]) => `${count} per ${nome}`);
-                const breakdownStr = breakdowns.length > 1 
+                breakdownStr = breakdowns.length > 1 
                     ? breakdowns.slice(0, -1).join(', ') + ' e ' + breakdowns[breakdowns.length - 1]
                     : breakdowns[0];
-                plannedTitle = `📅 ${uniqueCourseCount} ${uniqueCourseCount === 1 ? 'corso pianificato' : 'corsi pianificati'} in calendario per ${totalSessions} ${totalSessions === 1 ? 'seduta settimanale' : 'sedute settimanali'} <span style="font-size:0.85rem; font-weight:normal; color:var(--text-muted); display:block; margin-top:4px;">(${breakdownStr})</span>`;
             }
+
+            const sortedCorsi = [...this.state.corsi].sort((a, b) => {
+                const dowA = parseInt(a.dayOfWeek, 10) || 1;
+                const dowB = parseInt(b.dayOfWeek, 10) || 1;
+                if (dowA !== dowB) return dowA - dowB;
+                return (a.startTime || '').localeCompare(b.startTime || '');
+            });
+
             main.innerHTML = `
-                    <div class="page-content" style="overflow-y:auto;">
-                        <div class="page-header">
-                            <div class="header-title">
-                                <h1>🏋️ Corsi</h1>
-                                <span class="header-subtitle">Gestisci i tipi di corso offerti dalla tua ASD.</span>
+                <style>
+                    .corsi-split-layout {
+                        display: grid;
+                        grid-template-columns: minmax(320px, 440px) 1fr;
+                        gap: 1.5rem;
+                        flex: 1;
+                        min-height: 0;
+                        overflow: hidden;
+                    }
+                    @media (max-width: 960px) {
+                        .corsi-page-content {
+                            overflow-y: auto !important;
+                            height: auto !important;
+                        }
+                        .corsi-split-layout {
+                            display: flex !important;
+                            flex-direction: column !important;
+                            overflow: visible !important;
+                            gap: 1rem !important;
+                        }
+                        .corsi-col-right .glass-card {
+                            height: auto !important;
+                            max-height: none !important;
+                        }
+                    }
+                </style>
+                <div class="page-content corsi-page-content" style="height:100%; display:flex; flex-direction:column; overflow:hidden;">
+                    <div class="page-header" style="flex-shrink:0; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div class="header-title">
+                            <h1 style="margin:0; font-size:1.35rem; font-weight:700;">🏋️ Corsi</h1>
+                            <span class="header-subtitle" style="font-size:0.85rem; color:var(--text-muted);">Gestisci i tipi di corso e visualizza la pianificazione delle attività.</span>
+                        </div>
+                        <button class="btn btn-primary" style="padding:6px 14px; font-size:0.82rem; display:flex; align-items:center; gap:6px;" onclick="app.openNewCorsoModal()">
+                            <span>➕</span> Pianifica Attività
+                        </button>
+                    </div>
+
+                    <div class="corsi-split-layout">
+                        <!-- LEFT COLUMN: Aggiungi Tipo & Corsi Disponibili -->
+                        <div class="corsi-col-left" style="display:flex; flex-direction:column; gap:1.25rem; min-height:0; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;">
+                            <!-- Top Card: Aggiungi Nuovo Tipo di Corso -->
+                            <div class="glass-card" style="padding:1.25rem; flex-shrink:0;">
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:0.85rem;">
+                                    <span style="font-size:1.15rem;">✨</span>
+                                    <h3 style="margin:0; font-size:1.05rem; font-weight:700;">Aggiungi Nuovo Tipo di Corso</h3>
+                                </div>
+                                <form id="add-corso-type-form" onsubmit="app.handleAddCorsoType(event)" style="display:flex; gap:10px;">
+                                    <input type="text" id="new-corso-type-input" class="form-control" placeholder="Es: Yoga, Zumba, Crossfit..." required style="flex:1;">
+                                    <button type="submit" class="btn btn-primary" style="white-space:nowrap; font-weight:600; padding:6px 16px;">+ Aggiungi</button>
+                                </form>
                             </div>
-                        </div>
-                        <div class="glass-card" style="max-width:600px; margin-bottom:1.5rem; margin-left:auto; margin-right:auto;">
-                            <h3 style="margin-bottom:1rem;">Aggiungi Nuovo Tipo di Corso</h3>
-                            <form id="add-corso-type-form" onsubmit="app.handleAddCorsoType(event)" style="display:flex; gap:10px;">
-                                <input type="text" id="new-corso-type-input" class="form-control" placeholder="Es: Yoga, Zumba, Crossfit..." required style="flex:1;">
-                                <button type="submit" class="btn btn-primary">+ Aggiungi</button>
-                            </form>
-                        </div>
-                        <div class="glass-card" style="max-width:600px; margin-left:auto; margin-right:auto;">
-                            <h3 style="margin-bottom:1rem;">Corsi Disponibili (${corsiD.length})</h3>
-                            ${corsiD.length === 0 ? '<p style="color:var(--text-muted);">Nessun tipo di corso definito.</p>' : `
-                            <div style="display:flex; flex-direction:column; gap:8px;">
-                                ${corsiD.map((c, idx) => {
-                                    const defaultColor = (c.toLowerCase().includes('pole') ? '#ec4899' : (c.toLowerCase().includes('body') ? '#ef4444' : '#3b82f6'));
-                                    const color = (this.state.corsi_colori && this.state.corsi_colori[c]) || defaultColor;
-                                    return `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:12px 16px; border-radius:10px; border:1px solid var(--border);">
-                                        <div style="display:flex; align-items:center; gap:10px;">
-                                            <span style="background:var(--primary); color:white; border-radius:6px; padding:2px 8px; font-size:0.75rem; font-weight:700;">${idx + 1}</span>
-                                            <span style="font-weight:600;">${c}</span>
-                                        </div>
-                                        <div style="display:flex; align-items:center; gap:10px;">
-                                            <label style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:4px; margin:0; cursor:pointer;" title="Scegli colore per il calendario">
-                                                <span>Colore:</span>
-                                                <input type="color" value="${color}" style="background:none; border:none; width:28px; height:28px; cursor:pointer; padding:0;" onchange="app.updateCorsoColor('${c.replace(/'/g, "\\'")}', this.value)">
-                                            </label>
-                                            <button class="btn btn-outline text-danger" style="padding:4px 10px; font-size:0.8rem;" onclick="app.deleteCorsoType(${idx})">🗑️ Rimuovi</button>
-                                        </div>
-                                    </div>`;
-                                }).join('')}
-                            </div>`}
-                        </div>
-                        <div class="glass-card" style="max-width:600px; margin-top:1.5rem; margin-left:auto; margin-right:auto;">
-                            <h3 style="margin-bottom:1rem;">${plannedTitle}</h3>
-                            ${this.state.corsi.length === 0
-                                ? '<p style="color:var(--text-muted);">Nessun corso pianificato nel calendario.</p>'
-                                : `<div style="display:flex; flex-direction:column; gap:8px;">
-                                    ${this.state.corsi.map(c => {
-                                        const GIORNI = {1:'Lun',2:'Mar',3:'Mer',4:'Gio',5:'Ven',6:'Sab',7:'Dom'};
-                                        const sala = this.state.sale.find(s => s.id === c.sala_id)?.nome || c.sala_id || '-';
-                                        const giorno = GIORNI[c.dayOfWeek] || '-';
-                                        return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:12px 16px; border-radius:10px; border:1px solid var(--border);">
-                                            <div>
-                                                <div style="font-weight:700;">${c.nome}</div>
-                                                <div style="font-size:0.78rem; color:var(--text-muted);">${giorno} ${c.startTime || ''}–${c.endTime || ''} · ${sala}</div>
+
+                            <!-- Bottom Card: Corsi Disponibili -->
+                            <div class="glass-card" style="padding:1.25rem; flex:1; display:flex; flex-direction:column; min-height:0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-shrink:0;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <span style="font-size:1.15rem;">🏷️</span>
+                                        <h3 style="margin:0; font-size:1.05rem; font-weight:700;">Corsi Disponibili (${corsiD.length})</h3>
+                                    </div>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Categorie attive</span>
+                                </div>
+                                ${corsiD.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun tipo di corso definito.</p>' : `
+                                <div style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; min-height:0; scrollbar-width:none; -ms-overflow-style:none; padding-right:2px;">
+                                    ${corsiD.map((c, idx) => {
+                                        const defaultColor = (c.toLowerCase().includes('pole') ? '#ec4899' : (c.toLowerCase().includes('body') ? '#ef4444' : '#3b82f6'));
+                                        const color = (this.state.corsi_colori && this.state.corsi_colori[c]) || defaultColor;
+                                        return `
+                                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:10px; border:1px solid var(--border); transition:all 0.15s ease;"
+                                             onmouseover="this.style.background='rgba(255,255,255,0.07)';"
+                                             onmouseout="this.style.background='rgba(255,255,255,0.04)';">
+                                            <div style="display:flex; align-items:center; gap:10px;">
+                                                <span style="background:var(--primary); color:white; border-radius:6px; padding:2px 7px; font-size:0.72rem; font-weight:700; min-width:22px; text-align:center;">${idx + 1}</span>
+                                                <span style="font-weight:600; font-size:0.92rem;">${c}</span>
                                             </div>
-                                            <button class="btn btn-outline text-danger" style="padding:4px 10px; font-size:0.8rem;" onclick="app.deleteCorso(${c.id})">🗑️ Elimina</button>
+                                            <div style="display:flex; align-items:center; gap:10px;">
+                                                <label style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; margin:0; cursor:pointer;" title="Scegli colore per il calendario">
+                                                    <span>Colore:</span>
+                                                    <input type="color" value="${color}" style="background:none; border:none; width:26px; height:26px; cursor:pointer; padding:0; border-radius:4px;" onchange="app.updateCorsoColor('${c.replace(/'/g, "\\'")}', this.value)">
+                                                </label>
+                                                <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="app.deleteCorsoType(${idx})" title="Rimuovi tipologia di corso">🗑️ Rimuovi</button>
+                                            </div>
                                         </div>`;
                                     }).join('')}
-                                </div>`
-                            }
+                                </div>`}
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN: Corsi Pianificati (Independent Scroll) -->
+                        <div class="corsi-col-right" style="display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+                            <div class="glass-card" style="padding:1.25rem; display:flex; flex-direction:column; height:100%; min-height:0; overflow:hidden;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; flex-shrink:0; gap:12px; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:12px;">
+                                    <div>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span style="font-size:1.15rem;">📅</span>
+                                            <h3 style="margin:0; font-size:1.05rem; font-weight:700;">Corsi Pianificati in Calendario</h3>
+                                            <span style="background:rgba(59,130,246,0.18); color:#93c5fd; border:1px solid rgba(59,130,246,0.35); padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;">
+                                                ${totalSessions} ${totalSessions === 1 ? 'seduta settimanale' : 'sedute settimanali'}
+                                            </span>
+                                        </div>
+                                        ${breakdownStr ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">(${breakdownStr})</div>` : ''}
+                                    </div>
+                                    <button class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="app.renderSalaPesi()">
+                                        🏟️ Apri Calendario Completo
+                                    </button>
+                                </div>
+
+                                <!-- Scrollable Planned Courses List -->
+                                <div style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; min-height:0; scrollbar-width:none; -ms-overflow-style:none; padding-right:2px;">
+                                    ${sortedCorsi.length === 0
+                                        ? `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; color:var(--text-muted); text-align:center; gap:12px;">
+                                                <span style="font-size:2.8rem; opacity:0.6;">🗓️</span>
+                                                <div style="font-size:0.9rem;">Nessun corso attualmente programmato nel calendario.</div>
+                                                <button class="btn btn-primary" style="padding:6px 14px; font-size:0.82rem;" onclick="app.openNewCorsoModal()">+ Pianifica la prima attività</button>
+                                           </div>`
+                                        : sortedCorsi.map(c => {
+                                            const GIORNI = {1:'Lunedì',2:'Martedì',3:'Mercoledì',4:'Giovedì',5:'Venerdì',6:'Sabato',7:'Domenica'};
+                                            const sala = this.state.sale.find(s => s.id === c.sala_id)?.nome || c.sala_id || '-';
+                                            const istrNome = (this.state.istruttori || []).find(i => i.id == c.istruttore_id)?.nome || '-';
+                                            const giorno = GIORNI[c.dayOfWeek] || '-';
+                                            const defaultColor = (c.nome.toLowerCase().includes('pole') ? '#ec4899' : (c.nome.toLowerCase().includes('body') ? '#ef4444' : '#3b82f6'));
+                                            const cColor = (this.state.corsi_colori && this.state.corsi_colori[c.nome]) || defaultColor;
+                                            const iscrittiCount = (c.iscritti || []).length;
+                                            return `
+                                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:10px; border:1px solid var(--border); border-left:4px solid ${cColor}; transition:all 0.15s ease; gap:12px;"
+                                                 onmouseover="this.style.background='rgba(255,255,255,0.07)'; this.style.borderColor='rgba(255,255,255,0.2)';"
+                                                 onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='var(--border)';">
+                                                <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+                                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                                        <span style="font-weight:700; font-size:0.95rem;">${c.nome}</span>
+                                                        <span style="background:rgba(59,130,246,0.15); color:#93c5fd; border:1px solid rgba(59,130,246,0.3); padding:1px 7px; border-radius:5px; font-weight:600; font-size:0.75rem;">
+                                                            ⏱️ ${giorno} ${c.startTime || ''}–${c.endTime || ''}
+                                                        </span>
+                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:12px; font-size:0.78rem; color:var(--text-muted); flex-wrap:wrap;">
+                                                        <span>🏠 ${sala}</span>
+                                                        ${istrNome !== '-' ? `<span>👤 ${istrNome}</span>` : ''}
+                                                        <span>👥 Iscritti: <strong>${iscrittiCount}</strong> / ${c.max || '∞'}</span>
+                                                    </div>
+                                                </div>
+                                                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                                                    <button class="btn btn-outline" style="padding:4px 9px; font-size:0.76rem;" onclick="app.openCorsoDetail(${c.id})" title="Apri scheda completa corso">📋 Dettagli</button>
+                                                    <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.76rem;" onclick="app.deleteCorso(${c.id})" title="Elimina corso">🗑️</button>
+                                                </div>
+                                            </div>`;
+                                        }).join('')
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
-                `;
+                </div>
+            `;
         },
 
         updateCorsoColor(corsoName, hexColor) {
