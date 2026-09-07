@@ -262,6 +262,11 @@
             overflow: hidden !important;
         }
 
+        main.page-verbali, #main-content.page-verbali {
+            overflow-y: auto !important;
+            display: block !important;
+        }
+
         .dati-associazione-grid {
             display: grid;
             grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -4419,7 +4424,14 @@
                         case 'magazzino': this.renderMagazzino(); break;
                         case 'eventi': this.renderEventi(); break;
                         case 'rimborsi': this.renderRimborsi(); break;
-                        case 'verbali': this.renderVerbali(); break;
+                        case 'verbali':
+                            if (main) {
+                                main.classList.add('page-verbali');
+                                main.style.overflowY = 'auto';
+                                main.style.display = 'block';
+                            }
+                            this.renderVerbali();
+                            break;
                         case 'dati-organizzazione': this.renderDatiOrganizzazione(); break;
                         case 'database': this.renderDatabase(); break;
                         case 'guida': this.renderGuida(); break;
@@ -19166,6 +19178,10 @@ ${r.annullata ? `
 
             document.querySelectorAll('.nav-dropdown.active-dropdown').forEach(d => d.classList.remove('active-dropdown'));
 
+            main.classList.add('page-verbali');
+            main.style.overflowY = 'auto';
+            main.style.display = 'block';
+
             if (this.state.verbali_current_view === 'wizard') {
                 this.renderVerbaleWizard();
             } else if (this.state.verbali_current_view === 'preview') {
@@ -19229,7 +19245,7 @@ ${r.annullata ? `
             }
 
             main.innerHTML = `
-                <div class="page-content" style="max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem;">
+                <div class="page-content" style="max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                         <div>
                             <h1 style="margin: 0; font-size: 1.6rem; display: flex; align-items: center; gap: 10px;">
@@ -19765,7 +19781,7 @@ ${r.annullata ? `
 
             main.innerHTML = `
                 ${sociDatalist}
-                <div class="page-content" style="max-width: 850px; margin: 0 auto; padding: 1.5rem 1rem;">
+                <div class="page-content" style="max-width: 850px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
                     <!-- Top Bar Wizard -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
                         <button class="btn btn-outline" style="font-size: 0.85rem; padding: 6px 12px;" onclick="app.backToVerbaliHub()">
@@ -20158,7 +20174,7 @@ ${r.annullata ? `
             }
 
             main.innerHTML = `
-                <div class="page-content" style="max-width: 950px; margin: 0 auto; padding: 1.5rem 1rem;">
+                <div class="page-content" style="max-width: 950px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
                     <!-- Action Bar Superiore -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 10px;">
                         <div style="display: flex; gap: 8px;">
