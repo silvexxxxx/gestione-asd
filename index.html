@@ -1680,7 +1680,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.4.8";
+        const APP_VERSION = "2.4.9";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -10749,27 +10749,91 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     }
                 }
 
+                const generalDirs = [];
                 const yearEntries = [];
                 for await (const [name, handle] of dirHandle.entries()) {
                     if (handle.kind === 'directory') {
-                        yearEntries.push({ name, handle });
+                        if (name.toLowerCase().startsWith('anno ')) {
+                            yearEntries.push({ name, handle });
+                        } else {
+                            generalDirs.push({ name, handle });
+                        }
                     }
                 }
 
                 yearEntries.sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' }));
+                generalDirs.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
-                if (yearEntries.length === 0) {
+                if (yearEntries.length === 0 && generalDirs.length === 0) {
                     container.innerHTML = `
                         <div style="text-align:center; padding: 35px 20px; color: var(--text-muted); background: rgba(30, 41, 59, 0.4); border-radius: 10px; border: 1px dashed var(--border);">
                             <div style="font-size: 2.4rem; margin-bottom: 8px;">📭</div>
                             <div style="font-weight: 600; font-size: 1rem; color: var(--text-main); margin-bottom: 6px;">Nessun documento archiviato al momento</div>
-                            <div style="font-size: 0.85rem; max-width: 480px; margin: 0 auto; line-height: 1.4;">La cartella "<strong>${dirHandle.name}</strong>" è collegata e pronta. Quando generi ricevute soci, compensi collaboratori, bilanci, rimborsi o esportazioni, le sottocartelle per Anno Sportivo verranno create automaticamente qui.</div>
+                            <div style="font-size: 0.85rem; max-width: 480px; margin: 0 auto; line-height: 1.4;">La cartella "<strong>${dirHandle.name}</strong>" è collegata e pronta. Quando generi ricevute soci, compensi collaboratori, bilanci, rimborsi o esportazioni, le sottocartelle per Anno Sportivo e le esportazioni JSON verranno create automaticamente qui.</div>
                         </div>
                     `;
                     return;
                 }
 
                 let treeHtml = '';
+
+                // Sezione Esportazioni JSON e cartelle generali radice (senza datazione per anno sportivo)
+                for (const g of generalDirs) {
+                    const files = [];
+                    for await (const [fileName, fileHandle] of g.handle.entries()) {
+                        if (fileHandle.kind === 'file') {
+                            let sizeStr = '';
+                            try {
+                                const fObj = await fileHandle.getFile();
+                                const sz = fObj.size;
+                                sizeStr = sz > 1024 * 1024 ? (sz / (1024 * 1024)).toFixed(1) + ' MB' : (sz / 1024).toFixed(0) + ' KB';
+                            } catch(e) {}
+                            files.push({ name: fileName, handle: fileHandle, size: sizeStr });
+                        }
+                    }
+                    files.sort((a, b) => b.name.localeCompare(a.name));
+
+                    const safeGenId = g.name.replace(/[^a-zA-Z0-9]/g, '_');
+                    const isJsonFolder = g.name.toLowerCase().includes('json') || g.name.toLowerCase().includes('backup');
+                    const isGenOpen = (preferredCat && (preferredCat.includes('json') || preferredCat === 'backup')) || isJsonFolder || generalDirs.length <= 2;
+
+                    treeHtml += `
+                        <div class="glass-card" style="margin-bottom: 14px; padding: 14px; border: 1px solid rgba(139, 92, 246, 0.45); border-left: 5px solid #8b5cf6; border-radius: 10px; background: rgba(30, 41, 59, 0.65);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="app._toggleDocTreeSection('gen_${safeGenId}')">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 1.25rem;">${isJsonFolder ? '🖴' : '📁'}</span>
+                                    <span style="font-weight: 700; font-size: 1.02rem; color: #c4b5fd;">${isJsonFolder ? 'Esportazioni JSON (Backup Database)' : g.name}</span>
+                                    <span class="badge" style="background: rgba(139, 92, 246, 0.25); color: #c4b5fd; font-size: 0.75rem; padding: 3px 8px; border-radius: 6px;">${files.length} ${files.length === 1 ? 'backup' : 'backup'}</span>
+                                </div>
+                                <span id="icon_gen_${safeGenId}" style="font-size: 0.9rem; color: var(--text-muted);">${isGenOpen ? '▲' : '▼'}</span>
+                            </div>
+
+                            <div id="body_gen_${safeGenId}" style="margin-top: 12px; display: ${isGenOpen ? 'flex' : 'none'}; flex-direction: column; gap: 6px;">
+                                ${files.length === 0 ? `
+                                    <div style="font-size: 0.82rem; color: var(--text-muted); padding: 8px 12px; background: rgba(15, 23, 42, 0.4); border-radius: 6px;">Nessun file presente in questa cartella.</div>
+                                ` : files.map(f => {
+                                    const fExt = f.name.split('.').pop().toLowerCase();
+                                    const fIcon = fExt === 'json' ? '🖴' : fExt === 'pdf' ? '📄' : (fExt === 'xlsx' || fExt === 'xls') ? '📊' : '📁';
+                                    return `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 6px; background: rgba(15, 23, 42, 0.65); font-size: 0.82rem; gap: 10px; border: 1px solid rgba(255,255,255,0.04);">
+                                            <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                                                <span style="font-size: 1.05rem;">${fIcon}</span>
+                                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main); font-weight: 600;" title="${f.name}">${f.name}</span>
+                                                ${f.size ? `<span style="font-size: 0.72rem; color: var(--text-muted); flex-shrink: 0;">(${f.size})</span>` : ''}
+                                            </div>
+                                            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                                                <button class="btn btn-outline" style="padding: 3px 10px; font-size: 0.75rem; border-color: rgba(139, 92, 246, 0.5); color: #c4b5fd; display: flex; align-items: center; gap: 4px;" onclick="app.openFileFromFS('root', '${encodeURIComponent(g.name)}', '${encodeURIComponent(f.name)}')">
+                                                    <span>👁️</span> <span>Apri</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 for (const y of yearEntries) {
                     const categories = [];
                     for await (const [catName, catHandle] of y.handle.entries()) {
@@ -10891,16 +10955,21 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         async openFileFromFS(yearName, catName, fileName) {
             try {
-                const decodedYear = decodeURIComponent(yearName);
-                const decodedCat = decodeURIComponent(catName);
-                const decodedFile = decodeURIComponent(fileName);
+                const decodedYear = decodeURIComponent(yearName || '');
+                const decodedCat = decodeURIComponent(catName || '');
+                const decodedFile = decodeURIComponent(fileName || '');
 
                 const dirHandle = await this.getOutputFolder();
                 if (!dirHandle) throw new Error("Cartella non disponibile");
 
-                const yearDir = await dirHandle.getDirectoryHandle(decodedYear, { create: false });
-                const catDir = await yearDir.getDirectoryHandle(decodedCat, { create: false });
-                const fileHandle = await catDir.getFileHandle(decodedFile, { create: false });
+                let targetDir;
+                if (!decodedYear || decodedYear === 'root' || decodedYear === 'undefined') {
+                    targetDir = await dirHandle.getDirectoryHandle(decodedCat, { create: false });
+                } else {
+                    const yearDir = await dirHandle.getDirectoryHandle(decodedYear, { create: false });
+                    targetDir = await yearDir.getDirectoryHandle(decodedCat, { create: false });
+                }
+                const fileHandle = await targetDir.getFileHandle(decodedFile, { create: false });
                 const file = await fileHandle.getFile();
                 const url = URL.createObjectURL(file);
                 window.open(url, '_blank');
@@ -11037,6 +11106,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const safeCat = sanitize(category);
             const safeFilename = sanitize(filename);
 
+            const isJsonBackup = (category === 'backup' || category === 'esportazioni json' || category === 'esportazioni_json');
+
             let dirHandle = await this.getOutputFolder();
             if (!dirHandle) {
                 // Cartella non impostata: fallback garantito nella cartella Download del browser
@@ -11049,7 +11120,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 10000);
                 this.toast(`File "${safeFilename}" scaricato nella cartella Download del browser.`, 'info');
-                this.showDocumentProducedBanner(safeFilename, blob, 'Cartella Download del browser', safeCat, safeYear);
+                this.showDocumentProducedBanner(safeFilename, blob, 'Cartella Download del browser', isJsonBackup ? 'esportazioni json' : safeCat, isJsonBackup ? null : safeYear);
                 return false;
             }
 
@@ -11062,35 +11133,48 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         throw new Error("Permesso di scrittura non concesso sulla cartella");
                     }
                 }
-                const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: true });
-                const catDir = await yearDir.getDirectoryHandle(safeCat, { create: true });
 
-                if (category === 'backup') {
+                let targetDir;
+                let savePathStr;
+                let bannerLocationStr;
+
+                if (isJsonBackup) {
+                    // I backup JSON dell'intero database vengono salvati nella cartella dedicata "esportazioni json" senza datazione annuale
+                    targetDir = await dirHandle.getDirectoryHandle('esportazioni json', { create: true });
+                    savePathStr = `esportazioni json/${targetFilename}`;
+                    bannerLocationStr = `esportazioni json`;
+                } else {
+                    const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: true });
+                    targetDir = await yearDir.getDirectoryHandle(safeCat, { create: true });
+                    savePathStr = `anno ${safeYear}/${safeCat}/${targetFilename}`;
+                    bannerLocationStr = `anno ${safeYear}/${safeCat}`;
+                }
+
+                if (isJsonBackup) {
                     // Prevenzione collisione: non sovrascrivere mai file di backup già presenti sul disco
                     let counter = 1;
                     let fileExists = true;
                     while (fileExists && counter <= 1000) {
                         try {
-                            await catDir.getFileHandle(targetFilename, { create: false });
-                            // Se getFileHandle ha successo senza errore, il file esiste già: incrementa il suffisso
+                            await targetDir.getFileHandle(targetFilename, { create: false });
                             const dotIndex = safeFilename.lastIndexOf('.');
                             const baseName = dotIndex !== -1 ? safeFilename.substring(0, dotIndex) : safeFilename;
                             const ext = dotIndex !== -1 ? safeFilename.substring(dotIndex) : '';
                             targetFilename = `${baseName}_(${counter})${ext}`;
+                            savePathStr = `esportazioni json/${targetFilename}`;
                             counter++;
                         } catch (e) {
-                            // File non presente: nome libero e disponibile!
                             fileExists = false;
                         }
                     }
                 }
 
-                const fileHandle = await catDir.getFileHandle(targetFilename, { create: true });
+                const fileHandle = await targetDir.getFileHandle(targetFilename, { create: true });
                 const writable = await fileHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
-                this.toast(`💾 Salvato in: anno ${safeYear}/${safeCat}/${targetFilename}`, 'success');
-                this.showDocumentProducedBanner(targetFilename, blob, `anno ${safeYear}/${safeCat}`, safeCat, safeYear);
+                this.toast(`💾 Salvato in: ${savePathStr}`, 'success');
+                this.showDocumentProducedBanner(targetFilename, blob, bannerLocationStr, isJsonBackup ? 'esportazioni json' : safeCat, isJsonBackup ? null : safeYear);
                 return true;
             } catch (e) {
                 console.warn('Salvataggio nella cartella non riuscito, fallback su Download browser:', e);
@@ -11104,7 +11188,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 10000);
                 this.toast(`Cartella non accessibile (${e.message}). File scaricato in Download.`, 'warning');
-                this.showDocumentProducedBanner(targetFilename || safeFilename, blob, 'Cartella Download (Fallback)', safeCat, safeYear);
+                this.showDocumentProducedBanner(targetFilename || safeFilename, blob, 'Cartella Download (Fallback)', isJsonBackup ? 'esportazioni json' : safeCat, isJsonBackup ? null : safeYear);
                 return false;
             }
         },
@@ -14403,9 +14487,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             };
 
             const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: 'application/json' });
-            const yearStr = this.getSportsYear(now);
-            this.saveDocumentFS(fileName, blob, 'backup', yearStr);
-            this.toast(`✅ Backup JSON sequenziale #${seqPart} esportato con successo (${fullBackup._backup_meta.conteggi.primanota} movimenti Prima Nota e tutti i moduli inclusi)!`, 'success');
+            this.saveDocumentFS(fileName, blob, 'esportazioni json', null);
+            this.toast(`✅ Backup JSON sequenziale #${seqPart} salvato in "esportazioni json" (${fullBackup._backup_meta.conteggi.primanota} movimenti Prima Nota e tutti i moduli inclusi)!`, 'success');
         },
 
         importData(event) {
