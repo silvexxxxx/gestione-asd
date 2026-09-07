@@ -18987,23 +18987,39 @@ ${r.annullata ? `
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         },
 
-        calcolaSaldiFinanziari(dataChiusura) {
+        calcolaSaldiFinanziari(dataChiusura, annoSportivo = null) {
             let totEntrate = 0, totUscite = 0, totCassa = 0, totBanca = 0;
             const maxDate = dataChiusura ? new Date(dataChiusura) : null;
+            let minDate = null;
+            if (annoSportivo) {
+                const parts = String(annoSportivo).split(/[-\/]/).map(x => parseInt(x, 10));
+                if (parts.length === 2 && !isNaN(parts[0])) {
+                    minDate = new Date(parts[0], 8, 1); // 1° Settembre dell'anno di avvio
+                }
+            }
             
             (this.state.primanota || []).forEach(mov => {
-                if (maxDate && mov.data) {
-                    const movDate = new Date(mov.data);
-                    if (movDate > maxDate) return;
-                }
+                if (!mov.data) return;
+                const movDate = new Date(mov.data);
+                if (maxDate && movDate > maxDate) return;
+
                 const imp = parseFloat(mov.importo) || 0;
                 const isCassa = !mov.metodo || mov.metodo === 'Contanti';
+
+                // Saldo cassa e banca progressivo alla data di chiusura
                 if (mov.tipo === 'entrata') {
-                    totEntrate += imp;
                     if (isCassa) totCassa += imp; else totBanca += imp;
                 } else {
-                    totUscite += imp;
                     if (isCassa) totCassa -= imp; else totBanca -= imp;
+                }
+
+                // Entrate e uscite di competenza dell'esercizio (se minDate è definito)
+                if (!minDate || movDate >= minDate) {
+                    if (mov.tipo === 'entrata') {
+                        totEntrate += imp;
+                    } else {
+                        totUscite += imp;
+                    }
                 }
             });
 
@@ -19014,6 +19030,122 @@ ${r.annullata ? `
                 cassa: totCassa.toFixed(2),
                 banca: totBanca.toFixed(2)
             };
+        },
+
+        escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        },
+
+        renderSocioSelectOptions(selectedValue = '', placeholder = '-- Seleziona socio dall\'elenco --') {
+            const esc = (s) => this.escapeHtml(s);
+            const soci = [...(this.state.soci || [])].sort((a, b) => {
+                const na = `${a.cognome || ''} ${a.nome || ''}`.trim().toLowerCase();
+                const nb = `${b.cognome || ''} ${b.nome || ''}`.trim().toLowerCase();
+                return na.localeCompare(nb);
+            });
+
+            let html = `<option value="">${placeholder}</option>`;
+            let isMatched = false;
+            const cleanSel = (selectedValue || '').trim().toLowerCase();
+
+            soci.forEach(s => {
+                const fullName = `${s.cognome || ''} ${s.nome || ''}`.trim();
+                if (!fullName) return;
+                const isSel = cleanSel && (cleanSel === fullName.toLowerCase() || String(s.id) === String(selectedValue));
+                if (isSel) isMatched = true;
+                const cfStr = s.codice_fiscale ? ` (${s.codice_fiscale})` : '';
+                html += `<option value="${esc(fullName)}" ${isSel ? 'selected' : ''}>${esc(fullName)}${cfStr}</option>`;
+            });
+
+            if (selectedValue && !isMatched && selectedValue.trim() && selectedValue !== '__custom__') {
+                html += `<option value="${esc(selectedValue.trim())}" selected>${esc(selectedValue.trim())} (Personalizzato)</option>`;
+            }
+
+            html += `<option value="__custom__">✏️ Altro (inserisci nominativo manuale)...</option>`;
+            return html;
+        },
+
+        onVerbaleRoleChange(selectEl, roleKey) {
+            if (selectEl.value === '__custom__') {
+                const manualName = prompt('Inserisci Cognome e Nome:');
+                if (manualName && manualName.trim()) {
+                    const clean = manualName.trim();
+                    const opt = document.createElement('option');
+                    opt.value = clean;
+                    opt.textContent = clean + ' (Manuale)';
+                    opt.selected = true;
+                    selectEl.insertBefore(opt, selectEl.lastElementChild);
+                    selectEl.value = clean;
+                } else {
+                    selectEl.value = '';
+                }
+            }
+            const d = this.state.verbale_wizard_data || {};
+            d[roleKey] = selectEl.value;
+            this.saveVerbaleWizardStep();
+        },
+
+        onVerbaleConsigliereChange(selectEl, idx) {
+            if (selectEl.value === '__custom__') {
+                const manualName = prompt('Inserisci Cognome e Nome del Consigliere:');
+                if (manualName && manualName.trim()) {
+                    const clean = manualName.trim();
+                    const opt = document.createElement('option');
+                    opt.value = clean;
+                    opt.textContent = clean + ' (Manuale)';
+                    opt.selected = true;
+                    selectEl.insertBefore(opt, selectEl.lastElementChild);
+                    selectEl.value = clean;
+                } else {
+                    selectEl.value = '';
+                }
+            }
+            const d = this.state.verbale_wizard_data || {};
+            if (!Array.isArray(d.consiglieri_list)) d.consiglieri_list = [];
+            d.consiglieri_list[idx] = selectEl.value;
+            d.nuovi_consiglieri = d.consiglieri_list.filter(Boolean).join(', ');
+            this.saveVerbaleWizardStep();
+        },
+
+        addVerbaleConsigliere() {
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            if (!Array.isArray(d.consiglieri_list)) {
+                d.consiglieri_list = (d.nuovi_consiglieri || '').split(',').map(x => x.trim()).filter(Boolean);
+            }
+            d.consiglieri_list.push('');
+            d.nuovi_consiglieri = d.consiglieri_list.filter(Boolean).join(', ');
+            this.renderVerbali();
+        },
+
+        removeVerbaleConsigliere(idx) {
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            if (!Array.isArray(d.consiglieri_list)) {
+                d.consiglieri_list = (d.nuovi_consiglieri || '').split(',').map(x => x.trim()).filter(Boolean);
+            }
+            d.consiglieri_list.splice(idx, 1);
+            if (d.consiglieri_list.length === 0) d.consiglieri_list.push('');
+            d.nuovi_consiglieri = d.consiglieri_list.filter(Boolean).join(', ');
+            this.renderVerbali();
+        },
+
+        onVerbaleAnnoSportivoChange(newYear) {
+            const d = this.state.verbale_wizard_data || {};
+            d.anno_sportivo = newYear;
+            const parts = String(newYear).split(/[-\/]/).map(x => parseInt(x, 10));
+            if (parts.length === 2 && !isNaN(parts[1])) {
+                d.data_chiusura = `${parts[1]}-08-31`;
+                const saldi = this.calcolaSaldiFinanziari(d.data_chiusura, newYear);
+                d.entrate = saldi.entrate;
+                d.uscite = saldi.uscite;
+                d.avanzo = saldi.avanzo;
+                d.cassa = saldi.cassa;
+                d.banca = saldi.banca;
+            }
+            this.saveVerbaleWizardStep();
+            this.toast(`Anno sportivo impostato su ${newYear}. Saldi stimati aggiornati!`, 'info');
         },
 
         initVerbaliState() {
@@ -19182,10 +19314,22 @@ ${r.annullata ? `
 
         startVerbaleWizard(type = 'ordinaria', editId = null) {
             this.initVerbaliState();
-            const sportsYear = this.getSportsYear ? this.getSportsYear() : `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+            const curYear = new Date().getFullYear();
+            const currentSy = this.getSportsYear ? this.getSportsYear() : `${curYear}-${curYear + 1}`;
+            let sportsYear = currentSy;
+            if (type === 'ordinaria') {
+                const parts = currentSy.split(/[-\/]/).map(x => parseInt(x, 10));
+                if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    sportsYear = `${parts[0] - 1}-${parts[1] - 1}`;
+                } else {
+                    sportsYear = `${curYear - 1}-${curYear}`;
+                }
+            }
             const s = this.state.settings || {};
-            const defaultChiusura = `${new Date().getFullYear()}-08-31`;
-            const saldi = this.calcolaSaldiFinanziari(defaultChiusura);
+            const syParts = sportsYear.split(/[-\/]/).map(x => parseInt(x, 10));
+            const endYear = (syParts.length === 2 && !isNaN(syParts[1])) ? syParts[1] : curYear;
+            const defaultChiusura = `${endYear}-08-31`;
+            const saldi = this.calcolaSaldiFinanziari(defaultChiusura, sportsYear);
 
             const presName = this.resolveSocioNome(s.presidente, 'Pintus Silverio');
             const secName = this.resolveSocioNome(s.segretario, 'Boccone Serafino');
@@ -19196,6 +19340,14 @@ ${r.annullata ? `
                 const item = (this.state.verbali_archive || []).find(x => String(x.id) === String(editId));
                 if (item) {
                     this.state.verbale_wizard_data = JSON.parse(JSON.stringify(item.data || {}));
+                    if (!Array.isArray(this.state.verbale_wizard_data.consiglieri_list) || this.state.verbale_wizard_data.consiglieri_list.length === 0) {
+                        if (this.state.verbale_wizard_data.nuovi_consiglieri) {
+                            this.state.verbale_wizard_data.consiglieri_list = this.state.verbale_wizard_data.nuovi_consiglieri.split(',').map(x => x.trim()).filter(Boolean);
+                        }
+                        if (!Array.isArray(this.state.verbale_wizard_data.consiglieri_list) || this.state.verbale_wizard_data.consiglieri_list.length === 0) {
+                            this.state.verbale_wizard_data.consiglieri_list = [''];
+                        }
+                    }
                     this.state.verbale_wizard_type = item.type || type;
                     this.state.verbale_wizard_edit_id = item.id;
                 }
@@ -19219,6 +19371,7 @@ ${r.annullata ? `
                     nuovo_presidente: presName,
                     nuovo_vice: viceName,
                     nuovo_segretario: secName,
+                    consiglieri_list: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [''],
                     nuovi_consiglieri: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
                     data_chiusura: defaultChiusura,
                     entrate: saldi.entrate,
@@ -19307,11 +19460,15 @@ ${r.annullata ? `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Presidente della Riunione</label>
-                                <input type="text" id="wz-presidente" list="soci-autocomplete-dl" class="form-control" value="${d.presidente || ''}">
+                                <select id="wz-presidente" class="form-control" onchange="app.onVerbaleRoleChange(this, 'presidente')">
+                                    ${this.renderSocioSelectOptions(d.presidente, '-- Seleziona Presidente --')}
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Segretario Verbalizzante</label>
-                                <input type="text" id="wz-segretario" list="soci-autocomplete-dl" class="form-control" value="${d.segretario || ''}">
+                                <select id="wz-segretario" class="form-control" onchange="app.onVerbaleRoleChange(this, 'segretario')">
+                                    ${this.renderSocioSelectOptions(d.segretario, '-- Seleziona Segretario --')}
+                                </select>
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom: 1.2rem;">
@@ -19356,8 +19513,13 @@ ${r.annullata ? `
                     stepContentHtml = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
                             <div class="form-group">
-                                <label style="font-weight: 600; display:block; margin-bottom: 4px;">Anno Sportivo</label>
-                                <input type="text" id="wz-anno_sportivo" class="form-control" value="${d.anno_sportivo || ''}" placeholder="es. 2025/2026">
+                                <label style="font-weight: 600; display:block; margin-bottom: 4px;">
+                                    Anno Sportivo / Esercizio di Riferimento del Bilancio
+                                </label>
+                                <input type="text" id="wz-anno_sportivo" class="form-control" value="${d.anno_sportivo || ''}" placeholder="es. 2025-2026" onchange="app.onVerbaleAnnoSportivoChange(this.value)">
+                                <small style="color: #94a3b8; font-size: 0.76rem; display: block; margin-top: 4px; line-height: 1.35;">
+                                    💡 <strong>Nota:</strong> Inserisci la stagione conclusa che viene approvata (es. <strong>2025-2026</strong>). La data della seduta sotto (es. 07/09/2026) indica il giorno in cui si tiene l'Assemblea.
+                                </small>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Numero Convocazioni</label>
@@ -19417,15 +19579,45 @@ ${r.annullata ? `
                         </div>
                     `;
                 } else if (currentStep.id === 'step_ord_pres') {
+                    if (!Array.isArray(d.consiglieri_list) || d.consiglieri_list.length === 0) {
+                        if (d.nuovi_consiglieri) {
+                            d.consiglieri_list = d.nuovi_consiglieri.split(',').map(x => x.trim()).filter(Boolean);
+                        }
+                        if (!Array.isArray(d.consiglieri_list) || d.consiglieri_list.length === 0) {
+                            d.consiglieri_list = [''];
+                        }
+                    }
+
+                    let consiglieriRowsHtml = '';
+                    d.consiglieri_list.forEach((cName, idx) => {
+                        consiglieriRowsHtml += `
+                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.82rem; font-weight: 600; min-width: 95px; color: #a7f3d0;">Consigliere #${idx + 1}:</span>
+                                <div style="flex: 1;">
+                                    <select class="form-control wz-consigliere-sel" onchange="app.onVerbaleConsigliereChange(this, ${idx})">
+                                        ${this.renderSocioSelectOptions(cName, '-- Seleziona consigliere dall\'elenco soci --')}
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 6px 10px; font-size: 0.85rem;" onclick="app.removeVerbaleConsigliere(${idx})" title="Rimuovi questo consigliere">
+                                    🗑️
+                                </button>
+                            </div>
+                        `;
+                    });
+
                     stepContentHtml = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Presidente dell'Assemblea</label>
-                                <input type="text" id="wz-presidente" list="soci-autocomplete-dl" class="form-control" value="${d.presidente || ''}">
+                                <select id="wz-presidente" class="form-control" onchange="app.onVerbaleRoleChange(this, 'presidente')">
+                                    ${this.renderSocioSelectOptions(d.presidente, '-- Seleziona Presidente Assemblea --')}
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Segretario dell'Assemblea</label>
-                                <input type="text" id="wz-segretario" list="soci-autocomplete-dl" class="form-control" value="${d.segretario || ''}">
+                                <select id="wz-segretario" class="form-control" onchange="app.onVerbaleRoleChange(this, 'segretario')">
+                                    ${this.renderSocioSelectOptions(d.segretario, '-- Seleziona Segretario Assemblea --')}
+                                </select>
                             </div>
                         </div>
 
@@ -19446,24 +19638,43 @@ ${r.annullata ? `
                         ${d.rinnovo_direttivo === 'Si' ? `
                             <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 1rem;">
                                 <div style="font-weight: 700; color: #34d399; margin-bottom: 10px; font-size: 0.95rem;">👑 Nuovo Consiglio Direttivo Eletto</div>
+                                
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem;">
                                     <div class="form-group">
                                         <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Presidente Eletto</label>
-                                        <input type="text" id="wz-nuovo_presidente" list="soci-autocomplete-dl" class="form-control" value="${d.nuovo_presidente || d.presidente || ''}">
+                                        <select id="wz-nuovo_presidente" class="form-control" onchange="app.onVerbaleRoleChange(this, 'nuovo_presidente')">
+                                            ${this.renderSocioSelectOptions(d.nuovo_presidente || d.presidente, '-- Seleziona Presidente Eletto --')}
+                                        </select>
                                     </div>
                                     <div class="form-group">
                                         <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Vice Presidente Eletto</label>
-                                        <input type="text" id="wz-nuovo_vice" list="soci-autocomplete-dl" class="form-control" value="${d.nuovo_vice || ''}">
+                                        <select id="wz-nuovo_vice" class="form-control" onchange="app.onVerbaleRoleChange(this, 'nuovo_vice')">
+                                            ${this.renderSocioSelectOptions(d.nuovo_vice, '-- Seleziona Vice Presidente Eletto (opzionale) --')}
+                                        </select>
                                     </div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                                
+                                <div style="margin-bottom: 0.8rem;">
                                     <div class="form-group">
                                         <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Segretario Eletto</label>
-                                        <input type="text" id="wz-nuovo_segretario" list="soci-autocomplete-dl" class="form-control" value="${d.nuovo_segretario || d.segretario || ''}">
+                                        <select id="wz-nuovo_segretario" class="form-control" onchange="app.onVerbaleRoleChange(this, 'nuovo_segretario')">
+                                            ${this.renderSocioSelectOptions(d.nuovo_segretario || d.segretario, '-- Seleziona Segretario Eletto --')}
+                                        </select>
                                     </div>
-                                    <div class="form-group">
-                                        <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Consiglieri Eletti (separati da virgola)</label>
-                                        <input type="text" id="wz-nuovi_consiglieri" class="form-control" value="${d.nuovi_consiglieri || ''}" placeholder="es. Rossi Mario, Bianchi Luigi">
+                                </div>
+
+                                <!-- Consiglieri Eletti (Menu a tendina da elenco soci + pulsante aggiungi) -->
+                                <div style="border-top: 1px dashed rgba(16, 185, 129, 0.3); padding-top: 10px; margin-top: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #34d399; margin: 0;">
+                                            Consiglieri Eletti nel Direttivo
+                                        </label>
+                                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 10px; border-color: rgba(52, 211, 153, 0.4); color: #34d399;" onclick="app.addVerbaleConsigliere()">
+                                            ➕ Aggiungi un altro consigliere
+                                        </button>
+                                    </div>
+                                    <div id="wz-consiglieri-container">
+                                        ${consiglieriRowsHtml}
                                     </div>
                                 </div>
                             </div>
@@ -19522,8 +19733,10 @@ ${r.annullata ? `
                     for (let i = 1; i <= numFirmatari; i++) {
                         firmatariInputs += `
                             <div class="form-group" style="margin-bottom: 8px;">
-                                <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nome Socio Firmatario ${i}</label>
-                                <input type="text" id="wz-f_nome_${i}" list="soci-autocomplete-dl" class="form-control" value="${d['f_nome_' + i] || ''}" placeholder="Cognome e Nome Socio">
+                                <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Socio Firmatario ${i}</label>
+                                <select id="wz-f_nome_${i}" class="form-control" onchange="app.onVerbaleRoleChange(this, 'f_nome_${i}')">
+                                    ${this.renderSocioSelectOptions(d['f_nome_' + i] || '', '-- Seleziona socio firmatario --')}
+                                </select>
                             </div>
                         `;
                     }
@@ -19636,7 +19849,8 @@ ${r.annullata ? `
 
         recalculateVerbaleSaldi() {
             const dataChiusura = document.getElementById('wz-data_chiusura')?.value;
-            const saldi = this.calcolaSaldiFinanziari(dataChiusura);
+            const annoSportivo = this.state.verbale_wizard_data?.anno_sportivo;
+            const saldi = this.calcolaSaldiFinanziari(dataChiusura, annoSportivo);
             if (document.getElementById('wz-entrate')) document.getElementById('wz-entrate').value = saldi.entrate;
             if (document.getElementById('wz-uscite')) document.getElementById('wz-uscite').value = saldi.uscite;
             if (document.getElementById('wz-avanzo')) {
@@ -19659,6 +19873,12 @@ ${r.annullata ? `
                 const key = el.id.replace('wz-', '');
                 d[key] = el.value;
             });
+
+            const consiglieriEls = form.querySelectorAll('.wz-consigliere-sel');
+            if (consiglieriEls.length > 0) {
+                d.consiglieri_list = Array.from(consiglieriEls).map(el => el.value).filter(Boolean);
+                d.nuovi_consiglieri = d.consiglieri_list.join(', ');
+            }
             this.state.verbale_wizard_data = d;
         },
 
