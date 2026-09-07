@@ -19018,6 +19018,10 @@ ${r.annullata ? `
             // Data limite di chiusura per i saldi di cassa/banca alla data del bilancio
             const maxDateStr = dataChiusura ? String(dataChiusura).substring(0, 10) : (endYearDate || '9999-12-31');
 
+            // Nomi canonici dei conti da settings.saldi_iniziali se definiti
+            const configuredCashConto = (this.state.settings?.saldi_iniziali || []).find(s => s.tipo === 'cassa')?.conto || 'Cassa Contanti';
+            const configuredBankConto = (this.state.settings?.saldi_iniziali || []).find(s => s.tipo === 'banca' && !['paypal', 'satispay', 'stripe'].some(x => (s.conto || '').toLowerCase().includes(x)))?.conto || 'Conto Corrente Banca';
+
             const casseMap = {};
 
             (this.state.primanota || []).forEach(mov => {
@@ -19030,11 +19034,29 @@ ${r.annullata ? `
                 const tipo = (mov.tipo || '').trim().toLowerCase();
                 const isEntrata = tipo === 'entrata';
                 const isUscita = tipo === 'uscita';
-                const isGiroconto = tipo === 'giroconto' || (mov.categoria && mov.categoria.startsWith('Giroconto')) || (mov.riferimento && mov.riferimento.startsWith('GIROCONTO_'));
+                const isLegacySingleRowGiroconto = tipo === 'giroconto';
+                const isDoubleRowGiroconto = !isLegacySingleRowGiroconto && (
+                    !!mov.giroconto_group || 
+                    (mov.riferimento && mov.riferimento.startsWith('GIROCONTO_')) || 
+                    (mov.categoria && mov.categoria.startsWith('Giroconto'))
+                );
+                const isGiroconto = isLegacySingleRowGiroconto || isDoubleRowGiroconto;
                 const isSaldoIniziale = !!mov.is_saldo_iniziale || (mov.riferimento && mov.riferimento.startsWith('SALDO_INIZIALE_')) || (mov.categoria && (mov.categoria.includes('Saldo Iniziale') || mov.categoria.includes('Giacenza Iniziale')));
 
                 const isCassa = this.isCassaMetodo(mov.metodo);
-                const mName = mov.metodo ? String(mov.metodo).trim() : (isCassa ? 'Cassa Contanti' : 'Conto Corrente Banca');
+
+                // Normalizzazione nome conto/cassa
+                let mName;
+                if (isCassa) {
+                    mName = configuredCashConto;
+                } else {
+                    const rawM = (mov.metodo ? String(mov.metodo).trim() : '').toLowerCase();
+                    if (rawM.includes('paypal')) mName = 'PayPal';
+                    else if (rawM.includes('satispay')) mName = 'Satispay';
+                    else if (rawM.includes('stripe')) mName = 'Stripe';
+                    else if (rawM.includes('secondo')) mName = 'Secondo Conto Corrente';
+                    else mName = configuredBankConto;
+                }
 
                 if (!casseMap[mName]) {
                     casseMap[mName] = { nome: mName, isCassa: isCassa, saldo: 0, count: 0 };
@@ -19042,7 +19064,8 @@ ${r.annullata ? `
                 casseMap[mName].count++;
 
                 // Saldo cassa e banca cumulativo alla data di chiusura
-                if (isGiroconto) {
+                if (isLegacySingleRowGiroconto) {
+                    // Vecchio giroconto a riga singola (sposta da mName a dest)
                     if (isCassa) {
                         totCassa -= imp;
                         totBanca += imp;
@@ -19051,12 +19074,22 @@ ${r.annullata ? `
                         totCassa += imp;
                     }
                     casseMap[mName].saldo -= imp;
-                    const dest = (mov.categoria && !mov.categoria.startsWith('Giroconto')) ? mov.categoria.trim() : (isCassa ? 'Conto Corrente Banca' : 'Cassa Contanti');
-                    const destIsCassa = this.isCassaMetodo(dest);
-                    if (!casseMap[dest]) {
-                        casseMap[dest] = { nome: dest, isCassa: destIsCassa, saldo: 0, count: 0 };
+                    const destRaw = (mov.categoria && !mov.categoria.startsWith('Giroconto')) ? mov.categoria.trim() : (isCassa ? configuredBankConto : configuredCashConto);
+                    const destIsCassa = this.isCassaMetodo(destRaw);
+                    const destName = destIsCassa ? configuredCashConto : configuredBankConto;
+                    if (!casseMap[destName]) {
+                        casseMap[destName] = { nome: destName, isCassa: destIsCassa, saldo: 0, count: 0 };
                     }
-                    casseMap[dest].saldo += imp;
+                    casseMap[destName].saldo += imp;
+                } else if (isDoubleRowGiroconto) {
+                    // Giroconto moderno a doppia riga collegata (una riga Uscita e una riga Entrata)
+                    if (isUscita) {
+                        if (isCassa) totCassa -= imp; else totBanca -= imp;
+                        casseMap[mName].saldo -= imp;
+                    } else if (isEntrata) {
+                        if (isCassa) totCassa += imp; else totBanca += imp;
+                        casseMap[mName].saldo += imp;
+                    }
                 } else if (isEntrata) {
                     if (isCassa) totCassa += imp; else totBanca += imp;
                     casseMap[mName].saldo += imp;
@@ -19928,15 +19961,17 @@ ${r.annullata ? `
                         d.data_chiusura = sy ? `${sy.y2}-08-31` : '2026-08-31';
                     }
                     const saldi = this.calcolaSaldiFinanziari(d.data_chiusura, d.anno_sportivo);
-                    if (!d.entrate || d.entrate === '0.00' || !d.cassa || (d.entrate === '0.00' && parseFloat(d.uscite) > 0 && parseFloat(d.cassa) < 0)) {
+                    const hasStaleBadges = Array.isArray(d.casseList) && d.casseList.some(c => c.nome === 'Bonifico' || c.nome === 'CBILL' || c.nome === 'Bancomat' || (c.nome === 'Contanti' && d.casseList.some(x => x.nome === 'Cassa Contanti')));
+                    if (!d.entrate || d.entrate === '0.00' || !d.cassa || (d.entrate === '0.00' && parseFloat(d.uscite) > 0 && parseFloat(d.cassa) < 0) || (parseFloat(d.banca) < 0 && parseFloat(saldi.banca) >= 0) || hasStaleBadges || d._lastCalcoloAS !== d.anno_sportivo) {
                         d.entrate = saldi.entrate;
                         d.uscite = saldi.uscite;
                         d.avanzo = saldi.avanzo;
                         d.cassa = saldi.cassa;
                         d.banca = saldi.banca;
                         d.casseList = saldi.casseList;
+                        d._lastCalcoloAS = d.anno_sportivo;
                     }
-                    const activeCasseList = Array.isArray(d.casseList) && d.casseList.length > 0 ? d.casseList : (saldi.casseList || []);
+                    const activeCasseList = (Array.isArray(d.casseList) && d.casseList.length > 0 && !hasStaleBadges) ? d.casseList : (saldi.casseList || []);
 
                     stepContentHtml = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 8px;">
