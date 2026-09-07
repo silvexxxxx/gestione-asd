@@ -14171,24 +14171,18 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         return (cStart <= hour && cEnd > hour) || (cStart >= hour && cStart < nextHour);
                     });
                     const isToday = weekDays[d - 1].toDateString() === new Date().toDateString();
-                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:48px; padding:2px; position:relative; cursor:pointer; border-bottom:1px solid var(--border); border-right:1px solid var(--border); display:flex; flex-direction:column;" onclick="app.promptCalendarCellAction(${d}, '${hour}', '${dDateStr}')">`;
+                    gridHtml += `<div style="background:${isToday ? 'rgba(59,130,246,0.05)' : 'var(--bg-deep)'}; min-height:36px; padding:2px; position:relative; cursor:pointer; border-bottom:1px solid var(--border); border-right:1px solid var(--border);" onclick="app.promptCalendarCellAction(${d}, '${hour}', '${dDateStr}')">`;
                     
-                    // Quick add button in top-right corner (always accessible)
-                    gridHtml += `<button type="button" style="position:absolute; top:2px; right:2px; width:17px; height:17px; border-radius:4px; background:rgba(30,41,59,0.92); border:1px solid rgba(255,255,255,0.25); color:var(--text-muted); font-size:0.75rem; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5; opacity:0.65; transition:all 0.15s;"
-                            title="Aggiungi Nota o Corso in questo orario"
-                            onmouseover="this.style.opacity='1'; this.style.background='var(--primary)'; this.style.color='white'; this.style.transform='scale(1.15)';"
-                            onmouseout="this.style.opacity='0.65'; this.style.background='rgba(30,41,59,0.92)'; this.style.color='var(--text-muted)'; this.style.transform='scale(1)';"
-                            onclick="event.stopPropagation(); app.promptCalendarCellAction(${d}, '${hour}', '${dDateStr}')">+</button>`;
-
                     slotNotes.forEach(n => {
                         const col = n.colore || '#facc15';
                         const noteTitle = (n.titolo && n.titolo.trim()) ? n.titolo : 'Nota';
-                        gridHtml += `<div style="display:flex; align-items:center; gap:5px; padding:2px 5px; border-radius:4px; background:rgba(15,23,42,0.7); border:1px solid ${col}44; margin-bottom:2px; cursor:pointer; overflow:hidden; margin-right:18px;" 
-                                onmouseover="this.style.borderColor='${col}'; this.style.boxShadow='0 0 6px ${col}44';" 
-                                onmouseout="this.style.borderColor='${col}44'; this.style.boxShadow='none';" 
+                        const tooltip = `📌 ${escapeHtml(noteTitle)}${n.testo ? '&#10;' + escapeHtml(n.testo) : ''}`;
+                        gridHtml += `<div style="display:inline-flex; align-items:center; gap:5px; padding:1px 6px; border-radius:10px; background:rgba(15,23,42,0.8); border:1px solid ${col}66; margin-bottom:2px; cursor:pointer; max-width:100%; transition:all 0.15s ease;" 
+                                onmouseover="this.style.borderColor='${col}'; this.style.boxShadow='0 0 8px ${col}66'; this.style.transform='scale(1.03)';" 
+                                onmouseout="this.style.borderColor='${col}66'; this.style.boxShadow='none'; this.style.transform='scale(1)';" 
                                 onclick="event.stopPropagation(); app.openCalendarNoteDetail('${n.id}')" 
-                                title="📝 ${escapeHtml(noteTitle)}&#10;${escapeHtml(n.testo || '')}">
-                                <span style="display:inline-block; width:7px; height:7px; min-width:7px; border-radius:50%; background-color:${col}; box-shadow:0 0 6px ${col};"></span>
+                                title="${tooltip}">
+                                <span style="display:inline-block; width:8px; height:8px; min-width:8px; border-radius:50%; background-color:${col}; box-shadow:0 0 6px ${col};"></span>
                                 <span style="color:${col}; font-weight:700; font-size:0.68rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     ${escapeHtml(noteTitle)}
                                 </span>
@@ -14204,22 +14198,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         if (cNameLower.includes('pole')) defaultColor = '#ec4899';
                         else if (cNameLower.includes('body')) defaultColor = '#ef4444';
                         const bgCol = isConflict ? 'rgba(239,68,68,0.9)' : ((this.state.corsi_colori && this.state.corsi_colori[c.nome]) || defaultColor);
-                        gridHtml += `<div style="background:${bgCol}; border-radius:4px; padding:3px 6px; font-size:0.68rem; margin-bottom:2px; color:white; cursor:pointer; overflow:hidden; margin-right:18px;" 
+                        gridHtml += `<div style="background:${bgCol}; border-radius:4px; padding:3px 6px; font-size:0.68rem; margin-bottom:2px; color:white; cursor:pointer; overflow:hidden;" 
                                 onclick="event.stopPropagation(); app.openCorsoDetail(${c.id})" 
                                 title="Corso: ${c.nome}&#10;Orario: ${c.startTime}-${c.endTime}&#10;Sala: ${salaNome}&#10;Istruttore: ${istrNome}${isConflict ? '&#10;⚠️ SOVRAPPOSIZIONE' : ''}">
                                 ${isConflict ? '⚠️ ' : ''}${c.nome}${currentTab === 'all' && salaNome ? ' <span style="opacity:0.85; font-weight:400; font-size:0.6rem;">(' + salaNome + ')</span>' : ''}
                                 ${istrNome !== '-' ? `<div style="font-size:0.6rem; opacity:0.9; font-weight:400; margin-top:2px;">👤 ${istrNome}</div>` : ''}
                             </div>`;
                     });
-
-                    if (slotNotes.length > 0 || slotCorsi.length > 0) {
-                        gridHtml += `<div style="margin-top:auto; padding-top:2px;" onclick="event.stopPropagation(); app.promptCalendarCellAction(${d}, '${hour}', '${dDateStr}')">
-                            <div style="font-size:0.6rem; color:var(--text-muted); opacity:0.45; text-align:center; padding:1px 3px; border-radius:3px; border:1px dashed rgba(255,255,255,0.15); cursor:pointer; transition:all 0.15s;"
-                                 onmouseover="this.style.opacity='1'; this.style.borderColor='#facc15'; this.style.color='#fef08a'; this.style.background='rgba(250,204,21,0.08)';"
-                                 onmouseout="this.style.opacity='0.45'; this.style.borderColor='rgba(255,255,255,0.15)'; this.style.color='var(--text-muted)'; this.style.background='transparent';"
-                                 title="Aggiungi Nota o Attività">+ Aggiungi</div>
-                        </div>`;
-                    }
                     gridHtml += `</div>`;
                 }
             });
@@ -14335,12 +14320,6 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     </div>
                                 `;
                             }).join('')}
-                            ${(slotCorsi.length > 0 || slotNotes.length > 0) ? `
-                                <div style="display:flex; align-items:center; justify-content:center; gap:5px; padding:4px 8px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.15); font-size:0.72rem; color:var(--text-muted); cursor:pointer; margin-top:2px;"
-                                     onclick="event.stopPropagation(); app.promptCalendarCellAction(${selDay}, '${hour}', '${selDateStr}')">
-                                    <span>➕ Aggiungi Nota o Corso a quest'ora</span>
-                                </div>
-                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -14638,14 +14617,30 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         openNewCalendarNoteModal(dayOfWeek, hour, dateStr) {
             const pad = n => String(n).padStart(2, '0');
             const now = new Date();
-            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-            
-            const dow = dayOfWeek || (now.getDay() === 0 ? 7 : now.getDay());
-            const targetDate = dateStr || todayStr;
-            const targetHour = hour || `${pad(now.getHours())}:00`;
+            const offset = this.state.currentWeekOffset || 0;
+            const weekDays = this.getWeekDates(offset);
+            const defaultDow = now.getDay() === 0 ? 7 : now.getDay();
+            const dow = (dayOfWeek !== undefined && dayOfWeek !== null && dayOfWeek !== '') ? parseInt(dayOfWeek, 10) : defaultDow;
+
+            let targetDate = dateStr;
+            if (!targetDate && weekDays && weekDays[dow - 1]) {
+                const dObj = weekDays[dow - 1];
+                targetDate = `${dObj.getFullYear()}-${pad(dObj.getMonth() + 1)}-${pad(dObj.getDate())}`;
+            }
+            if (!targetDate) {
+                targetDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            }
+
+            let targetHour = hour || `${pad(now.getHours())}:00`;
+            if (targetHour && !targetHour.includes(':')) {
+                targetHour = targetHour.padStart(2, '0') + ':00';
+            }
+
             const currentTab = this.state.currentSalaTab || 'all';
             const sale = this.state.sale || [];
             const defaultColor = '#facc15';
+            const dowNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+            const dowName = dowNames[dow - 1] || 'Giorno';
 
             const colorsHtml = this.CAL_NOTE_COLORS.map(c => `
                 <button type="button" class="calnote-color-dot" data-hex="${c.hex}" title="${c.label}"
@@ -14686,7 +14681,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <!-- Scheduling Settings -->
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
                         <div class="form-group" style="margin-bottom:0;">
-                            <label style="font-size:0.82rem; font-weight:600;">Data *</label>
+                            <label style="font-size:0.82rem; font-weight:600;">Data * <span id="calnote-dow-name" style="color:var(--primary); font-weight:700; margin-left:4px;">(${dowName})</span></label>
                             <input type="date" name="data" class="form-control" value="${targetDate}" required onchange="app.updateCalNoteDowFromDate(this.value)">
                             <input type="hidden" name="dayOfWeek" id="calnote-dow-val" value="${dow}">
                         </div>
@@ -14707,7 +14702,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div style="grid-column:1/-1; display:flex; align-items:center; gap:8px; margin-top:2px;">
                             <input type="checkbox" name="ricorrente" id="calnote-ricorrente" style="width:16px; height:16px; cursor:pointer;">
                             <label for="calnote-ricorrente" style="font-size:0.82rem; cursor:pointer; color:var(--text-main); margin-bottom:0;">
-                                🔁 Ripeti ogni settimana (promemoria fisso nel giorno e orario selezionati)
+                                🔁 Ripeti ogni settimana (<span id="calnote-rec-dow-name">${dowName}</span> alle ore indicate)
                             </label>
                         </div>
                     </div>
@@ -14750,6 +14745,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const dow = d.getDay() === 0 ? 7 : d.getDay();
             const input = document.getElementById('calnote-dow-val');
             if (input) input.value = dow;
+            const dowNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+            const name = dowNames[dow - 1] || '';
+            const lbl = document.getElementById('calnote-dow-name');
+            if (lbl) lbl.textContent = `(${name})`;
+            const recLbl = document.getElementById('calnote-rec-dow-name');
+            if (recLbl) recLbl.textContent = name;
         },
 
         handleSaveNewCalendarNote(e) {
@@ -14802,6 +14803,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             const curColor = note.colore || '#facc15';
             const curCfg = this.CAL_NOTE_COLORS.find(c => c.hex === curColor) || { hex: curColor, bgGrad: curColor, textCol: '#1e293b' };
             const sale = this.state.sale || [];
+            const dowNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+            const curDowName = dowNames[(note.dayOfWeek || 1) - 1] || 'Giorno';
 
             const escapeStr = (s) => {
                 if (!s) return '';
@@ -14849,7 +14852,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     <!-- Scheduling Settings -->
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
                         <div class="form-group" style="margin-bottom:0;">
-                            <label style="font-size:0.82rem; font-weight:600;">Data *</label>
+                            <label style="font-size:0.82rem; font-weight:600;">Data * <span id="calnote-dow-name" style="color:var(--primary); font-weight:700; margin-left:4px;">(${curDowName})</span></label>
                             <input type="date" name="data" class="form-control" value="${note.data || ''}" required onchange="app.updateCalNoteDowFromDate(this.value)">
                             <input type="hidden" name="dayOfWeek" id="calnote-dow-val" value="${note.dayOfWeek || 1}">
                         </div>
@@ -14870,7 +14873,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <div style="grid-column:1/-1; display:flex; align-items:center; gap:8px; margin-top:2px;">
                             <input type="checkbox" name="ricorrente" id="calnote-ricorrente" ${note.ricorrente ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
                             <label for="calnote-ricorrente" style="font-size:0.82rem; cursor:pointer; color:var(--text-main); margin-bottom:0;">
-                                🔁 Ripeti ogni settimana (promemoria fisso nel giorno e orario)
+                                🔁 Ripeti ogni settimana (<span id="calnote-rec-dow-name">${curDowName}</span> alle ore indicate)
                             </label>
                         </div>
                     </div>
@@ -15071,6 +15074,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 return s ? `${s.cognome} ${s.nome}` : `ID:${sid}`;
             });
 
+            const pad = n => String(n).padStart(2, '0');
+            const weekDays = this.getWeekDates(this.state.currentWeekOffset || 0);
+            const cDow = parseInt(c.dayOfWeek, 10) || 1;
+            const cDateObj = (weekDays && weekDays[cDow - 1]) ? weekDays[cDow - 1] : new Date();
+            const cDateStr = `${cDateObj.getFullYear()}-${pad(cDateObj.getMonth() + 1)}-${pad(cDateObj.getDate())}`;
+
             this.openModal(`📋 ${c.nome}`, `
                     <div style="display:grid; gap:10px; margin-bottom:1.5rem;">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:rgba(255,255,255,0.04); padding:14px; border-radius:10px;">
@@ -15091,8 +15100,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     </div>
                     <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
                         <button type="button" class="btn btn-outline" style="width:100%; border-color:rgba(250,204,21,0.5); color:#fef08a; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; padding:8px;"
-                                onclick="app.closeModal(); app.openNewCalendarNoteModal(${c.dayOfWeek}, '${c.startTime}')">
-                            📝 Aggiungi Nota Post-it per questo orario (${giorni[c.dayOfWeek]} ore ${c.startTime})
+                                onclick="app.closeModal(); app.openNewCalendarNoteModal(${cDow}, '${c.startTime}', '${cDateStr}')">
+                            📝 Aggiungi Nota Post-it per questo orario (${giorni[cDow]} ore ${c.startTime})
                         </button>
                     </div>
                 `);
