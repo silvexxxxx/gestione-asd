@@ -262,6 +262,32 @@
             overflow: hidden !important;
         }
 
+        .dati-associazione-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        .pacchetti-presets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        @media (max-width: 1100px) {
+            .dati-associazione-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            }
+        }
+        @media (max-width: 900px) {
+            .pacchetti-presets-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        @media (max-width: 640px) {
+            .dati-associazione-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
         .page-content {
             flex: 1;
             display: flex;
@@ -1690,7 +1716,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.4";
+        const APP_VERSION = "2.5.5";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -13084,13 +13110,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <!-- 1. Dati Associazione -->
                         <div class="glass-card" style="grid-column: 1 / -1;">
                             <h3 style="margin-bottom:1rem;">🏢 Dati Associazione</h3>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
-                                <div class="form-group" style="margin-bottom:0;"><label>Nome ASD</label><input type="text" class="form-control" value="${s.asdName || ''}" onchange="app.updateSetting('asdName', this.value)"></div>
-                                <div class="form-group" style="margin-bottom:0;"><label>P.IVA / C.F.</label><input type="text" class="form-control" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
-                                <div class="form-group" style="margin-bottom:0;"><label>Telefono</label><input type="tel" class="form-control" placeholder="Es. 340 1234567" value="${s.phone || s.telefono || ''}" onchange="app.updateSetting('phone', this.value); app.updateSetting('telefono', this.value);"></div>
-                                <div class="form-group" style="margin-bottom:0;"><label>Indirizzo</label><input type="text" class="form-control" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
-                                <div class="form-group" style="margin-bottom:0;"><label>Email</label><input type="email" class="form-control" placeholder="Es. info@asd.it" value="${s.email || ''}" onchange="app.updateSetting('email', this.value)"></div>
-                                <div class="form-group" style="margin-bottom:0;"><label>PEC</label><input type="email" class="form-control" placeholder="Es. asd@pec.it" value="${s.pec || ''}" onchange="app.updateSetting('pec', this.value)"></div>
+                            <div class="dati-associazione-grid">
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:0.78rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Nome ASD</label><input type="text" class="form-control" style="font-size:0.85rem; padding:8px 10px;" value="${s.asdName || ''}" onchange="app.updateSetting('asdName', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:0.78rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">P.IVA / C.F.</label><input type="text" class="form-control" style="font-size:0.85rem; padding:8px 10px;" value="${s.pIva || ''}" onchange="app.updateSetting('pIva', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:0.78rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Telefono</label><input type="tel" class="form-control" style="font-size:0.85rem; padding:8px 10px;" placeholder="Es. 340 1234567" value="${s.phone || s.telefono || ''}" onchange="app.updateSetting('phone', this.value); app.updateSetting('telefono', this.value);"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:0.78rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Indirizzo</label><input type="text" class="form-control" style="font-size:0.85rem; padding:8px 10px;" value="${s.address || ''}" onchange="app.updateSetting('address', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:0.78rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">Email</label><input type="email" class="form-control" style="font-size:0.85rem; padding:8px 10px;" placeholder="Es. info@asd.it" value="${s.email || ''}" onchange="app.updateSetting('email', this.value)"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label style="font-size:0.78rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">PEC</label><input type="email" class="form-control" style="font-size:0.85rem; padding:8px 10px;" placeholder="Es. asd@pec.it" value="${s.pec || ''}" onchange="app.updateSetting('pec', this.value)"></div>
                             </div>
                         </div>
 
@@ -13358,18 +13384,18 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         </div>
 
                         <!-- 4. Pacchetti Quote e Tesseramento -->
-                        <div class="glass-card">
+                        <div class="glass-card" style="grid-column: 1 / -1;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                                 <h3 style="margin:0;">💶 Pacchetti Quote e Tesseramento</h3>
                                 <button class="btn btn-primary" style="font-size:0.8rem;" onclick="app.openAddPresetModal()">+ Nuovo Pacchetto</button>
                             </div>
-                            <div style="display:flex; flex-direction:column; gap:8px;">
-                                ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">Nessun pacchetto quote o tesseramento.</p>' :
+                            <div class="pacchetti-presets-grid">
+                                ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem; grid-column: 1 / -1;">Nessun pacchetto quote o tesseramento.</p>' :
                                 presets.map((p, idx) => `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; gap:10px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; gap:10px; border:1px solid rgba(255,255,255,0.06);">
                                         <div style="flex:1; min-width:0;">
-                                            <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nome}</div>
-                                            <div style="font-size:0.75rem; color:var(--text-muted);">€ ${parseFloat(p.importo).toFixed(2)} - ${p.note || ''}</div>
+                                            <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p.nome}">${p.nome}</div>
+                                            <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">€ ${parseFloat(p.importo).toFixed(2)}${p.note ? ' - ' + p.note : ''}</div>
                                         </div>
                                         <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
                                             <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; ${idx === 0 ? 'opacity:0.3; cursor:not-allowed;' : ''}" title="Sposta in alto" onclick="app.movePreset(${p.id}, -1)" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
