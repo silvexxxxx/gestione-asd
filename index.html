@@ -1564,6 +1564,7 @@
                     <div class="nav-dropdown-content">
                         <div class="nav-item" data-page="dati-organizzazione" onclick="app.showPage('dati-organizzazione')" data-guide="Gestisci i dati legali dell'ASD, consiglio direttivo, metodi di pagamento, pacchetti quote e tesseramento e sale.">Dati ed Organizzazione ASD</div>
                         <div class="nav-item" data-page="primanota" onclick="app.showPage('primanota')" data-guide="Tieni traccia di tutte le entrate (ricevute) e delle uscite (spese) della tua associazione.">Prima Nota</div>
+                        <div class="nav-item" data-page="ricevute-collaboratori" onclick="app.showPage('ricevute-collaboratori')" data-guide="Registro storico completo e gestione delle ricevute di compenso sportivo per i collaboratori (D.Lgs. 36/2021).">Ricevute Collaboratori</div>
                         <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Gestisci i beni di consumo per la palestra.">Magazzino</div>
                         <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Gestione rimborsi spese per i collaboratori o membri del direttivo.">Rimborsi</div>
                         <div class="nav-item" onclick="app.openVerbali()" data-guide="Genera, archivia e stampa i verbali per assemblee dei soci e riunioni del direttivo.">Assemblee e Verbali</div>
@@ -1680,7 +1681,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.2";
+        const APP_VERSION = "2.5.3";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -4359,6 +4360,7 @@
                                 this.restoreTableScroll('primanota', targetPnScroll);
                             }
                             break;
+                        case 'ricevute-collaboratori': this.renderRicevuteCollaboratori(); break;
                         case 'sala-pesi': this.renderSalaPesi(); break;
                         case 'corsi': this.renderCorsi(); break;
                         case 'istruttori': this.renderIstruttori(); break;
@@ -16447,44 +16449,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const main = document.getElementById('main-content');
             const istruttori = this.state.istruttori || [];
 
-            // Cattura filtri correnti del registro compensi se già a video
-            const searchInput = document.getElementById('compensi-search');
-            const instrInput = document.getElementById('compensi-filter-istruttore');
-            const annoInput = document.getElementById('compensi-filter-anno');
-            const startInput = document.getElementById('compensi-date-start');
-            const endInput = document.getElementById('compensi-date-end');
-
-            const prevCompSearch = searchInput ? searchInput.value : '';
-            const prevCompInstr = instrInput ? instrInput.value : 'all';
-            const prevCompStart = startInput ? startInput.value : '';
-            const prevCompEnd = endInput ? endInput.value : '';
-
-            const currentYear = new Date().getFullYear();
-            const compAvailableYears = [...new Set(
-                (this.state.ricevute || [])
-                    .filter(r => r.tipo === 'Compenso Sportivo')
-                    .map(r => parseInt(r.anno))
-                    .filter(y => !isNaN(y) && y > 0)
-            )].sort((a, b) => b - a);
-
-            if (!compAvailableYears.includes(currentYear)) {
-                compAvailableYears.unshift(currentYear);
-            }
-            compAvailableYears.sort((a, b) => b - a);
-
-            if (!this.selectedCompensiAnno) {
-                this.selectedCompensiAnno = String(currentYear);
-            }
-            const prevCompAnno = annoInput ? annoInput.value : (this.selectedCompensiAnno || String(currentYear));
-
             main.innerHTML = `
                     <div class="page-content">
                         <div class="page-header" style="flex-shrink:0;">
                             <div class="header-title">
                                 <h1>👨‍🏫 Gestione Istruttori</h1>
-                                <p>Anagrafiche, contratti e compensi dei collaboratori.</p>
+                                <p>Anagrafiche, contratti, discipline e orari dello staff.</p>
                             </div>
-                            <button class="btn btn-primary" onclick="app.openAddIstruttoreModal()" data-guide="Aggiungi un nuovo istruttore allo staff per poterlo assegnare ai corsi.">+ Aggiungi Istruttore</button>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button class="btn btn-outline" onclick="app.showPage('ricevute-collaboratori')" style="display:flex; align-items:center; gap:6px;" title="Apri il registro completo delle ricevute dei collaboratori">
+                                    <span>📑</span> <span>Ricevute Collaboratori</span>
+                                </button>
+                                <button class="btn btn-primary" onclick="app.openAddIstruttoreModal()" data-guide="Aggiungi un nuovo istruttore allo staff per poterlo assegnare ai corsi.">+ Aggiungi Istruttore</button>
+                            </div>
                         </div>
 
                         <div class="glass-card member-card">
@@ -16503,7 +16480,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${istruttori.length === 0 ? `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">Nessun istruttore registrato. Clicca "+ Aggiungi Istruttore" per iniziare.</td></tr>` :
+                                        ${istruttori.length === 0 ? `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">Nessun istruttore registrato. Clicca "+ Aggiungi Istruttore" per iniziare.</td></tr>` :
                     istruttori.map(i => {
                         const corsiAssegnati = this.state.corsi.filter(c => c.istruttore_id == i.id);
                         const ruoloBadge = {
@@ -16526,7 +16503,6 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                                                 const groups = {};
                                                                 const GIORNI_ABBR = {1:'Lun', 2:'Mar', 3:'Mer', 4:'Gio', 5:'Ven', 6:'Sab', 7:'Dom'};
                                                                 
-                                                                // Raggruppa per disciplina e poi per giorno
                                                                 corsiAssegnati.forEach(c => {
                                                                     if (!groups[c.nome]) groups[c.nome] = {};
                                                                     if (!groups[c.nome][c.dayOfWeek]) groups[c.nome][c.dayOfWeek] = [];
@@ -16568,7 +16544,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <!-- Riepilogo compensi mensili -->
                         ${istruttori.length > 0 ? `
                         <div class="glass-card" style="margin-top:1.5rem; flex-shrink:0;">
-                            <h3 style="margin-bottom:1rem;">💶 Riepilogo Compensi</h3>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+                                <h3 style="margin:0;">💶 Riepilogo Compensi Mensili</h3>
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:0.8rem;" onclick="app.showPage('ricevute-collaboratori')">
+                                    Visualizza Registro Ricevute ➔
+                                </button>
+                            </div>
                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem;">
                                 <div style="background:rgba(16,185,129,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">COSTO MENSILE TOTALE</div>
@@ -16584,26 +16565,90 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </div>
                             </div>
                         </div>` : ''}
+                    </div>
+                `;
+        },
 
-                        <!-- Registro Ricevute Compensi Collaboratori -->
-                        <div class="glass-card member-card" style="margin-top:1.5rem; flex-shrink:0;">
-                            <div class="page-header" style="margin-bottom:0.75rem; padding:0; border:none; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                                <div class="header-title">
-                                    <h2 style="font-size:1.25rem; margin:0; display:flex; align-items:center; gap:8px;">
-                                        📑 Registro Ricevute Compensi Collaboratori
-                                    </h2>
-                                    <p style="font-size:0.8rem; color:var(--text-muted); margin:2px 0 0 0;">
-                                        Storico ricevute compensi sportivi conformi D.Lgs. 36/2021.
-                                    </p>
+        renderRicevuteCollaboratori() {
+            const main = document.getElementById('main-content');
+            const istruttori = this.state.istruttori || [];
+            const compensi = (this.state.ricevute || []).filter(r => r.tipo === 'Compenso Sportivo');
+
+            const searchInput = document.getElementById('compensi-search');
+            const instrInput = document.getElementById('compensi-filter-istruttore');
+            const annoInput = document.getElementById('compensi-filter-anno');
+            const startInput = document.getElementById('compensi-date-start');
+            const endInput = document.getElementById('compensi-date-end');
+
+            const prevCompSearch = searchInput ? searchInput.value : '';
+            const prevCompInstr = instrInput ? instrInput.value : 'all';
+            const prevCompStart = startInput ? startInput.value : '';
+            const prevCompEnd = endInput ? endInput.value : '';
+
+            const currentYear = new Date().getFullYear();
+            const compAvailableYears = [...new Set(
+                compensi
+                    .map(r => parseInt(r.anno))
+                    .filter(y => !isNaN(y) && y > 0)
+            )].sort((a, b) => b - a);
+
+            if (!compAvailableYears.includes(currentYear)) {
+                compAvailableYears.unshift(currentYear);
+            }
+            compAvailableYears.sort((a, b) => b - a);
+
+            if (!this.selectedCompensiAnno) {
+                this.selectedCompensiAnno = String(currentYear);
+            }
+            const prevCompAnno = annoInput ? annoInput.value : (this.selectedCompensiAnno || String(currentYear));
+
+            // Calcolo KPI per l'anno selezionato (o totale)
+            const targetAnno = prevCompAnno !== 'all' ? parseInt(prevCompAnno) : null;
+            const validCompensiYear = compensi.filter(r => !r.annullata && (!targetAnno || parseInt(r.anno) === targetAnno));
+            const totaleErogatoAnno = validCompensiYear.reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
+            const distinctCollaboratori = new Set(validCompensiYear.map(r => r.istruttore_id)).size;
+
+            main.innerHTML = `
+                    <div class="page-content">
+                        <div class="page-header" style="flex-shrink:0;">
+                            <div class="header-title">
+                                <h1>📑 Ricevute Collaboratori</h1>
+                                <p>Registro storico ricevute compensi sportivi conformi D.Lgs. 36/2021.</p>
+                            </div>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button class="btn btn-outline" onclick="app.showPage('istruttori')" style="display:flex; align-items:center; gap:6px;">
+                                    <span>👨‍🏫</span> <span>Gestione Istruttori</span>
+                                </button>
+                                <button class="btn btn-outline" onclick="app.exportCompensiExcel()" data-guide="Esporta il tabulato dei compensi in formato Excel (totale o filtrato).">
+                                    <span>📊</span> <span>Esporta Excel</span>
+                                </button>
+                                <button class="btn btn-primary" onclick="app.openCompensoIstruttoreModal()" data-guide="Emetti una nuova ricevuta di compenso per un collaboratore.">
+                                    <span>➕</span> <span>Nuova Ricevuta</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- KPI Summary Cards -->
+                        <div class="glass-card" style="margin-bottom:1.5rem; flex-shrink:0;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                                <div style="background:rgba(16,185,129,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
+                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">TOTALE COMPENSI EROGATI ${targetAnno ? '(' + targetAnno + ')' : ''}</div>
+                                    <div style="font-size:1.5rem; font-weight:700; color:var(--success);">€ ${totaleErogatoAnno.toFixed(2)}</div>
                                 </div>
-                                <div class="header-actions">
-                                    <button class="btn btn-outline" onclick="app.exportCompensiExcel()" data-guide="Esporta il tabulato dei compensi in formato Excel (totale o filtrato).">
-                                        📊 Esporta Excel
-                                    </button>
+                                <div style="background:rgba(59,130,246,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
+                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">RICEVUTE REGISTRATE</div>
+                                    <div style="font-size:1.5rem; font-weight:700; color:var(--primary);">${validCompensiYear.length} <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted);">emesse</span></div>
+                                </div>
+                                <div style="background:rgba(245,158,11,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(245,158,11,0.2);">
+                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">COLLABORATORI PERCIPIENTI</div>
+                                    <div style="font-size:1.5rem; font-weight:700; color:var(--warning);">${distinctCollaboratori}</div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 1rem;">
+                        <!-- Tabella Registro Ricevute -->
+                        <div class="glass-card member-card" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom: 1px solid var(--border); margin-bottom: 0.5rem;">
                                 <input type="text" id="compensi-search" class="form-control search-input" style="min-width: 180px; flex: 1;" placeholder="Cerca collaboratore, causale o N. C..." value="${prevCompSearch}" oninput="app.filterCompensi()">
                                 
                                 <select id="compensi-filter-istruttore" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterCompensi()" title="Filtra per Collaboratore / Istruttore">
@@ -16629,7 +16674,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </div>
                             </div>
 
-                            <div class="table-container">
+                            <div class="table-container" style="flex:1; overflow-y:auto;">
                                 <table>
                                     <thead>
                                         <tr>
@@ -16889,9 +16934,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
         // --- RICEVUTA COMPENSO SPORTIVO (conforme D.Lgs. 36/2021) ---
 
-        openCompensoIstruttoreModal(instrId) {
-            const instr = this.state.istruttori.find(i => i.id === instrId);
-            if (!instr) return;
+        openCompensoIstruttoreModal(instrId = null) {
+            const istruttori = this.state.istruttori || [];
+            if (istruttori.length === 0) {
+                this.toast('Nessun collaboratore registrato. Aggiungi prima un collaboratore in Gestione Istruttori.', 'warning');
+                return;
+            }
+
+            let instr = instrId ? istruttori.find(i => i.id === instrId) : istruttori[0];
+            if (!instr) instr = istruttori[0];
+
             const today = new Date().toISOString().split('T')[0];
             const primoMese = new Date(); primoMese.setDate(1);
             const ultimoMese = new Date(primoMese.getFullYear(), primoMese.getMonth() + 1, 0);
@@ -16901,7 +16953,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     <div style="background:rgba(59,130,246,0.07); padding:12px; border-radius:10px; border:1px solid rgba(59,130,246,0.2); margin-bottom:1.5rem; font-size:0.82rem; color:var(--text-muted);">
                         <strong>Ricevuta conforme D.Lgs. 36/2021</strong> – Il percipiente dichiara i compensi da tutti i committenti sportivi per consentire corretta applicazione delle soglie fiscali/contributive (esenzione fiscale fino a €15.000, contributiva fino a €5.000 annui).
                     </div>
-                    <form id="compenso-form" onsubmit="app.handleCompensoSportivo(event, ${instrId})">
+                    <form id="compenso-form" onsubmit="app.handleCompensoSportivo(event, parseInt(document.getElementById('compenso-select-instr').value))">
+                        <div style="margin-bottom:12px;">
+                            <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Collaboratore / Istruttore Percipiente *</label>
+                            <select id="compenso-select-instr" class="form-control" style="font-weight:600;" onchange="app.onCompensoSelectInstrChange(this.value)">
+                                ${(this.state.istruttori || []).map(i => `<option value="${i.id}" ${i.id === instr.id ? 'selected' : ''}>${i.nome} (${i.ruolo || 'Collaboratore'}) - CF: ${i.cf || 'Non specificato'}</option>`).join('')}
+                            </select>
+                        </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                             <div class="form-group">
                                 <label>Importo Compenso (€) *</label>
@@ -17395,7 +17453,7 @@ ${r.annullata ? `
                 r.annullata = true;
                 this.removePrimaNotaFromRicevuta(r.id);
                 this.saveAll();
-                this.renderIstruttori();
+                if (this.state.currentPage === 'ricevute-collaboratori') { this.renderRicevuteCollaboratori(); } else { this.renderIstruttori(); }
                 this.toast(`Ricevuta compenso ${numFormatted} annullata correttamente.`, 'warning');
             }
         },
@@ -17428,7 +17486,7 @@ ${r.annullata ? `
                 });
 
                 this.saveAll();
-                this.renderIstruttori();
+                if (this.state.currentPage === 'ricevute-collaboratori') { this.renderRicevuteCollaboratori(); } else { this.renderIstruttori(); }
                 this.toast(`Ricevuta compenso ${numFormatted} eliminata definitivamente. ${shiftedCompensi.length > 0 ? shiftedCompensi.length + ' compensi successivi scalati di 1.' : ''}`, 'danger');
             }
         },
