@@ -19078,6 +19078,102 @@ ${r.annullata ? `
             return html;
         },
 
+        filterVerbaleSocio(val, inputId, listId) {
+            const list = document.getElementById(listId);
+            if (!list) return;
+
+            list.style.display = 'block';
+            const soci = this.state.soci || [];
+
+            const queryParts = (val || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+            const filtered = soci.filter(s => {
+                if (queryParts.length === 0) return true;
+                const cognome = (s.cognome || '').toLowerCase();
+                const nome = (s.nome || '').toLowerCase();
+                const cf = (s.codice_fiscale || '').toLowerCase();
+                return queryParts.every(part => cognome.includes(part) || nome.includes(part) || cf.includes(part));
+            }).slice(0, 30);
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="padding:10px 12px; font-size:0.82rem; color:var(--text-muted); font-style:italic;">Nessun socio trovato con "' + this.escapeHtml(val) + '" (puoi lasciare il testo digitato liberamente)</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(s => {
+                const fullName = ((s.cognome || '') + ' ' + (s.nome || '')).trim();
+                const safeName = this.escapeHtml(fullName).replace(/'/g, "\\'");
+                const cfStr = s.codice_fiscale ? ' <span style="font-size:0.75rem; color:#94a3b8; font-family:monospace;">(' + s.codice_fiscale + ')</span>' : '';
+                return '<div class="autocomplete-item" style="padding:9px 12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.06); font-size:0.88rem; color:#f8fafc;" ' +
+                    'onmouseover="this.style.background=\'rgba(59,130,246,0.2)\'" ' +
+                    'onmouseout="this.style.background=\'transparent\'" ' +
+                    'onmousedown="app.selectVerbaleSocio(\'' + inputId + '\', \'' + listId + '\', \'' + safeName + '\')">' +
+                    '<strong>' + this.escapeHtml(fullName) + '</strong>' + cfStr +
+                    '</div>';
+            }).join('');
+        },
+
+        selectVerbaleSocio(inputId, listId, fullName) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = fullName;
+            }
+            const list = document.getElementById(listId);
+            if (list) {
+                list.style.display = 'none';
+            }
+            this.updateConsiglieriFromInputs();
+            this.saveVerbaleWizardStep();
+        },
+
+        handleVerbaleAutocompleteKeydown(e, inputId, listId) {
+            const list = document.getElementById(listId);
+            if (!list || list.style.display === 'none') return;
+            const items = list.querySelectorAll('.autocomplete-item');
+            if (!items.length) return;
+
+            let activeIdx = -1;
+            items.forEach((it, idx) => {
+                if (it.classList.contains('active-item')) activeIdx = idx;
+            });
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIdx = (activeIdx + 1) % items.length;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIdx = (activeIdx - 1 + items.length) % items.length;
+            } else if (e.key === 'Enter' && activeIdx >= 0) {
+                e.preventDefault();
+                items[activeIdx].dispatchEvent(new MouseEvent('mousedown'));
+                return;
+            } else if (e.key === 'Escape') {
+                list.style.display = 'none';
+                return;
+            } else {
+                return;
+            }
+
+            items.forEach((it, idx) => {
+                if (idx === activeIdx) {
+                    it.classList.add('active-item');
+                    it.style.background = 'rgba(59,130,246,0.3)';
+                    it.scrollIntoView({ block: 'nearest' });
+                } else {
+                    it.classList.remove('active-item');
+                    it.style.background = 'transparent';
+                }
+            });
+        },
+
+        updateConsiglieriFromInputs() {
+            const d = this.state.verbale_wizard_data || {};
+            const inputs = document.querySelectorAll('.wz-consigliere-input');
+            if (inputs.length > 0) {
+                d.consiglieri_list = Array.from(inputs).map(el => el.value.trim());
+                d.nuovi_consiglieri = d.consiglieri_list.filter(Boolean).join(', ');
+            }
+        },
+
         onVerbaleRoleChange(selectEl, roleKey) {
             if (selectEl.value === '__custom__') {
                 const manualName = prompt('Inserisci Cognome e Nome:');
@@ -19121,6 +19217,7 @@ ${r.annullata ? `
         },
 
         addVerbaleConsigliere() {
+            this.updateConsiglieriFromInputs();
             this.saveVerbaleWizardStep();
             const d = this.state.verbale_wizard_data || {};
             if (!Array.isArray(d.consiglieri_list)) {
@@ -19132,6 +19229,7 @@ ${r.annullata ? `
         },
 
         removeVerbaleConsigliere(idx) {
+            this.updateConsiglieriFromInputs();
             this.saveVerbaleWizardStep();
             const d = this.state.verbale_wizard_data || {};
             if (!Array.isArray(d.consiglieri_list)) {
@@ -19474,17 +19572,29 @@ ${r.annullata ? `
                 } else if (currentStep.id === 'step_dir_part') {
                     stepContentHtml = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Presidente della Riunione</label>
-                                <select id="wz-presidente" class="form-control" onchange="app.onVerbaleRoleChange(this, 'presidente')">
-                                    ${this.renderSocioSelectOptions(d.presidente, '-- Seleziona Presidente --')}
-                                </select>
+                                <input type="text" id="wz-presidente" class="form-control" 
+                                    value="${this.escapeHtml(d.presidente || '')}" 
+                                    placeholder="Inizia a digitare il nome..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-presidente', 'wz-list-dir-pres')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-dir-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Segretario Verbalizzante</label>
-                                <select id="wz-segretario" class="form-control" onchange="app.onVerbaleRoleChange(this, 'segretario')">
-                                    ${this.renderSocioSelectOptions(d.segretario, '-- Seleziona Segretario --')}
-                                </select>
+                                <input type="text" id="wz-segretario" class="form-control" 
+                                    value="${this.escapeHtml(d.segretario || '')}" 
+                                    placeholder="Inizia a digitare il nome..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-segretario', 'wz-list-dir-sec')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-dir-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom: 1.2rem;">
@@ -19607,12 +19717,18 @@ ${r.annullata ? `
                     let consiglieriRowsHtml = '';
                     d.consiglieri_list.forEach((cName, idx) => {
                         consiglieriRowsHtml += `
-                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
                                 <span style="font-size: 0.82rem; font-weight: 600; min-width: 95px; color: #a7f3d0;">Consigliere #${idx + 1}:</span>
-                                <div style="flex: 1;">
-                                    <select class="form-control wz-consigliere-sel" onchange="app.onVerbaleConsigliereChange(this, ${idx})">
-                                        ${this.renderSocioSelectOptions(cName, '-- Seleziona consigliere dall\'elenco soci --')}
-                                    </select>
+                                <div style="flex: 1; position: relative;">
+                                    <input type="text" id="wz-consigliere-${idx}" class="form-control wz-consigliere-input" 
+                                        value="${this.escapeHtml(cName || '')}" 
+                                        placeholder="Digita per cercare il socio (es. Farris)..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-consigliere-${idx}', 'wz-list-cons-${idx}'); app.updateConsiglieriFromInputs();"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-consigliere-${idx}', 'wz-list-cons-${idx}')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-consigliere-${idx}', 'wz-list-cons-${idx}')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-cons-${idx}'); if(l) l.style.display='none'; app.updateConsiglieriFromInputs(); }, 250)">
+                                    <div id="wz-list-cons-${idx}" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                 </div>
                                 <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 6px 10px; font-size: 0.85rem;" onclick="app.removeVerbaleConsigliere(${idx})" title="Rimuovi questo consigliere">
                                     🗑️
@@ -19623,17 +19739,29 @@ ${r.annullata ? `
 
                     stepContentHtml = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Presidente dell'Assemblea</label>
-                                <select id="wz-presidente" class="form-control" onchange="app.onVerbaleRoleChange(this, 'presidente')">
-                                    ${this.renderSocioSelectOptions(d.presidente, '-- Seleziona Presidente Assemblea --')}
-                                </select>
+                                <input type="text" id="wz-presidente" class="form-control" 
+                                    value="${this.escapeHtml(d.presidente || '')}" 
+                                    placeholder="Inizia a digitare il cognome o nome..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-pres')"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-pres')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-presidente', 'wz-list-pres')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="position: relative;">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Segretario dell'Assemblea</label>
-                                <select id="wz-segretario" class="form-control" onchange="app.onVerbaleRoleChange(this, 'segretario')">
-                                    ${this.renderSocioSelectOptions(d.segretario, '-- Seleziona Segretario Assemblea --')}
-                                </select>
+                                <input type="text" id="wz-segretario" class="form-control" 
+                                    value="${this.escapeHtml(d.segretario || '')}" 
+                                    placeholder="Inizia a digitare il cognome o nome..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-sec')"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-sec')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-segretario', 'wz-list-sec')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
                         </div>
 
@@ -19656,35 +19784,58 @@ ${r.annullata ? `
                                 <div style="font-weight: 700; color: #34d399; margin-bottom: 10px; font-size: 0.95rem;">👑 Nuovo Consiglio Direttivo Eletto</div>
                                 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem;">
-                                    <div class="form-group">
+                                    <div class="form-group" style="position: relative;">
                                         <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Presidente Eletto</label>
-                                        <select id="wz-nuovo_presidente" class="form-control" onchange="app.onVerbaleRoleChange(this, 'nuovo_presidente')">
-                                            ${this.renderSocioSelectOptions(d.nuovo_presidente || d.presidente, '-- Seleziona Presidente Eletto --')}
-                                        </select>
+                                        <input type="text" id="wz-nuovo_presidente" class="form-control" 
+                                            value="${this.escapeHtml(d.nuovo_presidente || d.presidente || '')}" 
+                                            placeholder="Digita per cercare tra i soci..." 
+                                            autocomplete="off"
+                                            oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_presidente', 'wz-list-nuovo-pres')"
+                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_presidente', 'wz-list-nuovo-pres')"
+                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_presidente', 'wz-list-nuovo-pres')"
+                                            onblur="setTimeout(() => { const l = document.getElementById('wz-list-nuovo-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                        <div id="wz-list-nuovo-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group" style="position: relative;">
                                         <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Vice Presidente Eletto</label>
-                                        <select id="wz-nuovo_vice" class="form-control" onchange="app.onVerbaleRoleChange(this, 'nuovo_vice')">
-                                            ${this.renderSocioSelectOptions(d.nuovo_vice, '-- Seleziona Vice Presidente Eletto (opzionale) --')}
-                                        </select>
+                                        <input type="text" id="wz-nuovo_vice" class="form-control" 
+                                            value="${this.escapeHtml(d.nuovo_vice || '')}" 
+                                            placeholder="Digita per cercare (opzionale)..." 
+                                            autocomplete="off"
+                                            oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_vice', 'wz-list-nuovo-vice')"
+                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_vice', 'wz-list-nuovo-vice')"
+                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_vice', 'wz-list-nuovo-vice')"
+                                            onblur="setTimeout(() => { const l = document.getElementById('wz-list-nuovo-vice'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                        <div id="wz-list-nuovo-vice" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                     </div>
                                 </div>
                                 
                                 <div style="margin-bottom: 0.8rem;">
-                                    <div class="form-group">
+                                    <div class="form-group" style="position: relative;">
                                         <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Segretario Eletto</label>
-                                        <select id="wz-nuovo_segretario" class="form-control" onchange="app.onVerbaleRoleChange(this, 'nuovo_segretario')">
-                                            ${this.renderSocioSelectOptions(d.nuovo_segretario || d.segretario, '-- Seleziona Segretario Eletto --')}
-                                        </select>
+                                        <input type="text" id="wz-nuovo_segretario" class="form-control" 
+                                            value="${this.escapeHtml(d.nuovo_segretario || d.segretario || '')}" 
+                                            placeholder="Digita per cercare tra i soci..." 
+                                            autocomplete="off"
+                                            oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
+                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
+                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
+                                            onblur="setTimeout(() => { const l = document.getElementById('wz-list-nuovo-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                        <div id="wz-list-nuovo-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                     </div>
                                 </div>
 
-                                <!-- Consiglieri Eletti (Menu a tendina da elenco soci + pulsante aggiungi) -->
+                                <!-- Consiglieri Eletti (Ricerca autocompletamento live da elenco soci) -->
                                 <div style="border-top: 1px dashed rgba(16, 185, 129, 0.3); padding-top: 10px; margin-top: 10px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #34d399; margin: 0;">
-                                            Consiglieri Eletti nel Direttivo
-                                        </label>
+                                        <div>
+                                            <label style="font-size: 0.85rem; font-weight: 700; color: #34d399; margin: 0;">
+                                                Consiglieri Eletti nel Direttivo
+                                            </label>
+                                            <small style="color: #94a3b8; font-size: 0.74rem; display: block;">
+                                                Digita le lettere del nome o cognome: compariranno all'istante i suggerimenti dei soci.
+                                            </small>
+                                        </div>
                                         <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 10px; border-color: rgba(52, 211, 153, 0.4); color: #34d399;" onclick="app.addVerbaleConsigliere()">
                                             ➕ Aggiungi un altro consigliere
                                         </button>
@@ -19748,11 +19899,17 @@ ${r.annullata ? `
                     let firmatariInputs = '';
                     for (let i = 1; i <= numFirmatari; i++) {
                         firmatariInputs += `
-                            <div class="form-group" style="margin-bottom: 8px;">
+                            <div class="form-group" style="margin-bottom: 8px; position: relative;">
                                 <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Socio Firmatario ${i}</label>
-                                <select id="wz-f_nome_${i}" class="form-control" onchange="app.onVerbaleRoleChange(this, 'f_nome_${i}')">
-                                    ${this.renderSocioSelectOptions(d['f_nome_' + i] || '', '-- Seleziona socio firmatario --')}
-                                </select>
+                                <input type="text" id="wz-f_nome_${i}" class="form-control" 
+                                    value="${this.escapeHtml(d['f_nome_' + i] || '')}" 
+                                    placeholder="Inizia a digitare il nome o cognome del socio..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-f_nome_${i}', 'wz-list-fn-${i}')"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-f_nome_${i}', 'wz-list-fn-${i}')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-f_nome_${i}', 'wz-list-fn-${i}')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-fn-${i}'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-fn-${i}" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
                         `;
                     }
@@ -19890,7 +20047,7 @@ ${r.annullata ? `
                 d[key] = el.value;
             });
 
-            const consiglieriEls = form.querySelectorAll('.wz-consigliere-sel');
+            const consiglieriEls = form.querySelectorAll('.wz-consigliere-input, .wz-consigliere-sel');
             if (consiglieriEls.length > 0) {
                 d.consiglieri_list = Array.from(consiglieriEls).map(el => el.value).filter(Boolean);
                 d.nuovi_consiglieri = d.consiglieri_list.join(', ');
