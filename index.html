@@ -1680,7 +1680,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.0";
+        const APP_VERSION = "2.5.1";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -7756,18 +7756,80 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             }
         },
 
+        createExcelWithHeader({ title, period, rows, sheetName = 'Dati', colWidths = [] }) {
+            const asd = this.state.settings || {};
+            const asdNome = asd.asdName || 'ASSOCIAZIONE SPORTIVA DILETTANTISTICA';
+            const asdAddress = asd.address || '-';
+            const asdPIva = asd.pIva || '-';
+            const now = new Date();
+            const nowStr = `${this.formatDate(now.toISOString().split('T')[0])} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+            // Costruzione matrice Array-of-Arrays (AOA) con intestazione ufficiale per commercialista
+            const aoa = [
+                [`ASSOCIAZIONE SPORTIVA DILETTANTISTICA: ${asdNome.toUpperCase()}`],
+                [`C.F. / P.IVA: ${asdPIva}    |    Sede Legale: ${asdAddress}`],
+                [`OGGETTO / DOCUMENTO: ${title.toUpperCase()}`],
+                [`AMBITO / PERIODO: ${period || 'Generale'}    |    Data e Ora Estrazione: ${nowStr}`],
+                [], // Riga 5 vuota di separazione
+                headers, // Riga 6: Intestazioni colonne dati
+                ...rows.map(r => headers.map(h => {
+                    const val = r[h];
+                    if (val === undefined || val === null) return '';
+                    return val;
+                }))
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+            if (colWidths && colWidths.length > 0) {
+                ws['!cols'] = colWidths;
+            } else if (headers.length > 0) {
+                ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 4, 12) }));
+            }
+
+            // Unione prime colonne per le righe di intestazione (migliore leggibilità e stampa A4)
+            const maxMergeCol = Math.max(headers.length - 1, 4);
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: maxMergeCol } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: maxMergeCol } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: maxMergeCol } },
+                { s: { r: 3, c: 0 }, e: { r: 3, c: maxMergeCol } }
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        },
+
         exportRicevuteExcel() {
             const startEl = document.getElementById('receipt-date-start');
             const endEl = document.getElementById('receipt-date-end');
             const annoEl = document.getElementById('receipt-filter-anno');
+            const regEl = document.getElementById('receipt-filter-registro');
             const start = startEl ? startEl.value : '';
             const end = endEl ? endEl.value : '';
             const anno = annoEl ? annoEl.value : (this.selectedRicevuteAnno || 'all');
+            const reg = regEl ? regEl.value : 'all';
 
             const receipts = this.getFilteredRicevute ? this.getFilteredRicevute() : this.state.ricevute;
             if (receipts.length === 0) {
                 this.toast('Nessuna ricevuta da esportare con i filtri selezionati.', 'warning');
                 return;
+            }
+
+            let periodStr = '';
+            if (start || end) {
+                periodStr = `Periodo: Dal ${start ? app.formatDate(start) : 'Inizio'} Al ${end ? app.formatDate(end) : 'Oggi'}`;
+            } else if (anno !== 'all') {
+                periodStr = `Stagione Sportiva: ${anno}/${parseInt(anno) + 1} (${app.formatAnno(anno)})`;
+            } else {
+                periodStr = `Tutte le Stagioni Sportive`;
+            }
+            if (reg !== 'all') {
+                periodStr += ` | Registro: ${reg === 'cartaceo' ? 'Cartaceo (1-199)' : 'Digitale (1-74)'}`;
             }
 
             const rows = receipts.map(r => {
@@ -7780,10 +7842,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     'Data Emissione': app.formatDate(r.data),
                     'Ora': r.ora || '',
                     'Socio': r.socio_nome || (socio ? socio.nome : ''),
-                    'Codice Fiscale': socio ? socio.cf : '',
-                    'Importo (€)': parseFloat(r.importo || 0).toFixed(2),
-                    'Quota Corso (€)': parseFloat(r.quota || 0).toFixed(2),
-                    'Tesseramento (€)': parseFloat(r.tess || 0).toFixed(2),
+                    'Codice Fiscale': socio ? (socio.cf || '') : '',
+                    'Importo (€)': parseFloat(r.importo || 0),
+                    'Quota Corso (€)': parseFloat(r.quota || 0),
+                    'Tesseramento (€)': parseFloat(r.tess || 0),
                     'Descrizione / Tipo': r.tipo || '',
                     'Metodo Pagamento': r.metodo_pagamento || r.pagamento || 'Contanti',
                     'Registro': isCart ? 'Cartaceo' : 'Digitale',
@@ -7792,29 +7854,31 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 };
             });
 
-            const worksheet = XLSX.utils.json_to_sheet(rows);
-            worksheet['!cols'] = [
-                { wch: 14 },
-                { wch: 8 },
-                { wch: 12 },
-                { wch: 14 },
-                { wch: 8 },
-                { wch: 26 },
-                { wch: 18 },
-                { wch: 12 },
-                { wch: 14 },
-                { wch: 14 },
-                { wch: 35 },
-                { wch: 18 },
-                { wch: 12 },
-                { wch: 10 },
-                { wch: 25 }
+            const colWidths = [
+                { wch: 14 }, // N. Ricevuta
+                { wch: 8 },  // Numero
+                { wch: 12 }, // Stagione
+                { wch: 14 }, // Data Emissione
+                { wch: 8 },  // Ora
+                { wch: 26 }, // Socio
+                { wch: 18 }, // Codice Fiscale
+                { wch: 14 }, // Importo (€)
+                { wch: 14 }, // Quota Corso (€)
+                { wch: 14 }, // Tesseramento (€)
+                { wch: 35 }, // Descrizione / Tipo
+                { wch: 18 }, // Metodo Pagamento
+                { wch: 12 }, // Registro
+                { wch: 10 }, // Stato
+                { wch: 25 }  // Note
             ];
 
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Ricevute");
-            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const blob = this.createExcelWithHeader({
+                title: 'REGISTRO DELLE RICEVUTE NON FISCALI (ENTRATE SOCI)',
+                period: periodStr,
+                rows: rows,
+                sheetName: 'Ricevute',
+                colWidths: colWidths
+            });
 
             let fileName = "export_ricevute";
             if (start || end) {
@@ -10375,36 +10439,85 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         },
 
         exportPrimaNotaExcel() {
-                const txns = this.getFilteredPrimaNota();
-                if (txns.length === 0) {
-                    this.toast('Nessun movimento da esportare', 'warning');
-                    return;
-                }
+            const txns = this.getFilteredPrimaNota ? this.getFilteredPrimaNota() : (this.state.primanota || []);
+            if (!txns || txns.length === 0) {
+                this.toast('Nessun movimento da esportare con i filtri attivi.', 'warning');
+                return;
+            }
 
-                let ws_data = [['Data', 'Tipo', 'Metodo', 'Categoria', 'Descrizione', 'Importo', 'Riferimento']];
+            const yearEl = document.getElementById('pn-year');
+            const quarterEl = document.getElementById('pn-quarter');
+            const tipoEl = document.getElementById('pn-tipo');
+
+            const yearVal = yearEl ? yearEl.value : 'all';
+            const quarterVal = quarterEl ? quarterEl.value : 'all';
+            const tipoVal = tipoEl ? tipoEl.value : 'all';
+
+            let periodStr = '';
+            if (yearVal !== 'all') {
+                periodStr = `Anno Sportivo: ${yearVal}`;
+            } else {
+                periodStr = `Tutti gli Anni Sportivi`;
+            }
+            if (quarterVal !== 'all') {
+                const qMap = { 'q1': 'Q1 (Set - Nov)', 'q2': 'Q2 (Dic - Feb)', 'q3': 'Q3 (Mar - Mag)', 'q4': 'Q4 (Giu - Ago)' };
+                periodStr += ` | Trimestre: ${qMap[quarterVal] || quarterVal}`;
+            }
+            if (tipoVal !== 'all') {
+                periodStr += ` | Filtro Tipo: ${tipoVal}`;
+            }
+            if (this.pnMetodoFilter && this.pnMetodoFilter !== 'all') {
+                periodStr += ` | Conto: ${this.pnMetodoFilter}`;
+            }
+
+            const rows = txns.map(t => {
+                const isUscita = t.tipo === 'Uscita';
+                const isGiroconto = t.tipo === 'Giroconto';
+                const amt = parseFloat(t.importo) || 0;
+                const sign = isUscita ? -1 : 1;
                 
-                txns.forEach(t => {
-                    let sign = t.tipo === 'Uscita' ? -1 : 1;
-                    if(t.tipo === 'Giroconto') sign = 1;
-                    ws_data.push([
-                        this.formatDate(t.data),
-                        t.tipo,
-                        t.metodo,
-                        t.categoria,
-                        t.descrizione,
-                        parseFloat(t.importo) * sign,
-                        t.riferimento || ''
-                    ]);
-                });
+                return {
+                    'Data': app.formatDate(t.data),
+                    'Tipo': t.tipo || '',
+                    'Metodo / Conto': t.metodo || 'Contanti',
+                    'Categoria': t.categoria || '',
+                    'Descrizione': t.descrizione || '',
+                    'Entrata (€)': (!isUscita && !isGiroconto) ? amt : 0,
+                    'Uscita (€)': isUscita ? amt : 0,
+                    'Netto Movimento (€)': isGiroconto ? 0 : (amt * sign),
+                    'Riferimento / Documento': t.riferimento || ''
+                };
+            });
 
-                let ws = XLSX.utils.aoa_to_sheet(ws_data);
-                let wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "PrimaNota");
-                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-                const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-                const yearStr = this.getSportsYear(new Date());
-                this.saveDocumentFS("PrimaNota_Export.xlsx", blob, 'esportazioni_excel', yearStr);
-            },
+            const colWidths = [
+                { wch: 12 }, // Data
+                { wch: 12 }, // Tipo
+                { wch: 18 }, // Metodo / Conto
+                { wch: 22 }, // Categoria
+                { wch: 35 }, // Descrizione
+                { wch: 14 }, // Entrata (€)
+                { wch: 14 }, // Uscita (€)
+                { wch: 16 }, // Netto (€)
+                { wch: 24 }  // Riferimento
+            ];
+
+            const blob = this.createExcelWithHeader({
+                title: 'LIBRO GIORNALE PRIMA NOTA (CASSA E BANCA)',
+                period: periodStr,
+                rows: rows,
+                sheetName: 'PrimaNota',
+                colWidths: colWidths
+            });
+
+            let fileName = 'PrimaNota';
+            if (yearVal !== 'all') fileName += `_${String(yearVal).replace('/', '-')}`;
+            if (quarterVal !== 'all') fileName += `_${quarterVal}`;
+            fileName += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+            const yearStr = this.getSportsYear(new Date());
+            this.saveDocumentFS(fileName, blob, 'esportazioni_excel', yearStr);
+            this.toast(`✅ Esportati ${txns.length} movimenti in Excel (${fileName})`, 'success');
+        },
 
         stampaGiustificativoMovimento(id) {
             const t = (this.state.primanota || []).find(x => String(x.id) === String(id));
@@ -14609,20 +14722,63 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
         exportSociExcel() {
             if (typeof XLSX === 'undefined') { this.toast('Libreria Excel non disponibile.', 'warning'); return; }
-            const rows = this.state.soci.map(s => ({
-                Cognome: s.cognome, Nome: s.nome, CF: s.cf, 'Data Nascita': s.data_nascita,
-                Email: s.email, Tel: s.tel, Residenza: s.residenza,
-                'Scadenza Quota': s.quota_scadenza, 'Scad. Certificato': s.certificato_scadenza,
-                'Scad. Tesseramento': s.tesseramento_scadenza, Stato: s.stato
+            const soci = this.state.soci || [];
+            if (soci.length === 0) {
+                this.toast('Nessun socio da esportare.', 'warning');
+                return;
+            }
+
+            const rows = soci.map(s => ({
+                'Cognome': s.cognome || '',
+                'Nome': s.nome || '',
+                'Codice Fiscale': s.cf || '',
+                'Data di Nascita': s.data_nascita ? app.formatDate(s.data_nascita) : '',
+                'Luogo di Nascita': s.luogo_nascita || '',
+                'Sesso': s.sesso || '',
+                'Residenza': s.residenza || '',
+                'Telefono': s.tel || '',
+                'Email': s.email || '',
+                'Data Iscrizione': s.data_iscrizione ? app.formatDate(s.data_iscrizione) : '',
+                'Scadenza Quota': s.quota_scadenza ? app.formatDate(s.quota_scadenza) : '',
+                'Scad. Certificato': s.certificato_scadenza ? app.formatDate(s.certificato_scadenza) : '',
+                'Scad. Tesseramento': s.tesseramento_scadenza ? app.formatDate(s.tesseramento_scadenza) : '',
+                'Stato': (s.stato || 'attivo').toUpperCase(),
+                'Note': s.note || ''
             }));
-            const ws = XLSX.utils.json_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Soci');
-            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+            const colWidths = [
+                { wch: 18 }, // Cognome
+                { wch: 18 }, // Nome
+                { wch: 18 }, // CF
+                { wch: 14 }, // Data Nascita
+                { wch: 18 }, // Luogo Nascita
+                { wch: 6 },  // Sesso
+                { wch: 28 }, // Residenza
+                { wch: 14 }, // Telefono
+                { wch: 24 }, // Email
+                { wch: 14 }, // Data Iscrizione
+                { wch: 14 }, // Scadenza Quota
+                { wch: 14 }, // Scad. Certificato
+                { wch: 16 }, // Scad. Tesseramento
+                { wch: 12 }, // Stato
+                { wch: 25 }  // Note
+            ];
+
+            const attivi = soci.filter(s => s.stato === 'attivo' || !s.stato).length;
+            const periodStr = `Elenco Generale Anagrafico | Totale Soci: ${soci.length} (Attivi: ${attivi}, Non attivi: ${soci.length - attivi})`;
+
+            const blob = this.createExcelWithHeader({
+                title: 'LIBRO SOCI - ANAGRAFICA E STATO TESSERAMENTI',
+                period: periodStr,
+                rows: rows,
+                sheetName: 'Soci',
+                colWidths: colWidths
+            });
+
             const yearStr = this.getSportsYear(new Date());
-            const fileName = `soci_asd_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const fileName = `libro_soci_asd_${new Date().toISOString().split('T')[0]}.xlsx`;
             this.saveDocumentFS(fileName, blob, 'esportazioni_excel', yearStr);
+            this.toast(`✅ Esportata anagrafica di ${soci.length} soci in Excel (${fileName})`, 'success');
         },
 
         // =========================================================
@@ -17001,6 +17157,24 @@ ${r.annullata ? `
                 return;
             }
 
+            let periodStr = '';
+            if (start || end) {
+                periodStr = `Periodo: Dal ${start ? app.formatDate(start) : 'Inizio'} Al ${end ? app.formatDate(end) : 'Oggi'}`;
+            } else if (anno !== 'all') {
+                periodStr = `Anno di Competenza: ${anno} (Stagione Sportiva ${anno}/${parseInt(anno) + 1})`;
+            } else {
+                periodStr = `Tutti gli Anni`;
+            }
+
+            let instrNomeFiltro = 'Tutti i Collaboratori';
+            if (instrId !== 'all') {
+                const instr = this.state.istruttori.find(i => String(i.id) === String(instrId));
+                if (instr) {
+                    instrNomeFiltro = instr.nome;
+                    periodStr += ` | Collaboratore: ${instr.nome}`;
+                }
+            }
+
             const rows = compensi.map(r => {
                 const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
                 const instrNome = (instr ? instr.nome : (r.socio_nome || '')).replace('ISTRUTTORE: ', '');
@@ -17009,50 +17183,49 @@ ${r.annullata ? `
                     'Numero': r.numero,
                     'Anno': r.anno,
                     'Data Pagamento': app.formatDate(r.data),
-                    'Collaboratore': instrNome,
+                    'Collaboratore (Percipiente)': instrNome,
                     'Codice Fiscale': instr ? (instr.cf || '') : '',
-                    'Ruolo': instr ? (instr.ruolo || '') : '',
-                    'Prestazione': r.prestazione || '',
-                    'Periodo': r.periodo || '',
-                    'Importo (€)': parseFloat(r.importo || 0).toFixed(2),
-                    'Altri Compensi Anno (€)': parseFloat(r.altri_compensi || 0).toFixed(2),
-                    'Totale Compensi Dichiarato (€)': (parseFloat(r.importo || 0) + parseFloat(r.altri_compensi || 0)).toFixed(2),
+                    'Ruolo / Qualifica': instr ? (instr.ruolo || '') : '',
+                    'Prestazione Svolta': r.prestazione || '',
+                    'Periodo di Riferimento': r.periodo || '',
+                    'Compenso Erogato (€)': parseFloat(r.importo || 0),
+                    'Altri Compensi Anno (€)': parseFloat(r.altri_compensi || 0),
+                    'Totale Compensi Dichiarato (€)': parseFloat((parseFloat(r.importo || 0) + parseFloat(r.altri_compensi || 0)).toFixed(2)),
                     'Metodo Pagamento': r.pagamento || 'Bonifico',
                     'IBAN': instr ? (instr.iban || '') : '',
-                    'Stato': r.annullata ? 'ANNULLATA' : 'Valida'
+                    'Stato Ricevuta': r.annullata ? 'ANNULLATA' : 'Valida'
                 };
             });
 
-            const worksheet = XLSX.utils.json_to_sheet(rows);
-            worksheet['!cols'] = [
-                { wch: 14 },
-                { wch: 8 },
-                { wch: 8 },
-                { wch: 14 },
-                { wch: 24 },
-                { wch: 18 },
-                { wch: 16 },
-                { wch: 28 },
-                { wch: 24 },
-                { wch: 14 },
-                { wch: 20 },
-                { wch: 26 },
-                { wch: 16 },
-                { wch: 28 },
-                { wch: 12 }
+            const colWidths = [
+                { wch: 14 }, // N. Ricevuta
+                { wch: 8 },  // Numero
+                { wch: 8 },  // Anno
+                { wch: 14 }, // Data Pagamento
+                { wch: 24 }, // Collaboratore
+                { wch: 18 }, // CF
+                { wch: 16 }, // Ruolo
+                { wch: 28 }, // Prestazione
+                { wch: 24 }, // Periodo
+                { wch: 16 }, // Compenso
+                { wch: 20 }, // Altri Compensi
+                { wch: 24 }, // Totale Compensi
+                { wch: 16 }, // Metodo
+                { wch: 28 }, // IBAN
+                { wch: 14 }  // Stato
             ];
 
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Compensi");
-            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const blob = this.createExcelWithHeader({
+                title: 'TABULATO COMPENSI COLLABORATORI SPORTIVI (D.LGS. 36/2021)',
+                period: periodStr,
+                rows: rows,
+                sheetName: 'Compensi',
+                colWidths: colWidths
+            });
 
-            let fileName = "tabulato_compensi";
+            let fileName = 'tabulato_compensi';
             if (instrId !== 'all') {
-                const instr = this.state.istruttori.find(i => String(i.id) === String(instrId));
-                if (instr) {
-                    fileName += `_${(instr.nome || 'collaboratore').replace(/\s+/g, '_')}`;
-                }
+                fileName += `_${instrNomeFiltro.replace(/\s+/g, '_')}`;
             }
             if (start || end) {
                 fileName += `_dal_${start || 'inizio'}_al_${end || 'oggi'}`;
