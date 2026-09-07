@@ -9922,6 +9922,22 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     note: note || `Verifica quadratura estratto conto al 31/08/${y2}`
                 });
 
+                // 4. Aggiorna in tempo reale il verbale d'assemblea (in corso di compilazione o archiviato)
+                if (this.state.verbale_wizard_data) {
+                    const vAS = this.state.verbale_wizard_data.anno_sportivo;
+                    const vSy = this.parseSportsYear ? this.parseSportsYear(vAS) : null;
+                    const selSy = this.parseSportsYear ? this.parseSportsYear(selectedAS) : null;
+                    if ((vSy && selSy && vSy.y1 === selSy.y1) || vAS === selectedAS) {
+                        this.state.verbale_wizard_data.banca = bancaReale.toFixed(2);
+                        this.state.verbale_wizard_data.cassa = cassaReale.toFixed(2);
+                        const saldiAgg = this.calcolaSaldiFinanziari(this.state.verbale_wizard_data.data_chiusura, vAS);
+                        this.state.verbale_wizard_data.casseList = saldiAgg.casseList;
+                        this.state.verbale_wizard_data.entrate = saldiAgg.entrate;
+                        this.state.verbale_wizard_data.uscite = saldiAgg.uscite;
+                        this.state.verbale_wizard_data.avanzo = saldiAgg.avanzo;
+                    }
+                }
+
                 this.saveAll();
                 this.closeModal();
 
@@ -9931,7 +9947,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     pnYear.value = nextAS;
                 }
                 this.renderPrimaNota(false);
-                this.toast(`Esercizio ${selectedAS} chiuso con successo. Saldi riconciliati e riportati al ${nextAS}`, 'success');
+                this.toast(`Esercizio ${selectedAS} chiuso con successo. Saldi riconciliati con l'Estratto Conto e allineati anche nei Verbali d'Assemblea!`, 'success');
             },
 
             openEsercizioGiaChiusoModal(selectedAS, nextAS, refChiusura) {
@@ -19119,6 +19135,43 @@ ${r.annullata ? `
                 }
             });
 
+            // Se esiste una verifica contabile con estratto conto ufficiale per questo anno sportivo, adotta il saldo reale riconciliato
+            const verifiche = (this.state.settings && this.state.settings.verifiche_bancarie) ? this.state.settings.verifiche_bancarie : [];
+            const verificaAS = verifiche.find(v => {
+                if (!v) return false;
+                if (annoSportivo && v.anno_sportivo) {
+                    const vSy = this.parseSportsYear ? this.parseSportsYear(v.anno_sportivo) : null;
+                    if (syParsed && vSy && syParsed.y1 === vSy.y1) return true;
+                    if (String(v.anno_sportivo).trim() === String(annoSportivo).trim()) return true;
+                }
+                if (dataChiusura && v.data_chiusura === dataChiusura) return true;
+                return false;
+            });
+
+            let isRiconciliatoBanca = false;
+            if (verificaAS && verificaAS.saldo_banca_estratto_conto !== undefined && verificaAS.saldo_banca_estratto_conto !== null && verificaAS.saldo_banca_estratto_conto !== '') {
+                const bReale = parseFloat(verificaAS.saldo_banca_estratto_conto);
+                if (!isNaN(bReale)) {
+                    isRiconciliatoBanca = true;
+                    totBanca = bReale;
+                    const bAcc = casseMap[configuredBankConto] || Object.values(casseMap).find(c => !c.isCassa);
+                    if (bAcc) {
+                        bAcc.saldo = bReale;
+                    }
+                }
+            }
+
+            if (verificaAS && verificaAS.saldo_cassa !== undefined && verificaAS.saldo_cassa !== null && verificaAS.saldo_cassa !== '') {
+                const cReale = parseFloat(verificaAS.saldo_cassa);
+                if (!isNaN(cReale)) {
+                    totCassa = cReale;
+                    const cAcc = casseMap[configuredCashConto] || Object.values(casseMap).find(c => c.isCassa);
+                    if (cAcc) {
+                        cAcc.saldo = cReale;
+                    }
+                }
+            }
+
             const casseList = Object.values(casseMap)
                 .filter(c => c.count > 0 || Math.abs(c.saldo) > 0.001)
                 .map(c => ({
@@ -19134,7 +19187,9 @@ ${r.annullata ? `
                 avanzo: (totEntrate - totUscite).toFixed(2),
                 cassa: totCassa.toFixed(2),
                 banca: totBanca.toFixed(2),
-                casseList
+                casseList,
+                isRiconciliatoBanca,
+                verificaDettaglio: verificaAS || null
             };
         },
 
@@ -20013,6 +20068,17 @@ ${r.annullata ? `
                                 <div class="form-group">
                                     <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Saldo Conto Corrente Banca (€)</label>
                                     <input type="number" step="0.01" id="wz-banca" class="form-control" value="${d.banca || '0.00'}">
+                                    <div id="wz-banca-badge" style="margin-top: 3px;">
+                                        ${saldi.isRiconciliatoBanca ? `
+                                            <small style="color: #10b981; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                                                <span>✅</span> <span>Allineato ad Estratto Conto ufficiale (${saldi.verificaDettaglio?.anno_sportivo || d.anno_sportivo}): € ${parseFloat(saldi.banca).toFixed(2)}</span>
+                                            </small>
+                                        ` : `
+                                            <small style="color: #94a3b8; font-size: 0.74rem; display: block;">
+                                                Inserisci o modifica se diverso dall'estratto conto reale.
+                                            </small>
+                                        `}
+                                    </div>
                                 </div>
                             </div>
 
@@ -20196,6 +20262,15 @@ ${r.annullata ? `
             }
             if (document.getElementById('wz-cassa')) document.getElementById('wz-cassa').value = saldi.cassa;
             if (document.getElementById('wz-banca')) document.getElementById('wz-banca').value = saldi.banca;
+
+            const badgeEl = document.getElementById('wz-banca-badge');
+            if (badgeEl) {
+                if (saldi.isRiconciliatoBanca) {
+                    badgeEl.innerHTML = `<small style="color: #10b981; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; font-weight: 600;"><span>✅</span> <span>Allineato ad Estratto Conto ufficiale (${saldi.verificaDettaglio?.anno_sportivo || annoSportivo || ''}): € ${parseFloat(saldi.banca).toFixed(2)}</span></small>`;
+                } else {
+                    badgeEl.innerHTML = `<small style="color: #94a3b8; font-size: 0.74rem; display: block;">Inserisci o modifica se diverso dall'estratto conto reale.</small>`;
+                }
+            }
 
             const container = document.getElementById('wz-casse-detail-container');
             if (container) {
