@@ -1680,7 +1680,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.4.9";
+        const APP_VERSION = "2.5.0";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -5412,7 +5412,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="receipts-tbody">
-                                        ${this.renderRicevuteRows(this.state.ricevute)}
+                                        ${this.renderRicevuteRows(this.state.ricevute.filter(r => r.tipo !== 'Compenso Sportivo'))}
                                     </tbody>
                                 </table>
                             </div>
@@ -5608,6 +5608,7 @@
                 const hasDateRange = Boolean(start || end);
 
                 return this.state.ricevute.filter(r => {
+                    if (r.tipo === 'Compenso Sportivo') return false;
                     const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
                     const matchSearch = !search || 
                         (r.socio_nome || '').toLowerCase().includes(search) || 
@@ -5766,7 +5767,7 @@
 openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const today = new Date();
             const currentYear = forcedAnno ? parseInt(forcedAnno) : (today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1);
-            const lastNum = this.state.ricevute.filter(r => r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
+            const lastNum = this.state.ricevute.filter(r => r.tipo !== 'Compenso Sportivo' && r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
             const initialNum = (insertNum !== null && insertNum !== undefined) ? parseInt(insertNum) : (lastNum + 1);
             const isInsert = (insertNum !== null && insertNum !== undefined && initialNum <= lastNum);
             const defaultDate = forcedDate || today.toISOString().split('T')[0];
@@ -15996,6 +15997,37 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
         renderIstruttori() {
             const main = document.getElementById('main-content');
             const istruttori = this.state.istruttori || [];
+
+            // Cattura filtri correnti del registro compensi se già a video
+            const searchInput = document.getElementById('compensi-search');
+            const instrInput = document.getElementById('compensi-filter-istruttore');
+            const annoInput = document.getElementById('compensi-filter-anno');
+            const startInput = document.getElementById('compensi-date-start');
+            const endInput = document.getElementById('compensi-date-end');
+
+            const prevCompSearch = searchInput ? searchInput.value : '';
+            const prevCompInstr = instrInput ? instrInput.value : 'all';
+            const prevCompStart = startInput ? startInput.value : '';
+            const prevCompEnd = endInput ? endInput.value : '';
+
+            const currentYear = new Date().getFullYear();
+            const compAvailableYears = [...new Set(
+                (this.state.ricevute || [])
+                    .filter(r => r.tipo === 'Compenso Sportivo')
+                    .map(r => parseInt(r.anno))
+                    .filter(y => !isNaN(y) && y > 0)
+            )].sort((a, b) => b - a);
+
+            if (!compAvailableYears.includes(currentYear)) {
+                compAvailableYears.unshift(currentYear);
+            }
+            compAvailableYears.sort((a, b) => b - a);
+
+            if (!this.selectedCompensiAnno) {
+                this.selectedCompensiAnno = String(currentYear);
+            }
+            const prevCompAnno = annoInput ? annoInput.value : (this.selectedCompensiAnno || String(currentYear));
+
             main.innerHTML = `
                     <div class="page-content">
                         <div class="page-header" style="flex-shrink:0;">
@@ -16103,8 +16135,77 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                 </div>
                             </div>
                         </div>` : ''}
+
+                        <!-- Registro Ricevute Compensi Collaboratori -->
+                        <div class="glass-card member-card" style="margin-top:1.5rem; flex-shrink:0;">
+                            <div class="page-header" style="margin-bottom:0.75rem; padding:0; border:none; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                                <div class="header-title">
+                                    <h2 style="font-size:1.25rem; margin:0; display:flex; align-items:center; gap:8px;">
+                                        📑 Registro Ricevute Compensi Collaboratori
+                                    </h2>
+                                    <p style="font-size:0.8rem; color:var(--text-muted); margin:2px 0 0 0;">
+                                        Storico ricevute compensi sportivi conformi D.Lgs. 36/2021.
+                                    </p>
+                                </div>
+                                <div class="header-actions">
+                                    <button class="btn btn-outline" onclick="app.exportCompensiExcel()" data-guide="Esporta il tabulato dei compensi in formato Excel (totale o filtrato).">
+                                        📊 Esporta Excel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 1rem;">
+                                <input type="text" id="compensi-search" class="form-control search-input" style="min-width: 180px; flex: 1;" placeholder="Cerca collaboratore, causale o N. C..." value="${prevCompSearch}" oninput="app.filterCompensi()">
+                                
+                                <select id="compensi-filter-istruttore" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterCompensi()" title="Filtra per Collaboratore / Istruttore">
+                                    <option value="all" ${prevCompInstr === 'all' ? 'selected' : ''}>👨‍🏫 Tutti i Collaboratori</option>
+                                    ${istruttori.map(i => `<option value="${i.id}" ${String(i.id) === String(prevCompInstr) ? 'selected' : ''}>${i.nome}</option>`).join('')}
+                                </select>
+
+                                <select id="compensi-filter-anno" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.onCompensiAnnoFilterChange(this.value)" title="Filtra per Anno">
+                                    ${compAvailableYears.map(y => `<option value="${y}" ${String(y) === String(prevCompAnno) ? 'selected' : ''}>📅 Anno ${y}${y === currentYear ? ' (In corso)' : ''}</option>`).join('')}
+                                    <option value="all" ${prevCompAnno === 'all' ? 'selected' : ''}>🌐 Tutti gli Anni</option>
+                                </select>
+
+                                <div class="date-filter-group" style="display:inline-flex; align-items:center; gap:8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px;" title="Isola le ricevute per data di pagamento (Da - A)">
+                                    <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap; display:flex; align-items:center; gap:5px;">
+                                        📅 <span>Da:</span>
+                                    </span>
+                                    <input type="date" id="compensi-date-start" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevCompStart}" oninput="app.filterCompensi()" onchange="app.filterCompensi()" title="Data iniziale periodo">
+                                    <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap;">
+                                        A:
+                                    </span>
+                                    <input type="date" id="compensi-date-end" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevCompEnd}" oninput="app.filterCompensi()" onchange="app.filterCompensi()" title="Data finale periodo">
+                                    <button type="button" id="compensi-date-clear-btn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: rgba(255,255,255,0.2); color: var(--text-muted); display: ${prevCompStart || prevCompEnd ? 'inline-flex' : 'none'}; align-items:center; gap:3px;" onclick="app.clearCompensiDateFilter()" title="Azzera filtro date">✕ Azzera</button>
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('numero')">N. Ricevuta <span id="sort-compensi-numero">${this.compensiSortKey === 'numero' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('data')">Data <span id="sort-compensi-data">${(this.compensiSortKey || 'data') === 'data' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('nome')">Collaboratore <span id="sort-compensi-nome">${this.compensiSortKey === 'nome' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th>Prestazione / Periodo</th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('importo')">Importo <span id="sort-compensi-importo">${this.compensiSortKey === 'importo' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th>Metodo</th>
+                                            <th>Stato</th>
+                                            <th style="text-align: right;">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="compensi-tbody">
+                                        ${this.renderCompensiRows(this.getFilteredCompensi())}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 `;
+
+            if (prevCompSearch || prevCompStart || prevCompEnd || prevCompInstr !== 'all' || (prevCompAnno && prevCompAnno !== 'all')) {
+                this.filterCompensi();
+            }
         },
 
         openAddIstruttoreModal() {
@@ -16418,15 +16519,16 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             };
             this.state.ricevute.push(receipt);
             this.saveAll();
-            this.toast('Ricevuta compenso generata!');
+            this.toast('Ricevuta compenso generata e archiviata!');
             this.closeModal();
-            this.generateCompensoPDF(receipt.id, instrId);
+            this.generateCompensoPDF(receipt.id, instrId, true);
             this.renderIstruttori();
         },
 
-        generateCompensoPDF(receiptId, instrId) {
-            const r = this.state.ricevute.find(x => x.id === receiptId);
-            const instr = this.state.istruttori.find(x => x.id === instrId);
+        generateCompensoPDF(receiptId, instrId, shouldArchive = false) {
+            const r = this.state.ricevute.find(x => x.id === receiptId || String(x.id) === String(receiptId));
+            const effInstrId = instrId || (r ? r.istruttore_id : null);
+            const instr = this.state.istruttori.find(x => x.id === effInstrId || String(x.id) === String(effInstrId));
             if (!r || !instr) return;
 
             const asd = this.state.settings;
@@ -16560,7 +16662,13 @@ body {
   </div>
 </div>
 
-<div class="doc-title">RICEVUTA DI COMPENSO SPORTIVO</div>
+${r.annullata ? `
+<div style="background:#fee2e2; border:2px solid #ef4444; color:#b91c1c; padding:8px 14px; border-radius:6px; margin:8px 0; font-weight:800; font-size:10.5pt; text-align:center; text-transform:uppercase; letter-spacing:0.04em;">
+    ⚠️ RICEVUTA ANNULLATA - DOCUMENTO PRIVO DI EFFETTI CONTABILI E FISCALI
+</div>
+` : ''}
+
+<div class="doc-title">RICEVUTA DI COMPENSO SPORTIVO ${r.annullata ? '<span style="color:#ef4444;">(ANNULLATA)</span>' : ''}</div>
 <div class="ref">N. C${String(r.numero).padStart(3, '0')}/${r.anno} &nbsp;|&nbsp; Anno sportivo ${exYear}-${exYear + 1}</div>
 
 <div class="grid-2col">
@@ -16635,10 +16743,332 @@ body {
                 pw.focus();
             }
 
-            const safeInstrName = (instr.nome || 'Collaboratore').replace(/\s+/g, '_');
-            const compensoFileName = `Ricevuta_Compenso_C${String(r.numero).padStart(3, '0')}_${r.anno}_${safeInstrName}.html`;
-            const compensoBlob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
-            this.saveDocumentFS(compensoFileName, compensoBlob, 'compensi', sportsYear);
+            if (shouldArchive) {
+                const safeInstrName = (instr.nome || 'Collaboratore').replace(/\s+/g, '_');
+                const compensoFileName = `Ricevuta_Compenso_C${String(r.numero).padStart(3, '0')}_${r.anno}_${safeInstrName}.html`;
+                const compensoBlob = new Blob([htmlDoc], { type: 'text/html;charset=utf-8' });
+                this.saveDocumentFS(compensoFileName, compensoBlob, 'compensi', sportsYear);
+            }
+        },
+
+        // --- FUNZIONI REGISTRO E GESTIONE COMPENSI COLLABORATORI ---
+
+        onCompensiAnnoFilterChange(val) {
+            this.selectedCompensiAnno = val;
+            this.filterCompensi();
+        },
+
+        clearCompensiDateFilter() {
+            const startEl = document.getElementById('compensi-date-start');
+            const endEl = document.getElementById('compensi-date-end');
+            if (startEl) startEl.value = '';
+            if (endEl) endEl.value = '';
+            this.filterCompensi();
+        },
+
+        sortCompensi(key) {
+            if (this.compensiSortKey === key) {
+                this.compensiSortDir = this.compensiSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.compensiSortKey = key;
+                this.compensiSortDir = (key === 'data' || key === 'numero') ? 'desc' : 'asc';
+            }
+            ['numero', 'data', 'nome', 'importo'].forEach(k => {
+                const el = document.getElementById('sort-compensi-' + k);
+                if (el) el.innerHTML = '';
+            });
+            const el = document.getElementById('sort-compensi-' + key);
+            if (el) el.innerHTML = this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽';
+            this.filterCompensi();
+        },
+
+        getFilteredCompensi() {
+            const searchEl = document.getElementById('compensi-search');
+            const instrEl = document.getElementById('compensi-filter-istruttore');
+            const annoEl = document.getElementById('compensi-filter-anno');
+            const startEl = document.getElementById('compensi-date-start');
+            const endEl = document.getElementById('compensi-date-end');
+
+            const search = (searchEl ? searchEl.value : '').toLowerCase().trim();
+            const instrFilter = instrEl ? instrEl.value : 'all';
+            const annoFilter = annoEl ? annoEl.value : (this.selectedCompensiAnno || 'all');
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+
+            const hasDateRange = Boolean(start || end);
+
+            return (this.state.ricevute || []).filter(r => {
+                if (r.tipo !== 'Compenso Sportivo') return false;
+
+                const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
+                const instrNome = (instr ? instr.nome : (r.socio_nome || '')).replace('ISTRUTTORE: ', '');
+                const instrCF = instr ? (instr.cf || '') : '';
+                const numStr = `C${String(r.numero).padStart(3, '0')}/${r.anno}`.toLowerCase();
+
+                const matchSearch = !search ||
+                    instrNome.toLowerCase().includes(search) ||
+                    instrCF.toLowerCase().includes(search) ||
+                    numStr.includes(search) ||
+                    (r.prestazione || '').toLowerCase().includes(search) ||
+                    (r.periodo || '').toLowerCase().includes(search) ||
+                    String(r.numero).includes(search);
+
+                const matchInstr = (instrFilter === 'all') || String(r.istruttore_id) === String(instrFilter);
+
+                const rDate = r.data ? String(r.data).substring(0, 10) : '';
+                let matchDateOrAnno = true;
+                if (hasDateRange) {
+                    const matchStart = !start || rDate >= start;
+                    const matchEnd = !end || rDate <= end;
+                    matchDateOrAnno = matchStart && matchEnd;
+                } else {
+                    if (annoFilter !== 'all') {
+                        matchDateOrAnno = (parseInt(r.anno) === parseInt(annoFilter));
+                    }
+                }
+
+                return matchSearch && matchInstr && matchDateOrAnno;
+            });
+        },
+
+        filterCompensi() {
+            const startEl = document.getElementById('compensi-date-start');
+            const endEl = document.getElementById('compensi-date-end');
+            const clearBtn = document.getElementById('compensi-date-clear-btn');
+            const tbody = document.getElementById('compensi-tbody');
+            if (!tbody) return;
+
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+
+            if (clearBtn) {
+                clearBtn.style.display = (start || end) ? 'inline-flex' : 'none';
+            }
+
+            const filtered = this.getFilteredCompensi();
+            tbody.innerHTML = this.renderCompensiRows(filtered);
+        },
+
+        renderCompensiRows(compensi) {
+            if (!compensi || compensi.length === 0) {
+                return `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta compenso trovata con i filtri attuali.</td></tr>`;
+            }
+
+            let sorted = [...compensi];
+            const k = this.compensiSortKey || 'data';
+            const dir = (this.compensiSortDir || 'desc') === 'asc' ? 1 : -1;
+
+            sorted.sort((a, b) => {
+                if (k === 'data') {
+                    const dateA = new Date(a.data).getTime() || 0;
+                    const dateB = new Date(b.data).getTime() || 0;
+                    if (dateA !== dateB) return (dateA - dateB) * dir;
+                    return ((parseInt(a.numero) || 0) - (parseInt(b.numero) || 0)) * dir;
+                } else if (k === 'numero') {
+                    return ((parseInt(a.numero) || 0) - (parseInt(b.numero) || 0)) * dir;
+                } else if (k === 'nome') {
+                    const instrA = this.state.istruttori.find(i => i.id == a.istruttore_id);
+                    const nameA = (instrA ? instrA.nome : (a.socio_nome || '')).toLowerCase();
+                    const instrB = this.state.istruttori.find(i => i.id == b.istruttore_id);
+                    const nameB = (instrB ? instrB.nome : (b.socio_nome || '')).toLowerCase();
+                    return nameA.localeCompare(nameB) * dir;
+                } else if (k === 'importo') {
+                    return ((parseFloat(a.importo) || 0) - (parseFloat(b.importo) || 0)) * dir;
+                }
+                return 0;
+            });
+
+            return sorted.map(r => {
+                const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
+                const instrNome = (instr ? instr.nome : (r.socio_nome || '')).replace('ISTRUTTORE: ', '');
+                const numFormatted = `C${String(r.numero).padStart(3, '0')}/${r.anno}`;
+                
+                let displayMetodo = r.pagamento || 'Bonifico';
+                let icon = '💳';
+                if (displayMetodo.toLowerCase().includes('bonifico')) icon = '🏦';
+                else if (displayMetodo.toLowerCase().includes('contant')) icon = '💵';
+                else if (displayMetodo.toLowerCase().includes('satispay') || displayMetodo.toLowerCase().includes('app')) icon = '📱';
+                const metodoHtml = `<span title="Metodo: ${displayMetodo}" style="margin-right: 4px;">${icon}</span> ${displayMetodo}`;
+
+                const isAnnullata = !!r.annullata;
+
+                return `
+                    <tr id="compenso-row-${r.id}" data-id="${r.id}">
+                        <td style="font-weight:700; font-family:monospace; font-size:0.95rem;">${numFormatted}</td>
+                        <td>${this.formatDate(r.data)}</td>
+                        <td style="font-weight:600;">
+                            <div>${instrNome}</div>
+                            ${instr && instr.cf ? `<div style="font-size:0.75rem; color:var(--text-muted); font-family:monospace;">${instr.cf}</div>` : ''}
+                        </td>
+                        <td>
+                            <div style="font-weight:600; font-size:0.85rem;">${r.prestazione || 'Attività sportiva'}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">${r.periodo ? `Periodo: ${r.periodo}` : ''}</div>
+                        </td>
+                        <td style="font-weight:700; ${isAnnullata ? 'color:var(--text-muted); text-decoration:line-through;' : 'color:var(--success);'}">
+                            € ${parseFloat(r.importo).toFixed(2)}
+                        </td>
+                        <td>${metodoHtml}</td>
+                        <td>
+                            ${isAnnullata 
+                                ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">🚫 Annullata</span>` 
+                                : `<span style="background:rgba(16,185,129,0.15); color:var(--success); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">✅ Emessa</span>`}
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
+                                <button class="btn btn-outline" style="padding: 5px 10px; font-size:0.8rem;" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa Ricevuta (senza re-archiviare)">🖨️ Stampa</button>
+                                ${!isAnnullata ? `
+                                    <button class="btn btn-outline text-warning" style="padding: 5px 10px; font-size:0.8rem; border-color: rgba(245, 158, 11, 0.3);" title="Annulla Ricevuta" onclick="app.annullaCompensoReceipt('${r.id}')">🚫 Annulla</button>
+                                ` : ''}
+                                ${this.state.debugMode ? `
+                                    <button class="btn btn-outline text-danger" style="padding: 5px 8px; font-size:0.8rem;" title="Elimina Definitivamente (Debug Mode)" onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')">🗑️</button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        },
+
+        printCompensoReceipt(receiptId) {
+            const r = this.state.ricevute.find(x => String(x.id) === String(receiptId) || x.id == receiptId);
+            if (!r) {
+                this.toast('Ricevuta compenso non trovata.', 'danger');
+                return;
+            }
+            this.generateCompensoPDF(r.id, r.istruttore_id, false);
+        },
+
+        annullaCompensoReceipt(receiptId) {
+            const r = this.state.ricevute.find(x => String(x.id) === String(receiptId) || x.id == receiptId);
+            if (!r) return;
+            const numFormatted = `C${String(r.numero).padStart(3, '0')}/${r.anno}`;
+            if (confirm(`Sei sicuro di voler ANNULLARE la ricevuta compenso n. ${numFormatted}?\n\nRimarrà visibile in archivio contrassegnata come annullata.`)) {
+                r.annullata = true;
+                this.removePrimaNotaFromRicevuta(r.id);
+                this.saveAll();
+                this.renderIstruttori();
+                this.toast(`Ricevuta compenso ${numFormatted} annullata correttamente.`, 'warning');
+            }
+        },
+
+        permanentlyDeleteCompensoReceipt(receiptId) {
+            if (!this.state.debugMode) {
+                this.toast("L'eliminazione definitiva è consentita solo in Debug Mode.", "warning");
+                return;
+            }
+            const r = this.state.ricevute.find(x => String(x.id) === String(receiptId) || x.id == receiptId);
+            if (!r) return;
+            const numFormatted = `C${String(r.numero).padStart(3, '0')}/${r.anno}`;
+            const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
+            const instrNome = instr ? instr.nome : 'Collaboratore';
+
+            if (confirm(`ATTENZIONE (Debug Mode): Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la ricevuta compenso n. ${numFormatted} di ${instrNome}?\n\nQuesta operazione rimuoverà il record dal database. La sequenza dei compensi successivi per l'anno ${r.anno} scalerà di 1.`)) {
+                const deletedNum = parseInt(r.numero);
+                const deletedAnno = parseInt(r.anno);
+
+                this.removePrimaNotaFromRicevuta(r.id);
+                this.state.ricevute = this.state.ricevute.filter(x => String(x.id) !== String(receiptId) && x.id != receiptId);
+                this.trackDeletion(r.id);
+
+                const shiftedCompensi = this.state.ricevute
+                    .filter(x => x.tipo === 'Compenso Sportivo' && parseInt(x.anno) === deletedAnno && parseInt(x.numero) > deletedNum)
+                    .sort((a, b) => parseInt(a.numero) - parseInt(b.numero));
+
+                shiftedCompensi.forEach(x => {
+                    x.numero = parseInt(x.numero) - 1;
+                });
+
+                this.saveAll();
+                this.renderIstruttori();
+                this.toast(`Ricevuta compenso ${numFormatted} eliminata definitivamente. ${shiftedCompensi.length > 0 ? shiftedCompensi.length + ' compensi successivi scalati di 1.' : ''}`, 'danger');
+            }
+        },
+
+        exportCompensiExcel() {
+            const startEl = document.getElementById('compensi-date-start');
+            const endEl = document.getElementById('compensi-date-end');
+            const instrEl = document.getElementById('compensi-filter-istruttore');
+            const annoEl = document.getElementById('compensi-filter-anno');
+
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+            const instrId = instrEl ? instrEl.value : 'all';
+            const anno = annoEl ? annoEl.value : (this.selectedCompensiAnno || 'all');
+
+            const compensi = this.getFilteredCompensi ? this.getFilteredCompensi() : (this.state.ricevute || []).filter(r => r.tipo === 'Compenso Sportivo');
+            if (compensi.length === 0) {
+                this.toast('Nessuna ricevuta compenso da esportare con i filtri selezionati.', 'warning');
+                return;
+            }
+
+            const rows = compensi.map(r => {
+                const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
+                const instrNome = (instr ? instr.nome : (r.socio_nome || '')).replace('ISTRUTTORE: ', '');
+                return {
+                    'N. Ricevuta': `C${String(r.numero).padStart(3, '0')}/${r.anno}`,
+                    'Numero': r.numero,
+                    'Anno': r.anno,
+                    'Data Pagamento': app.formatDate(r.data),
+                    'Collaboratore': instrNome,
+                    'Codice Fiscale': instr ? (instr.cf || '') : '',
+                    'Ruolo': instr ? (instr.ruolo || '') : '',
+                    'Prestazione': r.prestazione || '',
+                    'Periodo': r.periodo || '',
+                    'Importo (€)': parseFloat(r.importo || 0).toFixed(2),
+                    'Altri Compensi Anno (€)': parseFloat(r.altri_compensi || 0).toFixed(2),
+                    'Totale Compensi Dichiarato (€)': (parseFloat(r.importo || 0) + parseFloat(r.altri_compensi || 0)).toFixed(2),
+                    'Metodo Pagamento': r.pagamento || 'Bonifico',
+                    'IBAN': instr ? (instr.iban || '') : '',
+                    'Stato': r.annullata ? 'ANNULLATA' : 'Valida'
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            worksheet['!cols'] = [
+                { wch: 14 },
+                { wch: 8 },
+                { wch: 8 },
+                { wch: 14 },
+                { wch: 24 },
+                { wch: 18 },
+                { wch: 16 },
+                { wch: 28 },
+                { wch: 24 },
+                { wch: 14 },
+                { wch: 20 },
+                { wch: 26 },
+                { wch: 16 },
+                { wch: 28 },
+                { wch: 12 }
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Compensi");
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+            let fileName = "tabulato_compensi";
+            if (instrId !== 'all') {
+                const instr = this.state.istruttori.find(i => String(i.id) === String(instrId));
+                if (instr) {
+                    fileName += `_${(instr.nome || 'collaboratore').replace(/\s+/g, '_')}`;
+                }
+            }
+            if (start || end) {
+                fileName += `_dal_${start || 'inizio'}_al_${end || 'oggi'}`;
+            } else if (anno !== 'all') {
+                fileName += `_anno_${anno}`;
+            } else {
+                fileName += `_tutti_gli_anni`;
+            }
+            fileName += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+            const sportsYear = (anno !== 'all' && !isNaN(parseInt(anno)))
+                ? `${anno}-${parseInt(anno) + 1}`
+                : this.getSportsYear(new Date());
+
+            this.saveDocumentFS(fileName, blob, 'esportazioni_excel', sportsYear);
+            this.toast(`✅ Esportate ${compensi.length} ricevute compenso in Excel (${fileName})`, 'success');
         },
 
 
