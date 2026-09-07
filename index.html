@@ -19000,48 +19000,120 @@ ${r.annullata ? `
         },
 
         calcolaSaldiFinanziari(dataChiusura, annoSportivo = null) {
-            let totEntrate = 0, totUscite = 0, totCassa = 0, totBanca = 0;
-            const maxDate = dataChiusura ? new Date(dataChiusura) : null;
-            let minDate = null;
-            if (annoSportivo) {
-                const parts = String(annoSportivo).split(/[-\/]/).map(x => parseInt(x, 10));
-                if (parts.length === 2 && !isNaN(parts[0])) {
-                    minDate = new Date(parts[0], 8, 1); // 1° Settembre dell'anno di avvio
-                }
+            if (typeof this.syncSaldiInizialiWithPrimaNota === 'function') {
+                this.syncSaldiInizialiWithPrimaNota();
             }
+
+            let totEntrate = 0, totUscite = 0, totCassa = 0, totBanca = 0;
             
+            // Risoluzione e normalizzazione dell'anno sportivo (es. 2025/2026, 2025-2026, 25/26)
+            const syParsed = this.parseSportsYear ? this.parseSportsYear(annoSportivo) : null;
+            let startYearDate = null;
+            let endYearDate = null;
+            if (syParsed) {
+                startYearDate = `${syParsed.y1}-09-01`;
+                endYearDate = `${syParsed.y2}-08-31`;
+            }
+
+            // Data limite di chiusura per i saldi di cassa/banca alla data del bilancio
+            const maxDateStr = dataChiusura ? String(dataChiusura).substring(0, 10) : (endYearDate || '9999-12-31');
+
+            const casseMap = {};
+
             (this.state.primanota || []).forEach(mov => {
-                if (!mov.data) return;
-                const movDate = new Date(mov.data);
-                if (maxDate && movDate > maxDate) return;
+                if (!mov || !mov.data) return;
+                const movDateStr = String(mov.data).substring(0, 10);
+                if (movDateStr > maxDateStr) return;
+                if (mov.riferimento && mov.riferimento.startsWith('CHIUSURA_')) return;
 
-                const imp = parseFloat(mov.importo) || 0;
-                const isCassa = !mov.metodo || mov.metodo === 'Contanti';
+                const imp = Math.abs(parseFloat(mov.importo) || 0);
+                const tipo = (mov.tipo || '').trim().toLowerCase();
+                const isEntrata = tipo === 'entrata';
+                const isUscita = tipo === 'uscita';
+                const isGiroconto = tipo === 'giroconto' || (mov.categoria && mov.categoria.startsWith('Giroconto')) || (mov.riferimento && mov.riferimento.startsWith('GIROCONTO_'));
+                const isSaldoIniziale = !!mov.is_saldo_iniziale || (mov.riferimento && mov.riferimento.startsWith('SALDO_INIZIALE_')) || (mov.categoria && (mov.categoria.includes('Saldo Iniziale') || mov.categoria.includes('Giacenza Iniziale')));
 
-                // Saldo cassa e banca progressivo alla data di chiusura
-                if (mov.tipo === 'entrata') {
+                const isCassa = this.isCassaMetodo(mov.metodo);
+                const mName = mov.metodo ? String(mov.metodo).trim() : (isCassa ? 'Cassa Contanti' : 'Conto Corrente Banca');
+
+                if (!casseMap[mName]) {
+                    casseMap[mName] = { nome: mName, isCassa: isCassa, saldo: 0, count: 0 };
+                }
+                casseMap[mName].count++;
+
+                // Saldo cassa e banca cumulativo alla data di chiusura
+                if (isGiroconto) {
+                    if (isCassa) {
+                        totCassa -= imp;
+                        totBanca += imp;
+                    } else {
+                        totBanca -= imp;
+                        totCassa += imp;
+                    }
+                    casseMap[mName].saldo -= imp;
+                    const dest = (mov.categoria && !mov.categoria.startsWith('Giroconto')) ? mov.categoria.trim() : (isCassa ? 'Conto Corrente Banca' : 'Cassa Contanti');
+                    const destIsCassa = this.isCassaMetodo(dest);
+                    if (!casseMap[dest]) {
+                        casseMap[dest] = { nome: dest, isCassa: destIsCassa, saldo: 0, count: 0 };
+                    }
+                    casseMap[dest].saldo += imp;
+                } else if (isEntrata) {
                     if (isCassa) totCassa += imp; else totBanca += imp;
-                } else {
+                    casseMap[mName].saldo += imp;
+                } else if (isUscita) {
                     if (isCassa) totCassa -= imp; else totBanca -= imp;
+                    casseMap[mName].saldo -= imp;
                 }
 
-                // Entrate e uscite di competenza dell'esercizio (se minDate è definito)
-                if (!minDate || movDate >= minDate) {
-                    if (mov.tipo === 'entrata') {
-                        totEntrate += imp;
+                // Entrate e uscite di competenza economica dell'anno sportivo
+                if (!isGiroconto && !isSaldoIniziale) {
+                    let matchesYear = false;
+                    if (syParsed) {
+                        if (mov.anno_sportivo) {
+                            const movSy = this.parseSportsYear(mov.anno_sportivo);
+                            matchesYear = movSy && movSy.y1 === syParsed.y1;
+                        } else {
+                            matchesYear = (movDateStr >= startYearDate && movDateStr <= endYearDate);
+                        }
                     } else {
-                        totUscite += imp;
+                        matchesYear = true;
+                    }
+
+                    if (matchesYear) {
+                        if (isEntrata) totEntrate += imp;
+                        else if (isUscita) totUscite += imp;
                     }
                 }
             });
+
+            const casseList = Object.values(casseMap)
+                .filter(c => c.count > 0 || Math.abs(c.saldo) > 0.001)
+                .map(c => ({
+                    nome: c.nome,
+                    isCassa: c.isCassa,
+                    saldo: parseFloat(c.saldo.toFixed(2))
+                }))
+                .sort((a, b) => (b.isCassa ? 1 : 0) - (a.isCassa ? 1 : 0) || a.nome.localeCompare(b.nome));
 
             return {
                 entrate: totEntrate.toFixed(2),
                 uscite: totUscite.toFixed(2),
                 avanzo: (totEntrate - totUscite).toFixed(2),
                 cassa: totCassa.toFixed(2),
-                banca: totBanca.toFixed(2)
+                banca: totBanca.toFixed(2),
+                casseList
             };
+        },
+
+        parseSportsYear(sy) {
+            if (!sy) return null;
+            const parts = String(sy).split(/[-\/]/).map(x => parseInt(x.trim(), 10));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                const y1 = parts[0] < 100 ? 2000 + parts[0] : parts[0];
+                const y2 = parts[1] < 100 ? 2000 + parts[1] : parts[1];
+                return { y1, y2, asSlash: `${y1}/${y2}`, asHyphen: `${y1}-${y2}` };
+            }
+            return null;
         },
 
         escapeHtml(str) {
@@ -19244,18 +19316,19 @@ ${r.annullata ? `
         onVerbaleAnnoSportivoChange(newYear) {
             const d = this.state.verbale_wizard_data || {};
             d.anno_sportivo = newYear;
-            const parts = String(newYear).split(/[-\/]/).map(x => parseInt(x, 10));
-            if (parts.length === 2 && !isNaN(parts[1])) {
-                d.data_chiusura = `${parts[1]}-08-31`;
+            const sy = this.parseSportsYear(newYear);
+            if (sy) {
+                d.data_chiusura = `${sy.y2}-08-31`;
                 const saldi = this.calcolaSaldiFinanziari(d.data_chiusura, newYear);
                 d.entrate = saldi.entrate;
                 d.uscite = saldi.uscite;
                 d.avanzo = saldi.avanzo;
                 d.cassa = saldi.cassa;
                 d.banca = saldi.banca;
+                d.casseList = saldi.casseList;
             }
             this.saveVerbaleWizardStep();
-            this.toast(`Anno sportivo impostato su ${newYear}. Saldi stimati aggiornati!`, 'info');
+            this.toast(`Anno sportivo impostato su ${newYear}. Saldi e casse aggiornati!`, 'info');
         },
 
         initVerbaliState() {
@@ -19493,6 +19566,7 @@ ${r.annullata ? `
                     avanzo: saldi.avanzo,
                     cassa: saldi.cassa,
                     banca: saldi.banca,
+                    casseList: saldi.casseList,
                     relazione_presidente: "Il Presidente espone all'Assemblea una dettagliata relazione sulle attività sportive, agonistiche e sociali svolte nel corso dell'anno, sottolineando i risultati raggiunti e la piena conformità della gestione alle finalità istituzionali dell'Associazione.",
                     num_firmatari: 2,
                     f_nome_1: '',
@@ -19848,19 +19922,38 @@ ${r.annullata ? `
                         ` : ''}
                     `;
                 } else if (currentStep.id === 'step_ord_fin') {
+                    // Auto-calcola i saldi dalla Prima Nota se non impostati o se residui a 0 da versioni precedenti
+                    if (!d.data_chiusura) {
+                        const sy = this.parseSportsYear(d.anno_sportivo);
+                        d.data_chiusura = sy ? `${sy.y2}-08-31` : '2026-08-31';
+                    }
+                    const saldi = this.calcolaSaldiFinanziari(d.data_chiusura, d.anno_sportivo);
+                    if (!d.entrate || d.entrate === '0.00' || !d.cassa || (d.entrate === '0.00' && parseFloat(d.uscite) > 0 && parseFloat(d.cassa) < 0)) {
+                        d.entrate = saldi.entrate;
+                        d.uscite = saldi.uscite;
+                        d.avanzo = saldi.avanzo;
+                        d.cassa = saldi.cassa;
+                        d.banca = saldi.banca;
+                        d.casseList = saldi.casseList;
+                    }
+                    const activeCasseList = Array.isArray(d.casseList) && d.casseList.length > 0 ? d.casseList : (saldi.casseList || []);
+
                     stepContentHtml = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 8px;">
                             <div class="form-group" style="flex: 1; min-width: 220px;">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Data Chiusura Esercizio</label>
                                 <input type="date" id="wz-data_chiusura" class="form-control" value="${d.data_chiusura || ''}" onchange="app.recalculateVerbaleSaldi()">
                             </div>
-                            <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px;" onclick="app.recalculateVerbaleSaldi()">
-                                🔄 Ricalcola da Prima Nota
+                            <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="app.recalculateVerbaleSaldi()">
+                                <span>🔄</span> Ricalcola da Prima Nota (${this.escapeHtml(d.anno_sportivo || '')})
                             </button>
                         </div>
 
                         <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
-                            <div style="font-weight: 700; font-size: 0.92rem; margin-bottom: 10px; color: var(--primary);">Dati Sintetici Rendiconto Economico-Finanziario</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                                <div style="font-weight: 700; font-size: 0.92rem; color: var(--primary);">Dati Sintetici Rendiconto Economico-Finanziario</div>
+                                <span style="font-size: 0.78rem; color: var(--accent); font-weight: 600;">Anno Sportivo ${this.escapeHtml(d.anno_sportivo || '')}</span>
+                            </div>
                             
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem;">
                                 <div class="form-group">
@@ -19873,7 +19966,7 @@ ${r.annullata ? `
                                 </div>
                                 <div class="form-group">
                                     <label style="font-size: 0.82rem; display:block; margin-bottom: 2px; color: var(--accent);">Avanzo / Disavanzo (€)</label>
-                                    <input type="number" step="0.01" id="wz-avanzo" class="form-control" value="${d.avanzo || '0.00'}" style="font-weight: 700; color: #34d399;" readonly>
+                                    <input type="number" step="0.01" id="wz-avanzo" class="form-control" value="${d.avanzo || '0.00'}" style="font-weight: 700; color: ${parseFloat(d.avanzo) >= 0 ? '#34d399' : '#ef4444'};" readonly>
                                 </div>
                             </div>
 
@@ -19885,6 +19978,31 @@ ${r.annullata ? `
                                 <div class="form-group">
                                     <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Saldo Conto Corrente Banca (€)</label>
                                     <input type="number" step="0.01" id="wz-banca" class="form-control" value="${d.banca || '0.00'}">
+                                </div>
+                            </div>
+
+                            <!-- Dettaglio Casse & Conti Attivi -->
+                            <div id="wz-casse-detail-container" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">
+                                        💼 Casse & Conti rilevati nell'anno ${this.escapeHtml(d.anno_sportivo || '')}:
+                                    </span>
+                                    <span style="font-size: 0.75rem; color: #10b981; font-weight: 500;">
+                                        ✓ Autocompilati da Prima Nota
+                                    </span>
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    ${activeCasseList.length > 0 ? activeCasseList.map(c => `
+                                        <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
+                                            <span>${c.isCassa ? '💵' : '🏦'}</span>
+                                            <span style="color: var(--text-main); font-weight: 500;">${this.escapeHtml(c.nome)}:</span>
+                                            <strong style="color: ${c.saldo >= 0 ? '#34d399' : '#ef4444'};">€ ${c.saldo.toFixed(2)}</strong>
+                                        </div>
+                                    `).join('') : `
+                                        <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">
+                                            Nessun conto separato registrato in prima nota. Vengono utilizzati i totali di Cassa e Banca.
+                                        </span>
+                                    `}
                                 </div>
                             </div>
                         </div>
@@ -20024,6 +20142,17 @@ ${r.annullata ? `
             const dataChiusura = document.getElementById('wz-data_chiusura')?.value;
             const annoSportivo = this.state.verbale_wizard_data?.anno_sportivo;
             const saldi = this.calcolaSaldiFinanziari(dataChiusura, annoSportivo);
+
+            if (this.state.verbale_wizard_data) {
+                this.state.verbale_wizard_data.entrate = saldi.entrate;
+                this.state.verbale_wizard_data.uscite = saldi.uscite;
+                this.state.verbale_wizard_data.avanzo = saldi.avanzo;
+                this.state.verbale_wizard_data.cassa = saldi.cassa;
+                this.state.verbale_wizard_data.banca = saldi.banca;
+                this.state.verbale_wizard_data.casseList = saldi.casseList;
+                if (dataChiusura) this.state.verbale_wizard_data.data_chiusura = dataChiusura;
+            }
+
             if (document.getElementById('wz-entrate')) document.getElementById('wz-entrate').value = saldi.entrate;
             if (document.getElementById('wz-uscite')) document.getElementById('wz-uscite').value = saldi.uscite;
             if (document.getElementById('wz-avanzo')) {
@@ -20032,7 +20161,35 @@ ${r.annullata ? `
             }
             if (document.getElementById('wz-cassa')) document.getElementById('wz-cassa').value = saldi.cassa;
             if (document.getElementById('wz-banca')) document.getElementById('wz-banca').value = saldi.banca;
-            this.toast('Dati finanziari ricalcolati dalla Prima Nota!', 'info');
+
+            const container = document.getElementById('wz-casse-detail-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">
+                            💼 Casse & Conti rilevati nell'anno ${this.escapeHtml(annoSportivo || '')}:
+                        </span>
+                        <span style="font-size: 0.75rem; color: #10b981; font-weight: 500;">
+                            ✓ Autocompilati da Prima Nota
+                        </span>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${saldi.casseList.length > 0 ? saldi.casseList.map(c => `
+                            <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
+                                <span>${c.isCassa ? '💵' : '🏦'}</span>
+                                <span style="color: var(--text-main); font-weight: 500;">${this.escapeHtml(c.nome)}:</span>
+                                <strong style="color: ${c.saldo >= 0 ? '#34d399' : '#ef4444'};">€ ${c.saldo.toFixed(2)}</strong>
+                            </div>
+                        `).join('') : `
+                            <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">
+                                Nessun conto separato registrato in prima nota. Vengono utilizzati i totali di Cassa e Banca.
+                            </span>
+                        `}
+                    </div>
+                `;
+            }
+
+            this.toast('Dati finanziari e casse ricalcolati dalla Prima Nota!', 'info');
         },
 
         saveVerbaleWizardStep() {
@@ -20282,6 +20439,14 @@ ${r.annullata ? `
                                     <td style="padding: 5px 10px; color: #475569;">Saldo Conto Corrente Bancario al ${dataChiusuraFmt}</td>
                                     <td style="padding: 5px 10px; text-align: right; color: #475569;">€ ${banca.toFixed(2)}</td>
                                 </tr>
+                                ${Array.isArray(d.casseList) && d.casseList.length > 0 ? `
+                                    <tr style="border-bottom: 1px dotted #cbd5e1; background: #f8fafc;">
+                                        <td colspan="2" style="padding: 6px 10px; font-size: 0.78rem; color: #475569;">
+                                            <span style="font-weight: 600;">Ripartizione Casse & Conti:</span> 
+                                            ${d.casseList.map(c => `${this.escapeHtml(c.nome)}: € ${parseFloat(c.saldo).toFixed(2)}`).join(' &bull; ')}
+                                        </td>
+                                    </tr>
+                                ` : ''}
                             </tbody>
                         </table>
 
@@ -20517,7 +20682,7 @@ ${r.annullata ? `
 
                     writeParagraph(`1. Relazione del Presidente: ${d.relazione_presidente || ''}`);
 
-                    writeParagraph(`2. Rendiconto Economico-Finanziario al ${dataChiusuraFmt}: Il Presidente espone il rendiconto sintetizzato: Totale Entrate: € ${(parseFloat(d.entrate)||0).toFixed(2)}, Totale Uscite: € ${(parseFloat(d.uscite)||0).toFixed(2)}, Avanzo di Gestione: € ${(parseFloat(d.avanzo)||0).toFixed(2)}, Saldo Cassa: € ${(parseFloat(d.cassa)||0).toFixed(2)}, Saldo Banca: € ${(parseFloat(d.banca)||0).toFixed(2)}.`);
+                    writeParagraph(`2. Rendiconto Economico-Finanziario al ${dataChiusuraFmt}: Il Presidente espone il rendiconto sintetizzato: Totale Entrate: € ${(parseFloat(d.entrate)||0).toFixed(2)}, Totale Uscite: € ${(parseFloat(d.uscite)||0).toFixed(2)}, Avanzo di Gestione: € ${(parseFloat(d.avanzo)||0).toFixed(2)}, Saldo Cassa: € ${(parseFloat(d.cassa)||0).toFixed(2)}, Saldo Banca: € ${(parseFloat(d.banca)||0).toFixed(2)}${Array.isArray(d.casseList) && d.casseList.length > 0 ? ' (Dettaglio: ' + d.casseList.map(c => `${c.nome}: € ${parseFloat(c.saldo).toFixed(2)}`).join(', ') + ')' : ''}.`);
                     writeParagraph("L'Assemblea dei Soci, dopo attento esame, delibera all'unanimità di approvare il Rendiconto economico-finanziario come predisposto dal Direttivo.");
 
                     if (d.rinnovo_direttivo === 'Si') {
