@@ -2796,6 +2796,11 @@
                     if (idbState) {
                         this.state = { ...this.state, ...idbState };
                         if (!Array.isArray(this.state.calendario_note)) this.state.calendario_note = [];
+                        // Ripristino stato transitorio verbali: all'avvio mostra sempre l'Hub pulito e azzera bozze orfane
+                        this.state.verbali_current_view = 'hub';
+                        this.state.verbale_wizard_data = null;
+                        this.state.verbale_wizard_edit_id = null;
+                        this.state.verbale_wizard_step = 0;
                         this.sanitizeSettings();
                         this.sanitizePrimaNota();
                         this.migrateSoci();
@@ -3528,7 +3533,14 @@
                 this.state.isDirty = true;
                 
                 // Salvataggio asincrono in IndexedDB (Copia locale)
-                this.idbSet('main_state', this.state).then(() => {
+                const stateToSave = { ...this.state };
+                if (stateToSave.verbali_current_view && stateToSave.verbali_current_view !== 'hub') {
+                    stateToSave.verbali_current_view = 'hub';
+                    stateToSave.verbale_wizard_data = null;
+                    stateToSave.verbale_wizard_edit_id = null;
+                    stateToSave.verbale_wizard_step = 0;
+                }
+                this.idbSet('main_state', stateToSave).then(() => {
                     this.updateStorageIndicator();
                 });
                 
@@ -4429,6 +4441,9 @@
                                 main.classList.add('page-verbali');
                                 main.style.overflowY = 'auto';
                                 main.style.display = 'block';
+                            }
+                            if (this.state.verbali_current_view !== 'preview') {
+                                this.state.verbali_current_view = 'hub';
                             }
                             this.renderVerbali();
                             break;
@@ -19071,7 +19086,9 @@ ${r.annullata ? `
             this.state.verbale_wizard_edit_id = null;
 
             if (returnToHub) {
-                this.backToVerbaliHub();
+                this.state.verbali_current_view = 'hub';
+                this.saveAll();
+                this.renderVerbali();
                 this.toast("Compilazione annullata. Bozza eliminata.", "info");
             } else {
                 this.startVerbaleWizard(type);
@@ -19716,6 +19733,17 @@ ${r.annullata ? `
             this.toast(`Anno sportivo impostato su ${newYear}. Saldi e casse aggiornati!`, 'info');
         },
 
+        getVerbaleDefaultSportsYear(ref = null) {
+            const d = ref ? (ref instanceof Date ? ref : new Date(ref)) : new Date();
+            const y = d.getFullYear();
+            const m = d.getMonth(); // 0 = Gen, 8 = Set, 11 = Dic
+            // Per tutti i verbali (direttivo, soci ordinaria e straordinaria), l'anno sportivo compilato
+            // fa riferimento alla stagione di competenza conclusa (es. 2025/2026 fino al prossimo settembre, dove diventerà 2026/2027)
+            const y1 = m >= 8 ? (y - 1) : (y - 2);
+            const y2 = m >= 8 ? y : (y - 1);
+            return `${y1}/${y2}`;
+        },
+
         initVerbaliState() {
             if (!this.state.verbali_archive) {
                 let saved = null;
@@ -19750,7 +19778,7 @@ ${r.annullata ? `
         renderVerbaliHub() {
             const main = document.getElementById('main-content');
             const archive = this.state.verbali_archive || [];
-            const sportsYear = this.getSportsYear ? this.getSportsYear() : `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+            const sportsYear = this.getVerbaleDefaultSportsYear ? this.getVerbaleDefaultSportsYear() : `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`;
 
             let archiveHtml = '';
             if (archive.length === 0) {
@@ -19886,20 +19914,10 @@ ${r.annullata ? `
 
         startVerbaleWizard(type = 'direttivo', editId = null) {
             this.initVerbaliState();
-            const curYear = new Date().getFullYear();
-            const currentSy = this.getSportsYear ? this.getSportsYear() : `${curYear}-${curYear + 1}`;
-            let sportsYear = currentSy;
-            if (type === 'ordinaria') {
-                const parts = currentSy.split(/[-\/]/).map(x => parseInt(x, 10));
-                if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                    sportsYear = `${parts[0] - 1}-${parts[1] - 1}`;
-                } else {
-                    sportsYear = `${curYear - 1}-${curYear}`;
-                }
-            }
+            const sportsYear = this.getVerbaleDefaultSportsYear ? this.getVerbaleDefaultSportsYear() : '2025/2026';
             const s = this.state.settings || {};
             const syParts = sportsYear.split(/[-\/]/).map(x => parseInt(x, 10));
-            const endYear = (syParts.length === 2 && !isNaN(syParts[1])) ? syParts[1] : curYear;
+            const endYear = (syParts.length === 2 && !isNaN(syParts[1])) ? syParts[1] : new Date().getFullYear();
             const defaultChiusura = `${endYear}-08-31`;
             const saldi = this.calcolaSaldiFinanziari(defaultChiusura, sportsYear);
 
@@ -19912,6 +19930,9 @@ ${r.annullata ? `
                 const item = (this.state.verbali_archive || []).find(x => String(x.id) === String(editId));
                 if (item) {
                     this.state.verbale_wizard_data = JSON.parse(JSON.stringify(item.data || {}));
+                    if (!this.state.verbale_wizard_data.anno_sportivo) {
+                        this.state.verbale_wizard_data.anno_sportivo = sportsYear;
+                    }
                     if (!Array.isArray(this.state.verbale_wizard_data.consiglieri_list) || this.state.verbale_wizard_data.consiglieri_list.length === 0) {
                         if (this.state.verbale_wizard_data.nuovi_consiglieri) {
                             this.state.verbale_wizard_data.consiglieri_list = this.state.verbale_wizard_data.nuovi_consiglieri.split(',').map(x => x.trim()).filter(Boolean);
@@ -20304,9 +20325,9 @@ ${r.annullata ? `
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">
                                     Anno Sportivo / Esercizio di Riferimento del Bilancio
                                 </label>
-                                <input type="text" id="wz-anno_sportivo" class="form-control" value="${d.anno_sportivo || ''}" placeholder="es. 2025-2026" onchange="app.onVerbaleAnnoSportivoChange(this.value)">
+                                <input type="text" id="wz-anno_sportivo" class="form-control" value="${d.anno_sportivo || ''}" placeholder="es. 2025/2026" onchange="app.onVerbaleAnnoSportivoChange(this.value)">
                                 <small style="color: #94a3b8; font-size: 0.76rem; display: block; margin-top: 4px; line-height: 1.35;">
-                                    💡 <strong>Nota:</strong> Inserisci la stagione conclusa che viene approvata (es. <strong>2025-2026</strong>). La data della seduta sotto (es. 07/09/2026) indica il giorno in cui si tiene l'Assemblea.
+                                    💡 <strong>Nota:</strong> Inserisci la stagione conclusa che viene approvata (es. <strong>2025/2026</strong>). La data della seduta sotto (es. 07/09/2026) indica il giorno in cui si tiene l'Assemblea.
                                 </small>
                             </div>
                             <div class="form-group">
@@ -21005,6 +21026,10 @@ ${r.annullata ? `
 
         backToVerbaliHub() {
             this.state.verbali_current_view = 'hub';
+            this.state.verbale_wizard_data = null;
+            this.state.verbale_wizard_edit_id = null;
+            this.state.verbale_wizard_step = 0;
+            this.saveAll();
             this.renderVerbali();
         },
 
@@ -21733,6 +21758,12 @@ ${r.annullata ? `
             try {
                 localStorage.setItem('asd_verbali_archive', JSON.stringify(this.state.verbali_archive));
             } catch (e) {}
+            if (this.state.verbale_wizard_edit_id === id || (this.state.verbale_wizard_data && String(this.state.verbale_wizard_data.id) === String(id))) {
+                this.state.verbale_wizard_data = null;
+                this.state.verbale_wizard_edit_id = null;
+                this.state.verbale_wizard_step = 0;
+            }
+            this.state.verbali_current_view = 'hub';
             this.saveAll();
             this.toast("Verbale eliminato dall'archivio.", "info");
             this.renderVerbali();
