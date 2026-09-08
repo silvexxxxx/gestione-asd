@@ -20042,6 +20042,89 @@ ${r.annullata ? `
             if (!this.state.verbali_current_view) {
                 this.state.verbali_current_view = 'hub';
             }
+            this.deduplicaVerbaliArchivio();
+        },
+
+        getVerbaleTimestampInfo(v) {
+            if (!v) return { text: 'Non specificato', timeMs: 0 };
+            let ms = v.saved_at || v.created_at;
+            if (!ms && v.id && String(v.id).startsWith('verb_')) {
+                const parsed = parseInt(String(v.id).replace('verb_', ''), 10);
+                if (!isNaN(parsed) && parsed > 1000000000000) {
+                    ms = parsed;
+                }
+            }
+            if (ms) {
+                const d = new Date(ms);
+                const dataStr = d.toLocaleDateString('it-IT');
+                const oraStr = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                return { text: `${dataStr} alle ${oraStr}`, timeMs: ms };
+            }
+            if (v.date) {
+                return { text: `${v.date}${v.time ? ' alle ' + v.time : ''}`, timeMs: 0 };
+            }
+            return { text: 'Non specificato', timeMs: 0 };
+        },
+
+        deduplicaVerbaliArchivio() {
+            if (!Array.isArray(this.state.verbali_archive) || this.state.verbali_archive.length <= 1) return;
+
+            const list = this.state.verbali_archive;
+            const groups = {};
+
+            list.forEach(v => {
+                const type = v.type || 'direttivo';
+                const seduta = v.data?.data_seduta || v.data?.data_c1 || v.date || '';
+                const anno = v.data?.anno_sportivo || '';
+                const key = `${type}_${seduta}_${anno}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(v);
+            });
+
+            let modified = false;
+            const keptList = [];
+
+            Object.keys(groups).forEach(key => {
+                const group = groups[key];
+                if (group.length === 1) {
+                    keptList.push(group[0]);
+                } else {
+                    // Duplicati rilevati per la stessa seduta
+                    group.sort((a, b) => {
+                        const tA = this.getVerbaleTimestampInfo(a).timeMs;
+                        const tB = this.getVerbaleTimestampInfo(b).timeMs;
+                        return tB - tA; // Più recente in testa
+                    });
+
+                    const piuRecente = group[0];
+                    const vecchi = group.slice(1);
+
+                    // Backup di sicurezza nel localStorage per i vecchi rimossi
+                    try {
+                        let bk = [];
+                        const savedBk = localStorage.getItem('asd_verbali_backup_rimossi');
+                        if (savedBk) bk = JSON.parse(savedBk);
+                        vecchi.forEach(v => bk.unshift({ ...v, removed_at: Date.now() }));
+                        localStorage.setItem('asd_verbali_backup_rimossi', JSON.stringify(bk.slice(0, 30)));
+                    } catch(e) {}
+
+                    keptList.push(piuRecente);
+                    modified = true;
+                }
+            });
+
+            if (modified) {
+                this.state.verbali_archive = keptList;
+                try {
+                    localStorage.setItem('asd_verbali_archive', JSON.stringify(this.state.verbali_archive));
+                } catch(e) {}
+                this.saveAll();
+                const infoMsg = "Archivio storico: rilevate copie dello stesso verbale, mantenuta automaticamente la versione più recente.";
+                console.log("[Verbali] " + infoMsg);
+                if (typeof this.toast === 'function') {
+                    this.toast("ℹ️ " + infoMsg, "info");
+                }
+            }
         },
 
         renderVerbali() {
@@ -20094,15 +20177,22 @@ ${r.annullata ? `
                             };
                             const badgeStyle = typeBadges[v.type] || typeBadges.direttivo;
                             const label = typeLabels[v.type] || 'Verbale';
+                            const timeInfo = this.getVerbaleTimestampInfo(v);
+                            const oraSeduta = v.data?.ora_seduta || v.data?.ora_c1 || '';
                             return `
                                 <div class="glass-card" style="margin: 0; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-radius: 10px;">
                                     <div style="flex: 1; min-width: 0;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
                                             <span class="badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; ${badgeStyle}">${label}</span>
                                             <span style="font-weight: 700; font-size: 0.95rem; color: #fff;">${v.title || 'Verbale'}</span>
+                                            ${oraSeduta ? `<span style="font-size: 0.74rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.08);">⏰ Ore ${this.escapeHtml(oraSeduta)}</span>` : ''}
                                         </div>
-                                        <div style="font-size: 0.78rem; color: var(--text-muted);">
-                                            📅 Data Seduta: ${v.data?.data_seduta ? this.formatDataItaliano(v.data.data_seduta) : (v.date || '-')} &nbsp;|&nbsp; Anno: ${v.data?.anno_sportivo || sportsYear}
+                                        <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-muted); align-items: center;">
+                                            <span>📅 <strong>Data Seduta:</strong> ${v.data?.data_seduta ? this.formatDataItaliano(v.data.data_seduta) : (v.date || '-')}</span>
+                                            <span>🏛️ <strong>Anno:</strong> ${v.data?.anno_sportivo || sportsYear}</span>
+                                            <span style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 1px 7px; border-radius: 5px; font-weight: 500;">
+                                                💾 <strong>Salvato il:</strong> ${this.escapeHtml(timeInfo.text)}
+                                            </span>
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 6px; flex-shrink: 0;">
@@ -22186,6 +22276,12 @@ ${r.annullata ? `
             const sportsYear = d.anno_sportivo || (this.getSportsYear ? this.getSportsYear() : '');
 
             const id = this.state.verbale_wizard_edit_id || ('verb_' + Date.now());
+            this.state.verbale_wizard_edit_id = String(id);
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('it-IT');
+            const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
             const typeLabels = {
                 direttivo: `Consiglio Direttivo ${this.formatDataItaliano(d.data_seduta)}`,
                 ordinaria: `Assemblea Ordinaria ${sportsYear}`,
@@ -22194,7 +22290,9 @@ ${r.annullata ? `
 
             const record = {
                 id: String(id),
-                date: new Date().toLocaleDateString('it-IT'),
+                date: dateStr,
+                time: timeStr,
+                saved_at: now.getTime(),
                 type,
                 title: typeLabels[type] || `Verbale ${sportsYear}`,
                 data: JSON.parse(JSON.stringify(d))
@@ -22202,8 +22300,10 @@ ${r.annullata ? `
 
             const existingIdx = (this.state.verbali_archive || []).findIndex(x => String(x.id) === String(id));
             if (existingIdx >= 0) {
+                record.created_at = this.state.verbali_archive[existingIdx].created_at || this.state.verbali_archive[existingIdx].saved_at || (String(id).startsWith('verb_') ? parseInt(String(id).replace('verb_', ''), 10) : now.getTime());
                 this.state.verbali_archive[existingIdx] = record;
             } else {
+                record.created_at = now.getTime();
                 this.state.verbali_archive.unshift(record);
             }
 
@@ -22214,7 +22314,7 @@ ${r.annullata ? `
             this.saveAll();
 
             if (!silent) {
-                this.toast("✅ Verbale salvato con successo nell'archivio storico!", "success");
+                this.toast(`✅ Verbale salvato nell'archivio storico (ore ${timeStr})!`, "success");
             }
         },
 
