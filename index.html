@@ -722,6 +722,60 @@
             outline-color: #facc15 !important;
             background-color: rgba(250, 204, 21, 0.1);
         }
+
+        /* --- STILI VERBALE ACTION POPOVER --- */
+        .verbale-action-btn-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: stretch;
+        }
+        .verbale-popover-card {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 330px;
+            background: #0f172a;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 10px;
+            padding: 14px 16px;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255,255,255,0.06);
+            color: #e2e8f0;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(6px);
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+            pointer-events: none;
+            text-align: left;
+        }
+        .verbale-popover-card::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            right: 18px;
+            width: 10px;
+            height: 10px;
+            background: #0f172a;
+            border-left: 1px solid rgba(59, 130, 246, 0.4);
+            border-top: 1px solid rgba(59, 130, 246, 0.4);
+            transform: rotate(45deg);
+        }
+        .verbale-action-btn-wrap:hover .verbale-popover-card {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .verbale-info-btn {
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease;
+        }
+        .verbale-info-btn:hover {
+            filter: brightness(1.2);
+        }
+
         /* Paywall */
         #paywall-overlay {
             position: fixed;
@@ -21707,16 +21761,75 @@ ${r.annullata ? `
                                 🗑️ Scarta / Elimina Bozza
                             </button>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
                             <button class="btn btn-primary" style="padding: 7px 14px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;" onclick="app.printVerbale()">
                                 <span>🖨️</span> Stampa Verbale
                             </button>
-                            <button class="btn btn-primary" style="background: var(--accent); padding: 7px 14px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;" onclick="app.exportVerbalePDF()">
-                                <span>📁</span> Salva PDF & Archivia
-                            </button>
-                            <button class="btn btn-outline" style="padding: 7px 14px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;" onclick="app.saveVerbaleToArchive()">
-                                <span>💾</span> Salva in Archivio
-                            </button>
+
+                            <!-- Tasto Salva PDF & Archivia con Popover & Info Modal -->
+                            <div class="verbale-action-btn-wrap">
+                                <button class="btn btn-primary" style="background: var(--accent); padding: 7px 13px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; border-top-right-radius: 0; border-bottom-right-radius: 0;" onclick="app.exportVerbalePDF()">
+                                    <span>📁</span> Salva PDF & Archivia
+                                </button>
+                                <button type="button" class="btn verbale-info-btn" style="background: var(--accent); border-left: 1px solid rgba(255,255,255,0.25); padding: 7px 9px; font-size: 0.82rem; border-top-left-radius: 0; border-bottom-left-radius: 0; color: #ffffff;" onclick="app.showVerbaleActionInfo('pdf', event)" title="Spiegazione: Salva PDF & Archivia">
+                                    ℹ️
+                                </button>
+                                
+                                <!-- Popup Descrittivo Flottante -->
+                                <div class="verbale-popover-card">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                                        <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                                            <span>📁</span> Salva PDF & Archivia
+                                        </div>
+                                        <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 12px; border: 1px solid rgba(52, 211, 153, 0.4);">Azione Completa</span>
+                                    </div>
+                                    <div style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 8px;">
+                                        Esegue <strong>in automatico tutte le operazioni</strong> per la chiusura ufficiale del verbale:
+                                    </div>
+                                    <ul style="margin: 0 0 10px 0; padding-left: 18px; color: #94a3b8; font-size: 0.76rem; display: flex; flex-direction: column; gap: 4px;">
+                                        <li><strong style="color: #f8fafc;">Crea il file PDF (A4):</strong> Documento formattato e pronto da firmare o stampare.</li>
+                                        <li><strong style="color: #f8fafc;">Salva sul computer:</strong> Archivia il PDF nella cartella documenti dell'ASD (sottocartella <em>assemblee</em>).</li>
+                                        <li><strong style="color: #f8fafc;">Apre anteprima:</strong> Mostra subito il file PDF in una nuova scheda.</li>
+                                        <li><strong style="color: #f8fafc;">Archivia nel gestionale:</strong> Registra i dati anche nell'archivio interno.</li>
+                                    </ul>
+                                    <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: #64748b; font-size: 0.7rem;">💡 Consigliato per versione definitiva</span>
+                                        <a href="javascript:void(0)" onclick="app.showVerbaleActionInfo('pdf', event)" style="color: #38bdf8; font-size: 0.72rem; text-decoration: underline; font-weight: 600;">Dettagli ↗</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tasto Salva in Archivio con Popover & Info Modal -->
+                            <div class="verbale-action-btn-wrap">
+                                <button class="btn btn-outline" style="padding: 7px 13px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; border-top-right-radius: 0; border-bottom-right-radius: 0;" onclick="app.saveVerbaleToArchive()">
+                                    <span>💾</span> Salva in Archivio
+                                </button>
+                                <button type="button" class="btn btn-outline verbale-info-btn" style="border-left: none; padding: 7px 9px; font-size: 0.82rem; border-top-left-radius: 0; border-bottom-left-radius: 0; color: #94a3b8;" onclick="app.showVerbaleActionInfo('archive', event)" title="Spiegazione: Salva in Archivio">
+                                    ℹ️
+                                </button>
+                                
+                                <!-- Popup Descrittivo Flottante -->
+                                <div class="verbale-popover-card">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                                        <div style="font-weight: 700; color: #a78bfa; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                                            <span>💾</span> Salva in Archivio
+                                        </div>
+                                        <span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 12px; border: 1px solid rgba(192, 132, 252, 0.4);">Solo Dati</span>
+                                    </div>
+                                    <div style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 8px;">
+                                        Memorizza i <strong>dati digitali e testuali</strong> nel database interno:
+                                    </div>
+                                    <ul style="margin: 0 0 10px 0; padding-left: 18px; color: #94a3b8; font-size: 0.76rem; display: flex; flex-direction: column; gap: 4px;">
+                                        <li><strong style="color: #f8fafc;">Salva nel gestionale:</strong> Registra la scheda nella lista <em>Elenco Verbali</em>.</li>
+                                        <li><strong style="color: #f8fafc;">Modificabile sempre:</strong> Puoi riaprire, correggere o stampare quando vuoi.</li>
+                                        <li><strong style="color: #f8fafc;">Nessun PDF creato:</strong> Non genera né salva alcun file su disco o cartelle.</li>
+                                    </ul>
+                                    <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: #64748b; font-size: 0.7rem;">💡 Ideale per salvare bozze di lavoro</span>
+                                        <a href="javascript:void(0)" onclick="app.showVerbaleActionInfo('archive', event)" style="color: #a78bfa; font-size: 0.72rem; text-decoration: underline; font-weight: 600;">Dettagli ↗</a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -22102,6 +22215,86 @@ ${r.annullata ? `
 
             if (!silent) {
                 this.toast("✅ Verbale salvato con successo nell'archivio storico!", "success");
+            }
+        },
+
+        showVerbaleActionInfo(type, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (type === 'pdf') {
+                this.openModal(
+                    '📁 Salva PDF & Archivia — Dettagli Funzione',
+                    `
+                    <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text);">
+                        <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 1.2rem;">
+                            <strong style="color: #60a5fa; font-size: 1rem;">Cosa fa questo pulsante?</strong>
+                            <p style="margin: 6px 0 0 0; color: #cbd5e1;">
+                                Esegue <strong>in un colpo solo tutte le operazioni</strong> per la finalizzazione ufficiale del verbale:
+                            </p>
+                        </div>
+                        <ol style="margin: 0 0 1.2rem 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 10px;">
+                            <li>
+                                <strong>Genera il Documento PDF Ufficiale (A4):</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Formatta il verbale su carta intestata con tutti gli articoli, ordine del giorno, delibere e caselle delle firme (Presidente, Vicepresidente, Segretario e Consiglieri).</div>
+                            </li>
+                            <li>
+                                <strong>Salva sul tuo Computer (Cartella Documenti ASD):</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Archivia automaticamente il file <code>.pdf</code> nella cartella documenti dell'ASD su disco, organizzato nella sotto-cartella <em>assemblee</em> dell'Anno Sportivo corrente.</div>
+                            </li>
+                            <li>
+                                <strong>Apre subito l'Anteprima a schermo:</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Apre il PDF in una nuova scheda del browser per controllarlo a colpo d'occhio o stamparlo direttamente.</div>
+                            </li>
+                            <li>
+                                <strong>Archiviazione Interna Simultanea:</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Salva contestualmente i dati digitali anche nell'elenco interno dei verbali (fa in automatico anche l'azione di <em>Salva in Archivio</em>).</div>
+                            </li>
+                        </ol>
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 1.5rem; color: #a7f3d0; font-size: 0.85rem;">
+                            💡 <strong>Quando usarlo:</strong> Usa questo tasto quando il verbale è pronto e definitivo per essere stampato, firmato o archiviato formalmente.
+                        </div>
+                        <div style="text-align: right;">
+                            <button class="btn btn-primary" onclick="app.closeModal()" style="padding: 8px 18px;">Ho capito</button>
+                        </div>
+                    </div>
+                    `
+                );
+            } else {
+                this.openModal(
+                    '💾 Salva in Archivio — Dettagli Funzione',
+                    `
+                    <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text);">
+                        <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 1.2rem;">
+                            <strong style="color: #c084fc; font-size: 1rem;">Cosa fa questo pulsante?</strong>
+                            <p style="margin: 6px 0 0 0; color: #cbd5e1;">
+                                Salva esclusivamente i <strong>dati digitali e testuali</strong> nel database interno del gestionale:
+                            </p>
+                        </div>
+                        <ol style="margin: 0 0 1.2rem 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 10px;">
+                            <li>
+                                <strong>Salva nel Database del Gestionale:</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Registra il verbale nella sezione <em>"Elenco Verbali"</em> con tutti i dati compilati (orari, testi, delibere, presenze, firme).</div>
+                            </li>
+                            <li>
+                                <strong>Riapribile e Modificabile in qualunque momento:</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">Potrai riaprire la scheda dall'Elenco Verbali, modificarla, ricalcolare o rifinire le delibere in qualsiasi momento successivo.</div>
+                            </li>
+                            <li>
+                                <strong>Nessun File creato sul Computer:</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">A differenza del tasto PDF, non crea e non scarica alcun file <code>.pdf</code> sul computer, salvaguardando lo spazio e mantenendo il verbale in stato modificabile.</div>
+                            </li>
+                        </ol>
+                        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 1.5rem; color: #fde68a; font-size: 0.85rem;">
+                            💡 <strong>Quando usarlo:</strong> Ideale se stai redigendo il verbale a tappe o vuoi salvare una bozza di lavoro senza ancora produrre il documento cartaceo finale.
+                        </div>
+                        <div style="text-align: right;">
+                            <button class="btn btn-primary" onclick="app.closeModal()" style="padding: 8px 18px;">Ho capito</button>
+                        </div>
+                    </div>
+                    `
+                );
             }
         },
 
