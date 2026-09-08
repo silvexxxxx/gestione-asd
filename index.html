@@ -20192,7 +20192,7 @@ ${r.annullata ? `
             main.style.overflowY = 'auto';
             main.style.display = 'block';
 
-            if (this.state.verbali_current_view === 'wizard') {
+            if (this.state.verbali_current_view === 'wizard' || this.state.verbale_current_view === 'wizard') {
                 this.renderVerbaleWizard();
             } else if (this.state.verbali_current_view === 'preview') {
                 this.renderVerbalePreview();
@@ -20361,6 +20361,7 @@ ${r.annullata ? `
                     this.state.verbale_wizard_type = item.tipo || type;
                     this.state.verbale_wizard_step = 0;
                     this.state.verbale_edit_id = editId;
+                    this.state.verbali_current_view = 'wizard';
                     this.state.verbale_current_view = 'wizard';
                     this.renderVerbali();
                     return;
@@ -20427,6 +20428,7 @@ ${r.annullata ? `
                 };
             }
 
+            this.state.verbali_current_view = 'wizard';
             this.state.verbale_current_view = 'wizard';
             this.renderVerbali();
         },
@@ -21380,6 +21382,159 @@ ${r.annullata ? `
                             </div>
                         </div>
                     `;
+                }
+            }
+
+            main.innerHTML = `
+                ${sociDatalist}
+                <div class="page-content" style="max-width: 850px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
+                    <!-- Top Bar Wizard -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            ${stepIdx > 0 ? `
+                                <button type="button" class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(59,130,246,0.4); color: #60a5fa;" onclick="app.prevVerbaleWizardStep()">
+                                    ⬅️ Passo Precedente
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.backToVerbaliHub()">
+                                🏛️ Esci al Menu Verbali
+                            </button>
+                            <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Elimina i dati inseriti e riparti da capo">
+                                🗑️ Ricomincia da capo
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">
+                                Passo ${stepIdx + 1} di ${steps.length}
+                            </span>
+                            <button type="button" class="btn btn-primary" style="font-size: 0.82rem; padding: 7px 14px; font-weight: 600;" onclick="app.nextVerbaleWizardStep()">
+                                ${stepIdx === steps.length - 1 ? '✨ Genera Verbale' : 'Avanti ➡️'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Step Tabs (Navigazione diretta step by step) -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 4px;">
+                        ${steps.map((st, i) => {
+                            const isCurrent = i === stepIdx;
+                            const isDone = i < stepIdx;
+                            const bg = isCurrent ? 'rgba(59, 130, 246, 0.25)' : (isDone ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.04)');
+                            const border = isCurrent ? 'var(--primary)' : (isDone ? 'rgba(16, 185, 129, 0.4)' : 'var(--border)');
+                            const color = isCurrent ? '#60a5fa' : (isDone ? '#34d399' : 'var(--text-muted)');
+                            const badge = isDone ? '✓' : `${i + 1}`;
+                            return `
+                                <button type="button" 
+                                    onclick="app.goToVerbaleWizardStep(${i})"
+                                    style="flex: 1; min-width: 140px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border: 1px solid ${border}; background: ${bg}; color: ${color}; cursor: pointer; text-align: left; transition: all 0.2s;"
+                                    title="Clicca per andare al passo ${i + 1}: ${st.title}">
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: ${isCurrent ? 'var(--primary)' : (isDone ? '#10b981' : 'rgba(255,255,255,0.1)')}; color: #fff; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">
+                                        ${badge}
+                                    </span>
+                                    <span style="font-size: 0.82rem; font-weight: ${isCurrent ? '700' : '500'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${st.title}
+                                    </span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <!-- Card Form -->
+                    <div class="glass-card" style="margin: 0; padding: 2rem;">
+                        <div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+                            <h2 style="margin: 0 0 4px 0; font-size: 1.3rem;">${currentStep.title}</h2>
+                            <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">
+                                Compila i campi sottostanti per comporre il verbale. Puoi navigare liberamente tra i passi avanti e indietro in qualsiasi momento.
+                            </p>
+                        </div>
+
+                        <form id="verbale-step-form" onsubmit="event.preventDefault(); app.nextVerbaleWizardStep();">
+                            ${stepContentHtml}
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.2rem; flex-wrap: wrap; gap: 10px;">
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    ${stepIdx > 0 ? `
+                                        <button type="button" class="btn btn-outline" style="padding: 9px 18px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="app.prevVerbaleWizardStep()">
+                                            ⬅️ Indietro (Passo ${stepIdx})
+                                        </button>
+                                    ` : `
+                                        <button type="button" class="btn btn-outline" style="padding: 9px 18px;" onclick="app.backToVerbaliHub()">
+                                            Annulla ed Esci
+                                        </button>
+                                    `}
+                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.82rem; padding: 9px 14px; display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Svuota la compilazione e riparti dal primo passo">
+                                        🗑️ Svuota / Ricomincia
+                                    </button>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="padding: 9px 24px; font-weight: 700;">
+                                    ${stepIdx === steps.length - 1 ? '✨ Genera Verbale Ufficiale' : 'Avanti ➡️'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        },
+
+        updateVerbalePuntiOdg(delta) {
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            let cur = parseInt(d.num_punti_odg || 2, 10) + delta;
+            if (cur < 1) cur = 1;
+            if (cur > 10) cur = 10;
+            d.num_punti_odg = cur;
+            this.renderVerbali();
+        },
+
+        updateVerbaleFirmatariCount(delta) {
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            let cur = parseInt(d.num_firmatari || 2, 10) + delta;
+            if (cur < 0) cur = 0;
+            if (cur > 10) cur = 10;
+            d.num_firmatari = cur;
+            this.renderVerbali();
+        },
+
+        updateVerbaleAvanzo() {
+            const entrate = parseFloat(document.getElementById('wz-entrate')?.value) || 0;
+            const uscite = parseFloat(document.getElementById('wz-uscite')?.value) || 0;
+            const avanzoEl = document.getElementById('wz-avanzo');
+            if (avanzoEl) {
+                const avanzo = entrate - uscite;
+                avanzoEl.value = avanzo.toFixed(2);
+                avanzoEl.style.color = avanzo >= 0 ? '#34d399' : '#ef4444';
+            }
+        },
+
+        recalculateVerbaleSaldi() {
+            const dataChiusura = document.getElementById('wz-data_chiusura')?.value;
+            const annoSportivo = this.state.verbale_wizard_data?.anno_sportivo;
+            const saldi = this.calcolaSaldiFinanziari(dataChiusura, annoSportivo);
+
+            if (this.state.verbale_wizard_data) {
+                this.state.verbale_wizard_data.entrate = saldi.entrate;
+                this.state.verbale_wizard_data.uscite = saldi.uscite;
+                this.state.verbale_wizard_data.avanzo = saldi.avanzo;
+                this.state.verbale_wizard_data.cassa = saldi.cassa;
+                this.state.verbale_wizard_data.banca = saldi.banca;
+                this.state.verbale_wizard_data.casseList = saldi.casseList;
+                if (dataChiusura) this.state.verbale_wizard_data.data_chiusura = dataChiusura;
+            }
+
+            if (document.getElementById('wz-entrate')) document.getElementById('wz-entrate').value = saldi.entrate;
+            if (document.getElementById('wz-uscite')) document.getElementById('wz-uscite').value = saldi.uscite;
+            if (document.getElementById('wz-avanzo')) {
+                document.getElementById('wz-avanzo').value = saldi.avanzo;
+                document.getElementById('wz-avanzo').style.color = parseFloat(saldi.avanzo) >= 0 ? '#34d399' : '#ef4444';
+            }
+            if (document.getElementById('wz-cassa')) document.getElementById('wz-cassa').value = saldi.cassa;
+            if (document.getElementById('wz-banca')) document.getElementById('wz-banca').value = saldi.banca;
+
+            const badgeEl = document.getElementById('wz-banca-badge');
+            if (badgeEl) {
+                if (saldi.isRiconciliatoBanca) {
+                    badgeEl.innerHTML = `<small style="color: #10b981; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; font-weight: 600;"><span>✅</span> <span>Allineato ad Estratto Conto ufficiale (${saldi.verificaDettaglio?.anno_sportivo || annoSportivo || ''}): € ${parseFloat(saldi.banca).toFixed(2)}</span></small>`;
                 } else {
                     badgeEl.innerHTML = `<small style="color: #94a3b8; font-size: 0.74rem; display: block;">Inserisci o modifica se diverso dall'estratto conto reale.</small>`;
                 }
