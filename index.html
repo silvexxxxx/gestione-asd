@@ -20379,24 +20379,52 @@ ${r.annullata ? `
                 <div class="page-content" style="max-width: 850px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
                     <!-- Top Bar Wizard -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 6px 12px;" onclick="app.backToVerbaliHub()">
-                                ⬅️ Esci al Menu Verbali
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            ${stepIdx > 0 ? `
+                                <button type="button" class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(59,130,246,0.4); color: #60a5fa;" onclick="app.prevVerbaleWizardStep()">
+                                    ⬅️ Passo Precedente
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.backToVerbaliHub()">
+                                🏛️ Esci al Menu Verbali
                             </button>
-                            <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 6px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Elimina i dati inseriti e riparti da capo">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Elimina i dati inseriti e riparti da capo">
                                 🗑️ Ricomincia da capo
                             </button>
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);">
-                            Passo ${stepIdx + 1} di ${steps.length}
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">
+                                Passo ${stepIdx + 1} di ${steps.length}
+                            </span>
+                            <button type="button" class="btn btn-primary" style="font-size: 0.82rem; padding: 7px 14px; font-weight: 600;" onclick="app.nextVerbaleWizardStep()">
+                                ${stepIdx === steps.length - 1 ? '✨ Genera Verbale' : 'Avanti ➡️'}
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Progress Stepper Indicator -->
-                    <div style="display: flex; gap: 6px; margin-bottom: 1.5rem;">
-                        ${steps.map((st, i) => `
-                            <div style="flex: 1; height: 6px; border-radius: 4px; background: ${i <= stepIdx ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}; transition: background 0.2s;"></div>
-                        `).join('')}
+                    <!-- Interactive Step Tabs (Navigazione diretta step by step) -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 4px;">
+                        ${steps.map((st, i) => {
+                            const isCurrent = i === stepIdx;
+                            const isDone = i < stepIdx;
+                            const bg = isCurrent ? 'rgba(59, 130, 246, 0.25)' : (isDone ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.04)');
+                            const border = isCurrent ? 'var(--primary)' : (isDone ? 'rgba(16, 185, 129, 0.4)' : 'var(--border)');
+                            const color = isCurrent ? '#60a5fa' : (isDone ? '#34d399' : 'var(--text-muted)');
+                            const badge = isDone ? '✓' : `${i + 1}`;
+                            return `
+                                <button type="button" 
+                                    onclick="app.goToVerbaleWizardStep(${i})"
+                                    style="flex: 1; min-width: 140px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border: 1px solid ${border}; background: ${bg}; color: ${color}; cursor: pointer; text-align: left; transition: all 0.2s;"
+                                    title="Clicca per andare al passo ${i + 1}: ${st.title}">
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: ${isCurrent ? 'var(--primary)' : (isDone ? '#10b981' : 'rgba(255,255,255,0.1)')}; color: #fff; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">
+                                        ${badge}
+                                    </span>
+                                    <span style="font-size: 0.82rem; font-weight: ${isCurrent ? '700' : '500'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${st.title}
+                                    </span>
+                                </button>
+                            `;
+                        }).join('')}
                     </div>
 
                     <!-- Card Form -->
@@ -20404,7 +20432,7 @@ ${r.annullata ? `
                         <div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
                             <h2 style="margin: 0 0 4px 0; font-size: 1.3rem;">${currentStep.title}</h2>
                             <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">
-                                Compila i campi sottostanti per comporre il verbale. Puoi sempre modificare i dati in seguito.
+                                Compila i campi sottostanti per comporre il verbale. Puoi navigare liberamente tra i passi avanti e indietro in qualsiasi momento.
                             </p>
                         </div>
 
@@ -20412,22 +20440,22 @@ ${r.annullata ? `
                             ${stepContentHtml}
 
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.2rem; flex-wrap: wrap; gap: 10px;">
-                                <div style="display: flex; gap: 8px; align-items: center;">
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                     ${stepIdx > 0 ? `
-                                        <button type="button" class="btn btn-outline" onclick="app.prevVerbaleWizardStep()">
-                                            ⬅️ Indietro
+                                        <button type="button" class="btn btn-outline" style="padding: 9px 18px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="app.prevVerbaleWizardStep()">
+                                            ⬅️ Indietro (Passo ${stepIdx})
                                         </button>
                                     ` : `
-                                        <button type="button" class="btn btn-outline" onclick="app.backToVerbaliHub()">
-                                            Annulla
+                                        <button type="button" class="btn btn-outline" style="padding: 9px 18px;" onclick="app.backToVerbaliHub()">
+                                            Annulla ed Esci
                                         </button>
                                     `}
-                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Svuota la compilazione e riparti dal primo passo">
+                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.82rem; padding: 9px 14px; display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Svuota la compilazione e riparti dal primo passo">
                                         🗑️ Svuota / Ricomincia
                                     </button>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary" style="padding: 9px 20px; font-weight: 700;">
+                                <button type="submit" class="btn btn-primary" style="padding: 9px 24px; font-weight: 700;">
                                     ${stepIdx === steps.length - 1 ? '✨ Genera Verbale Ufficiale' : 'Avanti ➡️'}
                                 </button>
                             </div>
@@ -20575,6 +20603,16 @@ ${r.annullata ? `
                 this.renderVerbali();
             } else {
                 this.backToVerbaliHub();
+            }
+        },
+
+        goToVerbaleWizardStep(targetStep) {
+            this.saveVerbaleWizardStep();
+            const steps = this.getVerbaleSteps();
+            if (targetStep >= 0 && targetStep < steps.length) {
+                this.state.verbale_wizard_step = targetStep;
+                this.state.verbali_current_view = 'wizard';
+                this.renderVerbali();
             }
         },
 
@@ -20880,11 +20918,11 @@ ${r.annullata ? `
                     <!-- Action Bar Superiore -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 10px;">
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.backToVerbaliHub()">
-                                ⬅️ Torna all'Elenco
+                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 14px; font-weight: 600; border-color: rgba(59,130,246,0.4); color: #60a5fa;" onclick="app.goToVerbaleWizardStep(app.getVerbaleSteps().length - 1)">
+                                ⬅️ Torna alla Compilazione (Passo ${app.getVerbaleSteps().length})
                             </button>
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.state.verbali_current_view = 'wizard'; app.renderVerbali();">
-                                ✏️ Modifica Dati
+                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.backToVerbaliHub()">
+                                🏛️ Elenco Verbali
                             </button>
                             <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: flex; align-items: center; gap: 6px;" onclick="app.resetVerbaleWizard(true)" title="Elimina questa compilazione e torna all'elenco senza salvare">
                                 🗑️ Scarta / Elimina Bozza
