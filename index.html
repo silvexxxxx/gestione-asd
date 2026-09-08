@@ -20372,9 +20372,15 @@ ${r.annullata ? `
             this.state.verbale_wizard_type = type;
             this.state.verbale_wizard_step = 0;
 
-            const basePres = (s.legalRepresentative || s.presidente || '').trim();
-            const baseSec = (s.segretario || '').trim();
-            const baseVice = (s.vicepresidente || '').trim();
+            const _soci = this.state.soci || [];
+            const _resolveName = (val) => {
+                if (!val) return '';
+                const found = _soci.find(x => String(x.id) === String(val));
+                return found ? ((found.cognome || '') + ' ' + (found.nome || '')).trim() : val.trim();
+            };
+            const basePres = _resolveName(s.legalRepresentative || s.presidente || '');
+            const baseSec = _resolveName(s.segretario || '');
+            const baseVice = _resolveName(s.vicepresidente || '');
             const baseLuogo = s.address ? `presso la sede dell'Associazione sita in ${s.address}` : "presso la sede dell'Associazione";
 
             if (type === 'direttivo') {
