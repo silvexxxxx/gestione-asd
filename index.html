@@ -19146,12 +19146,10 @@ ${r.annullata ? `
 
             if (type === 'direttivo') {
                 if (fieldId === 'ora_seduta') {
-                    // Ora apertura lavori conseguente (+10 min da ora convocazione)
                     d.ora_inizio_lavori = this.addMinutiOrario(val, 10);
                     const elInizio = document.getElementById('wz-ora_inizio_lavori');
                     if (elInizio) elInizio.value = d.ora_inizio_lavori;
 
-                    // Ora chiusura seduta conseguente (+1h 15m)
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
@@ -19183,7 +19181,7 @@ ${r.annullata ? `
                 if (fieldId === 'ora_c1') {
                     if (calls === 1) {
                         d.ora_inizio_lavori = this.addMinutiOrario(val, 15);
-                        d.ora_chiusura = this.addMinutiOrario(val, 90);
+                        d.ora_chiusura = this.addMinutiOrario(val, 75);
                     } else {
                         const elC2 = document.getElementById('wz-ora_c2');
                         if (elC2 && (!d.ora_c2 || d.ora_c2 === d._last_sync_c1)) {
@@ -19192,17 +19190,28 @@ ${r.annullata ? `
                         }
                         const eff = d.ora_c2 || val;
                         d.ora_inizio_lavori = this.addMinutiOrario(eff, 15);
-                        d.ora_chiusura = this.addMinutiOrario(eff, 90);
+                        d.ora_chiusura = this.addMinutiOrario(eff, 75);
                     }
                     d._last_sync_c1 = val;
+                    const elInizio = document.getElementById('wz-ora_inizio_lavori');
+                    if (elInizio) elInizio.value = d.ora_inizio_lavori;
+                    const elChiusura = document.getElementById('wz-ora_chiusura');
+                    if (elChiusura) elChiusura.value = d.ora_chiusura;
+                    this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_c2') {
                     d.ora_inizio_lavori = this.addMinutiOrario(val, 15);
-                    d.ora_chiusura = this.addMinutiOrario(val, 90);
+                    d.ora_chiusura = this.addMinutiOrario(val, 75);
+                    const elInizio = document.getElementById('wz-ora_inizio_lavori');
+                    if (elInizio) elInizio.value = d.ora_inizio_lavori;
+                    const elChiusura = document.getElementById('wz-ora_chiusura');
+                    if (elChiusura) elChiusura.value = d.ora_chiusura;
+                    this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_inizio_lavori') {
                     d.ora_inizio_lavori = val;
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
+                    this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_chiusura') {
                     d.ora_chiusura = val;
                     const chiusEl = document.getElementById('wz-testo_chiusura');
@@ -19216,6 +19225,33 @@ ${r.annullata ? `
             }
         },
 
+        onVerbaleConvocazioniChange(val) {
+            const d = this.state.verbale_wizard_data || {};
+            d.num_convocazioni = parseInt(val, 10);
+            if (d.num_convocazioni === 1) {
+                d.esito_c1 = 'Seduta Valida';
+            } else if (d.num_convocazioni >= 2) {
+                if (!d.esito_c1) d.esito_c1 = 'Andata Deserta';
+            }
+            const effOra = (d.num_convocazioni >= 2 && d.ora_c2) ? d.ora_c2 : (d.ora_c1 || '20:00');
+            d.ora_inizio_lavori = this.addMinutiOrario(effOra, 15);
+            d.ora_chiusura = this.addMinutiOrario(effOra, 75);
+            this.updateVerbalePresidenzaLive();
+            this.saveVerbaleWizardStep();
+            this.renderVerbali();
+        },
+
+        onVerbaleEsitoConvocazioneChange(field, val) {
+            const d = this.state.verbale_wizard_data || {};
+            d[field] = val;
+            this.updateVerbalePresidenzaLive();
+            this.saveVerbaleWizardStep();
+        },
+
+        formatEuroImporto(val) {
+            const n = parseFloat(val) || 0;
+            return n.toFixed(2).replace('.', ',');
+        },
         onVerbalePresidenteChange(val) {
             const d = this.state.verbale_wizard_data || {};
             d.presidente = val;
@@ -19245,23 +19281,24 @@ ${r.annullata ? `
             const presInput = document.getElementById('wz-presidente');
             const secInput = document.getElementById('wz-segretario');
             const timeInput = document.getElementById('wz-ora_inizio_lavori');
+            const viceInput = document.getElementById('wz-vicepresidente');
             const txtPres = document.getElementById('wz-testo_presidenza');
 
             if (presInput) d.presidente = presInput.value.trim();
             if (secInput) d.segretario = secInput.value.trim();
             if (timeInput) d.ora_inizio_lavori = timeInput.value.trim();
+            if (viceInput) d.vicepresidente = viceInput.value.trim();
 
             if (txtPres) {
                 const customTemplates = this.getVerbaleCustomTemplates();
                 const rawTmpl = (customTemplates[type] && customTemplates[type]['testo_presidenza'])
                     ? customTemplates[type]['testo_presidenza']
-                    : (txtPres.value || this.getStandardVerbaleTemplate(type, 'testo_presidenza'));
+                    : this.getStandardVerbaleTemplate(type, 'testo_presidenza');
                 const resolved = this.resolveVerbalePlaceholders(rawTmpl, d, type);
                 txtPres.value = resolved;
                 d.testo_presidenza = resolved;
             }
         },
-
         removeVerbalePuntoOdg(pointIdx) {
             this.saveVerbaleWizardStep();
             const d = this.state.verbale_wizard_data || {};
@@ -19797,20 +19834,25 @@ ${r.annullata ? `
                 if (fieldKey === 'testo_chiusura') {
                     return "Dopo di che, null'altro essendovi a deliberare e nessuno altro chiedendo la parola, la seduta è tolta alle ore {ora_chiusura} previa lettura a unanime approvazione del presente verbale.";
                 }
-            } else {                if (fieldKey === 'testo_apertura') {
-                    return "L'anno {anno}, il giorno {data_seduta} alle ore {ora_seduta}, {luogo}, si è riunita l'Assemblea dei Soci della {asd_nome}, regolarmente convocata.";
+            } else {
+                // Assemblea Ordinaria e Straordinaria
+                if (fieldKey === 'testo_apertura') {
+                    return "L'anno {anno} il giorno {data_seduta} alle ore {ora_seduta}, {luogo}, si è riunita l'Assemblea dei Soci della {asd_nome} regolarmente convocata per discutere e deliberare sul seguente ordine del giorno:";
                 }
                 if (fieldKey === 'testo_presidenza') {
-                    return "Assume la presidenza {presidente} che, verifica la regolarità della convocazione e della seduta assembleare come da statuto vigente, dichiara la seduta aperta {convocazione_fase} alle ore {ora_inizio_lavori}. I presenti chiamano a fungere da segretario {segretario}.";
+                    return "Assume la presidenza {presidente} che, verificata la regolarità della convocazione e della seduta assembleare come da statuto vigente, dichiara la seduta aperta {convocazione_fase} alle ore {ora_inizio_lavori}{clausola_deserta_c1}. I presenti chiamano a fungere da segretario {segretario}.";
+                }
+                if (fieldKey === 'testo_rito') {
+                    return "Si passa quindi allo svolgimento dell'ordine del giorno.\n\nIl Presidente chiede se qualcuno intende dichiararsi non informato sugli argomenti del giorno.\n\nOttenuto il consenso alla trattazione dell'argomento, il Presidente dichiara la seduta atta a deliberare.\n\nIl Presidente chiede ai partecipanti la comunicazione dell'esistenza di situazioni impeditive del diritto di voto e nessuno interviene.";
                 }
                 if (fieldKey === 'relazione_presidente') {
-                    return "Il Presidente espone all'Assemblea una dettagliata relazione sulle attività sportive, agonistiche e sociali svolte nel corso dell'anno, sottolineando i risultati raggiunti e la piena conformità della gestione alle finalità istituzionali dell'Associazione.";
+                    return "prende la parola il Presidente {presidente} che espone all'Assemblea dei Soci una dettagliata relazione morale e tecnica sulle attività svolte durante l'anno sportivo, evidenziando i risultati conseguiti e la piena rispondenza della gestione alle finalità associative statutarie.\n\nL'Assemblea dei Soci, dopo attenta disamina e scambio di considerazioni, approva all'unanimità la relazione morale e tecnica del Presidente.";
                 }
                 if (fieldKey === 'testo_delibera_rendiconto') {
-                    return "L'Assemblea dei Soci, udita la relazione del Presidente e verificata la documentazione contabile esibita, dopo ampia discussione approva all'unanimità il Rendiconto economico-finanziario al {data_chiusura} e la destinazione dell'avanzo di gestione alle finalità istituzionali dell'Associazione.";
+                    return "prende la parola il Presidente illustrando dettagliatamente all'Assemblea il Rendiconto economico-finanziario chiuso al {data_chiusura} e la relativa documentazione contabile.\n\nL'Assemblea dei Soci, verificata la regolarità e coerenza delle scritture contabili esibite, dopo esaustiva discussione approva all'unanimità il Rendiconto economico-finanziario consuntivo e la destinazione dell'avanzo alla gestione delle ordinarie attività istituzionali dell'Associazione.";
                 }
                 if (fieldKey === 'testo_chiusura') {
-                    return "Null'altro essendovi da deliberare e nessun altro chiedendo la parola, la seduta viene dichiarata tolta alle ore {ora_chiusura}, previa stesura, lettura e approvazione all'unanimità del presente verbale.";
+                    return "Dopo di che, null'altro essendovi a deliberare e nessun altro chiedendo la parola, la seduta è tolta alle ore {ora_chiusura}, previa stesura, lettura e unanime approvazione del presente verbale.";
                 }
             }
             return '';
@@ -19820,31 +19862,31 @@ ${r.annullata ? `
             if (!tmpl) return '';
             let t = tmpl;
 
-            // 1. Sostituzione Presidente: "Assume la presidenza <NOME> che, verificata/verifica/dichiara"
             t = t.replace(/(Assume la presidenza\s+)(.*?)(che(?:,\s*|\s+)verificata|che\s+verifica|che\s+dichiara)/i, (m, p1, name, p3) => {
                 return p1 + '{presidente} ' + p3;
             });
             t = t.replace(/\bPINTUS\s+SILVERIO\b/gi, '{presidente}');
 
-            // 2. Sostituzione Ora inizio lavori: "alle ore \d{1,2}[:.]\d{2}"
             t = t.replace(/(alle ore\s+)\d{1,2}[:.]\d{2}/gi, '$1{ora_inizio_lavori}');
 
-            // 3. Sostituzione Segretario: "a fungere da segretario <NOME>."
             t = t.replace(/(a fungere da segretario(?:\s+verbalizzante)?\s+)([^.]+?)(\.|$)/i, (m, p1, name, p3) => {
                 return p1 + '{segretario}' + p3;
             });
             t = t.replace(/\bBoccone\s+Serafino\b/gi, '{segretario}');
             t = t.replace(/\bBOCCONE\s+SERAFINO\b/gi, '{segretario}');
 
-            // Sostituzione mirata con i dati attuali del wizard se presenti letterali
             const d = this.state.verbale_wizard_data || {};
             if (d.presidente && d.presidente.trim().length > 2) {
-                const escPres = d.presidente.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                t = t.replace(new RegExp(`\\b${escPres}\\b`, 'gi'), '{presidente}');
+                const escPres = d.presidente.trim().split('').map(c => ('\\^$*+?.()|{}[]'.includes(c) ? '\\' + c : c)).join('');
+                t = t.replace(new RegExp('\\b' + escPres + '\\b', 'gi'), '{presidente}');
             }
             if (d.segretario && d.segretario.trim().length > 2) {
-                const escSec = d.segretario.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                t = t.replace(new RegExp(`\\b${escSec}\\b`, 'gi'), '{segretario}');
+                const escSec = d.segretario.trim().split('').map(c => ('\\^$*+?.()|{}[]'.includes(c) ? '\\' + c : c)).join('');
+                t = t.replace(new RegExp('\\b' + escSec + '\\b', 'gi'), '{segretario}');
+            }
+            if (d.vicepresidente && d.vicepresidente.trim().length > 2) {
+                const escVice = d.vicepresidente.trim().split('').map(c => ('\\^$*+?.()|{}[]'.includes(c) ? '\\' + c : c)).join('');
+                t = t.replace(new RegExp('\\b' + escVice + '\\b', 'gi'), '{vicepresidente}');
             }
 
             return t;
@@ -19855,9 +19897,15 @@ ${r.annullata ? `
             tmpl = this.prepareVerbaleTemplate(tmpl);
             const s = this.state.settings || {};
             const asdNome = (s.asdName || 'A.S.D. GESTIONALE').toUpperCase();
-            const dateVal = d.data_seduta || d.data_c1 || new Date().toISOString().split('T')[0];
+            
+            const calls = parseInt(d.num_convocazioni || 1, 10);
+            const isSeconda = calls >= 2 && (d.esito_c1 === 'Andata Deserta' || d.esito_c1 === 'Deserta');
+            const dateVal = isSeconda ? (d.data_c2 || d.data_c1 || new Date().toISOString().split('T')[0]) : (d.data_c1 || d.data_seduta || new Date().toISOString().split('T')[0]);
             const dataSedutaEstesa = this.formatDataItaliano(dateVal, true);
-            const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || `${new Date().getFullYear()}-08-31`);
+            const dataC1Estesa = this.formatDataItaliano(d.data_c1 || dateVal, true);
+            const dataC2Estesa = this.formatDataItaliano(d.data_c2 || dateVal, true);
+            const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || (`${new Date().getFullYear()}-08-31`));
+            
             const dateObj = dateVal ? new Date(dateVal) : new Date();
             const parts = String(dateVal).split('-');
             const parsedYear = parseInt(parts[0], 10);
@@ -19866,28 +19914,35 @@ ${r.annullata ? `
             const mesiList = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
             const meseNome = parts.length === 3 ? mesiList[parseInt(parts[1], 10) - 1] : mesiList[dateObj.getMonth()];
             const giornoMeseLettere = `${giornoNum} del mese di ${meseNome || ''}`;
-            const calls = parseInt(d.num_convocazioni || 1, 10);
-            const isSeconda = calls >= 2;
+            
             const effOra = isSeconda ? (d.ora_c2 || d.ora_c1 || '20:00') : (d.ora_c1 || '20:00');
             const oraSeduta = d.ora_seduta || effOra;
-            const oraChiusura = d.ora_chiusura || (type === 'direttivo' ? '21:15' : '21:30');
-            const oraInizioLavori = d.ora_inizio_lavori || (type === 'direttivo' ? (d.ora_seduta ? this.addMinutiOrario(d.ora_seduta, 10) : '20:10') : oraSeduta);
+            const oraChiusura = d.ora_chiusura || this.addMinutiOrario(effOra, 75);
+            const oraInizioLavori = d.ora_inizio_lavori || this.addMinutiOrario(effOra, 15);
+            
             const convocazioneFase = isSeconda ? 'in seconda convocazione' : 'in prima convocazione';
+            const clausolaDeserta = isSeconda ? `, in quanto l'assemblea di prima convocazione del giorno ${dataC1Estesa} è andata deserta` : '';
+            
             const luogo = d.luogo || (type === 'direttivo' ? "presso la sede sociale dell'Associazione" : "presso la sede dell'Associazione");
             const pres = d.presidente || 'Il Presidente';
             const sec = d.segretario || 'Il Segretario';
             const vice = d.vicepresidente || '';
             const sportsYear = d.anno_sportivo || (this.getSportsYear ? this.getSportsYear() : '');
+            const tipoAssemblea = type === 'straordinaria' ? 'Assemblea Straordinaria' : (type === 'ordinaria' ? 'Assemblea Ordinaria' : 'Consiglio Direttivo');
 
             return tmpl
                 .replace(/\{anno\}/g, anno)
                 .replace(/\{anno_sportivo\}/g, sportsYear)
+                .replace(/\{tipo_assemblea\}/g, tipoAssemblea)
                 .replace(/\{giorno_mese_lettere\}/g, giornoMeseLettere)
                 .replace(/\{data_seduta\}/g, dataSedutaEstesa)
+                .replace(/\{data_c1_estesa\}/g, dataC1Estesa)
+                .replace(/\{data_c2_estesa\}/g, dataC2Estesa)
                 .replace(/\{ora_seduta\}/g, oraSeduta)
                 .replace(/\{ora_chiusura\}/g, oraChiusura)
                 .replace(/\{ora_inizio_lavori\}/g, oraInizioLavori)
                 .replace(/\{convocazione_fase\}/g, convocazioneFase)
+                .replace(/\{clausola_deserta_c1\}/g, clausolaDeserta)
                 .replace(/\{luogo\}/g, luogo)
                 .replace(/\{asd_nome\}/g, asdNome)
                 .replace(/\{presidente\}/g, pres)
@@ -19895,7 +19950,6 @@ ${r.annullata ? `
                 .replace(/\{segretario\}/g, sec)
                 .replace(/\{data_chiusura\}/g, dataChiusuraFmt);
         },
-
         getVerbaleText(fieldKey) {
             const d = this.state.verbale_wizard_data || {};
             const type = this.state.verbale_wizard_type || 'direttivo';
@@ -19963,22 +20017,22 @@ ${r.annullata ? `
             if (!templates[type]) templates[type] = {};
 
             if (type === 'direttivo') {
-                if (d.testo_apertura) templates[type].testo_apertura = d.testo_apertura;
-                if (d.testo_presidenza) templates[type].testo_presidenza = this.prepareVerbaleTemplate(d.testo_presidenza);
-                if (d.testo_delibera_finale) templates[type].testo_delibera_finale = d.testo_delibera_finale;
-                if (d.testo_chiusura) templates[type].testo_chiusura = d.testo_chiusura;
+                if (d.testo_apertura) templates[type]['testo_apertura'] = d.testo_apertura;
+                if (d.testo_presidenza) templates[type]['testo_presidenza'] = this.prepareVerbaleTemplate(d.testo_presidenza);
+                if (d.testo_rito) templates[type]['testo_rito'] = d.testo_rito;
+                if (d.testo_chiusura) templates[type]['testo_chiusura'] = d.testo_chiusura;
             } else {
-                if (d.testo_apertura) templates[type].testo_apertura = d.testo_apertura;
-                if (d.testo_presidenza) templates[type].testo_presidenza = this.prepareVerbaleTemplate(d.testo_presidenza);
-                if (d.relazione_presidente) templates[type].relazione_presidente = d.relazione_presidente;
-                if (d.testo_delibera_rendiconto) templates[type].testo_delibera_rendiconto = d.testo_delibera_rendiconto;
-                if (d.testo_chiusura) templates[type].testo_chiusura = d.testo_chiusura;
+                if (d.testo_apertura) templates[type]['testo_apertura'] = d.testo_apertura;
+                if (d.testo_presidenza) templates[type]['testo_presidenza'] = this.prepareVerbaleTemplate(d.testo_presidenza);
+                if (d.testo_rito) templates[type]['testo_rito'] = d.testo_rito;
+                if (d.relazione_presidente) templates[type]['relazione_presidente'] = d.relazione_presidente;
+                if (d.testo_delibera_rendiconto) templates[type]['testo_delibera_rendiconto'] = d.testo_delibera_rendiconto;
+                if (d.testo_chiusura) templates[type]['testo_chiusura'] = d.testo_chiusura;
             }
 
             this.saveVerbaleCustomTemplates(templates);
-            this.toast(`✅ Tutti i testi personalizzati sono stati memorizzati come modello predefinito per i futuri verbali!`, 'success');
+            this.toast(`✅ Tutte le formule (${type.toUpperCase()}) salvate come modelli predefiniti per i prossimi verbali!`, 'success');
         },
-
         onVerbaleSheetInput(sheetEl) {
             if (!sheetEl) return;
             const d = this.state.verbale_wizard_data || {};
@@ -20295,126 +20349,104 @@ ${r.annullata ? `
             this.initVerbaliState();
             const sportsYear = this.getVerbaleDefaultSportsYear ? this.getVerbaleDefaultSportsYear() : '2025/2026';
             const s = this.state.settings || {};
-            const syParts = sportsYear.split(/[-\/]/).map(x => parseInt(x, 10));
-            const endYear = (syParts.length === 2 && !isNaN(syParts[1])) ? syParts[1] : new Date().getFullYear();
-            const defaultChiusura = `${endYear}-08-31`;
-            const dataChiusuraFmt = this.formatDataItaliano(defaultChiusura);
-            const saldi = this.calcolaSaldiFinanziari(defaultChiusura, sportsYear);
-
-            const presName = this.resolveSocioNome(s.presidente, 'Pintus Silverio');
-            const secName = this.resolveSocioNome(s.segretario, 'Boccone Serafino');
-            const viceName = this.resolveSocioNome(s.vice_presidente, '');
-            const nowObj = new Date();
-            const todayIso = `${nowObj.getFullYear()}-${String(nowObj.getMonth() + 1).padStart(2, '0')}-${String(nowObj.getDate()).padStart(2, '0')}`;
+            const syParts = sportsYear.split('/');
+            const closingYear = (syParts.length === 2 && !isNaN(parseInt(syParts[1], 10))) 
+                ? syParts[1] 
+                : String(new Date().getFullYear());
 
             if (editId) {
-                const item = (this.state.verbali_archive || []).find(x => String(x.id) === String(editId));
+                const item = (this.state.verbali_archive || []).find(x => x.id === editId);
                 if (item) {
-                    this.state.verbale_wizard_data = JSON.parse(JSON.stringify(item.data || {}));
-                    if (!this.state.verbale_wizard_data.anno_sportivo) {
-                        this.state.verbale_wizard_data.anno_sportivo = sportsYear;
-                    }
-                    if (!Array.isArray(this.state.verbale_wizard_data.consiglieri_list) || this.state.verbale_wizard_data.consiglieri_list.length === 0) {
-                        if (this.state.verbale_wizard_data.nuovi_consiglieri) {
-                            this.state.verbale_wizard_data.consiglieri_list = this.state.verbale_wizard_data.nuovi_consiglieri.split(',').map(x => x.trim()).filter(Boolean);
-                        }
-                        if (!Array.isArray(this.state.verbale_wizard_data.consiglieri_list) || this.state.verbale_wizard_data.consiglieri_list.length === 0) {
-                            this.state.verbale_wizard_data.consiglieri_list = [''];
-                        }
-                    }
-                    if (!Array.isArray(this.state.verbale_wizard_data.partecipanti_direttivo)) {
-                        if (this.state.verbale_wizard_data.altri_partecipanti_direttivo) {
-                            this.state.verbale_wizard_data.partecipanti_direttivo = this.state.verbale_wizard_data.altri_partecipanti_direttivo.split(',').map(x => x.trim()).filter(Boolean);
-                        } else {
-                            this.state.verbale_wizard_data.partecipanti_direttivo = [];
-                        }
-                    }
-                    if (!this.state.verbale_wizard_data.vicepresidente && viceName) {
-                        this.state.verbale_wizard_data.vicepresidente = viceName;
-                    }
-                    this.state.verbale_wizard_type = item.type || type;
-                    this.state.verbale_wizard_edit_id = item.id;
+                    this.state.verbale_wizard_data = JSON.parse(JSON.stringify(item));
+                    this.state.verbale_wizard_type = item.tipo || type;
+                    this.state.verbale_wizard_step = 0;
+                    this.state.verbale_edit_id = editId;
+                    this.state.verbale_current_view = 'wizard';
+                    this.renderVerbali();
+                    return;
                 }
-            } else {
-                this.state.verbale_wizard_type = type;
-                this.state.verbale_wizard_edit_id = null;
-                this.state.verbale_wizard_data = {
-                    anno_sportivo: sportsYear,
-                    num_convocazioni: 1,
-                    data_c1: todayIso,
-                    ora_c1: '20:00',
-                    esito_c1: 'Seduta Valida',
-                    data_c2: todayIso,
-                    ora_c2: '20:00',
-                    esito_c2: 'Seduta Valida',
-                    luogo: s.address ? `presso la sede dell'Associazione in ${s.address}` : "presso la sede dell'Associazione",
-                    presidente: presName,
-                    vicepresidente: viceName,
-                    segretario: secName,
-                    ora_inizio_lavori: type === 'direttivo' ? '20:10' : '20:15',
-                    rinnovo_direttivo: 'No',
-                    nuovo_presidente: presName,
-                    nuovo_vice: viceName,
-                    nuovo_segretario: secName,
-                    consiglieri_list: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [''],
-                    nuovi_consiglieri: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
-                    partecipanti_direttivo: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [],
-                    altri_partecipanti_direttivo: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
-                    data_chiusura: defaultChiusura,
-                    entrate: saldi.entrate,
-                    uscite: saldi.uscite,
-                    avanzo: saldi.avanzo,
-                    cassa: saldi.cassa,
-                    banca: saldi.banca,
-                    casseList: saldi.casseList,
-                    relazione_presidente: "Il Presidente espone all'Assemblea una dettagliata relazione sulle attività sportive, agonistiche e sociali svolte nel corso dell'anno, sottolineando i risultati raggiunti e la piena conformità della gestione alle finalità istituzionali dell'Associazione.",
-                    num_firmatari: 2,
-                    f_nome_1: '',
-                    f_nome_2: '',
-                    f_nome_3: '',
-                    ora_chiusura: type === 'direttivo' ? '21:00' : '21:30',
-                    data_seduta: todayIso,
-                    ora_seduta: '20:00',
-                    ora_inizio_lavori: type === 'direttivo' ? '20:10' : '20:15',
-                    luogo: type === 'direttivo' ? 'presso la sede della Associazione in epigrafe indicata' : (s.address ? `presso la sede dell'Associazione in ${s.address}` : "presso la sede dell'Associazione"),
-                    num_punti_odg: 2,
-                    odg_o_1: 'Presentazione Rendiconto e convocazione assemblea soci;',
-                    odg_rif_1: "Con riferimento al primo punto all'ordine del giorno,",
-                    odg_d_1: `i presenti discutono e esaminano il rendiconto della associazione riguardante il periodo dell'esercizio sociale chiuso il ${dataChiusuraFmt} e, dopo discussione, l'assemblea delibera di procedere alla convocazione dell'assemblea dei soci per sottoporre il rendiconto sopraindicato per l'approvazione. Si dispone l'invio immediato dell'avviso di convocazione a tutti i soci aventi il diritto di voto e a mettere a disposizione degli stessi lo stesso rendiconto e tutta la documentazione contabile utilizzata per la predisposizione.`,
-                    odg_approv_1: "Il Consiglio, dopo breve discussione, approva all'unanimità.",
-                    odg_o_2: 'Varie ed eventuali.',
-                    odg_rif_2: "Con riferimento al secondo punto all'ordine del giorno,",
-                    odg_d_2: "il Consiglio esamina le varie comunicazioni pervenute e la programmazione delle attività associative, confermando l'ordinaria amministrazione e la continuità delle attività sportive.",
-                    odg_approv_2: "Il Consiglio approva all'unanimità.",
-                    testo_apertura: '',
-                    testo_presidenza: '',
-                    testo_rito: '',
-                    testo_delibera_finale: '',
-                    testo_delibera_rendiconto: '',
-                    testo_chiusura: ''                };
             }
 
+            this.state.verbale_edit_id = null;
+            this.state.verbale_wizard_type = type;
             this.state.verbale_wizard_step = 0;
-            this.state.verbali_current_view = 'wizard';
+
+            const basePres = (s.legalRepresentative || s.presidente || '').trim();
+            const baseSec = (s.segretario || '').trim();
+            const baseVice = (s.vicepresidente || '').trim();
+            const baseLuogo = s.address ? `presso la sede dell'Associazione sita in ${s.address}` : "presso la sede dell'Associazione";
+
+            if (type === 'direttivo') {
+                this.state.verbale_wizard_data = {
+                    anno_sportivo: sportsYear,
+                    data_seduta: new Date().toISOString().split('T')[0],
+                    ora_seduta: '20:00',
+                    ora_inizio_lavori: '20:10',
+                    ora_chiusura: '21:15',
+                    luogo: baseLuogo,
+                    presidente: basePres,
+                    vicepresidente: baseVice,
+                    segretario: baseSec,
+                    data_chiusura: `${closingYear}-08-31`,
+                    num_punti_odg: 2,
+                    odg_o_1: 'Presentazione Rendiconto e convocazione assemblea soci;',
+                    odg_o_2: 'Varie ed eventuali.',
+                    partecipanti_direttivo: []
+                };
+            } else {
+                // Ordinaria e Straordinaria
+                const curYear = closingYear;
+                this.state.verbale_wizard_data = {
+                    anno_sportivo: sportsYear,
+                    num_convocazioni: 2,
+                    data_c1: new Date().toISOString().split('T')[0],
+                    ora_c1: '20:00',
+                    esito_c1: 'Andata Deserta',
+                    data_c2: new Date().toISOString().split('T')[0],
+                    ora_c2: '20:00',
+                    esito_c2: 'Seduta Valida',
+                    ora_inizio_lavori: '20:15',
+                    ora_chiusura: '21:30',
+                    luogo: baseLuogo,
+                    presidente: basePres,
+                    vicepresidente: baseVice,
+                    segretario: baseSec,
+                    data_chiusura: `${curYear}-08-31`,
+                    rinnovo_direttivo: 'No',
+                    num_firmatari: 2,
+                    num_punti_odg: 3,
+                    odg_o_1: "Relazione morale e tecnica del Presidente sull'attività sociale svolta;",
+                    odg_o_2: `Presentazione, discussione ed approvazione del rendiconto economico-finanziario chiuso al 31/08/${curYear};`,
+                    odg_o_3: 'Varie ed eventuali.',
+                    odg_rif_1: "In merito al primo punto all'ordine del giorno,",
+                    odg_d_1: "prende la parola il Presidente " + (basePres || 'Silverio Pintus') + " che espone all'Assemblea dei Soci una dettagliata relazione morale e tecnica sulle attività svolte durante l'anno sportivo, evidenziando i risultati conseguiti e la piena rispondenza della gestione alle finalità associative statutarie.\n\nL'Assemblea dei Soci, dopo attenta disamina e scambio di considerazioni, approva all'unanimità la relazione morale e tecnica del Presidente.",
+                    odg_rif_2: "In merito al secondo punto all'ordine del giorno,",
+                    odg_d_2: "prende la parola il Presidente illustrando dettagliatamente all'Assemblea il Rendiconto economico-finanziario consuntivo chiuso al 31/08/" + curYear + " e la relativa documentazione contabile esibita.\n\nL'Assemblea dei Soci, dopo esaustiva discussione e verifica della documentazione, approva all'unanimità il Rendiconto economico-finanziario consuntivo e la destinazione dell'avanzo alla gestione delle ordinarie attività istituzionali dell'Associazione.",
+                    odg_rif_3: "In merito al terzo punto all'ordine del giorno,",
+                    odg_d_3: "il Presidente invita i soci presenti a prendere la parola. Non essendovi ulteriori richieste di intervento né altre questioni sollevate dai presenti, si constata l'esaurimento della trattazione."
+                };
+            }
+
+            this.state.verbale_current_view = 'wizard';
             this.renderVerbali();
         },
-
         getVerbaleSteps() {
             const type = this.state.verbale_wizard_type || 'direttivo';
             if (type === 'direttivo') {
                 return [
                     { id: 'step_dir_base', title: '1. Convocazione & Ordine del Giorno' },
                     { id: 'step_dir_part', title: '2. Presidenza, Segretario & Rito' },
-                    { id: 'step_dir_odg', title: '3. Deliberazioni ODG & Chiusura' }
+                    { id: 'step_dir_odg', title: '3. Deliberazioni & Firme' }
                 ];
-            }            return [
-                { id: 'step_ord_conv', title: '1. Convocazioni & Data' },
-                { id: 'step_ord_pres', title: '2. Presidenza & Cariche' },
-                { id: 'step_ord_fin', title: '3. Bilancio & Rendiconto' },
-                { id: 'step_ord_firm', title: '4. Firmatari & Chiusura' }
-            ];
+            } else {
+                return [
+                    { id: 'step_ord_conv', title: '1. Convocazioni & ODG' },
+                    { id: 'step_ord_pres', title: '2. Presidenza, Segretario & Rito' },
+                    { id: 'step_ord_fin', title: '3. Bilancio & Rendiconto' },
+                    { id: 'step_ord_firm', title: '4. Deliberazioni ODG & Firmatari' }
+                ];
+            }
         },
-
         renderVerbaleWizard() {
             const main = document.getElementById('main-content');
             const d = this.state.verbale_wizard_data || {};
@@ -20792,20 +20824,43 @@ ${r.annullata ? `
             } else {
                 if (currentStep.id === 'step_ord_conv') {
                     const calls = parseInt(d.num_convocazioni || 1, 10);
+                    const numPunti = parseInt(d.num_punti_odg || 3, 10);
+                    const curYear = (d.anno_sportivo && d.anno_sportivo.includes('/')) ? d.anno_sportivo.split('/')[1] : new Date().getFullYear();
+                    const testoApertura = this.getVerbaleText('testo_apertura');
+
+                    let puntiOdgListInputsHtml = '';
+                    for (let i = 1; i <= numPunti; i++) {
+                        const defaultVal = i === 1 
+                            ? "Relazione morale e tecnica del Presidente sull'attività sociale svolta;" 
+                            : (i === 2 
+                                ? `Presentazione, discussione ed approvazione del rendiconto economico-finanziario chiuso al 31/08/${curYear};` 
+                                : (i === 3 ? "Varie ed eventuali." : `Nuovo argomento ${i}`));
+                        const val = d['odg_o_' + i] !== undefined ? d['odg_o_' + i] : defaultVal;
+                        puntiOdgListInputsHtml += `
+                            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 700; color: #60a5fa; min-width: 25px; text-align: right;">${i})</span>
+                                <input type="text" id="wz-odg_o_${i}" class="form-control" value="${this.escapeHtml(val)}" placeholder="Argomento punto ${i}..." style="font-size: 0.9rem;">
+                                ${i >= 3 ? `
+                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 4px 10px; font-size: 1.1rem; line-height: 1; border-radius: 6px;" onclick="app.removeVerbalePuntoOdg(${i})" title="Rimuovi questo punto dall'ordine del giorno">&times;</button>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+
                     stepContentHtml = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">
-                                    Anno Sportivo / Esercizio di Riferimento del Bilancio
+                                    Anno Sportivo / Esercizio di Riferimento
                                 </label>
                                 <input type="text" id="wz-anno_sportivo" class="form-control" value="${d.anno_sportivo || ''}" placeholder="es. 2025/2026" onchange="app.onVerbaleAnnoSportivoChange(this.value)">
                                 <small style="color: #94a3b8; font-size: 0.76rem; display: block; margin-top: 4px; line-height: 1.35;">
-                                    💡 <strong>Nota:</strong> Inserisci la stagione conclusa che viene approvata (es. <strong>2025/2026</strong>). La data della seduta sotto (es. 07/09/2026) indica il giorno in cui si tiene l'Assemblea.
+                                    💡 Inserisci la stagione approvata (es. <strong>2025/2026</strong>).
                                 </small>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Numero Convocazioni</label>
-                                <select id="wz-num_convocazioni" class="form-control" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                <select id="wz-num_convocazioni" class="form-control" onchange="app.onVerbaleConvocazioniChange(this.value)">
                                     <option value="1" ${calls === 1 ? 'selected' : ''}>1 Convocazione (Seduta subito valida)</option>
                                     <option value="2" ${calls === 2 ? 'selected' : ''}>2 Convocazioni (1a andata deserta, 2a valida)</option>
                                 </select>
@@ -20817,18 +20872,18 @@ ${r.annullata ? `
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
                                 <div class="form-group">
                                     <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Data</label>
-                                    <input type="date" id="wz-data_c1" class="form-control" value="${d.data_c1 || ''}">
+                                    <input type="date" id="wz-data_c1" class="form-control" value="${d.data_c1 || ''}" onchange="app.saveVerbaleWizardStep(); app.updateVerbalePresidenzaLive();">
                                 </div>
                                 <div class="form-group">
-                                    <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Ora Inizio</label>
+                                    <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Ora Convocazione</label>
                                     <input type="time" id="wz-ora_c1" class="form-control" value="${d.ora_c1 || '20:00'}" onchange="app.onVerbaleTimeChange('ora_c1', this.value)" oninput="app.onVerbaleTimeChange('ora_c1', this.value)">
                                     <small style="color: #94a3b8; font-size: 0.73rem; display: block; margin-top: 3px;">
-                                        💡 Apertura lavori (+15m) e chiusura (+1h 30m) conseguenti.
+                                        💡 Apertura lavori (+15m) conseguente.
                                     </small>
                                 </div>
                                 <div class="form-group">
                                     <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Esito Convocazione</label>
-                                    <select id="wz-esito_c1" class="form-control">
+                                    <select id="wz-esito_c1" class="form-control" onchange="app.onVerbaleEsitoConvocazioneChange('esito_c1', this.value)">
                                         <option value="Seduta Valida" ${d.esito_c1 === 'Seduta Valida' || calls === 1 ? 'selected' : ''}>Seduta Valida</option>
                                         <option value="Andata Deserta" ${d.esito_c1 === 'Andata Deserta' && calls > 1 ? 'selected' : ''}>Andata Deserta</option>
                                     </select>
@@ -20842,13 +20897,13 @@ ${r.annullata ? `
                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
                                     <div class="form-group">
                                         <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Data</label>
-                                        <input type="date" id="wz-data_c2" class="form-control" value="${d.data_c2 || ''}">
+                                        <input type="date" id="wz-data_c2" class="form-control" value="${d.data_c2 || ''}" onchange="app.saveVerbaleWizardStep(); app.updateVerbalePresidenzaLive();">
                                     </div>
                                     <div class="form-group">
-                                        <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Ora Inizio</label>
+                                        <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Ora Convocazione</label>
                                         <input type="time" id="wz-ora_c2" class="form-control" value="${d.ora_c2 || d.ora_c1 || '20:00'}" onchange="app.onVerbaleTimeChange('ora_c2', this.value)" oninput="app.onVerbaleTimeChange('ora_c2', this.value)">
                                         <small style="color: #94a3b8; font-size: 0.73rem; display: block; margin-top: 3px;">
-                                            💡 Apertura lavori e chiusura seduta conseguenti.
+                                            💡 Apertura lavori (+15m) e chiusura (+1h 15m) conseguenti.
                                         </small>
                                     </div>
                                     <div class="form-group">
@@ -20861,12 +20916,51 @@ ${r.annullata ? `
                             </div>
                         ` : ''}
 
-                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                        <div class="form-group" style="margin-bottom: 1.2rem;">
                             <label style="font-weight: 600; display:block; margin-bottom: 4px;">Luogo di Svolgimento</label>
-                            <input type="text" id="wz-luogo" class="form-control" value="${d.luogo || ''}" placeholder="es. presso la sede dell'Associazione">
+                            <input type="text" id="wz-luogo" class="form-control" value="${this.escapeHtml(d.luogo || '')}" placeholder="es. presso la sede dell'Associazione" onchange="app.onVerbaleLuogoChange(this.value)">
+                        </div>
+
+                        <!-- Sezione Ordine del Giorno dinamico -->
+                        <div style="background: rgba(96, 165, 250, 0.05); border: 1px solid rgba(96, 165, 250, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <label style="font-weight: 700; color: #60a5fa; margin: 0; font-size: 0.95rem;">
+                                    📋 Punti all'Ordine del Giorno (ODG)
+                                </label>
+                                <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 4px 10px;" onclick="app.addVerbalePuntoOdg()">
+                                    ➕ Aggiungi Punto ODG
+                                </button>
+                            </div>
+                            <div id="wz-punti-odg-container">
+                                ${puntiOdgListInputsHtml}
+                            </div>
+                        </div>
+
+                        <!-- Testo apertura dinamico -->
+                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-weight:600; font-size:0.9rem; margin:0;">
+                                    📝 Formula Apertura Seduta & Annuncio ODG
+                                </label>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:3px 8px;" onclick="app.resetVerbaleText('testo_apertura')" title="Ripristina testo predefinito">
+                                        ↺ Ripristina
+                                    </button>
+                                    <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:3px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.4);" onclick="app.saveVerbaleTemplateField('testo_apertura')" title="Salva questo testo come modello per i prossimi verbali">
+                                        💾 Salva come modello
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea id="wz-testo_apertura" class="form-control" rows="3" style="font-size:0.88rem; line-height:1.4;">${this.escapeHtml(testoApertura)}</textarea>
                         </div>
                     `;
                 } else if (currentStep.id === 'step_ord_pres') {
+                    const testoPresidenza = this.getVerbaleText('testo_presidenza');
+                    const testoRito = this.getVerbaleText('testo_rito');
+                    const calls = parseInt(d.num_convocazioni || 1, 10);
+                    const effOra = (calls >= 2 && d.ora_c2) ? d.ora_c2 : (d.ora_c1 || '20:00');
+                    const defaultOraApertura = d.ora_inizio_lavori || this.addMinutiOrario(effOra, 15);
+
                     if (!Array.isArray(d.consiglieri_list) || d.consiglieri_list.length === 0) {
                         if (d.nuovi_consiglieri) {
                             d.consiglieri_list = d.nuovi_consiglieri.split(',').map(x => x.trim()).filter(Boolean);
@@ -20907,41 +21001,93 @@ ${r.annullata ? `
                                     value="${this.escapeHtml(d.presidente || '')}" 
                                     placeholder="Inizia a digitare il cognome o nome..." 
                                     autocomplete="off"
-                                    oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-pres')"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-pres'); app.onVerbalePresidenteChange(this.value);"
                                     onfocus="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-pres')"
                                     onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-presidente', 'wz-list-pres')"
                                     onblur="setTimeout(() => { const l = document.getElementById('wz-list-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
                                 <div id="wz-list-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
                             <div class="form-group" style="position: relative;">
+                                <label style="font-weight: 600; display:block; margin-bottom: 4px;">Vicepresidente (Facoltativo)</label>
+                                <input type="text" id="wz-vicepresidente" class="form-control" 
+                                    value="${this.escapeHtml(d.vicepresidente || '')}" 
+                                    placeholder="Inizia a digitare per cercare tra i soci..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-vicepresidente', 'wz-list-vice'); app.onVerbaleVicepresidenteChange(this.value);"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-vicepresidente', 'wz-list-vice')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-vicepresidente', 'wz-list-vice')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-vice'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-vice" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+                            <div class="form-group" style="position: relative;">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Segretario dell'Assemblea</label>
                                 <input type="text" id="wz-segretario" class="form-control" 
                                     value="${this.escapeHtml(d.segretario || '')}" 
                                     placeholder="Inizia a digitare il cognome o nome..." 
                                     autocomplete="off"
-                                    oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-sec')"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-sec'); app.onVerbaleSegretarioChange(this.value);"
                                     onfocus="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-sec')"
                                     onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-segretario', 'wz-list-sec')"
                                     onblur="setTimeout(() => { const l = document.getElementById('wz-list-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
                                 <div id="wz-list-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                             </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px;">Ora Effettiva Inizio Lavori</label>
-                                <input type="time" id="wz-ora_inizio_lavori" class="form-control" value="${d.ora_inizio_lavori || '20:15'}" onchange="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)" oninput="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)">
+                                <input type="time" id="wz-ora_inizio_lavori" class="form-control" value="${defaultOraApertura}" onchange="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)" oninput="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)">
                                 <small style="color: #94a3b8; font-size: 0.74rem; display: block; margin-top: 3px;">
                                     💡 L'orario di chiusura dell'assemblea si adeguerà di conseguenza (+1h 15m).
                                 </small>
                             </div>
-                            <div class="form-group">
-                                <label style="font-weight: 600; display:block; margin-bottom: 4px;">Elezioni Rinnovo Direttivo in questa seduta?</label>
-                                <select id="wz-rinnovo_direttivo" class="form-control" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
-                                    <option value="No" ${d.rinnovo_direttivo === 'No' ? 'selected' : ''}>No (Solo approvazione rendiconto/gestione)</option>
-                                    <option value="Si" ${d.rinnovo_direttivo === 'Si' ? 'selected' : ''}>Sì (Elezioni nuovo Consiglio Direttivo)</option>
-                                </select>
+                        </div>
+
+                        <!-- Testo presidenza in tempo reale -->
+                        <div class="form-group" style="margin-bottom: 1.2rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-weight:600; font-size:0.9rem; margin:0;">
+                                    📝 Formula Apertura Lavori & Presidenza (Aggiornamento Live)
+                                </label>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:3px 8px;" onclick="app.resetVerbaleText('testo_presidenza')" title="Ripristina formula standard">
+                                        ↺ Ripristina
+                                    </button>
+                                    <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:3px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.4);" onclick="app.saveVerbaleTemplateField('testo_presidenza')" title="Salva questo testo come modello per i prossimi verbali">
+                                        💾 Salva come modello
+                                    </button>
+                                </div>
                             </div>
+                            <textarea id="wz-testo_presidenza" class="form-control" rows="3" style="font-size:0.88rem; line-height:1.4;" oninput="app.onVerbaleTestoPresidenzaInput(this.value)">${this.escapeHtml(testoPresidenza)}</textarea>
+                            <small style="color:#94a3b8; font-size:0.75rem; display:block; margin-top:3px;">
+                                💡 Si aggiorna automaticamente digitando Presidente, Segretario o cambiando l'esito della convocazione.
+                            </small>
+                        </div>
+
+                        <!-- Testo rito preliminare statutario -->
+                        <div class="form-group" style="margin-bottom: 1.2rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-weight:600; font-size:0.9rem; margin:0;">
+                                    ⚖️ Rito Statutario Preliminare
+                                </label>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:3px 8px;" onclick="app.resetVerbaleText('testo_rito')" title="Ripristina rito standard">
+                                        ↺ Ripristina
+                                    </button>
+                                    <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:3px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.4);" onclick="app.saveVerbaleTemplateField('testo_rito')" title="Salva questo rito come modello per i prossimi verbali">
+                                        💾 Salva come modello
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea id="wz-testo_rito" class="form-control" rows="4" style="font-size:0.88rem; line-height:1.4;">${this.escapeHtml(testoRito)}</textarea>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 1.2rem;">
+                            <label style="font-weight: 600; display:block; margin-bottom: 4px;">Elezioni Rinnovo Direttivo in questa seduta?</label>
+                            <select id="wz-rinnovo_direttivo" class="form-control" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                <option value="No" ${d.rinnovo_direttivo === 'No' ? 'selected' : ''}>No (Solo approvazione rendiconto/gestione)</option>
+                                <option value="Si" ${d.rinnovo_direttivo === 'Si' ? 'selected' : ''}>Sì (Elezioni nuovo Consiglio Direttivo)</option>
+                            </select>
                         </div>
 
                         ${d.rinnovo_direttivo === 'Si' ? `
@@ -20962,52 +21108,39 @@ ${r.annullata ? `
                                         <div id="wz-list-nuovo-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                     </div>
                                     <div class="form-group" style="position: relative;">
-                                        <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Vice Presidente Eletto</label>
-                                        <input type="text" id="wz-nuovo_vice" class="form-control" 
-                                            value="${this.escapeHtml(d.nuovo_vice || '')}" 
-                                            placeholder="Digita per cercare (opzionale)..." 
+                                        <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Vicepresidente Eletto</label>
+                                        <input type="text" id="wz-nuovo_vicepresidente" class="form-control" 
+                                            value="${this.escapeHtml(d.nuovo_vicepresidente || d.vicepresidente || '')}" 
+                                            placeholder="Digita per cercare tra i soci..." 
                                             autocomplete="off"
-                                            oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_vice', 'wz-list-nuovo-vice')"
-                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_vice', 'wz-list-nuovo-vice')"
-                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_vice', 'wz-list-nuovo-vice')"
+                                            oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_vicepresidente', 'wz-list-nuovo-vice')"
+                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_vicepresidente', 'wz-list-nuovo-vice')"
+                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_vicepresidente', 'wz-list-nuovo-vice')"
                                             onblur="setTimeout(() => { const l = document.getElementById('wz-list-nuovo-vice'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
                                         <div id="wz-list-nuovo-vice" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                     </div>
                                 </div>
-                                
-                                <div style="margin-bottom: 0.8rem;">
-                                    <div class="form-group" style="position: relative;">
-                                        <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Segretario Eletto</label>
-                                        <input type="text" id="wz-nuovo_segretario" class="form-control" 
-                                            value="${this.escapeHtml(d.nuovo_segretario || d.segretario || '')}" 
-                                            placeholder="Digita per cercare tra i soci..." 
-                                            autocomplete="off"
-                                            oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
-                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
-                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
-                                            onblur="setTimeout(() => { const l = document.getElementById('wz-list-nuovo-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
-                                        <div id="wz-list-nuovo-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
-                                    </div>
+                                <div class="form-group" style="position: relative; margin-bottom: 1rem;">
+                                    <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Nuovo Segretario Eletto</label>
+                                    <input type="text" id="wz-nuovo_segretario" class="form-control" 
+                                        value="${this.escapeHtml(d.nuovo_segretario || d.segretario || '')}" 
+                                        placeholder="Digita per cercare tra i soci..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-nuovo_segretario', 'wz-list-nuovo-sec')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-nuovo-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                    <div id="wz-list-nuovo-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                 </div>
 
-                                <!-- Consiglieri Eletti (Ricerca autocompletamento live da elenco soci) -->
-                                <div style="border-top: 1px dashed rgba(16, 185, 129, 0.3); padding-top: 10px; margin-top: 10px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                        <div>
-                                            <label style="font-size: 0.85rem; font-weight: 700; color: #34d399; margin: 0;">
-                                                Consiglieri Eletti nel Direttivo
-                                            </label>
-                                            <small style="color: #94a3b8; font-size: 0.74rem; display: block;">
-                                                Digita le lettere del nome o cognome: compariranno all'istante i suggerimenti dei soci.
-                                            </small>
-                                        </div>
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 10px; border-color: rgba(52, 211, 153, 0.4); color: #34d399;" onclick="app.addVerbaleConsigliere()">
-                                            ➕ Aggiungi un altro consigliere
-                                        </button>
-                                    </div>
-                                    <div id="wz-consiglieri-container">
-                                        ${consiglieriRowsHtml}
-                                    </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                                    <label style="font-size: 0.85rem; font-weight: 600; color: #a7f3d0; margin: 0;">Altri Consiglieri Eletti:</label>
+                                    <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 3px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.4);" onclick="app.addVerbaleConsigliere()">
+                                        ➕ Aggiungi un Consigliere
+                                    </button>
+                                </div>
+                                <div id="wz-consiglieri-container">
+                                    ${consiglieriRowsHtml}
                                 </div>
                             </div>
                         ` : ''}
@@ -21117,294 +21250,136 @@ ${r.annullata ? `
                         </div>
                     `;
                 } else if (currentStep.id === 'step_ord_firm') {
+                    const numPunti = parseInt(d.num_punti_odg || 3, 10);
+                    const curYear = (d.anno_sportivo && d.anno_sportivo.includes('/')) ? d.anno_sportivo.split('/')[1] : new Date().getFullYear();
+                    const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || (`${curYear}-08-31`));
+                    const presName = d.presidente || 'Silverio Pintus';
                     const numFirmatari = parseInt(d.num_firmatari || 2, 10);
-                    let firmatariInputs = '';
-                    for (let i = 1; i <= numFirmatari; i++) {
-                        firmatariInputs += `
-                            <div class="form-group" style="margin-bottom: 8px; position: relative;">
-                                <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Socio Firmatario ${i}</label>
-                                <input type="text" id="wz-f_nome_${i}" class="form-control" 
-                                    value="${this.escapeHtml(d['f_nome_' + i] || '')}" 
-                                    placeholder="Inizia a digitare il nome o cognome del socio..." 
-                                    autocomplete="off"
-                                    oninput="app.filterVerbaleSocio(this.value, 'wz-f_nome_${i}', 'wz-list-fn-${i}')"
-                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-f_nome_${i}', 'wz-list-fn-${i}')"
-                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-f_nome_${i}', 'wz-list-fn-${i}')"
-                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-fn-${i}'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
-                                <div id="wz-list-fn-${i}" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                    const testoChiusura = this.getVerbaleText('testo_chiusura');
+
+                    let puntiDelibereHtml = '';
+                    for (let i = 1; i <= numPunti; i++) {
+                        const og = d['odg_o_' + i] || (i === 1 ? "Relazione morale e tecnica del Presidente sull'attività sociale svolta;" : (i === 2 ? `Presentazione, discussione ed approvazione del rendiconto economico-finanziario chiuso al 31/08/${curYear};` : (i === 3 ? "Varie ed eventuali." : `Nuovo argomento ${i}`)));
+                        const defaultRif = `In merito al ${this.getNumeroOrdinaleItaliano(i)} punto all'ordine del giorno,`;
+                        const rif = d['odg_rif_' + i] !== undefined ? d['odg_rif_' + i] : defaultRif;
+
+                        let defaultDisc = '';
+                        if (i === 1) {
+                            defaultDisc = "prende la parola il Presidente " + presName + " che espone all'Assemblea dei Soci una dettagliata relazione morale e tecnica sulle attività svolte durante l'anno sportivo, evidenziando i risultati conseguiti e la piena rispondenza della gestione alle finalità associative statutarie.\n\nL'Assemblea dei Soci, dopo attenta disamina e scambio di considerazioni, approva all'unanimità la relazione morale e tecnica del Presidente.";
+                        } else if (i === 2) {
+                            defaultDisc = "prende la parola il Presidente illustrando dettagliatamente all'Assemblea il Rendiconto economico-finanziario consuntivo chiuso al " + dataChiusuraFmt + " e la relativa documentazione contabile esibita.\n\nL'Assemblea dei Soci, dopo esaustiva discussione e verifica della documentazione, approva all'unanimità il Rendiconto economico-finanziario consuntivo e la destinazione dell'avanzo alla gestione delle ordinarie attività istituzionali dell'Associazione.";
+                        } else if (i === 3) {
+                            defaultDisc = "il Presidente invita i soci presenti a prendere la parola. Non essendovi ulteriori richieste di intervento né altre questioni sollevate dai presenti, si constata l'esaurimento della trattazione.";
+                        } else {
+                            defaultDisc = "l'Assemblea dei Soci dopo approfondita discussione e disamina dell'argomento, all'unanimità delibera in merito approvando le determinazioni conseguenti.";
+                        }
+                        const disc = d['odg_d_' + i] !== undefined ? d['odg_d_' + i] : defaultDisc;
+
+                        puntiDelibereHtml += `
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="font-weight: 700; color: #60a5fa; font-size: 0.95rem;">
+                                        Punto ${i}: ${this.escapeHtml(og)}
+                                    </div>
+                                    ${i >= 3 ? `
+                                        <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 2px 8px; font-size: 0.82rem; border-radius: 6px;" onclick="app.removeVerbalePuntoOdg(${i})" title="Rimuovi questo punto">
+                                            🗑️ Rimuovi Punto ${i}
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Formula introduttiva:</label>
+                                    <input type="text" id="wz-odg_rif_${i}" class="form-control" value="${this.escapeHtml(rif)}" style="font-size: 0.88rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-size: 0.8rem; display:block; margin-bottom: 2px;">Discussione e Deliberazione adottata:</label>
+                                    <textarea id="wz-odg_d_${i}" class="form-control" rows="4" style="font-size: 0.88rem; line-height: 1.4;">${this.escapeHtml(disc)}</textarea>
+                                </div>
                             </div>
                         `;
                     }
 
-                    const testoApertura = this.getVerbaleText('testo_apertura');
-                    const testoPresidenza = this.getVerbaleText('testo_presidenza');
-                    const testoDeliberaRendiconto = this.getVerbaleText('testo_delibera_rendiconto');
-                    const testoChiusura = this.getVerbaleText('testo_chiusura');
+                    let firmatariInputs = '';
+                    for (let i = 1; i <= numFirmatari; i++) {
+                        firmatariInputs += `
+                            <div class="form-group" style="position: relative; margin-bottom: 8px;">
+                                <label style="font-size: 0.82rem; display:block; margin-bottom: 2px;">Socio Firmatario #${i}</label>
+                                <input type="text" id="wz-f_nome_${i}" class="form-control" 
+                                    value="${this.escapeHtml(d['f_nome_' + i] || '')}" 
+                                    placeholder="Digita per cercare tra i soci..." 
+                                    autocomplete="off"
+                                    oninput="app.filterVerbaleSocio(this.value, 'wz-f_nome_${i}', 'wz-list-f-${i}')"
+                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-f_nome_${i}', 'wz-list-f-${i}')"
+                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-f_nome_${i}', 'wz-list-f-${i}')"
+                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-f-${i}'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                <div id="wz-list-f-${i}" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:200px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                            </div>
+                        `;
+                    }
 
                     stepContentHtml = `
-                        <div class="form-group" style="margin-bottom: 1.2rem;">
-                            <label style="font-weight: 600; display:block; margin-bottom: 4px;">Ora di Chiusura dell'Assemblea</label>
-                            <input type="time" id="wz-ora_chiusura" class="form-control" value="${d.ora_chiusura || '21:30'}" onchange="app.onVerbaleTimeChange('ora_chiusura', this.value)" oninput="app.onVerbaleTimeChange('ora_chiusura', this.value)">
-                            <small style="color: #94a3b8; font-size: 0.74rem; display: block; margin-top: 3px;">
-                                💡 Calcolata automaticamente in base ai lavori di seduta (modificabile se necessario).
-                            </small>
-                        </div>
-
-                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <div style="font-weight: 700; font-size: 0.92rem; color: var(--primary);">Soci Firmatari Aggiuntivi</div>
-                                <div style="display: flex; gap: 8px; align-items: center;">
-                                    <button type="button" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.8rem;" onclick="app.updateVerbaleFirmatariCount(-1)">-</button>
-                                    <span style="font-weight: 700; min-width: 20px; text-align: center;">${numFirmatari}</span>
-                                    <button type="button" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.8rem;" onclick="app.updateVerbaleFirmatariCount(1)">+</button>
-                                </div>
-                            </div>
-                            <input type="hidden" id="wz-num_firmatari" value="${numFirmatari}">
-                            ${firmatariInputs || '<p style="color: var(--text-muted); font-size: 0.82rem; margin: 0;">Nessun socio firmatario oltre a Presidente e Segretario.</p>'}
-                        </div>
-
-                        <!-- Sezione Formule e Testi Narrativi Precompilati Assemblea (Editabili e Memorizzabili) -->
-                        <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 16px; margin-top: 1.5rem; margin-bottom: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                                <div>
-                                    <div style="font-weight: 700; color: #34d399; font-size: 0.95rem;">
-                                        📝 Formule &amp; Testi Narrativi dell'Assemblea (Completamente Editabili)
-                                    </div>
-                                    <small style="color: #94a3b8; font-size: 0.75rem; display: block; margin-top: 2px;">
-                                        I testi sottostanti sono compilati automaticamente con le date e le persone inserite. Puoi modificarli liberamente e memorizzarli per le future compilazioni.
-                                    </small>
-                                </div>
-                                <button type="button" class="btn btn-outline" style="font-size: 0.76rem; padding: 4px 10px; border-color: rgba(52, 211, 153, 0.4); color: #34d399;" onclick="app.saveAllVerbaleTemplatesForType()" title="Salva tutte le formule sottostanti come predefinite per i futuri verbali">
-                                    💾 Salva tutti come modello futuro
+                        <div style="margin-bottom: 1.2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <label style="font-weight: 700; font-size: 1rem; margin: 0; color: var(--primary);">
+                                    ⚖️ Trattazione Punti all'ODG e Deliberazioni
+                                </label>
+                                <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 4px 10px;" onclick="app.addVerbalePuntoOdg()">
+                                    ➕ Aggiungi Punto ODG
                                 </button>
                             </div>
+                            ${puntiDelibereHtml}
+                        </div>
 
-                            <!-- Formula Apertura e Costituzione Assemblea -->
-                            <div class="form-group" style="margin-bottom: 14px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                    <label style="font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin: 0;">
-                                        Formula di Costituzione e Apertura Assemblea
-                                    </label>
-                                    <div style="display: flex; gap: 6px;">
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px;" onclick="app.resetVerbaleText('testo_apertura')" title="Ripristina la formula calcolata standard">
-                                            🔄 Ripristina
-                                        </button>
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.3);" onclick="app.saveVerbaleTemplateField('testo_apertura')" title="Salva questa formula per i prossimi verbali">
-                                            💾 Salva modello
-                                        </button>
-                                    </div>
+                        <!-- Ora chiusura seduta e testo chiusura -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: start;">
+                                <div class="form-group">
+                                    <label style="font-weight: 600; display:block; margin-bottom: 4px;">Ora Chiusura Seduta</label>
+                                    <input type="time" id="wz-ora_chiusura" class="form-control" value="${d.ora_chiusura || '21:30'}" onchange="app.onVerbaleTimeChange('ora_chiusura', this.value)" oninput="app.onVerbaleTimeChange('ora_chiusura', this.value)">
+                                    <small style="color: #94a3b8; font-size: 0.74rem; display: block; margin-top: 3px;">
+                                        💡 Aggiorna automaticamente la formula di chiusura sottostante.
+                                    </small>
                                 </div>
-                                <textarea id="wz-testo_apertura" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.45;">${this.escapeHtml(testoApertura)}</textarea>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                        <label style="font-weight:600; font-size:0.88rem; margin:0;">
+                                            Formula Chiusura Seduta
+                                        </label>
+                                        <div style="display:flex; gap:6px;">
+                                            <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:2px 6px;" onclick="app.resetVerbaleText('testo_chiusura')" title="Ripristina formula standard">
+                                                ↺ Ripristina
+                                            </button>
+                                            <button type="button" class="btn btn-outline" style="font-size:0.75rem; padding:2px 6px; color: #34d399; border-color: rgba(52, 211, 153, 0.4);" onclick="app.saveVerbaleTemplateField('testo_chiusura')" title="Salva come modello per i prossimi verbali">
+                                                💾 Salva modello
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <textarea id="wz-testo_chiusura" class="form-control" rows="3" style="font-size:0.88rem; line-height:1.4;">${this.escapeHtml(testoChiusura)}</textarea>
+                                </div>
                             </div>
+                        </div>
 
-                            <!-- Formula Presidenza e Verbalizzazione Assemblea -->
-                            <div class="form-group" style="margin-bottom: 14px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                    <label style="font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin: 0;">
-                                        Formula di Presidenza e Verbalizzazione
-                                    </label>
-                                    <div style="display: flex; gap: 6px;">
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px;" onclick="app.resetVerbaleText('testo_presidenza')" title="Ripristina la formula calcolata standard">
-                                            🔄 Ripristina
-                                        </button>
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.3);" onclick="app.saveVerbaleTemplateField('testo_presidenza')" title="Salva questa formula per i prossimi verbali">
-                                            💾 Salva modello
-                                        </button>
-                                    </div>
+                        <!-- Sezione Soci Firmatari per approvazione -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 0.5rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: start;">
+                                <div class="form-group">
+                                    <label style="font-weight: 600; display:block; margin-bottom: 4px;">Numero Soci Firmatari</label>
+                                    <select id="wz-num_firmatari" class="form-control" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                        <option value="1" ${numFirmatari === 1 ? 'selected' : ''}>1 Socio Firmatario</option>
+                                        <option value="2" ${numFirmatari === 2 ? 'selected' : ''}>2 Soci Firmatari</option>
+                                        <option value="3" ${numFirmatari === 3 ? 'selected' : ''}>3 Soci Firmatari</option>
+                                        <option value="4" ${numFirmatari === 4 ? 'selected' : ''}>4 Soci Firmatari</option>
+                                    </select>
+                                    <small style="color: #94a3b8; font-size: 0.74rem; display: block; margin-top: 3px;">
+                                        💡 Oltre al Presidente, Vicepresidente e Segretario.
+                                    </small>
                                 </div>
-                                <textarea id="wz-testo_presidenza" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.45;">${this.escapeHtml(testoPresidenza)}</textarea>
-                            </div>
-
-                            <!-- Formula Delibera Rendiconto -->
-                            <div class="form-group" style="margin-bottom: 14px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                    <label style="font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin: 0;">
-                                        Formula di Approvazione Rendiconto Economico-Finanziario
-                                    </label>
-                                    <div style="display: flex; gap: 6px;">
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px;" onclick="app.resetVerbaleText('testo_delibera_rendiconto')" title="Ripristina la formula calcolata standard">
-                                            🔄 Ripristina
-                                        </button>
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.3);" onclick="app.saveVerbaleTemplateField('testo_delibera_rendiconto')" title="Salva questa formula per i prossimi verbali">
-                                            💾 Salva modello
-                                        </button>
-                                    </div>
+                                <div>
+                                    ${firmatariInputs}
                                 </div>
-                                <textarea id="wz-testo_delibera_rendiconto" class="form-control" rows="2" style="font-size: 0.88rem; line-height: 1.45;">${this.escapeHtml(testoDeliberaRendiconto)}</textarea>
-                            </div>
-
-                            <!-- Formula Chiusura Assemblea -->
-                            <div class="form-group" style="margin-bottom: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                    <label style="font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin: 0;">
-                                        Formula di Chiusura dei Lavori dell'Assemblea
-                                    </label>
-                                    <div style="display: flex; gap: 6px;">
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px;" onclick="app.resetVerbaleText('testo_chiusura')" title="Ripristina la formula calcolata standard">
-                                            🔄 Ripristina
-                                        </button>
-                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.3);" onclick="app.saveVerbaleTemplateField('testo_chiusura')" title="Salva questa formula per i prossimi verbali">
-                                            💾 Salva modello
-                                        </button>
-                                    </div>
-                                </div>
-                                <textarea id="wz-testo_chiusura" class="form-control" rows="2" style="font-size: 0.88rem; line-height: 1.45;">${this.escapeHtml(testoChiusura)}</textarea>
                             </div>
                         </div>
                     `;
-                }
-            }
-
-            main.innerHTML = `
-                ${sociDatalist}
-                <div class="page-content" style="max-width: 850px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
-                    <!-- Top Bar Wizard -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            ${stepIdx > 0 ? `
-                                <button type="button" class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(59,130,246,0.4); color: #60a5fa;" onclick="app.prevVerbaleWizardStep()">
-                                    ⬅️ Passo Precedente
-                                </button>
-                            ` : ''}
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.backToVerbaliHub()">
-                                🏛️ Esci al Menu Verbali
-                            </button>
-                            <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 7px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Elimina i dati inseriti e riparti da capo">
-                                🗑️ Ricomincia da capo
-                            </button>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">
-                                Passo ${stepIdx + 1} di ${steps.length}
-                            </span>
-                            <button type="button" class="btn btn-primary" style="font-size: 0.82rem; padding: 7px 14px; font-weight: 600;" onclick="app.nextVerbaleWizardStep()">
-                                ${stepIdx === steps.length - 1 ? '✨ Genera Verbale' : 'Avanti ➡️'}
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Interactive Step Tabs (Navigazione diretta step by step) -->
-                    <div style="display: flex; gap: 8px; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 4px;">
-                        ${steps.map((st, i) => {
-                            const isCurrent = i === stepIdx;
-                            const isDone = i < stepIdx;
-                            const bg = isCurrent ? 'rgba(59, 130, 246, 0.25)' : (isDone ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.04)');
-                            const border = isCurrent ? 'var(--primary)' : (isDone ? 'rgba(16, 185, 129, 0.4)' : 'var(--border)');
-                            const color = isCurrent ? '#60a5fa' : (isDone ? '#34d399' : 'var(--text-muted)');
-                            const badge = isDone ? '✓' : `${i + 1}`;
-                            return `
-                                <button type="button" 
-                                    onclick="app.goToVerbaleWizardStep(${i})"
-                                    style="flex: 1; min-width: 140px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border: 1px solid ${border}; background: ${bg}; color: ${color}; cursor: pointer; text-align: left; transition: all 0.2s;"
-                                    title="Clicca per andare al passo ${i + 1}: ${st.title}">
-                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: ${isCurrent ? 'var(--primary)' : (isDone ? '#10b981' : 'rgba(255,255,255,0.1)')}; color: #fff; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">
-                                        ${badge}
-                                    </span>
-                                    <span style="font-size: 0.82rem; font-weight: ${isCurrent ? '700' : '500'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        ${st.title}
-                                    </span>
-                                </button>
-                            `;
-                        }).join('')}
-                    </div>
-
-                    <!-- Card Form -->
-                    <div class="glass-card" style="margin: 0; padding: 2rem;">
-                        <div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
-                            <h2 style="margin: 0 0 4px 0; font-size: 1.3rem;">${currentStep.title}</h2>
-                            <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">
-                                Compila i campi sottostanti per comporre il verbale. Puoi navigare liberamente tra i passi avanti e indietro in qualsiasi momento.
-                            </p>
-                        </div>
-
-                        <form id="verbale-step-form" onsubmit="event.preventDefault(); app.nextVerbaleWizardStep();">
-                            ${stepContentHtml}
-
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.2rem; flex-wrap: wrap; gap: 10px;">
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    ${stepIdx > 0 ? `
-                                        <button type="button" class="btn btn-outline" style="padding: 9px 18px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="app.prevVerbaleWizardStep()">
-                                            ⬅️ Indietro (Passo ${stepIdx})
-                                        </button>
-                                    ` : `
-                                        <button type="button" class="btn btn-outline" style="padding: 9px 18px;" onclick="app.backToVerbaliHub()">
-                                            Annulla ed Esci
-                                        </button>
-                                    `}
-                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.82rem; padding: 9px 14px; display: inline-flex; align-items: center; gap: 5px;" onclick="app.resetVerbaleWizard(false)" title="Svuota la compilazione e riparti dal primo passo">
-                                        🗑️ Svuota / Ricomincia
-                                    </button>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary" style="padding: 9px 24px; font-weight: 700;">
-                                    ${stepIdx === steps.length - 1 ? '✨ Genera Verbale Ufficiale' : 'Avanti ➡️'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-        },
-
-        updateVerbalePuntiOdg(delta) {
-            this.saveVerbaleWizardStep();
-            const d = this.state.verbale_wizard_data || {};
-            let cur = parseInt(d.num_punti_odg || 2, 10) + delta;
-            if (cur < 1) cur = 1;
-            if (cur > 10) cur = 10;
-            d.num_punti_odg = cur;
-            this.renderVerbali();
-        },
-
-        updateVerbaleFirmatariCount(delta) {
-            this.saveVerbaleWizardStep();
-            const d = this.state.verbale_wizard_data || {};
-            let cur = parseInt(d.num_firmatari || 2, 10) + delta;
-            if (cur < 0) cur = 0;
-            if (cur > 10) cur = 10;
-            d.num_firmatari = cur;
-            this.renderVerbali();
-        },
-
-        updateVerbaleAvanzo() {
-            const entrate = parseFloat(document.getElementById('wz-entrate')?.value) || 0;
-            const uscite = parseFloat(document.getElementById('wz-uscite')?.value) || 0;
-            const avanzoEl = document.getElementById('wz-avanzo');
-            if (avanzoEl) {
-                const avanzo = entrate - uscite;
-                avanzoEl.value = avanzo.toFixed(2);
-                avanzoEl.style.color = avanzo >= 0 ? '#34d399' : '#ef4444';
-            }
-        },
-
-        recalculateVerbaleSaldi() {
-            const dataChiusura = document.getElementById('wz-data_chiusura')?.value;
-            const annoSportivo = this.state.verbale_wizard_data?.anno_sportivo;
-            const saldi = this.calcolaSaldiFinanziari(dataChiusura, annoSportivo);
-
-            if (this.state.verbale_wizard_data) {
-                this.state.verbale_wizard_data.entrate = saldi.entrate;
-                this.state.verbale_wizard_data.uscite = saldi.uscite;
-                this.state.verbale_wizard_data.avanzo = saldi.avanzo;
-                this.state.verbale_wizard_data.cassa = saldi.cassa;
-                this.state.verbale_wizard_data.banca = saldi.banca;
-                this.state.verbale_wizard_data.casseList = saldi.casseList;
-                if (dataChiusura) this.state.verbale_wizard_data.data_chiusura = dataChiusura;
-            }
-
-            if (document.getElementById('wz-entrate')) document.getElementById('wz-entrate').value = saldi.entrate;
-            if (document.getElementById('wz-uscite')) document.getElementById('wz-uscite').value = saldi.uscite;
-            if (document.getElementById('wz-avanzo')) {
-                document.getElementById('wz-avanzo').value = saldi.avanzo;
-                document.getElementById('wz-avanzo').style.color = parseFloat(saldi.avanzo) >= 0 ? '#34d399' : '#ef4444';
-            }
-            if (document.getElementById('wz-cassa')) document.getElementById('wz-cassa').value = saldi.cassa;
-            if (document.getElementById('wz-banca')) document.getElementById('wz-banca').value = saldi.banca;
-
-            const badgeEl = document.getElementById('wz-banca-badge');
-            if (badgeEl) {
-                if (saldi.isRiconciliatoBanca) {
-                    badgeEl.innerHTML = `<small style="color: #10b981; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; font-weight: 600;"><span>✅</span> <span>Allineato ad Estratto Conto ufficiale (${saldi.verificaDettaglio?.anno_sportivo || annoSportivo || ''}): € ${parseFloat(saldi.banca).toFixed(2)}</span></small>`;
                 } else {
                     badgeEl.innerHTML = `<small style="color: #94a3b8; font-size: 0.74rem; display: block;">Inserisci o modifica se diverso dall'estratto conto reale.</small>`;
                 }
@@ -21660,19 +21635,110 @@ ${r.annullata ? `
                     ${consiglieriGridHtml}
                 `;            } else {
                 const calls = parseInt(d.num_convocazioni || 1, 10);
-                const isSeconda = calls >= 2;
-                const effData = isSeconda ? d.data_c2 : d.data_c1;
-                const effOra = isSeconda ? d.ora_c2 : d.ora_c1;
-                const effDataEstesa = this.formatDataItaliano(effData, true);
+                const isSeconda = calls >= 2 && (d.esito_c1 === 'Andata Deserta' || d.esito_c1 === 'Deserta');
+                const asdCapCitta = (s.cap || s.citta) ? `${s.cap || ''} ${s.citta || ''}`.trim() : '';
 
-                const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura);
+                const testoApertura = this.getVerbaleText('testo_apertura');
+                const testoPresidenza = this.getVerbaleText('testo_presidenza');
+                const testoRito = this.getVerbaleText('testo_rito');
+                const testoChiusura = this.getVerbaleText('testo_chiusura');
+
+                const curYear = (d.anno_sportivo && d.anno_sportivo.includes('/')) ? d.anno_sportivo.split('/')[1] : new Date().getFullYear();
+                const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || (`${curYear}-08-31`));
 
                 const entrate = parseFloat(d.entrate) || 0;
                 const uscite = parseFloat(d.uscite) || 0;
-                const avanzo = parseFloat(d.avanzo) || (entrate - uscite);
-                const cassa = parseFloat(d.cassa) || 0;
-                const banca = parseFloat(d.banca) || 0;
+                const avanzo = parseFloat(d.avanzo) !== undefined ? parseFloat(d.avanzo) : (entrate - uscite);
+                const entrateFmt = this.formatEuroImporto(entrate);
+                const usciteFmt = this.formatEuroImporto(uscite);
+                const avanzoFmt = this.formatEuroImporto(avanzo);
 
+                // Costruzione elenco ODG numerato continuo
+                const numPunti = parseInt(d.num_punti_odg || 3, 10);
+                let odgItemsHtml = '';
+                let deliberePuntiHtml = '';
+
+                for (let i = 1; i <= numPunti; i++) {
+                    const og = d['odg_o_' + i] || (i === 1 ? "Relazione morale e tecnica del Presidente sull'attività sociale svolta;" : (i === 2 ? `Presentazione, discussione ed approvazione del rendiconto economico-finanziario chiuso al 31/08/${curYear};` : (i === 3 ? "Varie ed eventuali." : `Nuovo argomento ${i}`)));
+                    if (og.trim()) {
+                        odgItemsHtml += `<div style="margin-bottom: 5px; padding-left: 18px;"><strong>${i}.</strong> ${this.escapeHtml(og)}</div>`;
+                    }
+
+                    const rif = d['odg_rif_' + i] || `In merito al ${this.getNumeroOrdinaleItaliano(i)} punto all'ordine del giorno,`;
+                    let disc = d['odg_d_' + i];
+                    if (!disc) {
+                        if (i === 1) {
+                            disc = "prende la parola il Presidente " + (d.presidente || 'Silverio Pintus') + " che espone all'Assemblea dei Soci una dettagliata relazione morale e tecnica sulle attività svolte durante l'anno sportivo, evidenziando i risultati conseguiti e la piena rispondenza della gestione alle finalità associative statutarie.\n\nL'Assemblea dei Soci, dopo attenta disamina e scambio di considerazioni, approva all'unanimità la relazione morale e tecnica del Presidente.";
+                        } else if (i === 2) {
+                            disc = "prende la parola il Presidente illustrando dettagliatamente all'Assemblea il Rendiconto economico-finanziario consuntivo chiuso al " + dataChiusuraFmt + " e la relativa documentazione contabile esibita.\n\nL'Assemblea dei Soci, dopo esaustiva discussione e verifica della documentazione, approva all'unanimità il Rendiconto economico-finanziario consuntivo e la destinazione dell'avanzo alla gestione delle ordinarie attività istituzionali dell'Associazione.";
+                        } else if (i === 3) {
+                            disc = "il Presidente invita i soci presenti a prendere la parola. Non essendovi ulteriori richieste di intervento né altre questioni sollevate dai presenti, si constata l'esaurimento della trattazione.";
+                        } else {
+                            disc = "l'Assemblea dei Soci dopo approfondita discussione e disamina dell'argomento, all'unanimità delibera in merito approvando le determinazioni conseguenti.";
+                        }
+                    }
+
+                    // Se è il Punto 2 relativo al rendiconto economico-finanziario, mostriamo la tabella allineata come nella foto ufficiale
+                    let rendicontoSnippetHtml = '';
+                    if (i === 2 || og.toLowerCase().includes('rendiconto') || og.toLowerCase().includes('bilancio')) {
+                        rendicontoSnippetHtml = `
+                            <div style="margin: 14px 0 16px 20px; font-family: 'Courier New', Courier, monospace; font-size: 0.94rem; line-height: 1.55; color: #0f172a;">
+                                <div>Entrate complessive:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;euro ${entrateFmt}</div>
+                                <div>Uscite complessive:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;euro ${usciteFmt}</div>
+                                <div>Avanzo/Disavanzo di cassa:&nbsp;&nbsp;euro ${avanzoFmt}</div>
+                            </div>
+                        `;
+                    }
+
+                    deliberePuntiHtml += `
+                        <div style="margin-bottom: 22px;">
+                            <p style="margin: 0 0 8px 0; font-weight: 700; color: #0f172a;">
+                                ${this.escapeHtml(rif)}
+                            </p>
+                            ${rendicontoSnippetHtml}
+                            <p style="margin: 0; white-space: pre-wrap; line-height: 1.6; text-align: justify;">
+                                ${this.escapeHtml(disc)}
+                            </p>
+                        </div>
+                    `;
+                }
+
+                // Gestione firme Presidente, Vicepresidente (se presente), Segretario
+                const hasVice = !!(d.vicepresidente && d.vicepresidente.trim());
+                let mainFirmeHtml = '';
+                if (hasVice) {
+                    mainFirmeHtml = `
+                        <div style="display: flex; justify-content: space-around; margin-top: 50px; padding: 0 15px; flex-wrap: wrap; gap: 20px;">
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Presidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
+                            </div>
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Vicepresidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.vicepresidente || '')}</div>
+                            </div>
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Segretario</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    mainFirmeHtml = `
+                        <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 35px;">
+                            <div style="text-align: center; min-width: 160px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Presidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
+                            </div>
+                            <div style="text-align: center; min-width: 160px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Segretario</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Firmatari soci
                 const numFirmatari = parseInt(d.num_firmatari || 0, 10);
                 let firmatariGridHtml = '';
                 if (numFirmatari > 0) {
@@ -21696,146 +21762,59 @@ ${r.annullata ? `
                     `;
                 }
 
-                const testoApertura = this.getVerbaleText('testo_apertura');
-                const testoPresidenza = this.getVerbaleText('testo_presidenza');
-                const relazionePres = d.relazione_presidente || '';
-                const testoDeliberaRendiconto = this.getVerbaleText('testo_delibera_rendiconto');
-                const testoChiusura = this.getVerbaleText('testo_chiusura');
+                const docTitle = type === 'straordinaria' ? 'VERBALE DI ASSEMBLEA STRAORDINARIA' : 'VERBALE DI ASSEMBLEA ORDINARIA';
 
                 docHtml = `
-                    <div class="header-doc" style="border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 24px;">
-                        <h2 style="margin: 0 0 4px 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; letter-spacing: 0.5px;">${asdNome}</h2>
-                        <p style="margin: 0; font-size: 0.85rem; color: #475569;">${asdIndirizzo} &nbsp;|&nbsp; Codice Fiscale / P.IVA: ${asdCf}</p>
+                    <!-- Intestazione Carta Intestata (in alto a sinistra) -->
+                    <div style="margin-bottom: 24px; line-height: 1.4; font-size: 0.92rem; color: #1e293b;">
+                        <div style="font-weight: 800; font-size: 1.05rem; letter-spacing: 0.5px; text-transform: uppercase;">${asdNome}</div>
+                        <div>${asdIndirizzo || 'Loc. Segni, sn'}</div>
+                        ${asdCapCitta ? `<div>${asdCapCitta}</div>` : '<div>09014 Carloforte</div>'}
+                        <div>Codice fiscale ${asdCf}</div>
                     </div>
 
-                    <div style="text-align: center; margin-bottom: 26px;">
-                        <h2 style="margin: 0 0 6px 0; font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: 0.8px;">
-                            ${type === 'straordinaria' ? 'VERBALE DI ASSEMBLEA STRAORDINARIA DEI SOCI' : 'VERBALE DI ASSEMBLEA ORDINARIA DEI SOCI'}
+                    <!-- Titolo Centrale del Verbale -->
+                    <div style="text-align: center; margin-bottom: 28px;">
+                        <h2 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; letter-spacing: 0.8px; line-height: 1.35;">
+                            ${docTitle}
                         </h2>
-                        <p style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #334155;">Anno Sportivo ${sportsYear}</p>
                     </div>
 
-                    <p id="vp-testo_apertura" style="text-align: justify; line-height: 1.6; margin-bottom: 14px;">
-                        ${this.escapeHtml(testoApertura).replace(/\n/g, '<br>')}
-                    </p>
-
-                    ${isSeconda ? `
-                        <p style="text-align: justify; line-height: 1.6; margin-bottom: 14px; font-style: italic; color: #334155;">
-                            Si dà atto preliminarmente che la prima convocazione, indetta per il giorno ${this.formatDataItaliano(d.data_c1, true)} alle ore ${d.ora_c1 || '20:00'}, è andata deserta per mancato raggiungimento del numero legale; la presente assemblea si svolge pertanto in seconda convocazione, valida a norma di Statuto qualunque sia il numero degli intervenuti.
-                        </p>
-                    ` : `
-                        <p style="text-align: justify; line-height: 1.6; margin-bottom: 14px;">
-                            Constatata la regolare convocazione e la presenza del numero legale dei soci, si procede in prima convocazione a norma di Statuto.
-                        </p>
-                    `}
-
-                    <p id="vp-testo_presidenza" style="text-align: justify; line-height: 1.6; margin-bottom: 14px;">
-                        ${this.escapeHtml(testoPresidenza).replace(/\n/g, '<br>')}
-                    </p>
-
-                    <p style="font-weight: 700; margin-bottom: 6px;">Ordine del Giorno:</p>
-                    <ol style="margin: 0 0 18px 24px; line-height: 1.6;">
-                        <li>Relazione morale e gestionale del Presidente sulle attività svolte nell'anno sportivo ${sportsYear};</li>
-                        <li>Esame ed approvazione del Rendiconto economico-finanziario consuntivo chiuso al ${dataChiusuraFmt};</li>
-                        ${d.rinnovo_direttivo === 'Si' ? '<li>Rinnovo e nomina delle cariche del Consiglio Direttivo;</li>' : ''}
-                        <li>Varie ed eventuali.</li>
-                    </ol>
-
-                    <div style="margin-bottom: 18px;">
-                        <h3 style="font-size: 0.98rem; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px;">1. Relazione del Presidente</h3>
-                        <p id="vp-relazione_presidente" style="text-align: justify; line-height: 1.6; margin: 0;">${this.escapeHtml(relazionePres).replace(/\n/g, '<br>')}</p>
-                    </div>
-
-                    <div style="margin-bottom: 18px;">
-                        <h3 style="font-size: 0.98rem; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px;">2. Approvazione del Rendiconto Economico-Finanziario</h3>
-                        <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-                            Il Presidente illustra analiticamente all'Assemblea il Rendiconto economico-finanziario al ${dataChiusuraFmt}, evidenziando le entrate istituzionali e le uscite sostenute per l'attività sportiva e la gestione sociale, sintetizzate nella seguente tabella:
-                        </p>
-
-                        <table style="width: 100%; border-collapse: collapse; margin: 12px 0 16px 0; font-size: 0.88rem;">
-                            <thead>
-                                <tr style="background: #f1f5f9; border-top: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8;">
-                                    <th style="padding: 7px 10px; text-align: left;">Voce di Bilancio</th>
-                                    <th style="padding: 7px 10px; text-align: right; width: 140px;">Importo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="border-bottom: 1px dotted #cbd5e1;">
-                                    <td style="padding: 6px 10px; font-weight: 600;">TOTALE ENTRATE ISTITUZIONALI</td>
-                                    <td style="padding: 6px 10px; text-align: right;">€ ${entrate.toFixed(2)}</td>
-                                </tr>
-                                <tr style="border-bottom: 1px dotted #cbd5e1;">
-                                    <td style="padding: 6px 10px; font-weight: 600;">TOTALE USCITE DI GESTIONE</td>
-                                    <td style="padding: 6px 10px; text-align: right;">€ ${uscite.toFixed(2)}</td>
-                                </tr>
-                                <tr style="border-bottom: 2px solid #0f172a; background: #f8fafc;">
-                                    <td style="padding: 8px 10px; font-weight: 800; color: #0f172a;">AVANZO DI GESTIONE</td>
-                                    <td style="padding: 8px 10px; text-align: right; font-weight: 800; color: #0f172a;">€ ${avanzo.toFixed(2)}</td>
-                                </tr>
-                                <tr style="border-bottom: 1px dotted #cbd5e1;">
-                                    <td style="padding: 5px 10px; color: #475569;">Saldo di Cassa al ${dataChiusuraFmt}</td>
-                                    <td style="padding: 5px 10px; text-align: right; color: #475569;">€ ${cassa.toFixed(2)}</td>
-                                </tr>
-                                <tr style="border-bottom: 1px dotted #cbd5e1;">
-                                    <td style="padding: 5px 10px; color: #475569;">Saldo Conto Corrente Bancario al ${dataChiusuraFmt}</td>
-                                    <td style="padding: 5px 10px; text-align: right; color: #475569;">€ ${banca.toFixed(2)}</td>
-                                </tr>
-                                ${Array.isArray(d.casseList) && d.casseList.length > 0 ? `
-                                    <tr style="border-bottom: 1px dotted #cbd5e1; background: #f8fafc;">
-                                        <td colspan="2" style="padding: 6px 10px; font-size: 0.78rem; color: #475569;">
-                                            <span style="font-weight: 600;">Ripartizione Casse & Conti:</span> 
-                                            ${d.casseList.map(c => `${this.escapeHtml(c.nome)}: € ${parseFloat(c.saldo).toFixed(2)}`).join(' &bull; ')}
-                                        </td>
-                                    </tr>
-                                ` : ''}
-                            </tbody>
-                        </table>
-
-                        <p id="vp-testo_delibera_rendiconto" style="text-align: justify; line-height: 1.6; margin: 0;">
-                            ${this.escapeHtml(testoDeliberaRendiconto).replace(/\n/g, '<br>')}
-                        </p>
-                    </div>
-
-                    ${d.rinnovo_direttivo === 'Si' ? `
-                        <div style="margin-bottom: 18px;">
-                            <h3 style="font-size: 0.98rem; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px;">3. Rinnovo delle Cariche Sociali</h3>
-                            <p style="text-align: justify; line-height: 1.6; margin-bottom: 10px;">
-                                Si procede all'elezione delle nuove cariche direttive per il quadriennio olimpico. L'Assemblea, all'unanimità dei voti legalmente espressi, elegge il nuovo Consiglio Direttivo così composto:
-                            </p>
-                            <ul style="margin: 0 0 10px 24px; line-height: 1.6;">
-                                <li><strong>Presidente:</strong> ${this.escapeHtml(d.nuovo_presidente || '-')}</li>
-                                <li><strong>Vice Presidente:</strong> ${this.escapeHtml(d.nuovo_vice || '-')}</li>
-                                <li><strong>Segretario:</strong> ${this.escapeHtml(d.nuovo_segretario || '-')}</li>
-                                ${d.nuovi_consiglieri ? `<li><strong>Consiglieri Eletti:</strong> ${this.escapeHtml(d.nuovi_consiglieri)}</li>` : ''}
-                            </ul>
-                            <p style="text-align: justify; line-height: 1.6; margin: 0;">
-                                I neoeletti accettano formalmente l'incarico, dichiarando di non trovarsi in alcuna causa di ineleggibilità o incompatibilità prevista dalla legge o dallo Statuto.
-                            </p>
-                        </div>
-                    ` : ''}
-
-                    <div style="margin-bottom: 24px;">
-                        <h3 style="font-size: 0.98rem; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px;">${d.rinnovo_direttivo === 'Si' ? '4' : '3'}. Varie ed Eventuali e Chiusura dei Lavori</h3>
-                        <p id="vp-testo_chiusura" style="text-align: justify; line-height: 1.6; margin: 0;">
-                            ${this.escapeHtml(testoChiusura).replace(/\n/g, '<br>')}
-                        </p>
-                    </div>
-
-                    <div style="display: flex; justify-content: space-between; margin-top: 40px; padding: 0 20px;">
-                        <div style="text-align: center;">
-                            <p style="margin: 0 0 45px 0; font-weight: 600;">Il Presidente</p>
-                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <p style="margin: 0 0 45px 0; font-weight: 600;">Il Segretario</p>
-                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
+                    <!-- Paragrafo 1: Apertura & ODG numerato -->
+                    <div style="margin-bottom: 22px; text-align: justify; line-height: 1.6;">
+                        <p style="margin: 0 0 12px 0;">${this.escapeHtml(testoApertura)}</p>
+                        <div style="margin-left: 8px;">
+                            ${odgItemsHtml}
                         </div>
                     </div>
 
+                    <!-- Paragrafo 2: Presidenza & Apertura Lavori -->
+                    <div style="margin-bottom: 22px; text-align: justify; line-height: 1.6;">
+                        <p style="margin: 0;">${this.escapeHtml(testoPresidenza)}</p>
+                    </div>
+
+                    <!-- Paragrafo 3: Rito Statutario Preliminare -->
+                    <div style="margin-bottom: 22px; text-align: justify; line-height: 1.6;">
+                        <p style="margin: 0; white-space: pre-wrap;">${this.escapeHtml(testoRito)}</p>
+                    </div>
+
+                    <!-- Paragrafo 4: Trattazione Punti ODG e Delibere -->
+                    <div style="margin-bottom: 22px;">
+                        ${deliberePuntiHtml}
+                    </div>
+
+                    <!-- Paragrafo 5: Chiusura della Seduta -->
+                    <div style="margin-bottom: 30px; text-align: justify; line-height: 1.6;">
+                        <p style="margin: 0;">${this.escapeHtml(testoChiusura)}</p>
+                    </div>
+
+                    <!-- Sezione Firme Ufficiali -->
+                    ${mainFirmeHtml}
+
+                    <!-- Firme dei Soci Firmatari -->
                     ${firmatariGridHtml}
                 `;
             }
-
             main.innerHTML = `
                 <div class="page-content" style="max-width: 950px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
                     <!-- Action Bar Superiore -->
@@ -22120,40 +22099,82 @@ ${r.annullata ? `
                     doc.text(d.segretario || '', left + maxW - 25, sigY + 18, { align: 'center' });
                 } else {                    const calls = parseInt(d.num_convocazioni || 1, 10);
                     const isSeconda = calls >= 2;
-                    const effData = isSeconda ? d.data_c2 : d.data_c1;
-                    const effOra = isSeconda ? d.ora_c2 : d.ora_c1;
-                    const effDataEstesa = this.formatDataItaliano(effData, true);
-                    const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura);
+                    const curYear = (d.anno_sportivo && d.anno_sportivo.includes('/')) ? d.anno_sportivo.split('/')[1] : new Date().getFullYear();
+                    const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || (`${curYear}-08-31`));
 
-                    const testoApertura = d.testo_apertura || this.getVerbaleText('testo_apertura');
-                    const testoPresidenza = d.testo_presidenza || this.getVerbaleText('testo_presidenza');
-                    const relazionePres = d.relazione_presidente || '';
-                    const testoDeliberaRendiconto = d.testo_delibera_rendiconto || this.getVerbaleText('testo_delibera_rendiconto');
-                    const testoChiusura = d.testo_chiusura || this.getVerbaleText('testo_chiusura');
+                    const testoApertura = this.getVerbaleText('testo_apertura');
+                    const testoPresidenza = this.getVerbaleText('testo_presidenza');
+                    const testoRito = this.getVerbaleText('testo_rito');
+                    const testoChiusura = this.getVerbaleText('testo_chiusura');
 
                     writeParagraph(testoApertura);
 
-                    if (isSeconda) {
-                        writeParagraph(`Si dà atto che la prima convocazione del ${this.formatDataItaliano(d.data_c1, true)} alle ore ${d.ora_c1 || '20:00'} è andata deserta; l'assemblea si costituisce pertanto validamente in seconda convocazione.`);
-                    } else {
-                        writeParagraph("Constatata la regolarità della convocazione e il raggiungimento del numero legale, si procede regolarmente in prima convocazione.");
+                    // Punti all'ordine del giorno
+                    const numPunti = parseInt(d.num_punti_odg || 3, 10);
+                    for (let i = 1; i <= numPunti; i++) {
+                        const og = d['odg_o_' + i] || (i === 1 ? "Relazione morale e tecnica del Presidente sull'attività sociale svolta;" : (i === 2 ? `Presentazione, discussione ed approvazione del rendiconto economico-finanziario chiuso al 31/08/${curYear};` : (i === 3 ? "Varie ed eventuali." : `Nuovo argomento ${i}`)));
+                        if (og.trim()) {
+                            checkPageBreak(12);
+                            doc.setFont("helvetica", "bold");
+                            doc.setFontSize(9.5);
+                            doc.text(`${i}. `, left + 4, y);
+                            doc.setFont("helvetica", "normal");
+                            const linesOg = doc.splitTextToSize(og, maxW - 12);
+                            doc.text(linesOg, left + 10, y);
+                            y += linesOg.length * 4.6 + 2;
+                        }
                     }
 
+                    y += 3;
                     writeParagraph(testoPresidenza);
-                    writeParagraph(`Viene posto in discussione il seguente Ordine del Giorno: 1) Relazione morale e gestionale del Presidente; 2) Approvazione del Rendiconto economico-finanziario al ${dataChiusuraFmt}; ${d.rinnovo_direttivo === 'Si' ? '3) Rinnovo delle cariche sociali del Consiglio Direttivo; 4) Varie ed eventuali.' : '3) Varie ed eventuali.'}`);
+                    writeParagraph(testoRito);
 
-                    writeParagraph(`1. Relazione del Presidente: ${relazionePres}`);
+                    // Trattazione punti ODG
+                    for (let i = 1; i <= numPunti; i++) {
+                        const og = d['odg_o_' + i] || (i === 1 ? "Relazione morale e tecnica del Presidente sull'attività sociale svolta;" : (i === 2 ? `Presentazione, discussione ed approvazione del rendiconto economico-finanziario chiuso al 31/08/${curYear};` : (i === 3 ? "Varie ed eventuali." : `Nuovo argomento ${i}`)));
+                        const rif = d['odg_rif_' + i] || `In merito al ${this.getNumeroOrdinaleItaliano(i)} punto all'ordine del giorno,`;
+                        let disc = d['odg_d_' + i];
+                        if (!disc) {
+                            if (i === 1) {
+                                disc = "prende la parola il Presidente " + (d.presidente || 'Silverio Pintus') + " che espone all'Assemblea dei Soci una dettagliata relazione morale e tecnica sulle attività svolte durante l'anno sportivo, evidenziando i risultati conseguiti e la piena rispondenza della gestione alle finalità associative statutarie.\n\nL'Assemblea dei Soci, dopo attenta disamina e scambio di considerazioni, approva all'unanimità la relazione morale e tecnica del Presidente.";
+                            } else if (i === 2) {
+                                disc = "prende la parola il Presidente illustrando dettagliatamente all'Assemblea il Rendiconto economico-finanziario consuntivo chiuso al " + dataChiusuraFmt + " e la relativa documentazione contabile esibita.\n\nL'Assemblea dei Soci, dopo esaustiva discussione e verifica della documentazione, approva all'unanimità il Rendiconto economico-finanziario consuntivo e la destinazione dell'avanzo alla gestione delle ordinarie attività istituzionali dell'Associazione.";
+                            } else if (i === 3) {
+                                disc = "il Presidente invita i soci presenti a prendere la parola. Non essendovi ulteriori richieste di intervento né altre questioni sollevate dai presenti, si constata l'esaurimento della trattazione.";
+                            } else {
+                                disc = "l'Assemblea dei Soci dopo approfondita discussione e disamina dell'argomento, all'unanimità delibera in merito approvando le determinazioni conseguenti.";
+                            }
+                        }
 
-                    writeParagraph(`2. Rendiconto Economico-Finanziario al ${dataChiusuraFmt}: Il Presidente espone il rendiconto sintetizzato: Totale Entrate: € ${(parseFloat(d.entrate)||0).toFixed(2)}, Totale Uscite: € ${(parseFloat(d.uscite)||0).toFixed(2)}, Avanzo di Gestione: € ${(parseFloat(d.avanzo)||0).toFixed(2)}, Saldo Cassa: € ${(parseFloat(d.cassa)||0).toFixed(2)}, Saldo Banca: € ${(parseFloat(d.banca)||0).toFixed(2)}${Array.isArray(d.casseList) && d.casseList.length > 0 ? ' (Dettaglio: ' + d.casseList.map(c => `${c.nome}: € ${parseFloat(c.saldo).toFixed(2)}`).join(', ') + ')' : ''}.`);
-                    writeParagraph(testoDeliberaRendiconto);
+                        checkPageBreak(18);
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(9.5);
+                        const rifLines = doc.splitTextToSize(rif, maxW);
+                        doc.text(rifLines, left, y);
+                        y += rifLines.length * 4.6 + 2;
 
-                    if (d.rinnovo_direttivo === 'Si') {
-                        writeParagraph(`3. Rinnovo Cariche Sociali: L'Assemblea elegge all'unanimità il nuovo Consiglio Direttivo: Presidente: ${d.nuovo_presidente || '-'}, Vice Presidente: ${d.nuovo_vice || '-'}, Segretario: ${d.nuovo_segretario || '-'}${d.nuovi_consiglieri ? ', Consiglieri: ' + d.nuovi_consiglieri : ''}.`);
+                        if (i === 2 || og.toLowerCase().includes('rendiconto') || og.toLowerCase().includes('bilancio')) {
+                            checkPageBreak(25);
+                            doc.setFont("courier", "normal");
+                            doc.setFontSize(9);
+                            const entrateFmt = this.formatEuroImporto(d.entrate || 0);
+                            const usciteFmt = this.formatEuroImporto(d.uscite || 0);
+                            const avanzoFmt = this.formatEuroImporto(d.avanzo !== undefined ? d.avanzo : ((parseFloat(d.entrate)||0) - (parseFloat(d.uscite)||0)));
+                            doc.text(`Entrate complessive:        euro ${entrateFmt}`, left + 6, y);
+                            y += 4.5;
+                            doc.text(`Uscite complessive:         euro ${usciteFmt}`, left + 6, y);
+                            y += 4.5;
+                            doc.text(`Avanzo/Disavanzo di cassa:  euro ${avanzoFmt}`, left + 6, y);
+                            y += 6;
+                            doc.setFont("helvetica", "normal");
+                            doc.setFontSize(9.5);
+                        }
+
+                        writeParagraph(disc);
                     }
 
                     writeParagraph(testoChiusura);
                 }
-
                 // Firme
                 if (type === 'direttivo') {
                     checkPageBreak(35);
