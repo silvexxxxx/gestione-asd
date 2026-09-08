@@ -19540,6 +19540,9 @@ ${r.annullata ? `
                 if (fieldKey === 'testo_apertura') {
                     return "L'anno {anno}, il giorno {data_seduta} alle ore {ora_seduta}, {luogo}, si è riunito il Consiglio Direttivo dell'Associazione {asd_nome}, regolarmente convocato.";
                 }
+                if (fieldKey === 'testo_presidenza') {
+                    return "Assume la presidenza {presidente} che, verifica la regolarità della convocazione e della seduta assembleare come da statuto vigente, dichiara la seduta aperta in prima convocazione alle ore {ora_seduta}. I presenti chiamano a fungere da segretario {segretario}.";
+                }
                 if (fieldKey === 'testo_delibera_finale') {
                     return "Il Consiglio Direttivo, dopo esauriente discussione e verifica di tutti i punti all'ordine del giorno, approva all'unanimità quanto sopra verbalizzato.";
                 }
@@ -19549,6 +19552,9 @@ ${r.annullata ? `
             } else {
                 if (fieldKey === 'testo_apertura') {
                     return "L'anno {anno}, il giorno {data_seduta} alle ore {ora_seduta}, {luogo}, si è riunita l'Assemblea dei Soci della {asd_nome}, regolarmente convocata.";
+                }
+                if (fieldKey === 'testo_presidenza') {
+                    return "Assume la presidenza {presidente} che, verifica la regolarità della convocazione e della seduta assembleare come da statuto vigente, dichiara la seduta aperta {convocazione_fase} alle ore {ora_inizio_lavori}. I presenti chiamano a fungere da segretario {segretario}.";
                 }
                 if (fieldKey === 'relazione_presidente') {
                     return "Il Presidente espone all'Assemblea una dettagliata relazione sulle attività sportive, agonistiche e sociali svolte nel corso dell'anno, sottolineando i risultati raggiunti e la piena conformità della gestione alle finalità istituzionali dell'Associazione.";
@@ -19571,8 +19577,13 @@ ${r.annullata ? `
             const dataSedutaEstesa = this.formatDataItaliano(dateVal, true);
             const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || `${new Date().getFullYear()}-08-31`);
             const anno = dateVal ? new Date(dateVal).getFullYear() : new Date().getFullYear();
-            const oraSeduta = d.ora_seduta || d.ora_c1 || '20:00';
+            const calls = parseInt(d.num_convocazioni || 1, 10);
+            const isSeconda = calls >= 2;
+            const effOra = isSeconda ? (d.ora_c2 || d.ora_c1 || '20:00') : (d.ora_c1 || '20:00');
+            const oraSeduta = d.ora_seduta || effOra;
             const oraChiusura = d.ora_chiusura || (type === 'direttivo' ? '21:15' : '21:30');
+            const oraInizioLavori = d.ora_inizio_lavori || oraSeduta;
+            const convocazioneFase = isSeconda ? 'in seconda convocazione' : 'in prima convocazione';
             const luogo = d.luogo || (type === 'direttivo' ? "presso la sede sociale dell'Associazione" : "presso la sede dell'Associazione");
             const pres = d.presidente || 'Il Presidente';
             const sec = d.segretario || 'Il Segretario';
@@ -19585,6 +19596,8 @@ ${r.annullata ? `
                 .replace(/\{data_seduta\}/g, dataSedutaEstesa)
                 .replace(/\{ora_seduta\}/g, oraSeduta)
                 .replace(/\{ora_chiusura\}/g, oraChiusura)
+                .replace(/\{ora_inizio_lavori\}/g, oraInizioLavori)
+                .replace(/\{convocazione_fase\}/g, convocazioneFase)
                 .replace(/\{luogo\}/g, luogo)
                 .replace(/\{asd_nome\}/g, asdNome)
                 .replace(/\{presidente\}/g, pres)
@@ -19645,10 +19658,12 @@ ${r.annullata ? `
 
             if (type === 'direttivo') {
                 if (d.testo_apertura) templates[type].testo_apertura = d.testo_apertura;
+                if (d.testo_presidenza) templates[type].testo_presidenza = d.testo_presidenza;
                 if (d.testo_delibera_finale) templates[type].testo_delibera_finale = d.testo_delibera_finale;
                 if (d.testo_chiusura) templates[type].testo_chiusura = d.testo_chiusura;
             } else {
                 if (d.testo_apertura) templates[type].testo_apertura = d.testo_apertura;
+                if (d.testo_presidenza) templates[type].testo_presidenza = d.testo_presidenza;
                 if (d.relazione_presidente) templates[type].relazione_presidente = d.relazione_presidente;
                 if (d.testo_delibera_rendiconto) templates[type].testo_delibera_rendiconto = d.testo_delibera_rendiconto;
                 if (d.testo_chiusura) templates[type].testo_chiusura = d.testo_chiusura;
@@ -19663,12 +19678,14 @@ ${r.annullata ? `
             const d = this.state.verbale_wizard_data || {};
             d.custom_preview_html = sheetEl.innerHTML;
             const pAp = document.getElementById('vp-testo_apertura');
+            const pPres = document.getElementById('vp-testo_presidenza');
             const pDf = document.getElementById('vp-testo_delibera_finale');
             const pCh = document.getElementById('vp-testo_chiusura');
             const pRel = document.getElementById('vp-relazione_presidente');
             const pDr = document.getElementById('vp-testo_delibera_rendiconto');
 
             if (pAp) d.testo_apertura = pAp.innerText.trim();
+            if (pPres) d.testo_presidenza = pPres.innerText.trim();
             if (pDf) d.testo_delibera_finale = pDf.innerText.trim();
             if (pCh) d.testo_chiusura = pCh.innerText.trim();
             if (pRel) d.relazione_presidente = pRel.innerText.trim();
@@ -19963,6 +19980,7 @@ ${r.annullata ? `
                     odg_o_2: 'Organizzazione corsi e pianificazione attività sportive della nuova stagione',
                     odg_d_2: "Il Consiglio discute l'organizzazione dei corsi per la nuova stagione e delibera di confermare il calendario delle attività e gli incarichi tecnici.",
                     testo_apertura: '',
+                    testo_presidenza: '',
                     testo_delibera_finale: '',
                     testo_delibera_rendiconto: '',
                     testo_chiusura: ''
@@ -20158,6 +20176,7 @@ ${r.annullata ? `
                     }
 
                     const testoApertura = this.getVerbaleText('testo_apertura');
+                    const testoPresidenza = this.getVerbaleText('testo_presidenza');
                     const testoDeliberaFinale = this.getVerbaleText('testo_delibera_finale');
                     const testoChiusura = this.getVerbaleText('testo_chiusura');
 
@@ -20205,6 +20224,24 @@ ${r.annullata ? `
                                     </div>
                                 </div>
                                 <textarea id="wz-testo_apertura" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.45;" placeholder="Testo di apertura dell'adunanza...">${this.escapeHtml(testoApertura)}</textarea>
+                            </div>
+
+                            <!-- Formula Presidenza e Verbalizzazione -->
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <label style="font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin: 0;">
+                                        Formula di Presidenza e Verbalizzazione
+                                    </label>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px;" onclick="app.resetVerbaleText('testo_presidenza')" title="Ripristina la formula calcolata standard">
+                                            🔄 Ripristina
+                                        </button>
+                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.3);" onclick="app.saveVerbaleTemplateField('testo_presidenza')" title="Salva questa formula per i prossimi verbali">
+                                            💾 Salva modello
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea id="wz-testo_presidenza" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.45;" placeholder="Formula di presidenza e nomina segretario...">${this.escapeHtml(testoPresidenza)}</textarea>
                             </div>
 
                             <!-- Formula Delibera Finale Generale -->
@@ -20593,6 +20630,7 @@ ${r.annullata ? `
                     }
 
                     const testoApertura = this.getVerbaleText('testo_apertura');
+                    const testoPresidenza = this.getVerbaleText('testo_presidenza');
                     const testoDeliberaRendiconto = this.getVerbaleText('testo_delibera_rendiconto');
                     const testoChiusura = this.getVerbaleText('testo_chiusura');
 
@@ -20650,6 +20688,24 @@ ${r.annullata ? `
                                     </div>
                                 </div>
                                 <textarea id="wz-testo_apertura" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.45;">${this.escapeHtml(testoApertura)}</textarea>
+                            </div>
+
+                            <!-- Formula Presidenza e Verbalizzazione Assemblea -->
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <label style="font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin: 0;">
+                                        Formula di Presidenza e Verbalizzazione
+                                    </label>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px;" onclick="app.resetVerbaleText('testo_presidenza')" title="Ripristina la formula calcolata standard">
+                                            🔄 Ripristina
+                                        </button>
+                                        <button type="button" class="btn btn-outline" style="font-size: 0.72rem; padding: 2px 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.3);" onclick="app.saveVerbaleTemplateField('testo_presidenza')" title="Salva questa formula per i prossimi verbali">
+                                            💾 Salva modello
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea id="wz-testo_presidenza" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.45;">${this.escapeHtml(testoPresidenza)}</textarea>
                             </div>
 
                             <!-- Formula Delibera Rendiconto -->
@@ -20999,6 +21055,7 @@ ${r.annullata ? `
                 }
 
                 const testoApertura = this.getVerbaleText('testo_apertura');
+                const testoPresidenza = this.getVerbaleText('testo_presidenza');
                 const testoDeliberaFinale = this.getVerbaleText('testo_delibera_finale');
                 const testoChiusura = this.getVerbaleText('testo_chiusura');
 
@@ -21025,8 +21082,8 @@ ${r.annullata ? `
                         ${altriDir.length > 0 ? altriDir.map(n => `<br>&bull; <strong>${this.escapeHtml(n)}</strong> (Componente / Socio)`).join('') : ''}
                     </p>
 
-                    <p style="line-height: 1.6; margin-bottom: 14px;">
-                        Assume la presidenza il Sig. <strong>${this.escapeHtml(d.presidente || 'Il Presidente')}</strong>. Funge da segretario verbalizzante il Sig. <strong>${this.escapeHtml(d.segretario || 'Il Segretario')}</strong>.
+                    <p id="vp-testo_presidenza" style="text-align: justify; line-height: 1.6; margin-bottom: 14px;">
+                        ${this.escapeHtml(testoPresidenza).replace(/\n/g, '<br>')}
                     </p>
 
                     <p style="font-weight: 700; margin-bottom: 6px;">Viene posto in discussione il seguente Ordine del Giorno:</p>
@@ -21105,6 +21162,7 @@ ${r.annullata ? `
                 }
 
                 const testoApertura = this.getVerbaleText('testo_apertura');
+                const testoPresidenza = this.getVerbaleText('testo_presidenza');
                 const relazionePres = d.relazione_presidente || '';
                 const testoDeliberaRendiconto = this.getVerbaleText('testo_delibera_rendiconto');
                 const testoChiusura = this.getVerbaleText('testo_chiusura');
@@ -21136,9 +21194,8 @@ ${r.annullata ? `
                         </p>
                     `}
 
-                    <p style="line-height: 1.6; margin-bottom: 14px;">
-                        Assume la presidenza dell'Assemblea il Sig. <strong>${this.escapeHtml(d.presidente || 'Il Presidente')}</strong>, il quale chiama a fungere da segretario verbalizzante il Sig. <strong>${this.escapeHtml(d.segretario || 'Il Segretario')}</strong>, che accetta l'incarico.
-                        Verificata la regolarità della seduta, il Presidente dichiara aperti i lavori alle ore ${d.ora_inizio_lavori || '20:15'} per discutere e deliberare sul seguente
+                    <p id="vp-testo_presidenza" style="text-align: justify; line-height: 1.6; margin-bottom: 14px;">
+                        ${this.escapeHtml(testoPresidenza).replace(/\n/g, '<br>')}
                     </p>
 
                     <p style="font-weight: 700; margin-bottom: 6px;">Ordine del Giorno:</p>
@@ -21418,6 +21475,7 @@ ${r.annullata ? `
 
                 if (type === 'direttivo') {
                     const testoApertura = d.testo_apertura || this.getVerbaleText('testo_apertura');
+                    const testoPresidenza = d.testo_presidenza || this.getVerbaleText('testo_presidenza');
                     const testoDeliberaFinale = d.testo_delibera_finale || this.getVerbaleText('testo_delibera_finale');
                     const testoChiusura = d.testo_chiusura || this.getVerbaleText('testo_chiusura');
 
@@ -21433,7 +21491,7 @@ ${r.annullata ? `
                     presenzeTxt += '.';
                     writeParagraph(presenzeTxt);
 
-                    writeParagraph(`Assume la presidenza il Sig. ${d.presidente || 'Il Presidente'}. Funge da segretario verbalizzante il Sig. ${d.segretario || 'Il Segretario'}.`);
+                    writeParagraph(testoPresidenza);
                     writeParagraph("Viene posto in discussione il seguente Ordine del Giorno:");
 
                     const numPunti = parseInt(d.num_punti_odg || 2, 10);
@@ -21457,6 +21515,7 @@ ${r.annullata ? `
                     const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura);
 
                     const testoApertura = d.testo_apertura || this.getVerbaleText('testo_apertura');
+                    const testoPresidenza = d.testo_presidenza || this.getVerbaleText('testo_presidenza');
                     const relazionePres = d.relazione_presidente || '';
                     const testoDeliberaRendiconto = d.testo_delibera_rendiconto || this.getVerbaleText('testo_delibera_rendiconto');
                     const testoChiusura = d.testo_chiusura || this.getVerbaleText('testo_chiusura');
@@ -21469,7 +21528,8 @@ ${r.annullata ? `
                         writeParagraph("Constatata la regolarità della convocazione e il raggiungimento del numero legale, si procede regolarmente in prima convocazione.");
                     }
 
-                    writeParagraph(`Assume la presidenza ${d.presidente || 'Il Presidente'}, funge da segretario ${d.segretario || 'Il Segretario'}. Il Presidente dichiara aperta la seduta alle ore ${d.ora_inizio_lavori || '20:15'} per deliberare sul seguente Ordine del Giorno: 1) Relazione morale e gestionale del Presidente; 2) Approvazione del Rendiconto economico-finanziario al ${dataChiusuraFmt}; ${d.rinnovo_direttivo === 'Si' ? '3) Rinnovo delle cariche sociali del Consiglio Direttivo; 4) Varie ed eventuali.' : '3) Varie ed eventuali.'}`);
+                    writeParagraph(testoPresidenza);
+                    writeParagraph(`Viene posto in discussione il seguente Ordine del Giorno: 1) Relazione morale e gestionale del Presidente; 2) Approvazione del Rendiconto economico-finanziario al ${dataChiusuraFmt}; ${d.rinnovo_direttivo === 'Si' ? '3) Rinnovo delle cariche sociali del Consiglio Direttivo; 4) Varie ed eventuali.' : '3) Varie ed eventuali.'}`);
 
                     writeParagraph(`1. Relazione del Presidente: ${relazionePres}`);
 
