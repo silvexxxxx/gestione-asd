@@ -19364,6 +19364,7 @@ ${r.annullata ? `
                 list.style.display = 'none';
             }
             this.updateConsiglieriFromInputs();
+            this.updatePartecipantiDirettivoFromInputs();
             this.saveVerbaleWizardStep();
         },
 
@@ -19413,6 +19414,15 @@ ${r.annullata ? `
             if (inputs.length > 0) {
                 d.consiglieri_list = Array.from(inputs).map(el => el.value.trim());
                 d.nuovi_consiglieri = d.consiglieri_list.filter(Boolean).join(', ');
+            }
+        },
+
+        updatePartecipantiDirettivoFromInputs() {
+            const d = this.state.verbale_wizard_data || {};
+            const inputs = document.querySelectorAll('.wz-partecipante-dir-input');
+            if (inputs.length > 0) {
+                d.partecipanti_direttivo = Array.from(inputs).map(el => el.value.trim());
+                d.altri_partecipanti_direttivo = d.partecipanti_direttivo.filter(Boolean).join(', ');
             }
         },
 
@@ -19480,6 +19490,31 @@ ${r.annullata ? `
             d.consiglieri_list.splice(idx, 1);
             if (d.consiglieri_list.length === 0) d.consiglieri_list.push('');
             d.nuovi_consiglieri = d.consiglieri_list.filter(Boolean).join(', ');
+            this.renderVerbali();
+        },
+
+        addVerbalePartecipanteDirettivo() {
+            this.updatePartecipantiDirettivoFromInputs();
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            if (!Array.isArray(d.partecipanti_direttivo)) {
+                d.partecipanti_direttivo = (d.altri_partecipanti_direttivo || '').split(',').map(x => x.trim()).filter(Boolean);
+            }
+            d.partecipanti_direttivo.push('');
+            d.altri_partecipanti_direttivo = d.partecipanti_direttivo.filter(Boolean).join(', ');
+            this.renderVerbali();
+        },
+
+        removeVerbalePartecipanteDirettivo(idx) {
+            this.updatePartecipantiDirettivoFromInputs();
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            if (!Array.isArray(d.partecipanti_direttivo)) {
+                d.partecipanti_direttivo = (d.altri_partecipanti_direttivo || '').split(',').map(x => x.trim()).filter(Boolean);
+            }
+            d.partecipanti_direttivo.splice(idx, 1);
+            if (d.partecipanti_direttivo.length === 0) d.partecipanti_direttivo.push('');
+            d.altri_partecipanti_direttivo = d.partecipanti_direttivo.filter(Boolean).join(', ');
             this.renderVerbali();
         },
 
@@ -19705,6 +19740,17 @@ ${r.annullata ? `
                             this.state.verbale_wizard_data.consiglieri_list = [''];
                         }
                     }
+                    if (!Array.isArray(this.state.verbale_wizard_data.partecipanti_direttivo) || this.state.verbale_wizard_data.partecipanti_direttivo.length === 0) {
+                        if (this.state.verbale_wizard_data.altri_partecipanti_direttivo) {
+                            this.state.verbale_wizard_data.partecipanti_direttivo = this.state.verbale_wizard_data.altri_partecipanti_direttivo.split(',').map(x => x.trim()).filter(Boolean);
+                        }
+                        if (!Array.isArray(this.state.verbale_wizard_data.partecipanti_direttivo) || this.state.verbale_wizard_data.partecipanti_direttivo.length === 0) {
+                            this.state.verbale_wizard_data.partecipanti_direttivo = [''];
+                        }
+                    }
+                    if (!this.state.verbale_wizard_data.vicepresidente && viceName) {
+                        this.state.verbale_wizard_data.vicepresidente = viceName;
+                    }
                     this.state.verbale_wizard_type = item.type || type;
                     this.state.verbale_wizard_edit_id = item.id;
                 }
@@ -19722,6 +19768,7 @@ ${r.annullata ? `
                     esito_c2: 'Seduta Valida',
                     luogo: s.address ? `presso la sede dell'Associazione in ${s.address}` : "presso la sede dell'Associazione",
                     presidente: presName,
+                    vicepresidente: viceName,
                     segretario: secName,
                     ora_inizio_lavori: '20:15',
                     rinnovo_direttivo: 'No',
@@ -19730,6 +19777,8 @@ ${r.annullata ? `
                     nuovo_segretario: secName,
                     consiglieri_list: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [''],
                     nuovi_consiglieri: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
+                    partecipanti_direttivo: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [''],
+                    altri_partecipanti_direttivo: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
                     data_chiusura: defaultChiusura,
                     entrate: saldi.entrate,
                     uscite: saldi.uscite,
@@ -19817,33 +19866,103 @@ ${r.annullata ? `
                         </div>
                     `;
                 } else if (currentStep.id === 'step_dir_part') {
-                    stepContentHtml = `
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
-                            <div class="form-group" style="position: relative;">
-                                <label style="font-weight: 600; display:block; margin-bottom: 4px;">Presidente della Riunione</label>
-                                <input type="text" id="wz-presidente" class="form-control" 
-                                    value="${this.escapeHtml(d.presidente || '')}" 
-                                    placeholder="Inizia a digitare il nome..." 
-                                    autocomplete="off"
-                                    oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
-                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
-                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-presidente', 'wz-list-dir-pres')"
-                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
-                                <div id="wz-list-dir-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                    if (!Array.isArray(d.partecipanti_direttivo) || d.partecipanti_direttivo.length === 0) {
+                        if (d.altri_partecipanti_direttivo) {
+                            d.partecipanti_direttivo = d.altri_partecipanti_direttivo.split(',').map(x => x.trim()).filter(Boolean);
+                        }
+                        if (!Array.isArray(d.partecipanti_direttivo) || d.partecipanti_direttivo.length === 0) {
+                            d.partecipanti_direttivo = [''];
+                        }
+                    }
+
+                    let partRowsHtml = '';
+                    d.partecipanti_direttivo.forEach((pName, idx) => {
+                        partRowsHtml += `
+                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 0.82rem; font-weight: 600; min-width: 105px; color: #93c5fd;">Partecipante #${idx + 1}:</span>
+                                <div style="flex: 1; position: relative;">
+                                    <input type="text" id="wz-part-dir-${idx}" class="form-control wz-partecipante-dir-input" 
+                                        value="${this.escapeHtml(pName || '')}" 
+                                        placeholder="Digita per cercare tra i soci da inserire..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-part-dir-${idx}', 'wz-list-pdir-${idx}'); app.updatePartecipantiDirettivoFromInputs();"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-part-dir-${idx}', 'wz-list-pdir-${idx}')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-part-dir-${idx}', 'wz-list-pdir-${idx}')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-pdir-${idx}'); if(l) l.style.display='none'; app.updatePartecipantiDirettivoFromInputs(); }, 250)">
+                                    <div id="wz-list-pdir-${idx}" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                                </div>
+                                <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 6px 10px; font-size: 0.85rem;" onclick="app.removeVerbalePartecipanteDirettivo(${idx})" title="Rimuovi questo partecipante">
+                                    🗑️
+                                </button>
                             </div>
-                            <div class="form-group" style="position: relative;">
-                                <label style="font-weight: 600; display:block; margin-bottom: 4px;">Segretario Verbalizzante</label>
-                                <input type="text" id="wz-segretario" class="form-control" 
-                                    value="${this.escapeHtml(d.segretario || '')}" 
-                                    placeholder="Inizia a digitare il nome..." 
-                                    autocomplete="off"
-                                    oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
-                                    onfocus="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
-                                    onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-segretario', 'wz-list-dir-sec')"
-                                    onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
-                                <div id="wz-list-dir-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                        `;
+                    });
+
+                    stepContentHtml = `
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
+                            <div style="font-weight: 700; color: var(--primary); margin-bottom: 10px; font-size: 0.95rem;">
+                                🏛️ Ufficio di Presidenza e Verbalizzazione
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem;">
+                                <div class="form-group" style="position: relative;">
+                                    <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Presidente</label>
+                                    <input type="text" id="wz-presidente" class="form-control" 
+                                        value="${this.escapeHtml(d.presidente || '')}" 
+                                        placeholder="Nome Presidente..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-presidente', 'wz-list-dir-pres')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                    <div id="wz-list-dir-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                                </div>
+                                <div class="form-group" style="position: relative;">
+                                    <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Vicepresidente</label>
+                                    <input type="text" id="wz-vicepresidente" class="form-control" 
+                                        value="${this.escapeHtml(d.vicepresidente || '')}" 
+                                        placeholder="Nome Vicepresidente..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-vicepresidente', 'wz-list-dir-vice')"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-vicepresidente', 'wz-list-dir-vice')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-vicepresidente', 'wz-list-dir-vice')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-vice'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                    <div id="wz-list-dir-vice" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                                </div>
+                                <div class="form-group" style="position: relative;">
+                                    <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Segretario</label>
+                                    <input type="text" id="wz-segretario" class="form-control" 
+                                        value="${this.escapeHtml(d.segretario || '')}" 
+                                        placeholder="Nome Segretario..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-segretario', 'wz-list-dir-sec')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                    <div id="wz-list-dir-sec" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Sezione Altri Componenti Direttivo & Soci Partecipanti -->
+                        <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                <div>
+                                    <label style="font-size: 0.9rem; font-weight: 700; color: #60a5fa; margin: 0;">
+                                        👥 Altri Componenti del Direttivo &amp; Soci Partecipanti
+                                    </label>
+                                    <small style="color: #94a3b8; font-size: 0.74rem; display: block; margin-top: 2px;">
+                                        Digita cognome o nome: compaiono all'istante i suggerimenti dei soci dall'elenco.
+                                    </small>
+                                </div>
+                                <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 10px; border-color: rgba(96, 165, 250, 0.4); color: #60a5fa;" onclick="app.addVerbalePartecipanteDirettivo()">
+                                    ➕ Aggiungi socio / partecipante
+                                </button>
+                            </div>
+                            <div id="wz-partecipanti-dir-container">
+                                ${partRowsHtml}
+                            </div>
+                        </div>
+
                         <div class="form-group" style="margin-bottom: 1.2rem;">
                             <label style="font-weight: 600; display:block; margin-bottom: 4px;">Ora Chiusura Seduta</label>
                             <input type="time" id="wz-ora_chiusura" class="form-control" value="${d.ora_chiusura || '21:15'}" onchange="app.onVerbaleTimeChange('ora_chiusura', this.value)" oninput="app.onVerbaleTimeChange('ora_chiusura', this.value)">
@@ -20429,6 +20548,12 @@ ${r.annullata ? `
                 d.consiglieri_list = Array.from(consiglieriEls).map(el => el.value).filter(Boolean);
                 d.nuovi_consiglieri = d.consiglieri_list.join(', ');
             }
+
+            const partDirEls = form.querySelectorAll('.wz-partecipante-dir-input');
+            if (partDirEls.length > 0) {
+                d.partecipanti_direttivo = Array.from(partDirEls).map(el => el.value.trim());
+                d.altri_partecipanti_direttivo = d.partecipanti_direttivo.filter(Boolean).join(', ');
+            }
             this.state.verbale_wizard_data = d;
         },
 
@@ -20494,6 +20619,25 @@ ${r.annullata ? `
                     `;
                 }
 
+                const altriDir = (Array.isArray(d.partecipanti_direttivo) ? d.partecipanti_direttivo : (d.altri_partecipanti_direttivo || '').split(',')).map(x => x.trim()).filter(Boolean);
+
+                let firmatariDirettivoGrid = '';
+                if (altriDir.length > 0) {
+                    firmatariDirettivoGrid = `
+                        <div style="margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                            <p style="font-weight: 700; font-size: 0.85rem; margin-bottom: 10px; color: #334155;">I Componenti del Direttivo e Soci intervenuti per approvazione:</p>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
+                                ${altriDir.map(nome => `
+                                    <div style="text-align: center; margin-top: 20px;">
+                                        <div style="border-bottom: 1px dotted #0f172a; padding-bottom: 4px; margin-bottom: 4px; min-height: 24px; font-size: 0.85rem;">${this.escapeHtml(nome)}</div>
+                                        <span style="font-size: 0.72rem; color: #64748b;">(Firma per approvazione)</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 docHtml = `
                     <div class="header-doc" style="border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 24px;">
                         <h2 style="margin: 0 0 4px 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; letter-spacing: 0.5px;">${asdNome}</h2>
@@ -20509,8 +20653,16 @@ ${r.annullata ? `
                         L'anno ${d.data_seduta ? new Date(d.data_seduta).getFullYear() : ''}, il giorno ${dataSedutaEstesa} alle ore ${d.ora_seduta || '20:00'}, ${d.luogo || "presso la sede sociale dell'Associazione"}, si è riunito il Consiglio Direttivo dell'Associazione <strong>${asdNome}</strong>, regolarmente convocato.
                     </p>
 
+                    <p style="text-align: justify; line-height: 1.6; margin-bottom: 14px;">
+                        Risultano presenti all'adunanza:
+                        <br>&bull; <strong>${this.escapeHtml(d.presidente || 'Il Presidente')}</strong> (Presidente)
+                        ${d.vicepresidente ? `<br>&bull; <strong>${this.escapeHtml(d.vicepresidente)}</strong> (Vicepresidente)` : ''}
+                        <br>&bull; <strong>${this.escapeHtml(d.segretario || 'Il Segretario')}</strong> (Segretario)
+                        ${altriDir.length > 0 ? altriDir.map(n => `<br>&bull; <strong>${this.escapeHtml(n)}</strong> (Componente / Socio)`).join('') : ''}
+                    </p>
+
                     <p style="line-height: 1.6; margin-bottom: 14px;">
-                        Assume la presidenza il Sig. <strong>${d.presidente || 'Il Presidente'}</strong>. Funge da segretario verbalizzante il Sig. <strong>${d.segretario || 'Il Segretario'}</strong>.
+                        Assume la presidenza il Sig. <strong>${this.escapeHtml(d.presidente || 'Il Presidente')}</strong>. Funge da segretario verbalizzante il Sig. <strong>${this.escapeHtml(d.segretario || 'Il Segretario')}</strong>.
                     </p>
 
                     <p style="font-weight: 700; margin-bottom: 6px;">Viene posto in discussione il seguente Ordine del Giorno:</p>
@@ -20531,16 +20683,24 @@ ${r.annullata ? `
                         Null'altro essendovi da deliberare, la seduta viene dichiarata chiusa alle ore ${d.ora_chiusura || '21:15'}, previa redazione, lettura e approvazione del presente verbale.
                     </p>
 
-                    <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 20px;">
-                        <div style="text-align: center;">
+                    <div style="display: flex; justify-content: space-around; margin-top: 50px; padding: 0 10px; gap: 20px; flex-wrap: wrap;">
+                        <div style="text-align: center; min-width: 150px;">
                             <p style="margin: 0 0 45px 0; font-weight: 600;">Il Presidente</p>
-                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${d.presidente || ''}</div>
+                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
                         </div>
-                        <div style="text-align: center;">
+                        ${d.vicepresidente ? `
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 45px 0; font-weight: 600;">Il Vicepresidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.vicepresidente || '')}</div>
+                            </div>
+                        ` : ''}
+                        <div style="text-align: center; min-width: 150px;">
                             <p style="margin: 0 0 45px 0; font-weight: 600;">Il Segretario</p>
-                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${d.segretario || ''}</div>
+                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
                         </div>
                     </div>
+
+                    ${firmatariDirettivoGrid}
                 `;
             } else {
                 const calls = parseInt(d.num_convocazioni || 1, 10);
@@ -20870,6 +21030,17 @@ ${r.annullata ? `
                 if (type === 'direttivo') {
                     const dataSedutaEstesa = this.formatDataItaliano(d.data_seduta, true);
                     writeParagraph(`L'anno ${d.data_seduta ? new Date(d.data_seduta).getFullYear() : ''}, il giorno ${dataSedutaEstesa} alle ore ${d.ora_seduta || '20:00'}, ${d.luogo || "presso la sede sociale dell'Associazione"}, si è riunito il Consiglio Direttivo dell'Associazione ${asdNome}, regolarmente convocato.`);
+
+                    const altriDirPdf = (Array.isArray(d.partecipanti_direttivo) ? d.partecipanti_direttivo : (d.altri_partecipanti_direttivo || '').split(',')).map(x => x.trim()).filter(Boolean);
+                    let presenzeTxt = `Risultano presenti all'adunanza: ${d.presidente || 'Il Presidente'} (Presidente)`;
+                    if (d.vicepresidente) presenzeTxt += `, ${d.vicepresidente} (Vicepresidente)`;
+                    presenzeTxt += `, ${d.segretario || 'Il Segretario'} (Segretario)`;
+                    if (altriDirPdf.length > 0) {
+                        presenzeTxt += `, nonché i componenti del Direttivo e soci intervenuti: ${altriDirPdf.join(', ')}`;
+                    }
+                    presenzeTxt += '.';
+                    writeParagraph(presenzeTxt);
+
                     writeParagraph(`Assume la presidenza il Sig. ${d.presidente || 'Il Presidente'}. Funge da segretario verbalizzante il Sig. ${d.segretario || 'Il Segretario'}.`);
                     writeParagraph("Viene posto in discussione il seguente Ordine del Giorno:");
 
@@ -20916,19 +21087,103 @@ ${r.annullata ? `
                 }
 
                 // Firme
-                checkPageBreak(35);
-                y += 10;
-                doc.setFont("helvetica", "bold");
-                doc.text("Il Presidente", left + 20, y, { align: 'center' });
-                doc.text("Il Segretario", left + maxW - 20, y, { align: 'center' });
+                if (type === 'direttivo') {
+                    checkPageBreak(35);
+                    y += 10;
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(9);
+                    if (d.vicepresidente) {
+                        const colW = maxW / 3;
+                        doc.text("Il Presidente", left + colW * 0.5, y, { align: 'center' });
+                        doc.text("Il Vicepresidente", left + colW * 1.5, y, { align: 'center' });
+                        doc.text("Il Segretario", left + colW * 2.5, y, { align: 'center' });
+                        y += 18;
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        doc.text("_________________________", left + colW * 0.5, y, { align: 'center' });
+                        doc.text("_________________________", left + colW * 1.5, y, { align: 'center' });
+                        doc.text("_________________________", left + colW * 2.5, y, { align: 'center' });
+                        doc.text(d.presidente || '', left + colW * 0.5, y + 4, { align: 'center' });
+                        doc.text(d.vicepresidente || '', left + colW * 1.5, y + 4, { align: 'center' });
+                        doc.text(d.segretario || '', left + colW * 2.5, y + 4, { align: 'center' });
+                    } else {
+                        doc.text("Il Presidente", left + 25, y, { align: 'center' });
+                        doc.text("Il Segretario", left + maxW - 25, y, { align: 'center' });
+                        y += 18;
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        doc.text("_________________________", left + 25, y, { align: 'center' });
+                        doc.text("_________________________", left + maxW - 25, y, { align: 'center' });
+                        doc.text(d.presidente || '', left + 25, y + 4, { align: 'center' });
+                        doc.text(d.segretario || '', left + maxW - 25, y + 4, { align: 'center' });
+                    }
 
-                y += 18;
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(8);
-                doc.text("_________________________", left + 20, y, { align: 'center' });
-                doc.text("_________________________", left + maxW - 20, y, { align: 'center' });
-                doc.text(d.presidente || '', left + 20, y + 4, { align: 'center' });
-                doc.text(d.segretario || '', left + maxW - 20, y + 4, { align: 'center' });
+                    const altriDirPdf = (Array.isArray(d.partecipanti_direttivo) ? d.partecipanti_direttivo : (d.altri_partecipanti_direttivo || '').split(',')).map(x => x.trim()).filter(Boolean);
+                    if (altriDirPdf.length > 0) {
+                        checkPageBreak(30);
+                        y += 14;
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(8.5);
+                        doc.text("I Componenti del Direttivo e Soci intervenuti per approvazione:", left, y);
+                        y += 6;
+                        const cols = altriDirPdf.length === 1 ? 1 : (altriDirPdf.length === 2 ? 2 : 3);
+                        const colWidth = maxW / cols;
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        for (let idx = 0; idx < altriDirPdf.length; idx++) {
+                            const cCol = idx % cols;
+                            if (idx > 0 && cCol === 0) {
+                                y += 18;
+                                checkPageBreak(25);
+                            }
+                            const posX = left + (cCol + 0.5) * colWidth;
+                            doc.text("_________________________", posX, y + 10, { align: 'center' });
+                            doc.text(altriDirPdf[idx], posX, y + 14, { align: 'center' });
+                        }
+                        y += 18;
+                    }
+                } else {
+                    checkPageBreak(35);
+                    y += 10;
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Il Presidente", left + 20, y, { align: 'center' });
+                    doc.text("Il Segretario", left + maxW - 20, y, { align: 'center' });
+
+                    y += 18;
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.text("_________________________", left + 20, y, { align: 'center' });
+                    doc.text("_________________________", left + maxW - 20, y, { align: 'center' });
+                    doc.text(d.presidente || '', left + 20, y + 4, { align: 'center' });
+                    doc.text(d.segretario || '', left + maxW - 20, y + 4, { align: 'center' });
+
+                    const numFirmatari = parseInt(d.num_firmatari || 0, 10);
+                    if (numFirmatari > 0) {
+                        checkPageBreak(30);
+                        y += 14;
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(8.5);
+                        doc.text("I Soci Firmatari intervenuti per approvazione:", left, y);
+                        y += 6;
+                        const cols = Math.min(numFirmatari, 3);
+                        const colWidth = maxW / cols;
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        for (let i = 1; i <= numFirmatari; i++) {
+                            const idx = i - 1;
+                            const cCol = idx % cols;
+                            if (idx > 0 && cCol === 0) {
+                                y += 18;
+                                checkPageBreak(25);
+                            }
+                            const posX = left + (cCol + 0.5) * colWidth;
+                            const nomeF = d['f_nome_' + i] || `Socio ${i}`;
+                            doc.text("_________________________", posX, y + 10, { align: 'center' });
+                            doc.text(nomeF, posX, y + 14, { align: 'center' });
+                        }
+                        y += 18;
+                    }
+                }
 
                 const blob = doc.output('blob');
                 await this.saveDocumentFS(fileName, blob, 'assemblee', sportsYear);
