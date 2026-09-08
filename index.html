@@ -21629,6 +21629,7 @@ ${r.annullata ? `
             if (targetStep >= 0 && targetStep < steps.length) {
                 this.state.verbale_wizard_step = targetStep;
                 this.state.verbali_current_view = 'wizard';
+                this.state.verbale_current_view = 'wizard';
                 this.renderVerbali();
             }
         },
@@ -21648,6 +21649,7 @@ ${r.annullata ? `
             const d = this.state.verbale_wizard_data || {};
             delete d.custom_preview_html;
             this.state.verbali_current_view = 'preview';
+            this.state.verbale_current_view = 'preview';
             this.renderVerbali();
         },
 
@@ -22590,6 +22592,7 @@ ${r.annullata ? `
             this.state.verbale_wizard_type = item.type || 'direttivo';
             this.state.verbale_wizard_edit_id = item.id;
             this.state.verbali_current_view = 'preview';
+            this.state.verbale_current_view = 'preview';
             this.renderVerbali();
         },
 
@@ -22610,6 +22613,7 @@ ${r.annullata ? `
                 this.state.verbale_wizard_step = 0;
             }
             this.state.verbali_current_view = 'hub';
+            this.state.verbale_current_view = 'hub';
             this.saveAll();
             this.toast("Verbale eliminato dall'archivio.", "info");
             this.renderVerbali();
