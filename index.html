@@ -20333,7 +20333,9 @@ ${r.annullata ? `
                                 <strong style="color: #fff; font-size: 0.95rem;">${this.escapeHtml(d.segretario || 'Boccone Serafino')}</strong>
                             </div>
                         </div>
-                    `;            } else {
+                    `;
+                }
+            } else {
                 if (currentStep.id === 'step_ord_conv') {
                     const calls = parseInt(d.num_convocazioni || 1, 10);
                     stepContentHtml = `
@@ -21074,41 +21076,6 @@ ${r.annullata ? `
             if (d.custom_preview_html) {
                 docHtml = d.custom_preview_html;
             } else if (type === 'direttivo') {
-                const dataSedutaEstesa = this.formatDataItaliano(d.data_seduta, true);
-                const numPunti = parseInt(d.num_punti_odg || 2, 10);
-                let odgListHtml = '';
-                let delibereHtml = '';
-                for (let i = 1; i <= numPunti; i++) {
-                    const oggetto = d['odg_o_' + i] || `Argomento ${i}`;
-                    const delibera = d['odg_d_' + i] || 'Il Consiglio approva la proposta.';
-                    odgListHtml += `<li style="margin-bottom: 4px;">${this.escapeHtml(oggetto)}</li>`;
-                    delibereHtml += `
-                        <div style="margin-bottom: 14px;">
-                            <p style="font-weight: 700; margin-bottom: 4px;">Punto ${i} - ${this.escapeHtml(oggetto)}:</p>
-                            <p style="text-align: justify; margin: 0; line-height: 1.5;">${this.escapeHtml(delibera)}</p>
-                        </div>
-                    `;
-                }
-
-                const altriDir = (Array.isArray(d.partecipanti_direttivo) ? d.partecipanti_direttivo : (d.altri_partecipanti_direttivo || '').split(',')).map(x => x.trim()).filter(Boolean);
-
-                let firmatariDirettivoGrid = '';
-                if (altriDir.length > 0) {
-                    firmatariDirettivoGrid = `
-                        <div style="margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                            <p style="font-weight: 700; font-size: 0.85rem; margin-bottom: 10px; color: #334155;">I Componenti del Direttivo e Soci intervenuti per approvazione:</p>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
-                                ${altriDir.map(nome => `
-                                    <div style="text-align: center; margin-top: 20px;">
-                                        <div style="border-bottom: 1px dotted #0f172a; padding-bottom: 4px; margin-bottom: 4px; min-height: 24px; font-size: 0.85rem;">${this.escapeHtml(nome)}</div>
-                                        <span style="font-size: 0.72rem; color: #64748b;">(Firma per approvazione)</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-
                 const testoApertura = this.getVerbaleText('testo_apertura');
                 const testoPresidenza = this.getVerbaleText('testo_presidenza');
                 const testoRito = this.getVerbaleText('testo_rito');
