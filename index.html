@@ -1721,7 +1721,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.6";
+        const APP_VERSION = "2.5.7";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -19939,6 +19939,7 @@ ${r.annullata ? `
             const syParts = sportsYear.split(/[-\/]/).map(x => parseInt(x, 10));
             const endYear = (syParts.length === 2 && !isNaN(syParts[1])) ? syParts[1] : new Date().getFullYear();
             const defaultChiusura = `${endYear}-08-31`;
+            const dataChiusuraFmt = this.formatDataItaliano(defaultChiusura);
             const saldi = this.calcolaSaldiFinanziari(defaultChiusura, sportsYear);
 
             const presName = this.resolveSocioNome(s.presidente, 'Pintus Silverio');
@@ -21949,11 +21950,12 @@ ${r.annullata ? `
         }
 
         window.onload = async () => {
+            window.app = app;
             const isReloading = await checkAppVersionAndCache();
             if (isReloading) return; // Se sta ricaricando per nuova versione, non avviare la vecchia istanza
 
             app.init();
-            
+
             // Sincronizza lo stato del pulsante schermo intero con icona e testo dinamico
             const updateFullscreenButtonState = () => {
                 const btn = document.getElementById('fullscreen-btn');
