@@ -19092,10 +19092,16 @@ ${r.annullata ? `
 
             if (type === 'direttivo') {
                 if (fieldId === 'ora_seduta') {
+                    // Ora apertura lavori conseguente (+10 min da ora convocazione)
+                    d.ora_inizio_lavori = this.addMinutiOrario(val, 10);
+                    const elInizio = document.getElementById('wz-ora_inizio_lavori');
+                    if (elInizio) elInizio.value = d.ora_inizio_lavori;
+
                     // Ora chiusura seduta conseguente (+1h 15m)
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
+
                     const txtEl = document.getElementById('wz-testo_apertura');
                     if (txtEl) {
                         const tmpl = this.getStandardVerbaleTemplate(type, 'testo_apertura');
@@ -19103,15 +19109,10 @@ ${r.annullata ? `
                         txtEl.value = resolved;
                         d.testo_apertura = resolved;
                     }
+                    this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_inizio_lavori') {
                     d.ora_inizio_lavori = val;
-                    const presEl = document.getElementById('wz-testo_presidenza');
-                    if (presEl) {
-                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_presidenza');
-                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
-                        presEl.value = resolved;
-                        d.testo_presidenza = resolved;
-                    }
+                    this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_chiusura') {
                     d.ora_chiusura = val;
                     const chiusEl = document.getElementById('wz-testo_chiusura');
@@ -19159,6 +19160,84 @@ ${r.annullata ? `
                     }
                 }
             }
+        },
+
+        onVerbalePresidenteChange(val) {
+            const d = this.state.verbale_wizard_data || {};
+            d.presidente = val;
+            this.updateVerbalePresidenzaLive();
+        },
+
+        onVerbaleSegretarioChange(val) {
+            const d = this.state.verbale_wizard_data || {};
+            d.segretario = val;
+            this.updateVerbalePresidenzaLive();
+        },
+
+        onVerbaleVicepresidenteChange(val) {
+            const d = this.state.verbale_wizard_data || {};
+            d.vicepresidente = val;
+        },
+
+        onVerbaleTestoPresidenzaInput(val) {
+            const d = this.state.verbale_wizard_data || {};
+            d.testo_presidenza = val;
+            d._testo_presidenza_user_typed = true;
+        },
+
+        updateVerbalePresidenzaLive() {
+            const d = this.state.verbale_wizard_data || {};
+            const type = this.state.verbale_wizard_type || 'direttivo';
+            const presInput = document.getElementById('wz-presidente');
+            const secInput = document.getElementById('wz-segretario');
+            const timeInput = document.getElementById('wz-ora_inizio_lavori');
+            const txtPres = document.getElementById('wz-testo_presidenza');
+
+            if (presInput) d.presidente = presInput.value.trim();
+            if (secInput) d.segretario = secInput.value.trim();
+            if (timeInput) d.ora_inizio_lavori = timeInput.value.trim();
+
+            if (txtPres) {
+                const customTemplates = this.getVerbaleCustomTemplates();
+                const rawTmpl = (customTemplates[type] && customTemplates[type]['testo_presidenza'])
+                    ? customTemplates[type]['testo_presidenza']
+                    : (txtPres.value || this.getStandardVerbaleTemplate(type, 'testo_presidenza'));
+                const resolved = this.resolveVerbalePlaceholders(rawTmpl, d, type);
+                txtPres.value = resolved;
+                d.testo_presidenza = resolved;
+            }
+        },
+
+        removeVerbalePuntoOdg(pointIdx) {
+            this.saveVerbaleWizardStep();
+            const d = this.state.verbale_wizard_data || {};
+            const cur = parseInt(d.num_punti_odg || 2, 10);
+            if (pointIdx < 1 || pointIdx > cur) return;
+
+            if (!confirm(`Sei sicuro di voler eliminare il Punto ${pointIdx} dall'Ordine del Giorno e dalle deliberazioni?`)) {
+                return;
+            }
+
+            // Sposta i punti successivi a ritroso
+            for (let k = pointIdx; k < cur; k++) {
+                d['odg_o_' + k] = d['odg_o_' + (k + 1)];
+                d['odg_rif_' + k] = d['odg_rif_' + (k + 1)];
+                d['odg_d_' + k] = d['odg_d_' + (k + 1)];
+                d['odg_approv_' + k] = d['odg_approv_' + (k + 1)];
+
+                if (d['odg_rif_' + k] && d['odg_rif_' + k].startsWith('Con riferimento al ') && d['odg_rif_' + k].includes('punto all\'ordine del giorno')) {
+                    d['odg_rif_' + k] = `Con riferimento al ${this.getNumeroOrdinaleItaliano(k)} punto all'ordine del giorno,`;
+                }
+            }
+            // Elimina l'ultimo slot
+            delete d['odg_o_' + cur];
+            delete d['odg_rif_' + cur];
+            delete d['odg_d_' + cur];
+            delete d['odg_approv_' + cur];
+
+            d.num_punti_odg = cur - 1;
+            this.renderVerbali();
+            this.toast(`Punto ${pointIdx} rimosso con successo.`, 'info');
         },
 
         resetVerbaleWizard(returnToHub = false) {
@@ -19469,8 +19548,17 @@ ${r.annullata ? `
             if (list) {
                 list.style.display = 'none';
             }
+            const d = this.state.verbale_wizard_data || {};
+            if (inputId === 'wz-presidente') {
+                d.presidente = fullName;
+            } else if (inputId === 'wz-vicepresidente') {
+                d.vicepresidente = fullName;
+            } else if (inputId === 'wz-segretario') {
+                d.segretario = fullName;
+            }
             this.updateConsiglieriFromInputs();
             this.updatePartecipantiDirettivoFromInputs();
+            this.updateVerbalePresidenzaLive();
             this.saveVerbaleWizardStep();
         },
 
@@ -19674,8 +19762,43 @@ ${r.annullata ? `
             return '';
         },
 
+        prepareVerbaleTemplate(tmpl) {
+            if (!tmpl) return '';
+            let t = tmpl;
+
+            // 1. Sostituzione Presidente: "Assume la presidenza <NOME> che, verificata/verifica/dichiara"
+            t = t.replace(/(Assume la presidenza\s+)(.*?)(che(?:,\s*|\s+)verificata|che\s+verifica|che\s+dichiara)/i, (m, p1, name, p3) => {
+                return p1 + '{presidente} ' + p3;
+            });
+            t = t.replace(/\bPINTUS\s+SILVERIO\b/gi, '{presidente}');
+
+            // 2. Sostituzione Ora inizio lavori: "alle ore \d{1,2}[:.]\d{2}"
+            t = t.replace(/(alle ore\s+)\d{1,2}[:.]\d{2}/gi, '$1{ora_inizio_lavori}');
+
+            // 3. Sostituzione Segretario: "a fungere da segretario <NOME>."
+            t = t.replace(/(a fungere da segretario(?:\s+verbalizzante)?\s+)([^.]+?)(\.|$)/i, (m, p1, name, p3) => {
+                return p1 + '{segretario}' + p3;
+            });
+            t = t.replace(/\bBoccone\s+Serafino\b/gi, '{segretario}');
+            t = t.replace(/\bBOCCONE\s+SERAFINO\b/gi, '{segretario}');
+
+            // Sostituzione mirata con i dati attuali del wizard se presenti letterali
+            const d = this.state.verbale_wizard_data || {};
+            if (d.presidente && d.presidente.trim().length > 2) {
+                const escPres = d.presidente.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                t = t.replace(new RegExp(`\\b${escPres}\\b`, 'gi'), '{presidente}');
+            }
+            if (d.segretario && d.segretario.trim().length > 2) {
+                const escSec = d.segretario.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                t = t.replace(new RegExp(`\\b${escSec}\\b`, 'gi'), '{segretario}');
+            }
+
+            return t;
+        },
+
         resolveVerbalePlaceholders(tmpl, d, type) {
             if (!tmpl) return '';
+            tmpl = this.prepareVerbaleTemplate(tmpl);
             const s = this.state.settings || {};
             const asdNome = (s.asdName || 'A.S.D. GESTIONALE').toUpperCase();
             const dateVal = d.data_seduta || d.data_c1 || new Date().toISOString().split('T')[0];
@@ -19688,12 +19811,13 @@ ${r.annullata ? `
             const giornoNum = (parts.length === 3 && !isNaN(parseInt(parts[2], 10))) ? parseInt(parts[2], 10) : new Date().getDate();
             const mesiList = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
             const meseNome = parts.length === 3 ? mesiList[parseInt(parts[1], 10) - 1] : mesiList[dateObj.getMonth()];
-            const giornoMeseLettere = `${giornoNum} del mese di ${meseNome || ''}`;            const calls = parseInt(d.num_convocazioni || 1, 10);
+            const giornoMeseLettere = `${giornoNum} del mese di ${meseNome || ''}`;
+            const calls = parseInt(d.num_convocazioni || 1, 10);
             const isSeconda = calls >= 2;
             const effOra = isSeconda ? (d.ora_c2 || d.ora_c1 || '20:00') : (d.ora_c1 || '20:00');
             const oraSeduta = d.ora_seduta || effOra;
             const oraChiusura = d.ora_chiusura || (type === 'direttivo' ? '21:15' : '21:30');
-            const oraInizioLavori = d.ora_inizio_lavori || oraSeduta;
+            const oraInizioLavori = d.ora_inizio_lavori || (type === 'direttivo' ? (d.ora_seduta ? this.addMinutiOrario(d.ora_seduta, 10) : '20:10') : oraSeduta);
             const convocazioneFase = isSeconda ? 'in seconda convocazione' : 'in prima convocazione';
             const luogo = d.luogo || (type === 'direttivo' ? "presso la sede sociale dell'Associazione" : "presso la sede dell'Associazione");
             const pres = d.presidente || 'Il Presidente';
@@ -19705,7 +19829,8 @@ ${r.annullata ? `
                 .replace(/\{anno\}/g, anno)
                 .replace(/\{anno_sportivo\}/g, sportsYear)
                 .replace(/\{giorno_mese_lettere\}/g, giornoMeseLettere)
-                .replace(/\{data_seduta\}/g, dataSedutaEstesa)                .replace(/\{ora_seduta\}/g, oraSeduta)
+                .replace(/\{data_seduta\}/g, dataSedutaEstesa)
+                .replace(/\{ora_seduta\}/g, oraSeduta)
                 .replace(/\{ora_chiusura\}/g, oraChiusura)
                 .replace(/\{ora_inizio_lavori\}/g, oraInizioLavori)
                 .replace(/\{convocazione_fase\}/g, convocazioneFase)
@@ -19720,6 +19845,16 @@ ${r.annullata ? `
         getVerbaleText(fieldKey) {
             const d = this.state.verbale_wizard_data || {};
             const type = this.state.verbale_wizard_type || 'direttivo';
+            if (fieldKey === 'testo_presidenza') {
+                if (d.testo_presidenza && d._testo_presidenza_user_typed) {
+                    return d.testo_presidenza;
+                }
+                const customTemplates = this.getVerbaleCustomTemplates();
+                const tmpl = (customTemplates[type] && customTemplates[type]['testo_presidenza'])
+                    ? customTemplates[type]['testo_presidenza']
+                    : (d.testo_presidenza || this.getStandardVerbaleTemplate(type, 'testo_presidenza'));
+                return this.resolveVerbalePlaceholders(tmpl, d, type);
+            }
             if (d[fieldKey] !== undefined && d[fieldKey] !== null && d[fieldKey] !== '') {
                 return d[fieldKey];
             }
@@ -19733,6 +19868,9 @@ ${r.annullata ? `
         resetVerbaleText(fieldKey) {
             const d = this.state.verbale_wizard_data || {};
             const type = this.state.verbale_wizard_type || 'direttivo';
+            if (fieldKey === 'testo_presidenza') {
+                d._testo_presidenza_user_typed = false;
+            }
             const customTemplates = this.getVerbaleCustomTemplates();
             const tmpl = (customTemplates[type] && customTemplates[type][fieldKey]) 
                 ? customTemplates[type][fieldKey] 
@@ -19748,10 +19886,13 @@ ${r.annullata ? `
             this.saveVerbaleWizardStep();
             const d = this.state.verbale_wizard_data || {};
             const type = this.state.verbale_wizard_type || 'direttivo';
-            const currentVal = d[fieldKey] || '';
+            let currentVal = d[fieldKey] || '';
             if (!currentVal.trim()) {
                 this.toast('Inserisci del testo prima di salvare come modello predefinito.', 'warning');
                 return;
+            }
+            if (fieldKey === 'testo_presidenza') {
+                currentVal = this.prepareVerbaleTemplate(currentVal);
             }
             const templates = this.getVerbaleCustomTemplates();
             if (!templates[type]) templates[type] = {};
@@ -19769,12 +19910,12 @@ ${r.annullata ? `
 
             if (type === 'direttivo') {
                 if (d.testo_apertura) templates[type].testo_apertura = d.testo_apertura;
-                if (d.testo_presidenza) templates[type].testo_presidenza = d.testo_presidenza;
+                if (d.testo_presidenza) templates[type].testo_presidenza = this.prepareVerbaleTemplate(d.testo_presidenza);
                 if (d.testo_delibera_finale) templates[type].testo_delibera_finale = d.testo_delibera_finale;
                 if (d.testo_chiusura) templates[type].testo_chiusura = d.testo_chiusura;
             } else {
                 if (d.testo_apertura) templates[type].testo_apertura = d.testo_apertura;
-                if (d.testo_presidenza) templates[type].testo_presidenza = d.testo_presidenza;
+                if (d.testo_presidenza) templates[type].testo_presidenza = this.prepareVerbaleTemplate(d.testo_presidenza);
                 if (d.relazione_presidente) templates[type].relazione_presidente = d.relazione_presidente;
                 if (d.testo_delibera_rendiconto) templates[type].testo_delibera_rendiconto = d.testo_delibera_rendiconto;
                 if (d.testo_chiusura) templates[type].testo_chiusura = d.testo_chiusura;
@@ -20037,12 +20178,11 @@ ${r.annullata ? `
                             this.state.verbale_wizard_data.consiglieri_list = [''];
                         }
                     }
-                    if (!Array.isArray(this.state.verbale_wizard_data.partecipanti_direttivo) || this.state.verbale_wizard_data.partecipanti_direttivo.length === 0) {
+                    if (!Array.isArray(this.state.verbale_wizard_data.partecipanti_direttivo)) {
                         if (this.state.verbale_wizard_data.altri_partecipanti_direttivo) {
                             this.state.verbale_wizard_data.partecipanti_direttivo = this.state.verbale_wizard_data.altri_partecipanti_direttivo.split(',').map(x => x.trim()).filter(Boolean);
-                        }
-                        if (!Array.isArray(this.state.verbale_wizard_data.partecipanti_direttivo) || this.state.verbale_wizard_data.partecipanti_direttivo.length === 0) {
-                            this.state.verbale_wizard_data.partecipanti_direttivo = [''];
+                        } else {
+                            this.state.verbale_wizard_data.partecipanti_direttivo = [];
                         }
                     }
                     if (!this.state.verbale_wizard_data.vicepresidente && viceName) {
@@ -20067,14 +20207,14 @@ ${r.annullata ? `
                     presidente: presName,
                     vicepresidente: viceName,
                     segretario: secName,
-                    ora_inizio_lavori: '20:15',
+                    ora_inizio_lavori: type === 'direttivo' ? '20:10' : '20:15',
                     rinnovo_direttivo: 'No',
                     nuovo_presidente: presName,
                     nuovo_vice: viceName,
                     nuovo_segretario: secName,
                     consiglieri_list: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [''],
                     nuovi_consiglieri: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
-                    partecipanti_direttivo: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [''],
+                    partecipanti_direttivo: (Array.isArray(s.consiglieri) && s.consiglieri.length > 0) ? s.consiglieri.map(c => this.resolveSocioNome(c)).filter(Boolean) : [],
                     altri_partecipanti_direttivo: (s.consiglieri || []).map(c => this.resolveSocioNome(c)).filter(Boolean).join(', '),
                     data_chiusura: defaultChiusura,
                     entrate: saldi.entrate,
@@ -20091,7 +20231,7 @@ ${r.annullata ? `
                     ora_chiusura: type === 'direttivo' ? '21:00' : '21:30',
                     data_seduta: todayIso,
                     ora_seduta: '20:00',
-                    ora_inizio_lavori: type === 'direttivo' ? '20:05' : '20:15',
+                    ora_inizio_lavori: type === 'direttivo' ? '20:10' : '20:15',
                     luogo: type === 'direttivo' ? 'presso la sede della Associazione in epigrafe indicata' : (s.address ? `presso la sede dell'Associazione in ${s.address}` : "presso la sede dell'Associazione"),
                     num_punti_odg: 2,
                     odg_o_1: 'Presentazione Rendiconto e convocazione assemblea soci;',
@@ -20159,6 +20299,9 @@ ${r.annullata ? `
                             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                                 <span style="font-weight: 700; color: #60a5fa; min-width: 25px; text-align: right;">${i})</span>
                                 <input type="text" id="wz-odg_o_${i}" class="form-control" value="${this.escapeHtml(val)}" placeholder="Argomento punto ${i}..." style="font-size: 0.9rem;">
+                                ${i >= 3 ? `
+                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 5px 10px; font-size: 0.85rem;" onclick="app.removeVerbalePuntoOdg(${i})" title="Elimina punto ${i}">&times;</button>
+                                ` : ''}
                             </div>
                         `;
                     }
@@ -20232,28 +20375,74 @@ ${r.annullata ? `
                                 ${puntiOdgListInputsHtml}
                             </div>
                         </div>
-                    `;                } else if (currentStep.id === 'step_dir_part') {
+                    `;
+                } else if (currentStep.id === 'step_dir_part') {
                     const testoPresidenza = this.getVerbaleText('testo_presidenza');
                     const testoRito = this.getVerbaleText('testo_rito');
-                    const defaultOraApertura = d.ora_inizio_lavori || (d.ora_seduta ? this.addMinutiOrario(d.ora_seduta, 5) : '20:05');
+                    const defaultOraApertura = d.ora_inizio_lavori || (d.ora_seduta ? this.addMinutiOrario(d.ora_seduta, 10) : '20:10');
+
+                    const partList = Array.isArray(d.partecipanti_direttivo) ? d.partecipanti_direttivo : [];
+                    let consiglieriDirettivoRowsHtml = '';
+                    if (partList.length === 0) {
+                        consiglieriDirettivoRowsHtml = `
+                            <div style="font-size: 0.8rem; color: #94a3b8; font-style: italic; padding: 4px 0;">
+                                Nessun consigliere aggiunto. Clicca su "➕ Aggiungi un consigliere" per inserirne uno.
+                            </div>
+                        `;
+                    } else {
+                        partList.forEach((cName, idx) => {
+                            consiglieriDirettivoRowsHtml += `
+                                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.82rem; font-weight: 600; min-width: 105px; color: #93c5fd;">Consigliere #${idx + 1}:</span>
+                                    <div style="flex: 1; position: relative;">
+                                        <input type="text" id="wz-part-dir-${idx}" class="form-control wz-partecipante-dir-input" 
+                                            value="${this.escapeHtml(cName || '')}" 
+                                            placeholder="Digita per cercare tra i soci o inserisci nome..." 
+                                            autocomplete="off"
+                                            oninput="app.filterVerbaleSocio(this.value, 'wz-part-dir-${idx}', 'wz-list-pdir-${idx}'); app.updatePartecipantiDirettivoFromInputs();"
+                                            onfocus="app.filterVerbaleSocio(this.value, 'wz-part-dir-${idx}', 'wz-list-pdir-${idx}')"
+                                            onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-part-dir-${idx}', 'wz-list-pdir-${idx}')"
+                                            onblur="setTimeout(() => { const l = document.getElementById('wz-list-pdir-${idx}'); if(l) l.style.display='none'; app.updatePartecipantiDirettivoFromInputs(); }, 250)">
+                                        <div id="wz-list-pdir-${idx}" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.35); padding: 6px 10px; font-size: 0.85rem;" onclick="app.removeVerbalePartecipanteDirettivo(${idx})" title="Rimuovi Consigliere #${idx + 1}">
+                                        🗑️
+                                    </button>
+                                </div>
+                            `;
+                        });
+                    }
+
                     stepContentHtml = `
-                        <!-- Cariche di Presidenza e Orario -->
+                        <!-- Cariche di Presidenza, Consiglio Direttivo e Orario -->
                         <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 1.3rem;">
                             <div style="font-weight: 700; color: var(--primary); margin-bottom: 12px; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
-                                <span>⚖️</span> Presidenza e Segretario Verbalizzante (Ereditati)
+                                <span>⚖️</span> Membri della Presidenza, Consiglio Direttivo & Orario
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
                                 <div class="form-group" style="position: relative;">
                                     <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Presidente</label>
                                     <input type="text" id="wz-presidente" class="form-control" 
                                         value="${this.escapeHtml(d.presidente || '')}" 
                                         placeholder="Nome Presidente..." 
                                         autocomplete="off"
-                                        oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres'); app.onVerbalePresidenteChange(this.value);"
                                         onfocus="app.filterVerbaleSocio(this.value, 'wz-presidente', 'wz-list-dir-pres')"
                                         onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-presidente', 'wz-list-dir-pres')"
                                         onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-pres'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
                                     <div id="wz-list-dir-pres" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
+                                </div>
+                                <div class="form-group" style="position: relative;">
+                                    <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Vicepresidente <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">(Opzionale)</span></label>
+                                    <input type="text" id="wz-vicepresidente" class="form-control" 
+                                        value="${this.escapeHtml(d.vicepresidente || '')}" 
+                                        placeholder="Nome Vicepresidente..." 
+                                        autocomplete="off"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-vicepresidente', 'wz-list-dir-vice'); app.onVerbaleVicepresidenteChange(this.value);"
+                                        onfocus="app.filterVerbaleSocio(this.value, 'wz-vicepresidente', 'wz-list-dir-vice')"
+                                        onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-vicepresidente', 'wz-list-dir-vice')"
+                                        onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-vice'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
+                                    <div id="wz-list-dir-vice" class="autocomplete-list" style="position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#1e293b; border:1px solid var(--border); border-radius:6px; z-index:1000; box-shadow:0 10px 25px rgba(0,0,0,0.6); display:none;"></div>
                                 </div>
                                 <div class="form-group" style="position: relative;">
                                     <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Segretario Verbalizzante</label>
@@ -20261,7 +20450,7 @@ ${r.annullata ? `
                                         value="${this.escapeHtml(d.segretario || '')}" 
                                         placeholder="Nome Segretario..." 
                                         autocomplete="off"
-                                        oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
+                                        oninput="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec'); app.onVerbaleSegretarioChange(this.value);"
                                         onfocus="app.filterVerbaleSocio(this.value, 'wz-segretario', 'wz-list-dir-sec')"
                                         onkeydown="app.handleVerbaleAutocompleteKeydown(event, 'wz-segretario', 'wz-list-dir-sec')"
                                         onblur="setTimeout(() => { const l = document.getElementById('wz-list-dir-sec'); if(l) l.style.display='none'; app.saveVerbaleWizardStep(); }, 250)">
@@ -20270,7 +20459,27 @@ ${r.annullata ? `
                                 <div class="form-group">
                                     <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Ora Apertura Lavori</label>
                                     <input type="time" id="wz-ora_inizio_lavori" class="form-control" value="${defaultOraApertura}" oninput="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)" onchange="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)">
-                                    <small style="color: #94a3b8; font-size: 0.72rem; display: block; margin-top: 3px;">Preimpostata a +5 min dall'ora di convocazione.</small>
+                                    <small style="color: #94a3b8; font-size: 0.72rem; display: block; margin-top: 3px;">Preimpostata a +10 min dall'ora di convocazione.</small>
+                                </div>
+                            </div>
+
+                            <!-- Consiglieri del Direttivo (Aggiunta in ordine crescente) -->
+                            <div style="border-top: 1px dashed var(--border); padding-top: 14px; margin-top: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                    <div>
+                                        <label style="font-size: 0.88rem; font-weight: 700; color: #60a5fa; margin: 0;">
+                                            👥 Consiglieri del Direttivo Presenti (Opzionali)
+                                        </label>
+                                        <small style="color: #94a3b8; font-size: 0.74rem; display: block; margin-top: 2px;">
+                                            Aggiungi eventuali consiglieri presenti alla seduta (in ordine crescente).
+                                        </small>
+                                    </div>
+                                    <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 10px; border-color: rgba(96, 165, 250, 0.4); color: #60a5fa; display: inline-flex; align-items: center; gap: 5px;" onclick="app.addVerbalePartecipanteDirettivo()">
+                                        <span>➕</span> Aggiungi un consigliere
+                                    </button>
+                                </div>
+                                <div id="wz-consiglieri-direttivo-container">
+                                    ${consiglieriDirettivoRowsHtml}
                                 </div>
                             </div>
                         </div>
@@ -20290,7 +20499,7 @@ ${r.annullata ? `
                                     </button>
                                 </div>
                             </div>
-                            <textarea id="wz-testo_presidenza" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.5;">${this.escapeHtml(testoPresidenza)}</textarea>
+                            <textarea id="wz-testo_presidenza" class="form-control" rows="3" style="font-size: 0.88rem; line-height: 1.5;" oninput="app.onVerbaleTestoPresidenzaInput(this.value)">${this.escapeHtml(testoPresidenza)}</textarea>
                             <small style="color: #94a3b8; font-size: 0.72rem; display: block; margin-top: 4px;">
                                 💡 Attesta la verifica della regolarità statutaria della seduta e la chiamata del segretario verbalizzante.
                             </small>
@@ -20316,7 +20525,8 @@ ${r.annullata ? `
                                 💡 Constata l'informazione dei presenti, la capacità a deliberare e l'assenza di situazioni impeditive del diritto di voto.
                             </small>
                         </div>
-                    `;                } else if (currentStep.id === 'step_dir_odg') {
+                    `;
+                } else if (currentStep.id === 'step_dir_odg') {
                     const numPunti = parseInt(d.num_punti_odg || 2, 10);
                     const saldi = this.calcolaSaldiFinanziari(d.data_chiusura, d.anno_sportivo);
                     const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || '2026-08-31');
@@ -20338,7 +20548,17 @@ ${r.annullata ? `
                                     <div style="font-weight: 700; color: #60a5fa; font-size: 0.95rem;">
                                         Punto ${i}: ${this.escapeHtml(og)}
                                     </div>
-                                    ${isRendiconto ? `<span style="font-size: 0.76rem; background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 8px; border-radius: 6px; font-weight: 600;">Esercizio Chiuso: ${dataChiusuraFmt}</span>` : ''}
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        ${isRendiconto ? `<span style="font-size: 0.76rem; background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 8px; border-radius: 6px; font-weight: 600;">Esercizio Chiuso: ${dataChiusuraFmt}</span>` : ''}
+                                        ${i >= 3 ? `
+                                            <button type="button" class="btn btn-outline" 
+                                                style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); padding: 3px 8px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px;" 
+                                                onclick="app.removeVerbalePuntoOdg(${i})" 
+                                                title="Elimina questo punto dall'ordine del giorno e dalla discussione">
+                                                <span style="font-size: 1rem; line-height: 1; font-weight: 700;">&times;</span> Elimina Punto ${i}
+                                            </button>
+                                        ` : ''}
+                                    </div>
                                 </div>
                                 ${isRendiconto ? `
                                     <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem;">
@@ -20377,10 +20597,15 @@ ${r.annullata ? `
                             <small style="display: block; color: #94a3b8; font-size: 0.74rem;">Compila la discussione per ciascun punto. I riferimenti, le date e le delibere sono completamente personalizzabili.</small>
                         </div>
                         ${puntiDelibereHtml}
+                        <div style="margin-bottom: 1.2rem;">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; display: inline-flex; align-items: center; gap: 6px;" onclick="app.updateVerbalePuntiOdg(1)">
+                                <span>➕</span> Aggiungi un altro punto all'ODG
+                            </button>
+                        </div>
                         <!-- Chiusura della Seduta -->
                         <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 1.2rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                                <label style="font-size: 0.88rem; font-weight: 700; color: var(--primary); margin: 0;">
+                                <label style="font-size: 0.88rem; font-weight: 700; color: var(--primary); margin-0;">
                                     🏁 Chiusura della Seduta
                                 </label>
                                 <div style="display: flex; gap: 6px;">
@@ -20399,15 +20624,24 @@ ${r.annullata ? `
                             <textarea id="wz-testo_chiusura" class="form-control" rows="2" style="font-size: 0.88rem; line-height: 1.5;">${this.escapeHtml(testoChiusura)}</textarea>
                         </div>
                         <!-- Box Firme -->
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 0.5rem; display: flex; justify-content: space-around; text-align: center;">
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 0.5rem; display: flex; justify-content: space-around; text-align: center; flex-wrap: wrap; gap: 12px;">
                             <div>
                                 <span style="font-size: 0.82rem; color: #94a3b8; display:block; margin-bottom: 4px;">Il Presidente</span>
                                 <strong style="color: #fff; font-size: 0.95rem;">${this.escapeHtml(d.presidente || 'Pintus Silverio')}</strong>
                             </div>
+                            ${d.vicepresidente ? `
+                            <div>
+                                <span style="font-size: 0.82rem; color: #94a3b8; display:block; margin-bottom: 4px;">Il Vicepresidente</span>
+                                <strong style="color: #fff; font-size: 0.95rem;">${this.escapeHtml(d.vicepresidente)}</strong>
+                            </div>` : ''}
                             <div>
                                 <span style="font-size: 0.82rem; color: #94a3b8; display:block; margin-bottom: 4px;">Il Segretario</span>
                                 <strong style="color: #fff; font-size: 0.95rem;">${this.escapeHtml(d.segretario || 'Boccone Serafino')}</strong>
                             </div>
+                            ${Array.isArray(d.partecipanti_direttivo) && d.partecipanti_direttivo.filter(Boolean).length > 0 ? `
+                            <div style="width: 100%; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; margin-top: 4px; font-size: 0.82rem; color: #94a3b8;">
+                                Consiglieri del Direttivo: <strong style="color: #e2e8f0;">${d.partecipanti_direttivo.filter(Boolean).map(x => this.escapeHtml(x)).join(', ')}</strong>
+                            </div>` : ''}
                         </div>
                     `;
                 }
@@ -21177,6 +21411,62 @@ ${r.annullata ? `
                     `;
                 }
 
+                const consiglieriList = (Array.isArray(d.partecipanti_direttivo) ? d.partecipanti_direttivo : (d.altri_partecipanti_direttivo || '').split(',')).map(x => (x || '').trim()).filter(Boolean);
+                let consiglieriGridHtml = '';
+                if (consiglieriList.length > 0) {
+                    let items = '';
+                    for (let c of consiglieriList) {
+                        items += `
+                            <div style="text-align: center; margin-top: 22px;">
+                                <p style="margin: 0 0 45px 0; font-weight: 600; font-size: 0.85rem;">Consigliere</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(c)}</div>
+                            </div>
+                        `;
+                    }
+                    consiglieriGridHtml = `
+                        <div style="margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                            <p style="font-weight: 700; font-size: 0.85rem; margin-bottom: 10px; color: #334155;">I Componenti del Direttivo intervenuti per approvazione:</p>
+                            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px 35px;">
+                                ${items}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const hasVice = !!(d.vicepresidente && d.vicepresidente.trim());
+                let mainFirmeHtml = '';
+                if (hasVice) {
+                    mainFirmeHtml = `
+                        <div style="display: flex; justify-content: space-around; margin-top: 55px; padding: 0 15px; flex-wrap: wrap; gap: 20px;">
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Presidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
+                            </div>
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Vicepresidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.vicepresidente || '')}</div>
+                            </div>
+                            <div style="text-align: center; min-width: 150px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Segretario</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 160px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    mainFirmeHtml = `
+                        <div style="display: flex; justify-content: space-between; margin-top: 55px; padding: 0 35px;">
+                            <div style="text-align: center; min-width: 160px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Presidente</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
+                            </div>
+                            <div style="text-align: center; min-width: 160px;">
+                                <p style="margin: 0 0 50px 0; font-weight: 600;">Il Segretario</p>
+                                <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 docHtml = `
                     <!-- Intestazione Formale Carta Intestata (in alto a sinistra) -->
                     <div style="margin-bottom: 24px; line-height: 1.4; font-size: 0.92rem; color: #1e293b;">
@@ -21222,16 +21512,8 @@ ${r.annullata ? `
                     </p>
 
                     <!-- Firme in Calce -->
-                    <div style="display: flex; justify-content: space-between; margin-top: 55px; padding: 0 35px;">
-                        <div style="text-align: center; min-width: 160px;">
-                            <p style="margin: 0 0 50px 0; font-weight: 600;">Il Presidente</p>
-                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.presidente || '')}</div>
-                        </div>
-                        <div style="text-align: center; min-width: 160px;">
-                            <p style="margin: 0 0 50px 0; font-weight: 600;">Il Segretario</p>
-                            <div style="border-top: 1px dotted #0f172a; width: 180px; margin: 0 auto; padding-top: 4px; font-size: 0.85rem;">${this.escapeHtml(d.segretario || '')}</div>
-                        </div>
-                    </div>
+                    ${mainFirmeHtml}
+                    ${consiglieriGridHtml}
                 `;            } else {
                 const calls = parseInt(d.num_convocazioni || 1, 10);
                 const isSeconda = calls >= 2;
