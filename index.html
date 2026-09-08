@@ -1721,7 +1721,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.7";
+        const APP_VERSION = "2.5.8";
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -19021,10 +19021,12 @@ ${r.annullata ? `
             return ordinali[n] || `${n}°`;
         },
 
-        formatDataItaliano(isoStr, esteso = false) {            if (!isoStr) return '__/__/____';
+        formatDataItaliano(isoStr, esteso = false) {
+            if (!isoStr) return '__/__/____';
             const parts = String(isoStr).split('-');
             if (parts.length !== 3) return isoStr;
-            const anno = parts[0];
+            const parsedYear = parseInt(parts[0], 10);
+            const anno = (parts[0].length === 4 && !isNaN(parsedYear) && parsedYear >= 1900) ? parts[0] : String(new Date().getFullYear());
             const meseIdx = parseInt(parts[1], 10) - 1;
             const giorno = parseInt(parts[2], 10);
             const mesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
@@ -19046,6 +19048,42 @@ ${r.annullata ? `
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         },
 
+        onVerbaleDataSedutaChange(newDate, field = 'data_seduta') {
+            const d = this.state.verbale_wizard_data || {};
+            d[field] = newDate;
+            if (field === 'data_seduta') {
+                d.data_c1 = newDate;
+            } else if (field === 'data_c1') {
+                d.data_seduta = newDate;
+            }
+            if (!newDate) return;
+            const parts = newDate.split('-');
+            // Aggiorna la formula di apertura in tempo reale se è stato digitato un anno a 4 cifre valido
+            if (parts.length === 3 && parts[0].length === 4 && parseInt(parts[0], 10) >= 1900) {
+                const type = this.state.verbale_wizard_type || 'direttivo';
+                const txtEl = document.getElementById('wz-testo_apertura');
+                if (txtEl) {
+                    const tmpl = this.getStandardVerbaleTemplate(type, 'testo_apertura');
+                    const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                    txtEl.value = resolved;
+                    d.testo_apertura = resolved;
+                }
+            }
+        },
+
+        onVerbaleLuogoChange(val) {
+            const d = this.state.verbale_wizard_data || {};
+            d.luogo = val;
+            const type = this.state.verbale_wizard_type || 'direttivo';
+            const txtEl = document.getElementById('wz-testo_apertura');
+            if (txtEl) {
+                const tmpl = this.getStandardVerbaleTemplate(type, 'testo_apertura');
+                const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                txtEl.value = resolved;
+                d.testo_apertura = resolved;
+            }
+        },
+
         onVerbaleTimeChange(fieldId, val) {
             if (!val) return;
             const d = this.state.verbale_wizard_data || {};
@@ -19058,6 +19096,31 @@ ${r.annullata ? `
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
+                    const txtEl = document.getElementById('wz-testo_apertura');
+                    if (txtEl) {
+                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_apertura');
+                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                        txtEl.value = resolved;
+                        d.testo_apertura = resolved;
+                    }
+                } else if (fieldId === 'ora_inizio_lavori') {
+                    d.ora_inizio_lavori = val;
+                    const presEl = document.getElementById('wz-testo_presidenza');
+                    if (presEl) {
+                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_presidenza');
+                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                        presEl.value = resolved;
+                        d.testo_presidenza = resolved;
+                    }
+                } else if (fieldId === 'ora_chiusura') {
+                    d.ora_chiusura = val;
+                    const chiusEl = document.getElementById('wz-testo_chiusura');
+                    if (chiusEl) {
+                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_chiusura');
+                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                        chiusEl.value = resolved;
+                        d.testo_chiusura = resolved;
+                    }
                 }
             } else {
                 // Assemblea Ordinaria o Straordinaria
@@ -19081,9 +19144,19 @@ ${r.annullata ? `
                     d.ora_inizio_lavori = this.addMinutiOrario(val, 15);
                     d.ora_chiusura = this.addMinutiOrario(val, 90);
                 } else if (fieldId === 'ora_inizio_lavori') {
+                    d.ora_inizio_lavori = val;
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
+                } else if (fieldId === 'ora_chiusura') {
+                    d.ora_chiusura = val;
+                    const chiusEl = document.getElementById('wz-testo_chiusura');
+                    if (chiusEl) {
+                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_chiusura');
+                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                        chiusEl.value = resolved;
+                        d.testo_chiusura = resolved;
+                    }
                 }
             }
         },
@@ -19609,9 +19682,10 @@ ${r.annullata ? `
             const dataSedutaEstesa = this.formatDataItaliano(dateVal, true);
             const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || `${new Date().getFullYear()}-08-31`);
             const dateObj = dateVal ? new Date(dateVal) : new Date();
-            const anno = dateObj.getFullYear();
             const parts = String(dateVal).split('-');
-            const giornoNum = parts.length === 3 ? parseInt(parts[2], 10) : dateObj.getDate();
+            const parsedYear = parseInt(parts[0], 10);
+            const anno = (parts.length === 3 && parts[0].length === 4 && !isNaN(parsedYear) && parsedYear >= 1900) ? parts[0] : String(new Date().getFullYear());
+            const giornoNum = (parts.length === 3 && !isNaN(parseInt(parts[2], 10))) ? parseInt(parts[2], 10) : new Date().getDate();
             const mesiList = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
             const meseNome = parts.length === 3 ? mesiList[parseInt(parts[1], 10) - 1] : mesiList[dateObj.getMonth()];
             const giornoMeseLettere = `${giornoNum} del mese di ${meseNome || ''}`;            const calls = parseInt(d.num_convocazioni || 1, 10);
@@ -19945,7 +20019,8 @@ ${r.annullata ? `
             const presName = this.resolveSocioNome(s.presidente, 'Pintus Silverio');
             const secName = this.resolveSocioNome(s.segretario, 'Boccone Serafino');
             const viceName = this.resolveSocioNome(s.vice_presidente, '');
-            const todayIso = new Date().toISOString().split('T')[0];
+            const nowObj = new Date();
+            const todayIso = `${nowObj.getFullYear()}-${String(nowObj.getMonth() + 1).padStart(2, '0')}-${String(nowObj.getDate()).padStart(2, '0')}`;
 
             if (editId) {
                 const item = (this.state.verbali_archive || []).find(x => String(x.id) === String(editId));
@@ -20100,16 +20175,16 @@ ${r.annullata ? `
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Data della Riunione</label>
-                                    <input type="date" id="wz-data_seduta" class="form-control" value="${d.data_seduta || ''}" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                    <input type="date" id="wz-data_seduta" class="form-control" value="${d.data_seduta || ''}" oninput="app.onVerbaleDataSedutaChange(this.value)" onchange="app.onVerbaleDataSedutaChange(this.value)">
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Ora di Convocazione</label>
-                                    <input type="time" id="wz-ora_seduta" class="form-control" value="${d.ora_seduta || '20:00'}" onchange="app.onVerbaleTimeChange('ora_seduta', this.value); app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                    <input type="time" id="wz-ora_seduta" class="form-control" value="${d.ora_seduta || '20:00'}" oninput="app.onVerbaleTimeChange('ora_seduta', this.value)" onchange="app.onVerbaleTimeChange('ora_seduta', this.value)">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Luogo della Seduta</label>
-                                <input type="text" id="wz-luogo" class="form-control" value="${d.luogo || 'presso la sede della Associazione in epigrafe indicata'}" placeholder="es. presso la sede della Associazione in epigrafe indicata" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                <input type="text" id="wz-luogo" class="form-control" value="${d.luogo || 'presso la sede della Associazione in epigrafe indicata'}" placeholder="es. presso la sede della Associazione in epigrafe indicata" oninput="app.onVerbaleLuogoChange(this.value)" onchange="app.onVerbaleLuogoChange(this.value)">
                             </div>
                         </div>
 
@@ -20194,7 +20269,7 @@ ${r.annullata ? `
                                 </div>
                                 <div class="form-group">
                                     <label style="font-weight: 600; display:block; margin-bottom: 4px; font-size: 0.85rem;">Ora Apertura Lavori</label>
-                                    <input type="time" id="wz-ora_inizio_lavori" class="form-control" value="${defaultOraApertura}" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                    <input type="time" id="wz-ora_inizio_lavori" class="form-control" value="${defaultOraApertura}" oninput="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)" onchange="app.onVerbaleTimeChange('ora_inizio_lavori', this.value)">
                                     <small style="color: #94a3b8; font-size: 0.72rem; display: block; margin-top: 3px;">Preimpostata a +5 min dall'ora di convocazione.</small>
                                 </div>
                             </div>
@@ -20319,7 +20394,7 @@ ${r.annullata ? `
                             </div>
                             <div class="form-group" style="margin-bottom: 10px;">
                                 <label style="font-size: 0.84rem; font-weight: 600; color: #cbd5e1; display:block; margin-bottom: 3px;">Ora di Chiusura Lavori</label>
-                                <input type="time" id="wz-ora_chiusura" class="form-control" style="max-width: 180px;" value="${d.ora_chiusura || '21:00'}" onchange="app.saveVerbaleWizardStep(); app.renderVerbali();">
+                                <input type="time" id="wz-ora_chiusura" class="form-control" style="max-width: 180px;" value="${d.ora_chiusura || '21:00'}" oninput="app.onVerbaleTimeChange('ora_chiusura', this.value)" onchange="app.onVerbaleTimeChange('ora_chiusura', this.value)">
                             </div>
                             <textarea id="wz-testo_chiusura" class="form-control" rows="2" style="font-size: 0.88rem; line-height: 1.5;">${this.escapeHtml(testoChiusura)}</textarea>
                         </div>
