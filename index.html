@@ -5747,6 +5747,12 @@
                     } else {
                         displayMetodo = `💵 Contanti`;
                     }
+
+                    const s = (this.state.soci || []).find(x => x.id == r.socio_id || String(x.id) === String(r.socio_id));
+                    const socioEmail = (s ? s.email : r.email) || '';
+                    const socioTel = (s ? (s.tel || s.telefono || s.cellulare) : r.tel) || '';
+                    const hasEmail = Boolean(socioEmail && socioEmail.trim() !== '');
+                    const hasTel = Boolean(socioTel && String(socioTel).trim() !== '');
                     
                     return `
                     <tr id="receipt-row-${r.id}" data-id="${r.id}">
@@ -5759,8 +5765,10 @@
                         <td><span style="color: ${r.cartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${r.cartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Salva PDF">💾 PDF</button>
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Stampa">🖨️</button>
+                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Salva PDF (Archiviato automaticamente in cartella ricevute)">💾 PDF</button>
+                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Ricevuta già emessa (già consegnata / in archivio)">🖨️</button>
+                                <button class="btn btn-outline" style="padding: 5px 8px; ${hasEmail ? 'color: var(--primary); border-color: rgba(59,130,246,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptEmail('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasEmail ? 'Invia dettaglio ricevuta via Email a ' + socioEmail : 'Indirizzo Email socio non presente'}">📧</button>
+                                <button class="btn btn-outline" style="padding: 5px 8px; ${hasTel ? 'color: #10b981; border-color: rgba(16,185,129,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptWhatsApp('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Numero di telefono socio non presente'}">💬</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
                                     <button class="btn btn-outline" style="padding: 5px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" title="Sposta questa e tutte le successive di N posizioni (+1 / -1)" onclick="app.openShiftRicevuteModal('${r.id}')">⏩</button>
@@ -7941,6 +7949,40 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
             pw.document.close();
             pw.focus();
             setTimeout(() => pw.print(), 600);
+        },
+
+        sendReceiptEmail(receiptId) {
+            const r = this.state.ricevute.find(x => x.id == receiptId || String(x.id) === String(receiptId));
+            if (!r) return;
+            const s = (this.state.soci || []).find(x => x.id == r.socio_id || String(x.id) === String(r.socio_id));
+            const email = s ? s.email : r.email;
+            if (!email || email.trim() === '') {
+                this.toast("Nessun indirizzo email registrato per questo socio!", "warning");
+                return;
+            }
+            const asdName = this.state.settings?.asdName || 'ASD';
+            const subject = encodeURIComponent(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} - ${asdName}`);
+            const body = encodeURIComponent(`Gentile ${s ? `${s.nome} ${s.cognome}` : r.socio_nome},\n\nTi inviamo i dettagli della Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} del ${app.formatDate(r.data)}:\n\n• Causale: ${r.tipo}${r.note ? ' - ' + r.note : ''}\n• Importo: € ${parseFloat(r.importo).toFixed(2)}\n• Metodo Pagamento: ${r.metodo_pagamento || r.pagamento || 'Contanti'}\n\nNota: Il documento PDF originale è conservato nell'archivio dell'associazione.\n\nCordiali saluti,\n${asdName}`);
+            
+            window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
+            this.toast("Apertura client email in corso...");
+        },
+
+        sendReceiptWhatsApp(receiptId) {
+            const r = this.state.ricevute.find(x => x.id == receiptId || String(x.id) === String(receiptId));
+            if (!r) return;
+            const s = (this.state.soci || []).find(x => x.id == r.socio_id || String(x.id) === String(r.socio_id));
+            const tel = s ? (s.tel || s.telefono || s.cellulare) : r.tel;
+            if (!tel || String(tel).trim() === '') {
+                this.toast("Nessun numero di telefono salvato per questo socio!", "warning");
+                return;
+            }
+            const asdName = this.state.settings?.asdName || 'ASD';
+            const text = encodeURIComponent(`Ciao ${s ? s.nome : r.socio_nome}, ti inviamo il riepilogo della Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} del ${app.formatDate(r.data)} emessa da ${asdName}:\n• Causale: ${r.tipo}${r.note ? ' - ' + r.note : ''}\n• Importo: €${parseFloat(r.importo).toFixed(2)}\n• Metodo Pagamento: ${r.metodo_pagamento || r.pagamento || 'Contanti'}\n\nGrazie e cordiali saluti!`);
+            const cleanTel = String(tel).replace(/\D/g, '');
+            const prefix = cleanTel.indexOf('39') === 0 ? '' : '39';
+            window.open(`https://wa.me/${prefix}${cleanTel}?text=${text}`, '_blank');
+            this.toast("Apertura WhatsApp in corso...");
         },
 
         toggleFullscreen() {
