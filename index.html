@@ -7889,7 +7889,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const sportsYear = this.getSportsYear(r.anno || r.data);
             const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
             const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
-            const fileName = `R_${dateStr}_N${r.numero}_${safeName}.pdf`;
+            const numStr = String(r.numero).padStart(2, '0');
+            const fileName = `R_N${numStr}_${dateStr}_${safeName}.pdf`;
             this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
 
             r.salvata_in_cartella = true;
@@ -7953,8 +7954,11 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                 const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
                 const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+                const numStr = String(r.numero).padStart(2, '0');
 
                 const candidateNames = [
+                    `R_N${numStr}_${dateStr}_${safeName}.pdf`,
+                    `R_N${r.numero}_${dateStr}_${safeName}.pdf`,
                     `R_${dateStr}_N${r.numero}_${safeName}.pdf`,
                     `ricevuta_${dateStr}_N${r.numero}_${safeName}.pdf`,
                     `ricevuta_${r.numero}_${r.anno}_${(r.socio_nome || '').replace(/\s+/g, '_')}.pdf`
