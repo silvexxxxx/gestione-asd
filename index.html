@@ -7894,6 +7894,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             r.salvata_in_cartella = true;
             this.saveAll();
+            if (this.state.currentPage === 'ricevute' && document.getElementById('receipts-tbody')) {
+                this.filterRicevute();
+            }
             this.toast(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} salvata nella cartella ricevute!`, "success");
         },
 
@@ -23507,6 +23510,12 @@ window.loadAndApplyLogo = function(placeholder, imgEl) {
 // Auto-inizializzazione
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initAppLogo, 100);
+});
+
+window.addEventListener('focus', () => {
+    if (typeof app !== 'undefined' && app.state && app.state.currentPage === 'ricevute') {
+        app.syncReceiptsFolderStatus();
+    }
 });
 
 // ============================================================
