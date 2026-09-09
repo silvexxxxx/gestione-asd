@@ -4658,13 +4658,19 @@
                         break;
                     case 'istruttori':
                         html = `<h2>5. Istruttori, Collaboratori & Compensi Sportivi</h2>
-                                <p>Gestisci l'anagrafica dei tecnici, i compensi per lavoro sportivo e i relativi adempimenti della Riforma dello Sport.</p>
+                                <p>Gestisci l'anagrafica dei tecnici, i compensi per lavoro sportivo dilettantistico e i relativi adempimenti della Riforma dello Sport.</p>
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
-                                    <li><strong>Contratti & Rifornimento Riforma dello Sport:</strong> Gestione delle soglie di esenzione fiscale ed INPS secondo la normativa vigente (D.Lgs. 36/2021).</li>
+                                    <li><strong>Gestione Fascia di Esenzione (Fino a € 5.000/anno):</strong> Modulo progettato per i compensi sportivi dilettantistici rientranti nella soglia di esenzione totale previdenziale e fiscale.</li>
                                     <li><strong>Generazione Ricevute Compensi PDF:</strong> Stampa automatica delle ricevute compenso con la clausola di esenzione e ritenuta d'acconto ove applicabile.</li>
                                     <li><strong>Rimborsi Spese & Liberatorie:</strong> Modulistica integrata per rimborsi chilometrici, trasferte e liberatorie per uso immagini o diritti televisivi.</li>
-                                </ul>`;
+                                </ul>
+                                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px 14px; margin-top: 15px; font-size: 0.85rem; line-height: 1.45;">
+                                    ⚠️ <strong>Note Importanti & Limiti Operativi (D.Lgs. 36/2021):</strong><br>
+                                    <strong>• Perimetro di Competenza:</strong> Il modulo collaboratori e le ricevute sono calibrati per compensi fino alla soglia di esenzione totale di <strong>5.000 € annui per percipiente</strong>.<br>
+                                    <strong>• Esclusione Adempimenti Sostituto d'Imposta:</strong> Il software <u>non gestisce</u> il calcolo, la trattenuta ed i versamenti per INPS Gestione Separata (fascia 5.000€–15.000€), IRPEF (oltre 15.000€), né la generazione dei modelli F24 o della Certificazione Unica (CU).<br>
+                                    <strong>• Target:</strong> Ideale per ASD/SSD di piccole/medie dimensioni con istruttori a rimborso o sotto la soglia di esenzione. Per compensi superiori, il gestionale richiede il supporto diretto del commercialista o di un software paghe dedicato.
+                                </div>`;
                         break;
                     case 'corsi':
                         html = `<h2>6. Programmazione Corsi & Calendario Settimanale</h2>
@@ -16652,6 +16658,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </button>
                                 <button class="btn btn-primary" onclick="app.openAddIstruttoreModal()" data-guide="Aggiungi un nuovo istruttore allo staff per poterlo assegnare ai corsi.">+ Aggiungi Istruttore</button>
                             </div>
+                        </div>
+
+                        <!-- Banner Trasparente Limiti Operativi D.Lgs. 36/2021 -->
+                        <div style="background: rgba(245, 158, 11, 0.07); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 1.2rem; font-size: 0.83rem; line-height: 1.45;">
+                            ⚠️ <strong>Ambito di Operatività Modulo Collaboratori (D.Lgs. 36/2021):</strong><br>
+                            Questo modulo e le relative ricevute compenso sono progettati per compensi sportivi dilettantistici rientranti nella <strong>soglia di esenzione totale (fino a € 5.000,00 annui per percipiente)</strong>.<br>
+                            <span style="color: #fde68a;">Il software non svolge adempimenti da Sostituto d'Imposta (trattenute INPS Gestione Separata 5.000€–15.000€, IRPEF oltre 15.000€, F24 e Certificazione Unica CU). Per collaboratori con compensi superiori alla soglia di esenzione, affidarsi direttamente al commercialista o consulente del lavoro.</span>
                         </div>
 
                         <div class="glass-card member-card">
