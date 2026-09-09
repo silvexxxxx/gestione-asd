@@ -19206,6 +19206,7 @@ ${r.annullata ? `
                     }
                     this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_c2') {
+                    d._user_changed_eff_inizio = false;
                     d.ora_inizio_lavori = this.addMinutiOrario(val, 15);
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elInizio = document.getElementById('wz-ora_inizio_lavori');
@@ -22167,7 +22168,9 @@ ${r.annullata ? `
                     </style>
                 </head>
                 <body>
-                    ${sheet.innerHTML}
+                    <div style="max-width: 170mm; margin: 0 auto; font-family: 'Inter', sans-serif; font-size: 10pt;">
+                        ${sheet.innerHTML}
+                    </div>
                 </body>
                 </html>
             `);
@@ -22185,6 +22188,8 @@ ${r.annullata ? `
             const d = this.state.verbale_wizard_data || {};
             const type = this.state.verbale_wizard_type || 'direttivo';
             const sportsYear = d.anno_sportivo || (this.getSportsYear ? this.getSportsYear() : '');
+            const sportsYearFS = (d.anno_sportivo || sportsYear).replace(/[/\-]/g, '_').trim();
+            const fsCategory = type === 'direttivo' ? 'verbali direttivo' : 'assemblee';
             const s = this.state.settings || {};
 
             const typeLabel = type === 'direttivo' ? 'Verbale_Direttivo' : (type === 'straordinaria' ? 'Verbale_Assemblea_Straordinaria' : 'Verbale_Assemblea_Ordinaria');
@@ -22307,10 +22312,10 @@ ${r.annullata ? `
                     const curYear = (d.anno_sportivo && d.anno_sportivo.includes('/')) ? d.anno_sportivo.split('/')[1] : new Date().getFullYear();
                     const dataChiusuraFmt = this.formatDataItaliano(d.data_chiusura || (`${curYear}-08-31`));
 
-                    const testoApertura = this.getVerbaleText('testo_apertura');
-                    const testoPresidenza = this.getVerbaleText('testo_presidenza');
-                    const testoRito = this.getVerbaleText('testo_rito');
-                    const testoChiusura = this.getVerbaleText('testo_chiusura');
+                    const testoApertura = d.testo_apertura || this.getVerbaleText('testo_apertura');
+                    const testoPresidenza = d.testo_presidenza || this.getVerbaleText('testo_presidenza');
+                    const testoRito = d.testo_rito || this.getVerbaleText('testo_rito');
+                    const testoChiusura = d.testo_chiusura || this.getVerbaleText('testo_chiusura');
 
                     writeParagraph(testoApertura);
 
@@ -22505,8 +22510,8 @@ ${r.annullata ? `
                 }
 
                 const blob = doc.output('blob');
-                await this.saveDocumentFS(fileName, blob, 'assemblee', sportsYear);
-                this.toast(`✅ Verbale esportato in PDF e archiviato in "assemblee" (${fileName})`, 'success');
+                await this.saveDocumentFS(fileName, blob, fsCategory, sportsYearFS);
+                this.toast(`✅ Verbale esportato in PDF e archiviato in "${fsCategory}" (${fileName})`, 'success');
 
                 this.saveVerbaleToArchive(true);
 
@@ -22536,7 +22541,9 @@ ${r.annullata ? `
             const typeLabels = {
                 direttivo: `Consiglio Direttivo ${this.formatDataItaliano(d.data_seduta)}`,
                 ordinaria: `Assemblea Ordinaria ${sportsYear}`,
-                straordinaria: `Assemblea Straordinaria ${sportsYear}`
+                straordinaria: `Assemblea Straordinaria ${sportsYear}`,
+                assemblea_ord: `Assemblea Ordinaria ${sportsYear}`,
+                assemblea_straord: `Assemblea Straordinaria ${sportsYear}`
             };
 
             const record = {
