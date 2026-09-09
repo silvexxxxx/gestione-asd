@@ -5487,6 +5487,7 @@
             },
 
             renderRicevute(preserveState = true, highlightId = null) {
+                this.syncReceiptsFolderStatus();
                 const main = document.getElementById('main-content');
                 const tbody = document.getElementById('receipts-tbody');
                 const tableContainer = tbody ? tbody.closest('.table-container') : (document.querySelector('#main-content .table-container') || document.querySelector('.table-container'));
@@ -7888,7 +7889,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const sportsYear = this.getSportsYear(r.anno || r.data);
             const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
             const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
-            const fileName = `ricevuta_${dateStr}_N${r.numero}_${safeName}.pdf`;
+            const fileName = `R_${dateStr}_N${r.numero}_${safeName}.pdf`;
             this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
 
             r.salvata_in_cartella = true;
@@ -7896,7 +7897,82 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.toast(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} salvata nella cartella ricevute!`, "success");
         },
 
+        async syncReceiptsFolderStatus() {
+            if (this._syncingFolderStatus) return;
+            this._syncingFolderStatus = true;
+            try {
+                const dirHandle = await this.getOutputFolder();
+                if (!dirHandle) return;
+
+                let perm = await dirHandle.queryPermission({ mode: 'read' });
+                if (perm !== 'granted') return;
+
+                let changedCount = 0;
+                const list = (this.state.ricevute || []).filter(r => 
+                    r.tipo !== 'Compenso Sportivo' && 
+                    !(r.cartacea === true || String(r.cartacea) === 'true')
+                );
+
+                for (const r of list) {
+                    const exists = await this.checkReceiptFileExists(r, dirHandle);
+                    if (Boolean(r.salvata_in_cartella) !== exists) {
+                        r.salvata_in_cartella = exists;
+                        changedCount++;
+                    }
+                }
+
+                if (changedCount > 0) {
+                    this.saveAll();
+                    if (this.state.currentPage === 'ricevute') {
+                        this.filterRicevute();
+                    }
+                }
+            } catch(e) {
+                console.log("Controllo dinamico cartella ricevute:", e);
+            } finally {
+                this._syncingFolderStatus = false;
+            }
+        },
+
+        async checkReceiptFileExists(r, dirHandleParam = null) {
+            try {
+                const dirHandle = dirHandleParam || await this.getOutputFolder();
+                if (!dirHandle) return false;
+
+                const sportsYear = this.getSportsYear(r.anno || r.data);
+                let yearDir, catDir;
+                try {
+                    yearDir = await dirHandle.getDirectoryHandle('anno ' + sportsYear, { create: false });
+                    catDir = await yearDir.getDirectoryHandle('ricevute', { create: false });
+                } catch(e) {
+                    return false;
+                }
+
+                const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
+                const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+
+                const candidateNames = [
+                    `R_${dateStr}_N${r.numero}_${safeName}.pdf`,
+                    `ricevuta_${dateStr}_N${r.numero}_${safeName}.pdf`,
+                    `ricevuta_${r.numero}_${r.anno}_${(r.socio_nome || '').replace(/\s+/g, '_')}.pdf`
+                ];
+
+                for (const name of candidateNames) {
+                    try {
+                        await catDir.getFileHandle(name, { create: false });
+                        return true;
+                    } catch(err) {
+                        // continua il controllo
+                    }
+                }
+                return false;
+            } catch(e) {
+                return false;
+            }
+        },
+
         async generaPDFMancantiCartella() {
+            await this.syncReceiptsFolderStatus();
             const digitaliUnsaved = (this.state.ricevute || []).filter(r => 
                 r.tipo !== 'Compenso Sportivo' && 
                 !(r.cartacea === true || String(r.cartacea) === 'true') && 
