@@ -4573,21 +4573,25 @@
                     <div class="page-content" style="height: 100%; display: flex; flex-direction: column;">
                         <div class="page-header" style="flex-shrink: 0;">
                             <div class="header-title">
-                                <h1>📖 Manuale Utente</h1>
-                                <p>Guida completa all'utilizzo del gestionale.</p>
+                                <h1>📖 Manuale Utente & Guida Contestuale</h1>
+                                <p>Manuale completo e documentazione operativa di tutte le funzionalità del Gestionale ASD.</p>
                             </div>
                         </div>
                         <div style="display: flex; gap: 1.5rem; flex: 1; min-height: 0;">
                             <!-- Indice a sinistra -->
-                            <div class="glass-card" style="width: 250px; overflow-y: auto; padding: 1rem;">
-                                <h3 style="margin-bottom: 1rem; font-size: 1rem;">Indice Argomenti</h3>
-                                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem;" id="guide-index">
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start;" onclick="app.showGuideSection('intro')">1. Introduzione</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start;" onclick="app.showGuideSection('soci')">2. Anagrafica Soci</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start;" onclick="app.showGuideSection('ricevute')">3. Ricevute e Quote</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start;" onclick="app.showGuideSection('corsi')">4. Gestione Corsi</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start;" onclick="app.showGuideSection('impostazioni')">5. Impostazioni</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start;" onclick="app.showGuideSection('verbali')">6. Verbali & Direttivo</button></li>
+                            <div class="glass-card" style="width: 270px; flex-shrink: 0; overflow-y: auto; padding: 1rem;">
+                                <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--primary);">Indice Argomenti</h3>
+                                <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem;" id="guide-index">
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('intro')">1. Introduzione & Privacy</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('soci')">2. Anagrafica Soci & Atleti</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('ricevute')">3. Ricevute & Quote Associative</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('primanota')">4. Prima Nota & Chiusura Esercizio</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('istruttori')">5. Istruttori & Compensi Sportivi</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('corsi')">6. Corsi & Calendario Settimanale</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('segreteria')">7. Segreteria, Magazzino & Eventi</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('verbali')">8. Governance, Verbali & Direttivo</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Cariche</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Excel</button></li>
                                 </ul>
                             </div>
                             
@@ -4608,72 +4612,106 @@
                 let html = '';
                 switch (section) {
                     case 'intro':
-                        html = `<h2>Benvenuto nel Gestionale ASD</h2>
-                                <p>Questo software è progettato per semplificare la gestione della tua Associazione Sportiva Dilettantistica.</p>
-                                <h3>Funzionalità Principali:</h3>
+                        html = `<h2>1. Introduzione & Architettura Local-First</h2>
+                                <p><strong>Gestionale ASD</strong> è il software professionale sviluppato su misura per le esigenze gestionali, fiscali e legali delle <strong>Associazioni Sportive Dilettantistiche (ASD)</strong> e <strong>Società Sportive Dilettantistiche (SSD)</strong>.</p>
+                                <h3>Punti di Forza Architetturali:</h3>
                                 <ul>
-                                    <li>Gestione completa degli iscritti e delle scadenze (certificati medici e quote).</li>
-                                    <li>Generazione automatica di ricevute e tracciamento in Prima Nota.</li>
-                                    <li>Calendario corsi, sale e assegnazione istruttori.</li>
+                                    <li><strong>Privacy 100% Locale (Zero Cloud):</strong> Tutti i dati della tua associazione (anagrafiche, ricevute, movimenti contabili e verbali) risiedono esclusivamente sul tuo computer. Nessun server esterno, nessun abbonamento obbligatorio e massima conformità al GDPR.</li>
+                                    <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando una cartella locale nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, prima nota, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
+                                    <li><strong>Integrazione Riforma dello Sport (D.Lgs. 36/2021 & RASD):</strong> Conforme alle nuove normative in materia di tesseramento, compensi lavoro sportivo, esenzioni INPS/IRPEF e rendicontazione per il Registro Nazionale delle Attività Sportive Dilettantistiche (RASD).</li>
                                 </ul>
-                                <div class="soglie" style="margin-top:20px;"><strong>Tip:</strong> Puoi attivare la <em>Modalità Guida</em> nelle Impostazioni per avere dei suggerimenti a comparsa su ogni pulsante dell'applicazione.</div>`;
+                                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Modalità Guida:</strong> Attivando la <em>Modalità Guida</em> dall'intestazione, ogni pulsante dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse.</div>`;
                         break;
                     case 'soci':
-                        html = `<h2>Anagrafica Soci</h2>
-                                <p>La sezione "Anagrafica Soci" contiene tutti gli iscritti alla tua associazione.</p>
-                                <h3>Aggiungere un socio:</h3>
-                                <p>Clicca sul pulsante "+ Aggiungi Socio". Inserisci i dati. Il Codice Fiscale viene calcolato automaticamente in base a nome, cognome, sesso, data e luogo di nascita.</p>
-                                <h3>Gestione Stati:</h3>
+                        html = `<h2>2. Anagrafica Soci & Atleti</h2>
+                                <p>Gestisci l'elenco completo degli iscritti, i tesseramenti EPS/FSN, i certificati medici e le discipline praticate.</p>
+                                <h3>Funzionalità Chiave:</h3>
                                 <ul>
-                                    <li><strong>Attivo:</strong> Socio regolarmente iscritto.</li>
-                                    <li><strong>Moroso:</strong> Socio che frequenta ma non è in regola con i pagamenti. (Da assegnare manualmente)</li>
-                                    <li><strong>Cessato:</strong> Socio che ha abbandonato o non ha rinnovato il tesseramento.</li>
-                                </ul>
-                                <h3>Filtri:</h3>
-                                <p>Puoi filtrare i soci tramite l'apposito menu a tendina. I filtri "Quote Scadute" e "Tess. Scaduti" trovano dinamicamente chi non è in regola, a prescindere dallo stato manuale.</p>`;
+                                    <li><strong>Calcolo Automatico Codice Fiscale:</strong> Inserendo Cognome, Nome, Data, Sesso e Comune di nascita, il gestionale calcola istantaneamente il Codice Fiscale dell'atleta.</li>
+                                    <li><strong>Monitoraggio Certificati Medici:</strong> Sistema integrato di alert che evidenzia i certificati in scadenza o già scaduti, impedendo l'accesso ad atleti non idonei.</li>
+                                    <li><strong>Filtri Dinamici Intelligenti:</strong> Filtra i soci con un click per <em>Quote Scadute</em>, <em>Tesseramenti Scaduti</em>, <em>Certificati Medici Scaduti</em>, <em>Morosi</em>, <em>Attivi</em> o <em>Cessati</em>.</li>
+                                    <li><strong>Taglie & Discipline:</strong> Tracciamento taglie abbigliamento per divise societarie e assegnazione corsi.</li>
+                                </ul>`;
                         break;
                     case 'ricevute':
-                        html = `<h2>Ricevute e Quote</h2>
-                                <p>Puoi emettere ricevute dalla scheda del singolo socio (Azione: Emetti Ricevuta) oppure dalla sezione globale "Ricevute".</p>
-                                <h3>Generazione PDF:</h3>
-                                <p>Ogni ricevuta generata può essere esportata in PDF o stampata cliccando sull'icona PDF nella tabella. La ricevuta contiene in automatico i dati della tua ASD (configurabili in Impostazioni).</p>
-                                <h3>Salvataggio Automatico (FS Access):</h3>
-<p>Se imposti la <strong>Cartella Output Documenti</strong> nelle Impostazioni, ogni PDF (ricevute, prima nota cassa completata, verbali assemblee) verr&agrave; automaticamente organizzato in sottocartelle divise per Anno Sportivo (es. <em>anno 2025-2026/ricevute/</em>) e salvato senza prompt di download!</p>
-<h3>Prima Nota:</h3>
-                                <p>Tutte le ricevute emesse finiscono automaticamente nella Prima Nota (sezione Cassa). Da lì puoi anche aggiungere Spese o Entrate generiche.</p>`;
+                        html = `<h2>3. Ricevute & Quote Associative</h2>
+                                <p>Gestisci in modo professionale l'emissione e il registro di tutte le entrate istituzionali ed commerciali.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Emissione Singola e Multipla:</strong> Emetti ricevute per quote associative, iscrizioni corsi e tesseramenti dalla scheda socio o dal registro globale.</li>
+                                    <li><strong>Gestione Ricevute Digitali vs Cartacee:</strong> Registrazione separata dei bolletini cartacei o ricevute digitali con numerazione sequenziale automatica.</li>
+                                    <li><strong>Commissioni Pagamenti Digitali (SumUp, Stripe, POS):</strong> Scorpora ed evidenzia automaticamente le commissioni bancarie trattenute dai terminali POS digitali mantenendo il lordo per la ricevuta socio.</li>
+                                    <li><strong>Scalamento & Rinumerazione Automatica:</strong> In caso di eliminazione o correzione, la sequenza numerica delle ricevute viene scalata in automatico senza creare buchi di numerazione contabile.</li>
+                                </ul>`;
+                        break;
+                    case 'primanota':
+                        html = `<h2>4. Prima Nota, Cassa, Banca & Chiusura Esercizio</h2>
+                                <p>La gestione economico-finanziaria completa per la cassa contanti e i conti correnti bancari/digitali dell'associazione.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Doppio Registro Cassa & Banca:</strong> Tracciamento separato e in tempo reale tra la <em>Cassa Reale (Contanti)</em> e la <em>Banca / Conti Digitali</em> con supporto ai Giroconti spesa/versamento.</li>
+                                    <li><strong>Riconciliazione Estratto Conto Bancario:</strong> Confronta in qualsiasi momento il saldo contabile a sistema con l'estratto conto reale, registrando eventuali rettifiche per arrotondamenti o spese bancarie.</li>
+                                    <li><strong>Procedura Guidata 🔒 Chiusura Esercizio Annuale:</strong> Al 31 agosto (chiusura bilancio), il wizard guida la quadratura contabile e genera in automatico i saldi iniziali di partenza al 1° settembre per il nuovo anno sportivo.</li>
+                                    <li><strong>Esportazione Excel & PDF Prima Nota:</strong> Report completi scaricabili o stampabili per il commercialista o per il Consiglio Direttivo.</li>
+                                </ul>`;
+                        break;
+                    case 'istruttori':
+                        html = `<h2>5. Istruttori, Collaboratori & Compensi Sportivi</h2>
+                                <p>Gestisci l'anagrafica dei tecnici, i compensi per lavoro sportivo e i relativi adempimenti della Riforma dello Sport.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Contratti & Rifornimento Riforma dello Sport:</strong> Gestione delle soglie di esenzione fiscale ed INPS secondo la normativa vigente (D.Lgs. 36/2021).</li>
+                                    <li><strong>Generazione Ricevute Compensi PDF:</strong> Stampa automatica delle ricevute compenso con la clausola di esenzione e ritenuta d'acconto ove applicabile.</li>
+                                    <li><strong>Rimborsi Spese & Liberatorie:</strong> Modulistica integrata per rimborsi chilometrici, trasferte e liberatorie per uso immagini o diritti televisivi.</li>
+                                </ul>`;
                         break;
                     case 'corsi':
-                        html = `<h2>Gestione Corsi</h2>
-                                <p>La gestione dei corsi è divisa in due passaggi:</p>
-                                <h3>1. Configurazione:</h3>
-                                <p>In "Impostazioni -> Corsi Offerti", devi prima definire quali tipi di corso offre la tua ASD (es. Pilates, Boxe).</p>
-                                <h3>2. Programmazione in Calendario:</h3>
-                                <p>Nella pagina "Corsi", clicca su "Programma Corso". Scegli il tipo di corso, la sala, l'istruttore e l'orario. Il corso apparirà nel calendario settimanale della dashboard.</p>`;
+                        html = `<h2>6. Programmazione Corsi & Calendario Settimanale</h2>
+                                <p>Organizza il palinsesto delle attività sportive, le sale della struttura e la presenza degli istruttori.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Configurazione Discipline & Sale:</strong> Definisci le sale disponibili e i corsi erogati dall'ASD.</li>
+                                    <li><strong>Calendario Visivo Settimanale:</strong> Vista grafica e colorata dei corsi suddivisi per giorno e fascia oraria, con evidenza del tecnico assegnato.</li>
+                                    <li><strong>Assegnazione Atleti:</strong> Iscrizione diretta degli atleti ai rispettivi corsi per la gestione delle capienze.</li>
+                                </ul>`;
                         break;
-                    case 'impostazioni':
-                        html = `<h2>Impostazioni e Backup</h2>
-                                <p>Nella schermata Impostazioni configuri i dati anagrafici della tua ASD, che appariranno in automatico sulle ricevute stampate.</p>
-                                <h3>Backup dei Dati:</h3>
-                                <p>Il gestionale salva i dati nel tuo browser. È <strong>FONDAMENTALE</strong> esportare periodicamente un Backup usando il tasto "Esporta Backup (.json)". Se cambi computer o svuoti il browser, potrai ripristinare tutto caricando quel file.</p>
-                                <h3>Esportazione Excel:</h3>
-                                <p>Puoi esportare l'elenco dei soci in formato Excel tramite il pulsante apposito nelle Impostazioni.</p>`;
+                    case 'segreteria':
+                        html = `<h2>7. Segreteria, Magazzino & Eventi</h2>
+                                <p>Gestione operativa delle forniture associative e degli eventi straordinari organizzati dall'ASD.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Inventario & Magazzino:</strong> Monitoraggio scorte di abbigliamento, divise, attrezzatura sportiva e gadget con registro carico/scarico.</li>
+                                    <li><strong>Organizzazione Eventi & Stage:</strong> Gestione iscrizioni a stage, gare o manifestazioni con produzione liberatorie per minori.</li>
+                                </ul>`;
                         break;
                     case 'verbali':
-                        html = `<h2>Verbali e Direttivo</h2>
-                                <p>Il gestionale include uno strumento completo per la generazione automatica dei verbali, accessibile dalla sezione <strong>Impostazioni > Area Assemblee e Verbali</strong>.</p>
-                                
-                                <h3>1. Assemblea Ordinaria dei Soci</h3>
-                                <p>Questo verbale si usa principalmente per due scopi fondamentali:</p>
+                        html = `<h2>8. Governance, Verbali Assemblea & Direttivo</h2>
+                                <p>Strumento professionale di stesura e conservazione dei Verbali societari, essenziale per mantenere la qualifica di ASD/SSD ed evitare sanzioni in sede fiscale.</p>
+                                <h3>Funzionalità Chiave:</h3>
                                 <ul>
-                                    <li><strong>Approvazione del Bilancio:</strong> L'analisi e l'approvazione del Rendiconto economico-finanziario si fa qui. Il sistema <strong>recupera in automatico</strong> il totale delle entrate, delle uscite, e i saldi di cassa e banca direttamente dalla Prima Nota! Tu devi solo approvarli e generare il PDF, che verr&agrave; salvato automaticamente se hai configurato la cartella di output.</li>
-                                    <li><strong>Rinnovo delle Cariche:</strong> Durante l'assemblea ordinaria puoi eleggere il nuovo Consiglio Direttivo. Basta spuntare "Sì" alla domanda sul rinnovo cariche, e il sistema ti chiederà di inserire i nomi di Presidente, Vice, Segretario e Consiglieri eletti, aggiungendoli automaticamente all'ordine del giorno e alla delibera stampata.</li>
-                                </ul>
-
-                                <h3>2. Consiglio Direttivo</h3>
-                                <p>Questo verbale si usa per le decisioni operative prese dal direttivo in carica (es. acquisto attrezzature, ammissione nuovi soci, organizzazione eventi). Puoi specificare un numero a piacere di punti all'Ordine del Giorno e, per ciascuno, inserire l'oggetto e la relativa discussione/delibera. Il sistema formatterà il tutto in un documento ufficiale numerato e pronto per le firme.</p>
-                                
-                                <h3>Gestione Direttivo nel Gestionale</h3>
-                                <p>Oltre a stampare i verbali, ricordati di aggiornare chi è attualmente in carica nel gestionale andando su <strong>Impostazioni > Consiglio Direttivo</strong>. Da lì puoi gestire Presidente e Consiglieri e tenere traccia di tutto lo storico dei mandati passati!</p>`;
+                                    <li><strong>Verbale Assemblea Ordinaria (Approvazione Bilancio & Rinnovo Cariche):</strong> Wizard a step che <strong>recupera automaticamente il Rendiconto finanziario dalla Prima Nota</strong> (Entrate, Uscite, Saldi Cassa/Banca) e genera il verbale di approvazione. Gestisce la prima e seconda convocazione e l'elezione del nuovo Consiglio Direttivo.</li>
+                                    <li><strong>Verbale Consiglio Direttivo:</strong> Redazione rapida delle delibere del Direttivo con punti all'ordine del giorno personalizzati.</li>
+                                    <li><strong>Anteprima A4 in Tempo Reale & Firma Digitale:</strong> Visualizzazione identica al foglio stampato, caselle firmatari (Presidente, Segretario, Consiglieri) e salvataggio automatico PDF nella sottocartella <em>verbali direttivo</em> o <em>assemblee</em>.</li>
+                                </ul>`;
+                        break;
+                    case 'impostazioni':
+                        html = `<h2>9. Dati ASD, Registro RASD & Cariche Sociali</h2>
+                                <p>Configura l'anagrafica istituzionale dell'associazione che alimenterà l'intestazione di tutti i documenti e ricevute emessi.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Dati Fiscali & Registri:</strong> Codice Fiscale / P.IVA, Indirizzo Sede Legale, Codici di Affiliazione EPS/FSN e numero di iscrizione al Registro RASD (ex CONI).</li>
+                                    <li><strong>Consiglio Direttivo in Carica:</strong> Registrazione del Presidente, Vicepresidente, Segretario e Consiglieri attualmente operativi, con conservazione dello storico dei mandati passati.</li>
+                                </ul>`;
+                        break;
+                    case 'backup':
+                        html = `<h2>10. Archiviazione File System Local-First, Backup & Excel</h2>
+                                <p>Protezione totale dei dati societari ed esportazione verso sistemi contabili esterni.</p>
+                                <h3>Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>File System Access API:</strong> Seleziona una cartella del tuo PC per consentire al gestionale di archiviare automaticamente ogni documento generato senza dialog di scaricamento.</li>
+                                    <li><strong>Backup Completo (.JSON):</strong> Esportazione ed importazione con un click dell'intero database dell'associazione (soci, movimenti, verbali, configurazioni).</li>
+                                    <li><strong>Esportazione Excel Universal:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
+                                </ul>`;
                         break;
                 }
                 contentDiv.innerHTML = html;
