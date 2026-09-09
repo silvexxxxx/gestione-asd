@@ -5554,6 +5554,7 @@
                                 <span class="header-subtitle">Emissione e archivio ricevute non fiscali.</span>
                             </div>
                             <div class="header-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Genera ed archivia automaticamente in cartella tutti i PDF delle ricevute digitali non ancora salvate">📁 Archivia PDF Mancanti in Cartella</button>
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta le ricevute in formato Excel (considera l'anno sportivo o l'intervallo temporale isolato).">Esporta Excel</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea Cartacee (1-199) e Digitali (1-74)">🪄 Ripara Registri (Opz. 1)</button>
@@ -5754,6 +5755,25 @@
                     const hasEmail = Boolean(socioEmail && socioEmail.trim() !== '');
                     const hasTel = Boolean(socioTel && String(socioTel).trim() !== '');
                     
+                    const isCartacea = (r.cartacea === true || String(r.cartacea) === 'true');
+                    const isSalvataInCartella = Boolean(r.salvata_in_cartella);
+
+                    let pdfBtnTitle = '';
+                    let printBtnTitle = '';
+                    let pdfBtnStyle = 'padding: 5px 10px;';
+
+                    if (isCartacea) {
+                        pdfBtnTitle = "Ricevuta da blocco cartaceo (registro fisico conservato)";
+                        printBtnTitle = "Ricevuta cartacea emessa da blocco manuale";
+                    } else if (isSalvataInCartella) {
+                        pdfBtnTitle = "Già in cartella ricevute (PDF generato ed archiviato)";
+                        printBtnTitle = "Già in cartella ricevute (Già salvata in PDF e pronta alla stampa)";
+                    } else {
+                        pdfBtnTitle = "⚠️ NON ANCORA IN CARTELLA! Clicca per generare e salvare il PDF in cartella";
+                        printBtnTitle = "Ricevuta digitale emessa (PDF non ancora salvato nella cartella ricevute)";
+                        pdfBtnStyle = "padding: 5px 10px; border-color: var(--warning); color: var(--warning); font-weight: 700;";
+                    }
+                    
                     return `
                     <tr id="receipt-row-${r.id}" data-id="${r.id}">
                         <td>${r.numero}/${app.formatAnno(r.anno)}</td>
@@ -5762,11 +5782,11 @@
                         <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">${r.tipo}</span></td>
                         <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
                         <td>${displayMetodo}</td>
-                        <td><span style="color: ${r.cartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${r.cartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
+                        <td><span style="color: ${isCartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${isCartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.generatePDF('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Salva PDF (Archiviato automaticamente in cartella ricevute)">💾 PDF</button>
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="Ricevuta già emessa (già consegnata / in archivio)">🖨️</button>
+                                <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${pdfBtnTitle}">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
+                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${printBtnTitle}">🖨️</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasEmail ? 'color: var(--primary); border-color: rgba(59,130,246,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptEmail('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasEmail ? 'Invia dettaglio ricevuta via Email a ' + socioEmail : 'Indirizzo Email socio non presente'}">📧</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasTel ? 'color: #10b981; border-color: rgba(16,185,129,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptWhatsApp('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Numero di telefono socio non presente'}">💬</button>
                                 ${this.state.debugMode ? `
@@ -7868,6 +7888,38 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const sportsYear = this.getSportsYear(r.anno || r.data);
             const fileName = `ricevuta_${r.numero}_${r.anno}_${r.socio_nome.replace(/\s+/g, '_')}.pdf`;
             this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
+
+            r.salvata_in_cartella = true;
+            this.saveAll();
+            this.toast(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} salvata nella cartella ricevute!`, "success");
+        },
+
+        async generaPDFMancantiCartella() {
+            const digitaliUnsaved = (this.state.ricevute || []).filter(r => 
+                r.tipo !== 'Compenso Sportivo' && 
+                !(r.cartacea === true || String(r.cartacea) === 'true') && 
+                !r.salvata_in_cartella &&
+                !r.annullata
+            );
+            if (digitaliUnsaved.length === 0) {
+                this.toast("Tutte le ricevute digitali sono già state salvate nella cartella ricevute!", "info");
+                return;
+            }
+            if (!confirm(`Trovate ${digitaliUnsaved.length} ricevute digitali non ancora archiviate in cartella.\n\nDesideri generare e salvare i relativi file PDF ora nella cartella dell'associazione?`)) {
+                return;
+            }
+
+            let count = 0;
+            for (const r of digitaliUnsaved) {
+                try {
+                    await this.generatePDF(r.id);
+                    count++;
+                } catch(e) {
+                    console.error("Errore salvataggio PDF ricevuta:", r.id, e);
+                }
+            }
+            this.renderRicevute();
+            this.toast(`Operazione completata! Salvati ${count} PDF nella cartella ricevute.`, "success");
         },
 
         getSportsYear(ref) {
