@@ -5764,14 +5764,14 @@
                     let pdfBtnStyle = 'padding: 5px 10px;';
 
                     if (isCartacea) {
-                        pdfBtnTitle = "Ricevuta da blocco cartaceo (registro fisico conservato)";
-                        printBtnTitle = "Ricevuta cartacea emessa da blocco manuale";
+                        pdfBtnTitle = r.annullata ? "Ricevuta cartacea ANNULLATA (registro fisico conservato)" : "Ricevuta da blocco cartaceo (registro fisico conservato)";
+                        printBtnTitle = r.annullata ? "Stampa ricevuta cartacea ANNULLATA" : "Ricevuta cartacea emessa da blocco manuale";
                     } else if (isSalvataInCartella) {
-                        pdfBtnTitle = "Già in cartella ricevute (PDF generato ed archiviato)";
-                        printBtnTitle = "Già in cartella ricevute (Già salvata in PDF e pronta alla stampa)";
+                        pdfBtnTitle = r.annullata ? "Già in cartella ricevute (PDF Ricevuta Annullata)" : "Già in cartella ricevute (PDF generato ed archiviato)";
+                        printBtnTitle = r.annullata ? "Stampa ricevuta ANNULLATA per l'archivio" : "Già in cartella ricevute (Già salvata in PDF e pronta alla stampa)";
                     } else {
-                        pdfBtnTitle = "⚠️ NON ANCORA IN CARTELLA! Clicca per generare e salvare il PDF in cartella";
-                        printBtnTitle = "Ricevuta digitale emessa (PDF non ancora salvato nella cartella ricevute)";
+                        pdfBtnTitle = r.annullata ? "⚠️ NON ANCORA IN CARTELLA! Clicca per generare PDF della ricevuta ANNULLATA" : "⚠️ NON ANCORA IN CARTELLA! Clicca per generare e salvare il PDF in cartella";
+                        printBtnTitle = r.annullata ? "Stampa ricevuta ANNULLATA per l'archivio" : "Ricevuta digitale emessa (PDF non ancora salvato nella cartella ricevute)";
                         pdfBtnStyle = "padding: 5px 10px; border-color: var(--warning); color: var(--warning); font-weight: 700;";
                     }
                     
@@ -5786,8 +5786,8 @@
                         <td><span style="color: ${isCartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${isCartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
                         <td style="text-align: right;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${pdfBtnTitle}">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${printBtnTitle}">🖨️</button>
+                                <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
+                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}">🖨️</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasEmail ? 'color: var(--primary); border-color: rgba(59,130,246,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptEmail('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasEmail ? 'Invia dettaglio ricevuta via Email a ' + socioEmail : 'Indirizzo Email socio non presente'}">📧</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasTel ? 'color: #10b981; border-color: rgba(16,185,129,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptWhatsApp('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Numero di telefono socio non presente'}">💬</button>
                                 ${this.state.debugMode ? `
@@ -7847,13 +7847,21 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text(`RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}`, 20, 60);
+            doc.text(`RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}${r.annullata ? ' (ANNULLATA)' : ''}`, 20, 60);
             doc.setFontSize(12);
             doc.text(`Data: ${this.formatDate(r.data)}`, 150, 60);
+
+            if (r.annullata) {
+                doc.setFontSize(32);
+                doc.setTextColor(220, 38, 38);
+                doc.setFont("helvetica", "bold");
+                doc.text("DOCUMENTO ANNULLATO", 30, 110, { angle: 15 });
+            }
 
             doc.setFillColor(245, 245, 245);
             doc.rect(20, 70, 170, 40, 'F');
             doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0);
             doc.text("Ricevuto da:", 25, 80);
             doc.setFont("helvetica", "bold");
             doc.text((s ? `${s.cognome} ${s.nome}` : r.socio_nome), 25, 88);
@@ -7865,13 +7873,18 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             doc.setFontSize(12);
             doc.text("Causale:", 20, 125);
             doc.setFont("helvetica", "bold");
-            doc.text(r.tipo + (r.note ? " - " + r.note : ""), 20, 132);
+            doc.text(r.tipo + (r.note ? " - " + r.note : "") + (r.annullata ? " (ANNULLATA)" : ""), 20, 132);
 
             doc.setFontSize(14);
             doc.text("IMPORTO:", 20, 150);
             doc.setFontSize(24);
-            doc.setTextColor(16, 185, 129);
-            doc.text(`€ ${r.importo.toFixed(2)}`, 20, 160);
+            if (r.annullata) {
+                doc.setTextColor(220, 38, 38);
+                doc.text(`€ ${parseFloat(r.importo).toFixed(2)} (ANNULLATA)`, 20, 160);
+            } else {
+                doc.setTextColor(16, 185, 129);
+                doc.text(`€ ${parseFloat(r.importo).toFixed(2)}`, 20, 160);
+            }
             doc.setTextColor(0, 0, 0);
 
             doc.setFontSize(10);
@@ -7890,7 +7903,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
             const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
             const numStr = String(r.numero).padStart(2, '0');
-            const fileName = `R_N${numStr}_${dateStr}_${safeName}.pdf`;
+            const suffix = r.annullata ? '_ANNULLATA' : '';
+            const fileName = `R_N${numStr}_${dateStr}_${safeName}${suffix}.pdf`;
             this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
 
             r.salvata_in_cartella = true;
@@ -7957,7 +7971,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const numStr = String(r.numero).padStart(2, '0');
 
                 const candidateNames = [
+                    `R_N${numStr}_${dateStr}_${safeName}_ANNULLATA.pdf`,
                     `R_N${numStr}_${dateStr}_${safeName}.pdf`,
+                    `R_N${r.numero}_${dateStr}_${safeName}_ANNULLATA.pdf`,
                     `R_N${r.numero}_${dateStr}_${safeName}.pdf`,
                     `R_${dateStr}_N${r.numero}_${safeName}.pdf`,
                     `ricevuta_${dateStr}_N${r.numero}_${safeName}.pdf`,
@@ -7983,8 +7999,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const digitaliUnsaved = (this.state.ricevute || []).filter(r => 
                 r.tipo !== 'Compenso Sportivo' && 
                 !(r.cartacea === true || String(r.cartacea) === 'true') && 
-                !r.salvata_in_cartella &&
-                !r.annullata
+                !r.salvata_in_cartella
             );
             if (digitaliUnsaved.length === 0) {
                 this.toast("Tutte le ricevute digitali sono già state salvate nella cartella ricevute!", "info");
@@ -8031,9 +8046,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const s = this.state.soci.find(x => x.id == r?.socio_id);
             if (!r) return;
             const sportsYear = this.getSportsYear(r.anno);
+            const annullataBanner = r.annullata ? `<div style="background:#fee2e2; border:2px solid #ef4444; color:#b91c1c; padding:12px 18px; border-radius:8px; font-weight:bold; font-size:16pt; margin-bottom:20px; text-align:center;">⚠️ RICEVUTA ANNULLATA IN DATA CONTABILE</div>` : '';
             const pw = window.open('', '_blank', 'width=800,height=700');
             pw.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-<title>Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)}</title><style>
+<title>Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)}${r.annullata ? ' (ANNULLATA)' : ''}</title><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-size:12pt;}
 .header{border-bottom:3px solid #2563eb;padding-bottom:12px;margin-bottom:20px;}
@@ -8044,13 +8060,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 .info-box{background:#f5f7fa;border:1px solid #dde1ea;border-radius:8px;padding:14px 18px;margin:16px 0;}
 .info-label{font-size:9pt;color:#666;margin-bottom:3px;}
 .info-value{font-size:11pt;font-weight:600;}
-.amount{font-size:28pt;font-weight:700;color:#059669;}
+.amount{font-size:28pt;font-weight:700;color:${r.annullata ? '#dc2626' : '#059669'};}
 .sign-area{float:right;text-align:center;margin-top:50px;}
 .sign-line{border-top:1px solid #333;width:160px;margin-bottom:4px;}
 .legal{font-size:7.5pt;color:#999;margin-top:40px;clear:both;}
 .sports-year{font-size:8pt;color:#888;text-align:right;margin-bottom:8px;}
 @media print{button{display:none!important;}}
 </style></head><body>
+${annullataBanner}
 
 
 
