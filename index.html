@@ -11661,7 +11661,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             // Sanitizza nomi cartella e file per evitare caratteri illegali sul file system di Windows/Mac/Linux
             const sanitize = (s) => (s || '').toString().replace(/[\\/:*?"<>|]/g, '_').trim();
-            const safeYear = sanitize(yearStr);
+            const sanitizeYear = (s) => (s || '').toString().replace(/[/_\\]/g, '-').replace(/[:*?"<>|]/g, '').trim();
+            const safeYear = sanitizeYear(yearStr);
             const safeCat = sanitize(category);
             const safeFilename = sanitize(filename);
 
@@ -22188,7 +22189,7 @@ ${r.annullata ? `
             const d = this.state.verbale_wizard_data || {};
             const type = this.state.verbale_wizard_type || 'direttivo';
             const sportsYear = d.anno_sportivo || (this.getSportsYear ? this.getSportsYear() : '');
-            const sportsYearFS = (d.anno_sportivo || sportsYear).replace(/[/\-]/g, '_').trim();
+            const sportsYearFS = (d.anno_sportivo || sportsYear).replace(/[/_]/g, '-').trim();
             const fsCategory = type === 'direttivo' ? 'verbali direttivo' : 'assemblee';
             const s = this.state.settings || {};
 
