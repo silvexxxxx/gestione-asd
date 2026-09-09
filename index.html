@@ -7886,7 +7886,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             doc.text("Documento non fiscale emesso in conformità alle norme vigenti per le ASD.", 20, 280);
 
             const sportsYear = this.getSportsYear(r.anno || r.data);
-            const fileName = `ricevuta_${r.numero}_${r.anno}_${r.socio_nome.replace(/\s+/g, '_')}.pdf`;
+            const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
+            const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+            const fileName = `ricevuta_${dateStr}_N${r.numero}_${safeName}.pdf`;
             this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
 
             r.salvata_in_cartella = true;
