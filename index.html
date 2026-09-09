@@ -8299,6 +8299,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 const isChiuso = this.isAnnoSportivoChiuso(selectedAS);
                 const refChiusura = 'CHIUSURA_' + selectedAS.replace('/', '_');
 
+                let [y1, y2] = selectedAS.split('/').map(Number);
+                let prevAS = (y1 && y2) ? (y1 - 1) + "/" + (y2 - 1) : null;
+                let nextAS = (y1 && y2) ? (y1 + 1) + "/" + (y2 + 1) : null;
+
                 if (isChiuso) {
                     return `
                         <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.85rem; flex-wrap: wrap;">
@@ -8309,16 +8313,24 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <span style="color: var(--text-muted); margin-left: 4px;">I saldi di bilancio sono stati pareggiati e riportati al nuovo anno.</span>
                                 </div>
                             </div>
-                            <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(99, 102, 241, 0.4); color: #818cf8; background: rgba(99, 102, 241, 0.1);" onclick="app.openEsercizioGiaChiusoModal('${selectedAS}', '', '${refChiusura}')">
-                                👁️ Dettaglio Chiusura / 🔄 Riapri Esercizio
-                            </button>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                ${nextAS ? `<button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc;" onclick="app.setPrimaNotaYear('${nextAS}')">➔ Passa a ${nextAS}</button>` : ''}
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(99, 102, 241, 0.4); color: #818cf8; background: rgba(99, 102, 241, 0.1);" onclick="app.openEsercizioGiaChiusoModal('${selectedAS}', '', '${refChiusura}')">
+                                    👁️ Dettaglio / 🔄 Riapri Esercizio
+                                </button>
+                            </div>
                         </div>
                     `;
                 } else {
-                    let [y1, y2] = selectedAS.split('/').map(Number);
-                    let prevAS = (y1 - 1) + "/" + (y2 - 1);
-                    let isPrevChiuso = this.isAnnoSportivoChiuso(prevAS);
-                    let warningPrev = (!isPrevChiuso && y1 >= 2025) ? `<span style="color: #fbbf24; margin-left: 6px; font-weight: 500;">⚠️ L'esercizio precedente ${prevAS} non è ancora stato chiuso.</span>` : '';
+                    let isPrevChiuso = prevAS ? this.isAnnoSportivoChiuso(prevAS) : true;
+                    let warningPrev = (!isPrevChiuso && y1 >= 2025) 
+                        ? `<span style="color: #fbbf24; margin-left: 6px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            ⚠️ L'esercizio precedente ${prevAS} non è ancora stato chiuso.
+                            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.74rem; border-color: rgba(251, 191, 36, 0.5); color: #fbbf24; background: rgba(251, 191, 36, 0.15);" onclick="app.setPrimaNotaYear('${prevAS}')">
+                                👈 Passa a ${prevAS} per chiuderlo
+                            </button>
+                           </span>` 
+                        : '';
 
                     return `
                         <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 10px 14px; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.85rem; flex-wrap: wrap;">
@@ -8330,12 +8342,56 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     ${warningPrev}
                                 </div>
                             </div>
-                            <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.4); color: #10b981;" onclick="app.chiudiEsercizio()">
-                                🔒 Esegui Chiusura Esercizio
-                            </button>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                ${prevAS ? `<button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.3); color: #34d399;" onclick="app.setPrimaNotaYear('${prevAS}')">◀ ${prevAS}</button>` : ''}
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.4); color: #10b981;" onclick="app.chiudiEsercizio()">
+                                    🔒 Esegui Chiusura Esercizio
+                                </button>
+                            </div>
                         </div>
                     `;
                 }
+            },
+
+            setPrimaNotaYear(asVal) {
+                const selectEl = document.getElementById('pn-year');
+                if (selectEl) {
+                    let found = false;
+                    for (let i = 0; i < selectEl.options.length; i++) {
+                        if (selectEl.options[i].value === asVal) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        const isChiuso = this.isAnnoSportivoChiuso(asVal);
+                        const opt = document.createElement('option');
+                        opt.value = asVal;
+                        opt.textContent = `${asVal}${isChiuso ? ' 🔒 (Chiuso)' : ''}`;
+                        selectEl.appendChild(opt);
+                    }
+                    selectEl.value = asVal;
+                    this.filterPrimaNota();
+                } else {
+                    this.renderPrimaNota();
+                }
+            },
+
+            navigatePrimaNotaYear(dir) {
+                const selectEl = document.getElementById('pn-year');
+                let currentVal = selectEl ? selectEl.value : null;
+                let currentD = new Date();
+                let currentY = currentD.getFullYear();
+                let currentAS = currentD.getMonth() >= 8 ? currentY + "/" + (currentY + 1) : (currentY - 1) + "/" + currentY;
+
+                if (!currentVal || currentVal === 'all') {
+                    currentVal = currentAS;
+                }
+                let [y1, y2] = currentVal.split('/').map(Number);
+                if (!y1 || !y2) return;
+
+                let targetAS = (y1 + dir) + "/" + (y2 + dir);
+                this.setPrimaNotaYear(targetAS);
             },
 
             toggleHideRiconciliazione(val) {
@@ -8391,6 +8447,22 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let prevAS1 = (y1-1) + "/" + (y2-1);
                 let prevAS2 = (y1-2) + "/" + (y2-2);
 
+                let allYearsSet = new Set([nextAS, currentAS, prevAS1, prevAS2]);
+                (this.state.primanota || []).forEach(t => {
+                    let d = new Date(t.data);
+                    if (!isNaN(d.getTime())) {
+                        let y = d.getFullYear();
+                        let as = t.anno_sportivo || (d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y);
+                        if (as && as.includes('/')) allYearsSet.add(as);
+                    }
+                });
+
+                let sortedYears = Array.from(allYearsSet).sort((a, b) => {
+                    let yA = parseInt(a.split('/')[0]) || 0;
+                    let yB = parseInt(b.split('/')[0]) || 0;
+                    return yB - yA;
+                });
+
                 const isPrevYearChiuso = this.isAnnoSportivoChiuso(prevYear);
                 const makeAsOption = (asVal) => {
                     const isChiuso = this.isAnnoSportivoChiuso(asVal);
@@ -8398,6 +8470,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     const badge = isChiuso ? ' 🔒 (Chiuso)' : (isCurrent ? ' 🟢 (In Corso)' : '');
                     return `<option value="${asVal}" ${prevYear === asVal ? 'selected' : ''}>${asVal}${badge}</option>`;
                 };
+                const yearOptionsHtml = sortedYears.map(makeAsOption).join('');
 
                 main.innerHTML = `
                     <div class="page-content">
@@ -8455,13 +8528,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         <!-- Tabella Unificata nella Member-Card -->
                         <div class="glass-card member-card">
                             <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0; align-items: center;">
-                                <select id="pn-year" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
-                                    <option value="all">Tutto lo storico</option>
-                                    ${makeAsOption(nextAS)}
-                                    ${makeAsOption(currentAS)}
-                                    ${makeAsOption(prevAS1)}
-                                    ${makeAsOption(prevAS2)}
-                                </select>
+                                <div style="display: inline-flex; align-items: center; gap: 3px;">
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size: 0.8rem; line-height: 1;" title="Anno Sportivo Precedente (Vai a Ritroso)" onclick="app.navigatePrimaNotaYear(-1)">◀</button>
+                                    <select id="pn-year" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
+                                        <option value="all">Tutto lo storico</option>
+                                        ${yearOptionsHtml}
+                                    </select>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size: 0.8rem; line-height: 1;" title="Anno Sportivo Successivo" onclick="app.navigatePrimaNotaYear(1)">▶</button>
+                                </div>
                                 <select id="pn-quarter" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutti i Trimestri</option>
                                     <option value="Q1">Q1 (Gen-Mar)</option>
