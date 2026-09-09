@@ -19197,6 +19197,13 @@ ${r.annullata ? `
                     if (elInizio) elInizio.value = d.ora_inizio_lavori;
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
+                    const txtEl = document.getElementById('wz-testo_apertura');
+                    if (txtEl) {
+                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_apertura');
+                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                        txtEl.value = resolved;
+                        d.testo_apertura = resolved;
+                    }
                     this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_c2') {
                     d.ora_inizio_lavori = this.addMinutiOrario(val, 15);
@@ -19205,9 +19212,17 @@ ${r.annullata ? `
                     if (elInizio) elInizio.value = d.ora_inizio_lavori;
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
+                    const txtEl = document.getElementById('wz-testo_apertura');
+                    if (txtEl) {
+                        const tmpl = this.getStandardVerbaleTemplate(type, 'testo_apertura');
+                        const resolved = this.resolveVerbalePlaceholders(tmpl, d, type);
+                        txtEl.value = resolved;
+                        d.testo_apertura = resolved;
+                    }
                     this.updateVerbalePresidenzaLive();
                 } else if (fieldId === 'ora_inizio_lavori') {
                     d.ora_inizio_lavori = val;
+                    d._user_changed_eff_inizio = true;
                     d.ora_chiusura = this.addMinutiOrario(val, 75);
                     const elChiusura = document.getElementById('wz-ora_chiusura');
                     if (elChiusura) elChiusura.value = d.ora_chiusura;
@@ -19331,6 +19346,12 @@ ${r.annullata ? `
             this.toast(`Punto ${pointIdx} rimosso con successo.`, 'info');
         },
 
+        addVerbalePuntoOdg() {
+            if (typeof this.updateVerbalePuntiOdg === 'function') {
+                this.updateVerbalePuntiOdg(1);
+            }
+        },
+
         resetVerbaleWizard(returnToHub = false) {
             const isEditing = !!this.state.verbale_wizard_edit_id;
             const confirmMsg = isEditing
@@ -19343,9 +19364,11 @@ ${r.annullata ? `
             this.state.verbale_wizard_data = null;
             this.state.verbale_wizard_step = 0;
             this.state.verbale_wizard_edit_id = null;
+            this.state.verbale_edit_id = null;
 
             if (returnToHub) {
                 this.state.verbali_current_view = 'hub';
+                this.state.verbale_current_view = 'hub';
                 this.saveAll();
                 this.renderVerbali();
                 this.toast("Compilazione annullata. Bozza eliminata.", "info");
@@ -20355,15 +20378,17 @@ ${r.annullata ? `
                 : String(new Date().getFullYear());
 
             if (editId) {
-                const item = (this.state.verbali_archive || []).find(x => x.id === editId);
+                const item = (this.state.verbali_archive || []).find(x => String(x.id) === String(editId));
                 if (item) {
-                    this.state.verbale_wizard_data = JSON.parse(JSON.stringify(item));
-                    this.state.verbale_wizard_type = item.tipo || type;
+                    const savedData = item.data ? JSON.parse(JSON.stringify(item.data)) : JSON.parse(JSON.stringify(item));
+                    this.state.verbale_wizard_data = savedData;
+                    this.state.verbale_wizard_type = item.type || item.tipo || type;
                     this.state.verbale_wizard_step = 0;
-                    this.state.verbale_edit_id = editId;
+                    this.state.verbale_wizard_edit_id = String(editId);
+                    this.state.verbale_edit_id = String(editId);
                     this.state.verbali_current_view = 'wizard';
                     this.state.verbale_current_view = 'wizard';
-                    this.renderVerbali();
+                    this.renderVerbaleWizard();
                     return;
                 }
             }
@@ -21599,6 +21624,18 @@ ${r.annullata ? `
                 d.partecipanti_direttivo = Array.from(partDirEls).map(el => el.value.trim());
                 d.altri_partecipanti_direttivo = d.partecipanti_direttivo.filter(Boolean).join(', ');
             }
+
+            // Sincronizzazione dinamica orari per Assemblea se non modificati manualmente
+            const wzType = this.state.verbale_wizard_type;
+            if (wzType === 'ordinaria' || wzType === 'straordinaria' || wzType === 'assemblea_ord' || wzType === 'assemblea_straord') {
+                const calls = parseInt(d.num_convocazioni || 1, 10);
+                const effOra = (calls >= 2 && d.ora_c2) ? d.ora_c2 : (d.ora_c1 || '20:00');
+                if (!d._user_changed_eff_inizio) {
+                    d.ora_inizio_lavori = this.addMinutiOrario(effOra, 15);
+                    d.ora_chiusura = this.addMinutiOrario(effOra, 75);
+                }
+            }
+
             this.state.verbale_wizard_data = d;
         },
 
@@ -21910,8 +21947,9 @@ ${r.annullata ? `
                     for (let i = 1; i <= numFirmatari; i++) {
                         const nome = d['f_nome_' + i] || `Socio Firmatario ${i}`;
                         items += `
-                            <div style="text-align: center; margin-top: 25px;">
-                                <div style="border-bottom: 1px dotted #0f172a; padding-bottom: 4px; margin-bottom: 4px; min-height: 24px; font-size: 0.85rem;">${this.escapeHtml(nome)}</div>
+                            <div style="text-align: center; margin-top: 20px;">
+                                <div style="min-height: 40px;"></div>
+                                <div style="border-top: 1px dotted #0f172a; width: 85%; margin: 0 auto; padding-top: 4px; font-size: 0.85rem; font-weight: 500;">${this.escapeHtml(nome)}</div>
                                 <span style="font-size: 0.72rem; color: #64748b;">(Firma per approvazione)</span>
                             </div>
                         `;
@@ -21980,17 +22018,17 @@ ${r.annullata ? `
                 `;
             }
             main.innerHTML = `
-                <div class="page-content" style="max-width: 950px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
-                    <!-- Action Bar Superiore -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 10px;">
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 14px; font-weight: 600; border-color: rgba(59,130,246,0.4); color: #60a5fa;" onclick="app.goToVerbaleWizardStep(app.getVerbaleSteps().length - 1)">
-                                ⬅️ Torna alla Compilazione (Passo ${app.getVerbaleSteps().length})
+                <div class="page-content" style="max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 6rem 1rem; width: 100%; min-height: 100%; overflow-y: visible; box-sizing: border-box;">
+                    <!-- Action Bar Superiore: Sticky in cima, ancorato a sinistra -->
+                    <div style="position: sticky; top: 0; z-index: 100; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); padding: 10px 0 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 1.2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 14px; font-weight: 600; border-color: rgba(59,130,246,0.4); color: #60a5fa; display: inline-flex; align-items: center; gap: 6px;" onclick="app.goToVerbaleWizardStep(app.getVerbaleSteps().length - 1)">
+                                ⬅️ Torna alla Compilazione
                             </button>
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px;" onclick="app.backToVerbaliHub()">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="app.backToVerbaliHub()">
                                 🏛️ Elenco Verbali
                             </button>
-                            <button class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: flex; align-items: center; gap: 6px;" onclick="app.resetVerbaleWizard(true)" title="Elimina questa compilazione e torna all'elenco senza salvare">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.85rem; padding: 7px 12px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: inline-flex; align-items: center; gap: 6px;" onclick="app.resetVerbaleWizard(true)" title="Elimina questa compilazione e torna all'elenco senza salvare">
                                 🗑️ Scarta / Elimina Bozza
                             </button>
                         </div>
@@ -22082,8 +22120,8 @@ ${r.annullata ? `
                         </div>
                     </div>
 
-                    <!-- FOGLIO A4 ANTEPRIMA -->
-                    <div id="verbale-printable-sheet" contenteditable="true" oninput="app.onVerbaleSheetInput(this)" spellcheck="false" style="background: #ffffff; color: #0f172a; padding: 50px 60px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); font-family: 'Inter', -apple-system, sans-serif; font-size: 0.92rem; line-height: 1.6; margin-bottom: 2rem; outline: none;">
+                    <!-- FOGLIO A4 ANTEPRIMA (Dimensioni proporzionate A4 standard) -->
+                    <div id="verbale-printable-sheet" contenteditable="true" oninput="app.onVerbaleSheetInput(this)" spellcheck="false" style="max-width: 210mm; min-height: 297mm; margin: 0 auto 2rem auto; background: #ffffff; color: #0f172a; padding: 22mm 20mm; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-radius: 4px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 10pt; line-height: 1.6; outline: none;">
                         ${docHtml}
                     </div>
                 </div>
@@ -22108,20 +22146,23 @@ ${r.annullata ? `
                     <meta charset="utf-8">
                     <title>Stampa Verbale</title>
                     <style>
-                        @page { size: A4; margin: 18mm 15mm; }
-                        body {
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                            font-size: 10.5pt;
-                            color: #000;
-                            line-height: 1.55;
+                        @page { size: A4 portrait; margin: 20mm 15mm; }
+                        html, body {
                             margin: 0;
                             padding: 0;
+                            background: #ffffff !important;
+                            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                            font-size: 10pt;
+                            color: #000;
+                            line-height: 1.55;
                         }
                         h2, h3, p { margin: 0 0 10pt 0; }
                         table { border-collapse: collapse; width: 100%; }
                         td, th { padding: 4pt 6pt; }
+                        .avoid-break { page-break-inside: avoid; break-inside: avoid; }
                         @media print {
                             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            #verbale-printable-sheet { box-shadow: none !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; min-height: auto !important; }
                         }
                     </style>
                 </head>
@@ -22430,9 +22471,34 @@ ${r.annullata ? `
                                 checkPageBreak(25);
                             }
                             const posX = left + (cCol + 0.5) * colWidth;
-                            const nomeF = d['f_nome_' + i] || `Socio ${i}`;
+                            const nomeF = d['f_nome_' + i] || `Socio Firmatario ${i}`;
                             doc.text("_________________________", posX, y + 10, { align: 'center' });
                             doc.text(nomeF, posX, y + 14, { align: 'center' });
+                        }
+                        y += 18;
+                    }
+
+                    const consiglieriPdf = (Array.isArray(d.consiglieri_list) ? d.consiglieri_list : (d.nuovi_consiglieri || '').split(',')).map(x => x.trim()).filter(Boolean);
+                    if (consiglieriPdf.length > 0 && d.rinnovo_direttivo === 'Si') {
+                        checkPageBreak(30);
+                        y += 14;
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(8.5);
+                        doc.text("I Nuovi Consiglieri Eletti per approvazione:", left, y);
+                        y += 6;
+                        const cols = Math.min(consiglieriPdf.length, 3);
+                        const colWidth = maxW / cols;
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(8);
+                        for (let idx = 0; idx < consiglieriPdf.length; idx++) {
+                            const cCol = idx % cols;
+                            if (idx > 0 && cCol === 0) {
+                                y += 18;
+                                checkPageBreak(25);
+                            }
+                            const posX = left + (cCol + 0.5) * colWidth;
+                            doc.text("_________________________", posX, y + 10, { align: 'center' });
+                            doc.text(consiglieriPdf[idx], posX, y + 14, { align: 'center' });
                         }
                         y += 18;
                     }
