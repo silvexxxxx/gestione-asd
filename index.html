@@ -4612,12 +4612,13 @@
                 let html = '';
                 switch (section) {
                     case 'intro':
-                        html = `<h2>1. Introduzione & Architettura Local-First</h2>
+                        html = `<h2>1. Introduzione & Architettura Hybrid Local-First</h2>
                                 <p><strong>Gestionale ASD</strong> è il software professionale sviluppato su misura per le esigenze gestionali, fiscali e legali delle <strong>Associazioni Sportive Dilettantistiche (ASD)</strong> e <strong>Società Sportive Dilettantistiche (SSD)</strong>.</p>
-                                <h3>Punti di Forza Architetturali:</h3>
+                                <h3>Punti di Forza Architetturali & Modello di Licenza:</h3>
                                 <ul>
-                                    <li><strong>Privacy 100% Locale (Zero Cloud):</strong> Tutti i dati della tua associazione (anagrafiche, ricevute, movimenti contabili e verbali) risiedono esclusivamente sul tuo computer. Nessun server esterno, nessun abbonamento obbligatorio e massima conformità al GDPR.</li>
-                                    <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando una cartella locale nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, prima nota, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
+                                    <li><strong>Sincronizzazione Sicura Google Drive & Uso Multi-Dispositivo:</strong> I dati risiedono sul tuo computer e si sincronizzano in modo trasparente tramite la cartella <em>Google Drive</em> del tuo account, permettendo l'utilizzo su più postazioni di segreteria senza server terzi o intermediari sconosciuti. Operativo anche 100% offline.</li>
+                                    <li><strong>Licenza Annuale ad Abbattimento Costi (>80% di Risparmio):</strong> Licenza annuale proposta ad un costo di oltre 5 volte inferiore rispetto ai software concorrenti (meno di 1/5 del prezzo di mercato), resa possibile dall'assenza di costose infrastrutture server cloud proprietarie.</li>
+                                    <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando la cartella locale o Google Drive nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, prima nota, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
                                     <li><strong>Integrazione Riforma dello Sport (D.Lgs. 36/2021 & RASD):</strong> Conforme alle nuove normative in materia di tesseramento, compensi lavoro sportivo, esenzioni INPS/IRPEF e rendicontazione per il Registro Nazionale delle Attività Sportive Dilettantistiche (RASD).</li>
                                 </ul>
                                 <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Modalità Guida:</strong> Attivando la <em>Modalità Guida</em> dall'intestazione, ogni pulsante dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse.</div>`;
@@ -4639,9 +4640,9 @@
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
                                     <li><strong>Emissione Singola e Multipla:</strong> Emetti ricevute per quote associative, iscrizioni corsi e tesseramenti dalla scheda socio o dal registro globale.</li>
-                                    <li><strong>Gestione Ricevute Digitali vs Cartacee:</strong> Registrazione separata dei bolletini cartacei o ricevute digitali con numerazione sequenziale automatica.</li>
+                                    <li><strong>Numerazione Sequenziale Fiscale Cronologica:</strong> Registrazione sequenziale a garanzia di conformità contabile per ricevute digitali e bollettini cartacei.</li>
                                     <li><strong>Commissioni Pagamenti Digitali (SumUp, Stripe, POS):</strong> Scorpora ed evidenzia automaticamente le commissioni bancarie trattenute dai terminali POS digitali mantenendo il lordo per la ricevuta socio.</li>
-                                    <li><strong>Scalamento & Rinumerazione Automatica:</strong> In caso di eliminazione o correzione, la sequenza numerica delle ricevute viene scalata in automatico senza creare buchi di numerazione contabile.</li>
+                                    <li><strong>Annullamento & Storno Contabile:</strong> Gestione degli annullamenti con tracciamento formale dell'operazione nel registro contabile.</li>
                                 </ul>`;
                         break;
                     case 'primanota':
@@ -4689,8 +4690,8 @@
                                 <p>Strumento professionale di stesura e conservazione dei Verbali societari, essenziale per mantenere la qualifica di ASD/SSD ed evitare sanzioni in sede fiscale.</p>
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
-                                    <li><strong>Verbale Assemblea Ordinaria (Approvazione Bilancio & Rinnovo Cariche):</strong> Wizard a step che <strong>recupera automaticamente il Rendiconto finanziario dalla Prima Nota</strong> (Entrate, Uscite, Saldi Cassa/Banca) e genera il verbale di approvazione. Gestisce la prima e seconda convocazione e l'elezione del nuovo Consiglio Direttivo.</li>
-                                    <li><strong>Verbale Consiglio Direttivo:</strong> Redazione rapida delle delibere del Direttivo con punti all'ordine del giorno personalizzati.</li>
+                                    <li><strong>Importazione Automatica Dati Finanziari (Assemblea Ordinaria e Straordinaria):</strong> Sia nei verbali di Assemblea Ordinaria (approvazione bilancio) che Straordinaria, il wizard <strong>recupera automaticamente i saldi finanzari e il rendiconto dalla Prima Nota</strong> (Entrate, Uscite, Saldi Cassa/Banca), azzerando i tempi di compilazione!</li>
+                                    <li><strong>Rinnovo Cariche & Delibere Direttivo:</strong> Gestisce l'elezione del nuovo Consiglio Direttivo e la stesura rapida delle delibere operative.</li>
                                     <li><strong>Anteprima A4 in Tempo Reale & Firma Digitale:</strong> Visualizzazione identica al foglio stampato, caselle firmatari (Presidente, Segretario, Consiglieri) e salvataggio automatico PDF nella sottocartella <em>verbali direttivo</em> o <em>assemblee</em>.</li>
                                 </ul>`;
                         break;
@@ -4708,7 +4709,7 @@
                                 <p>Protezione totale dei dati societari ed esportazione verso sistemi contabili esterni.</p>
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
-                                    <li><strong>File System Access API:</strong> Seleziona una cartella del tuo PC per consentire al gestionale di archiviare automaticamente ogni documento generato senza dialog di scaricamento.</li>
+                                    <li><strong>File System Access API & Google Drive:</strong> Seleziona una cartella del tuo PC o del tuo Google Drive per consentire al gestionale di archiviare automaticamente ogni documento generato senza dialog di scaricamento.</li>
                                     <li><strong>Backup Completo (.JSON):</strong> Esportazione ed importazione con un click dell'intero database dell'associazione (soci, movimenti, verbali, configurazioni).</li>
                                     <li><strong>Esportazione Excel Universal:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
                                 </ul>`;
