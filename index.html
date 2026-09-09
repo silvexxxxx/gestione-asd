@@ -2264,7 +2264,7 @@
         isCassaMetodo(metodo) {
             if (!metodo) return true;
             const s = metodo.toString().trim().toLowerCase();
-            if (s === 'banca' || s.includes('banca') || s.includes('bonifico') || s.includes('pos') || s.includes('bancomat') || s.includes('carta') || s.includes('paypal') || s.includes('sumup') || s.includes('cbill') || s.includes('satispay') || s.includes('stripe') || s.includes('digitale')) {
+            if (s === 'banca' || s.includes('banca') || s.includes('bonifico') || s.includes('pos') || s.includes('bancomat') || s.includes('carta') || s.includes('paypal') || s.includes('sumup') || s.includes('cbill') || s.includes('satispay') || s.includes('stripe') || s.includes('digitale') || s.includes('rettifica') || s.includes('e/c')) {
                 return false;
             }
             const cfg = this.getMetodoConfig(metodo);
@@ -2315,6 +2315,17 @@
                 }
 
                 return true;
+            });
+
+            // Normalizza scritture tecniche di quadratura/rettifica E/C
+            filtered.forEach(t => {
+                const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_')) || (t.categoria && t.categoria.startsWith('Rettifica Saldo'));
+                if (isRiconciliazione) {
+                    t.is_riconciliazione = true;
+                    if (t.metodo !== 'Rettifica E/C') {
+                        t.metodo = 'Rettifica E/C';
+                    }
+                }
             });
 
             // 3. Migrazione automatica vecchi giroconti a riga singola in doppia registrazione collegata
@@ -8272,12 +8283,64 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     cardBanca.textContent = `€ ${bancaDigitale.toFixed(2)}`;
                     cardBanca.style.color = bancaDigitale >= 0 ? 'var(--success)' : 'var(--danger)';
                 }
-                if (badgeBanca) {
-                    badgeBanca.innerHTML = this.renderBancaVerificaBadgeHtml();
-                }
                 if (cardTotale) {
                     cardTotale.textContent = `€ ${totale.toFixed(2)}`;
                 }
+            },
+
+            isAnnoSportivoChiuso(as) {
+                if (!as || as === 'all') return false;
+                const refChiusura = 'CHIUSURA_' + as.replace('/', '_');
+                return !!(this.state.primanota && this.state.primanota.some(t => t.riferimento === refChiusura));
+            },
+
+            renderAnnoSportivoStatusBanner(selectedAS, currentAS) {
+                if (!selectedAS || selectedAS === 'all') return '';
+                const isChiuso = this.isAnnoSportivoChiuso(selectedAS);
+                const refChiusura = 'CHIUSURA_' + selectedAS.replace('/', '_');
+
+                if (isChiuso) {
+                    return `
+                        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.85rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 8px; color: #a5b4fc;">
+                                <span style="font-size: 1.15rem;">🔒</span>
+                                <div>
+                                    <strong>Anno Sportivo ${selectedAS} CHIUSO & CONSOLIDATO:</strong>
+                                    <span style="color: var(--text-muted); margin-left: 4px;">I saldi di bilancio sono stati pareggiati e riportati al nuovo anno.</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(99, 102, 241, 0.4); color: #818cf8; background: rgba(99, 102, 241, 0.1);" onclick="app.openEsercizioGiaChiusoModal('${selectedAS}', '', '${refChiusura}')">
+                                👁️ Dettaglio Chiusura / 🔄 Riapri Esercizio
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    let [y1, y2] = selectedAS.split('/').map(Number);
+                    let prevAS = (y1 - 1) + "/" + (y2 - 1);
+                    let isPrevChiuso = this.isAnnoSportivoChiuso(prevAS);
+                    let warningPrev = (!isPrevChiuso && y1 >= 2025) ? `<span style="color: #fbbf24; margin-left: 6px; font-weight: 500;">⚠️ L'esercizio precedente ${prevAS} non è ancora stato chiuso.</span>` : '';
+
+                    return `
+                        <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 10px 14px; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.85rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 8px; color: #34d399;">
+                                <span style="font-size: 1.15rem;">🟢</span>
+                                <div>
+                                    <strong>Anno Sportivo ${selectedAS} IN CORSO (OPERATIVO):</strong>
+                                    <span style="color: var(--text-muted); margin-left: 4px;">Registrazioni contabili modificabili.</span>
+                                    ${warningPrev}
+                                </div>
+                            </div>
+                            <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.4); color: #10b981;" onclick="app.chiudiEsercizio()">
+                                🔒 Esegui Chiusura Esercizio
+                            </button>
+                        </div>
+                    `;
+                }
+            },
+
+            toggleHideRiconciliazione(val) {
+                this.hideRiconciliazione = !!val;
+                this.filterPrimaNota();
             },
 
             renderPrimaNota(preserveState = true, highlightId = null) {
@@ -8328,6 +8391,14 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                 let prevAS1 = (y1-1) + "/" + (y2-1);
                 let prevAS2 = (y1-2) + "/" + (y2-2);
 
+                const isPrevYearChiuso = this.isAnnoSportivoChiuso(prevYear);
+                const makeAsOption = (asVal) => {
+                    const isChiuso = this.isAnnoSportivoChiuso(asVal);
+                    const isCurrent = asVal === currentAS;
+                    const badge = isChiuso ? ' 🔒 (Chiuso)' : (isCurrent ? ' 🟢 (In Corso)' : '');
+                    return `<option value="${asVal}" ${prevYear === asVal ? 'selected' : ''}>${asVal}${badge}</option>`;
+                };
+
                 main.innerHTML = `
                     <div class="page-content">
                         <div class="page-header">
@@ -8337,7 +8408,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <button class="btn btn-outline" style="border-color: rgba(16, 185, 129, 0.4); color: #10b981;" onclick="app.openSaldoInizialeModal()" title="Configura o inserisci le giacenze di partenza al primo utilizzo">💰 Saldi Iniziali</button>
-                                <button class="btn btn-outline" onclick="app.chiudiEsercizio()">Chiusura Esercizio</button>
+                                <button id="btn-chiusura-esercizio-header" class="btn btn-outline" style="${isPrevYearChiuso ? 'border-color: rgba(99, 102, 241, 0.4); color: #818cf8;' : ''}" onclick="app.chiudiEsercizio()">${isPrevYearChiuso ? '🔒 Esercizio Chiuso (Gestisci)' : '🔒 Chiusura Esercizio'}</button>
                                 <button class="btn btn-outline" onclick="app.exportPrimaNotaExcel()" data-guide="Esporta la Prima Nota (entrate e uscite) in formato Excel per il commercialista.">Esporta Excel</button>
                                 <button class="btn btn-outline" onclick="app.exportPrimaNotaPDF()" data-guide="Esporta la Prima Nota cassa in PDF (con tutti i movimenti) e salvala automaticamente nella cartella Output Documenti.">Esporta PDF</button>
                                 <button class="btn btn-primary" onclick="app.showPrimaNotaForm()">+ Nuovo Movimento</button>
@@ -8376,15 +8447,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             </div>
                         ` : ''}
 
+                        <!-- Banner di Stato dell'Anno Sportivo Selezionato -->
+                        <div id="pn-as-status-banner-container">
+                            ${this.renderAnnoSportivoStatusBanner(prevYear, currentAS)}
+                        </div>
+
                         <!-- Tabella Unificata nella Member-Card -->
                         <div class="glass-card member-card">
-                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0;">
+                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0; align-items: center;">
                                 <select id="pn-year" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutto lo storico</option>
-                                    <option value="${nextAS}" ${prevYear === nextAS ? 'selected' : ''}>${nextAS}</option>
-                                    <option value="${currentAS}" ${prevYear === currentAS ? 'selected' : ''}>${currentAS}</option>
-                                    <option value="${prevAS1}" ${prevYear === prevAS1 ? 'selected' : ''}>${prevAS1}</option>
-                                    <option value="${prevAS2}" ${prevYear === prevAS2 ? 'selected' : ''}>${prevAS2}</option>
+                                    ${makeAsOption(nextAS)}
+                                    ${makeAsOption(currentAS)}
+                                    ${makeAsOption(prevAS1)}
+                                    ${makeAsOption(prevAS2)}
                                 </select>
                                 <select id="pn-quarter" class="form-control" style="width: auto;" onchange="app.filterPrimaNota()">
                                     <option value="all">Tutti i Trimestri</option>
@@ -8404,6 +8480,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                                     <input type="text" id="pn-search-importo" class="form-control" style="width: 140px; padding-left: 1.8rem;" placeholder="Importo (€)..." value="${prevSearchImporto}" oninput="app.filterPrimaNota()">
                                     <span style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">€</span>
                                 </div>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; margin-left: auto; padding: 5px 10px; background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 6px;" title="Attiva per nascondere dall'elenco i movimenti tecnici di rettifica estratto conto bancario generati a fine anno">
+                                    <input type="checkbox" id="pn-hide-riconciliazione" onchange="app.toggleHideRiconciliazione(this.checked)" ${this.hideRiconciliazione ? 'checked' : ''}>
+                                    <span style="color: #fbbf24; font-weight: 500;">🚫 Nascondi Rettifiche Tecniche E/C</span>
+                                </label>
                             </div>
 
                             <div class="table-container" onscroll="app.onPrimaNotaTableScroll(this)">
@@ -8660,6 +8740,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     });
                 }
 
+                let hideRiconciliazione = document.getElementById('pn-hide-riconciliazione') ? document.getElementById('pn-hide-riconciliazione').checked : !!this.hideRiconciliazione;
+
                 let filtered = this.state.primanota.filter(t => {
                     let d = new Date(t.data);
                     
@@ -8667,6 +8749,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     let y = d.getFullYear();
                     let as = t.anno_sportivo || (d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y);
                     if (year !== 'all' && as !== year) return false;
+
+                    // Nascondi Scritture Tecniche di Quadratura E/C se la spunta è attiva
+                    const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_')) || t.metodo === 'Rettifica E/C';
+                    if (hideRiconciliazione && isRiconciliazione) return false;
                     
                     // Trimestre
                     if (quarter !== 'all') {
@@ -8785,7 +8871,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                     const isSaldoIniziale = t.is_saldo_iniziale || (t.riferimento && (t.riferimento.startsWith('SALDO_INIZIALE_') || t.riferimento.startsWith('CHIUSURA_')));
                     const saldoInizialeId = t.saldo_iniziale_id || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_') ? t.riferimento.replace('SALDO_INIZIALE_', '') : null);
                     const isChiusuraRiporto = t.riferimento && t.riferimento.startsWith('CHIUSURA_');
-                    const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_'));
+                    const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_')) || t.metodo === 'Rettifica E/C';
 
                     let badgeDisplay = '';
                     if (isSaldoIniziale) {
@@ -8793,21 +8879,26 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                             ? `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-weight:600;">🏁 Riporto Chiusura</span>`
                             : `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); font-weight:600;">🏁 Saldo Iniziale</span>`;
                     } else if (isRiconciliazione) {
-                        badgeDisplay = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight:600;">⚖️ Rettifica E/C</span>`;
+                        badgeDisplay = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight:600;">⚖️ RETTIFICA E/C</span>`;
                     } else {
                         badgeDisplay = `<span class="badge ${badgeClass}">${t.tipo}</span>`;
                     }
 
+                    let metodoDisplay = t.metodo || '<span style="color: var(--text-muted);">-</span>';
+                    if (isRiconciliazione) {
+                        metodoDisplay = `<span style="color: #f59e0b; font-weight: 600;">⚖️ Rettifica E/C (Nota Interna)</span>`;
+                    }
+
                     return `
-                        <tr id="pn-row-${t.id}" data-id="${t.id}">
+                        <tr id="pn-row-${t.id}" data-id="${t.id}" style="${isRiconciliazione ? 'background: rgba(245, 158, 11, 0.04); border-left: 3px solid #f59e0b;' : ''}">
                             <td style="padding-left: 1.5rem;">${this.formatDate(t.data)}</td>
                             <td>${badgeDisplay}</td>
-                            <td>${t.metodo || '<span style="color: var(--text-muted);">-</span>'}</td>
+                            <td>${metodoDisplay}</td>
                             <td>${t.categoria}</td>
                             <td>
                                 ${t.descrizione}
                                 ${linkedComm ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.25);">⚡ Comm. ${t.metodo || 'digitale'}: -€${parseFloat(linkedComm.importo).toFixed(2)}</div>` : ''}
-                                ${isRiconciliazione ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 2px;">⚖️ Quadratura Contabile da Estratto Conto Bancario</div>` : ''}
+                                ${isRiconciliazione ? `<div style="font-size: 0.72rem; color: #f59e0b; margin-top: 2px;">⚖️ Quadratura Contabile da Estratto Conto Bancario (Scrittura Tecnica Interna)</div>` : ''}
                                 ${isChiusuraRiporto ? `<div style="font-size: 0.72rem; color: #818cf8; margin-top: 2px;">🏁 Riporto di Apertura Nuovo Anno Sportivo ${t.anno_sportivo || ''}</div>` : ''}
                                 ${(isSaldoIniziale && !isChiusuraRiporto) ? `<div style="font-size: 0.72rem; color: #818cf8; margin-top: 2px;">🏁 Giacenza di Partenza (Anno Sportivo di Competenza: ${t.anno_sportivo || ''})</div>` : ''}
                                 ${t.riferimento && t.riferimento.startsWith('RICEVUTA_') ? `<div style="font-size: 0.7rem; color: var(--accent);">${t.riferimento}</div>` : ''}
@@ -8849,9 +8940,32 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
 
                 const yearSelect = document.getElementById('pn-year');
                 const rendicontoLabel = document.getElementById('pn-card-rendiconto-label');
-                if (yearSelect && rendicontoLabel) {
+                const statusContainer = document.getElementById('pn-as-status-banner-container');
+                const btnHeader = document.getElementById('btn-chiusura-esercizio-header');
+
+                if (yearSelect) {
                     const selYear = yearSelect.value;
-                    rendicontoLabel.textContent = selYear === 'all' ? 'Rendiconto Storico' : `Rendiconto ${selYear}`;
+                    if (rendicontoLabel) {
+                        rendicontoLabel.textContent = selYear === 'all' ? 'Rendiconto Storico' : `Rendiconto ${selYear}`;
+                    }
+                    if (statusContainer) {
+                        let currentD = new Date();
+                        let currentY = currentD.getFullYear();
+                        let currentAS = currentD.getMonth() >= 8 ? currentY + "/" + (currentY + 1) : (currentY - 1) + "/" + currentY;
+                        statusContainer.innerHTML = this.renderAnnoSportivoStatusBanner(selYear, currentAS);
+                    }
+                    if (btnHeader) {
+                        const isChiuso = this.isAnnoSportivoChiuso(selYear);
+                        if (isChiuso) {
+                            btnHeader.innerHTML = '🔒 Esercizio Chiuso (Gestisci)';
+                            btnHeader.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+                            btnHeader.style.color = '#818cf8';
+                        } else {
+                            btnHeader.innerHTML = '🔒 Chiusura Esercizio';
+                            btnHeader.style.borderColor = '';
+                            btnHeader.style.color = '';
+                        }
+                    }
                 }
             },
 
@@ -9978,7 +10092,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         id: 'txn_riconciliazione_' + Date.now(),
                         data: `${y2}-08-31`,
                         tipo: isSpesa ? 'Uscita' : 'Entrata',
-                        metodo: 'Bonifico',
+                        metodo: 'Rettifica E/C',
                         categoria: cat,
                         descrizione: desc,
                         importo: absAmt,
@@ -10048,23 +10162,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-
                         this.state.verbale_wizard_data.casseList = saldiAgg.casseList;
                         this.state.verbale_wizard_data.entrate = saldiAgg.entrate;
                         this.state.verbale_wizard_data.uscite = saldiAgg.uscite;
-                        this.state.verbale_wizard_data.avanzo = saldiAgg.avanzo;
                     }
                 }
 
                 this.saveAll();
                 this.closeModal();
-
-                // Aggiorna la vista impostando il filtro sul nuovo anno sportivo
-                const pnYear = document.getElementById('pn-year');
-                if (pnYear) {
-                    pnYear.value = nextAS;
-                }
-                this.renderPrimaNota(false);
-                this.toast(`Esercizio ${selectedAS} chiuso con successo. Saldi riconciliati con l'Estratto Conto e allineati anche nei Verbali d'Assemblea!`, 'success');
+                this.renderPrimaNota();
+                this.toast(`Chiusura dell'esercizio ${selectedAS} effettuata con successo! Saldi iniziali generati per l'anno ${nextAS}.`, 'success');
             },
 
             openEsercizioGiaChiusoModal(selectedAS, nextAS, refChiusura) {
+                if (!nextAS && selectedAS) {
+                    let [y1, y2] = selectedAS.split('/').map(Number);
+                    if (y1 && y2) nextAS = (y1 + 1) + "/" + (y2 + 1);
+                }
                 const txnsChiusura = this.state.primanota.filter(t => t.riferimento === refChiusura);
                 const refRiconciliazione = 'RICONCILIAZIONE_' + refChiusura;
                 const txnRettifica = this.state.primanota.find(t => t.riferimento === refRiconciliazione);
