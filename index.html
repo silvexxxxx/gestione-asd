@@ -5558,7 +5558,7 @@
                                 <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Genera ed archivia automaticamente in cartella tutti i PDF delle ricevute digitali non ancora salvate">📁 Archivia PDF Mancanti in Cartella</button>
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta le ricevute in formato Excel (considera l'anno sportivo o l'intervallo temporale isolato).">Esporta Excel</button>
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea Cartacee (1-199) e Digitali (1-74)">🪄 Ripara Registri (Opz. 1)</button>
+                                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea e riordina i registri (da 1 a N)">🪄 Ripara Registri (Opz. 1)</button>
                                     <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
                                     <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 / -1)">⏩ Sposta Sequenza</button>
                                 ` : ''}
@@ -6694,7 +6694,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         },
 
         applicaOpzione1Database() {
-            if (!confirm("Vuoi applicare la Riparazione Opzione 1?\n\n• Registro Cartaceo: Mantiene fedeli le ricevute N. 1-199 (da settembre ad aprile)\n• Registro Digitale: Riordina le ricevute in ordine cronologico da N. 1 a N. 74 (eliminando numeri zero e doppioni)\n• Prima Nota: Sincronizzazione automatica degli importi e numeri\n\nProcedere con la riparazione?")) {
+            if (!confirm("Vuoi applicare la Riparazione Opzione 1?\n\n• Registro Cartaceo: Mantiene immutate le ricevute con contrassegno Cartaceo\n• Registro Digitale: Riordina le ricevute digitali in ordine cronologico da N. 1 a N (eliminando numeri zero e doppioni)\n• Prima Nota: Sincronizzazione automatica degli importi e numeri\n\nProcedere con la riparazione?")) {
                 return;
             }
 
@@ -6703,7 +6703,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const cartacee = this.state.ricevute.filter(r => r.cartacea === true || String(r.cartacea) === 'true');
             const digitali = this.state.ricevute.filter(r => !(r.cartacea === true || String(r.cartacea) === 'true'));
 
-            // 1. Cartacee: ordina per numero e data (rimangono 1-199)
+            // 1. Cartacee: ordina per numero e data
             cartacee.sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
 
             // 2. Digitali: ordina per data cronologica, spareggiando con id
@@ -6728,7 +6728,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.state.ricevute = [...cartacee, ...digitali];
             this.saveAll();
             this.renderRicevute();
-            this.toast(`✅ Riparazione Opzione 1 completata! ${cartacee.length} cartacee (1-199) e ${digitali.length} digitali (1-${digitali.length}) perfettamente sincronizzate.`, "success");
+            this.toast(`✅ Riparazione Opzione 1 completata! ${cartacee.length} cartacee e ${digitali.length} digitali (da 1 a ${digitali.length || 'N'}) perfettamente sincronizzate.`, "success");
         },
 
         applyCausalePreset(val, noteId = 'receipt-note', amountId = 'receipt-amount', durataId = 'receipt-durata', quotaId = 'receipt-quota', tessId = 'receipt-tess') {
@@ -8220,7 +8220,7 @@ ${annullataBanner}
                 periodStr = `Tutte le Stagioni Sportive`;
             }
             if (reg !== 'all') {
-                periodStr += ` | Registro: ${reg === 'cartaceo' ? 'Cartaceo (1-199)' : 'Digitale (1-74)'}`;
+                periodStr += ` | Registro: ${reg === 'cartaceo' ? 'Cartaceo' : 'Digitale'}`;
             }
 
             const rows = receipts.map(r => {
@@ -14071,7 +14071,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         <strong>Protezione attiva:</strong> Le funzioni strutturali sono nascoste all'utente comune e disponibili solo sbloccando la Modalità Debug.
                                     </p>
                                     <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
-                                        <li><strong>🪄 Ripara Ricevute (Opz. 1):</strong> riallinea i due registri separando Cartaceo (1-199) e Digitale (1-74) e sincronizzando la Prima Nota.</li>
+                                        <li><strong>🪄 Ripara Ricevute (Opz. 1):</strong> riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota.</li>
                                         <li><strong>🔄 Rinumera Sequenza (Debug):</strong> ricompatta i numeri delle ricevute per eliminare buchi numerici intermedi.</li>
                                         <li><strong>⏩ Sposta Sequenza (Debug):</strong> sposta in avanti o indietro (+1 / -1) una serie di ricevute a partire da una data. Include il tasto verde di riallineamento automatico reale.</li>
                                         <li><strong>➕ / ✏️ / 🗑️ (Tabella Ricevute Debug):</strong> permettono di inserire ricevute intermedie (con slittamento +1) o eliminare singole ricevute (con slittamento -1).</li>
@@ -14158,7 +14158,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 
                                 <div style="display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
                                     <button class="btn" style="background:var(--primary);" onclick="app.createSnapshot('manual')">➕ Crea Salvataggio Manuale</button>
-                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()">🪄 Ripara Ricevute (Opz. 1: Cartaceo 1-199 & Digitale 1-74)</button>
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()">🪄 Ripara Ricevute (Opz. 1: Cartaceo & Digitale da 1 a N)</button>
                                 </div>
                                 
                                 <div style="display:flex; flex-direction:row; gap:10px; margin-bottom:1rem; align-items:flex-end;">
