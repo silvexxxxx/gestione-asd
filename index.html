@@ -12037,22 +12037,26 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 btnFolder.onmouseover = () => btnFolder.style.background = 'rgba(59, 130, 246, 0.28)';
                 btnFolder.onmouseout = () => btnFolder.style.background = 'rgba(59, 130, 246, 0.15)';
 
-                const btnClose = card.querySelector('.btn-close-banner');
-                btnClose.onmouseover = () => btnClose.style.color = '#ef4444';
-                btnClose.onmouseout = () => btnClose.style.color = '#94a3b8';
-                btnClose.onclick = () => {
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(15px)';
-                    setTimeout(() => card.remove(), 250);
-                };
-
-                setTimeout(() => {
+                const closeBanner = () => {
                     if (card.parentElement) {
                         card.style.opacity = '0';
                         card.style.transform = 'translateY(15px)';
                         setTimeout(() => card.remove(), 250);
                     }
-                }, 60000);
+                };
+
+                const btnClose = card.querySelector('.btn-close-banner');
+                btnClose.onmouseover = () => btnClose.style.color = '#ef4444';
+                btnClose.onmouseout = () => btnClose.style.color = '#94a3b8';
+                btnClose.onclick = closeBanner;
+
+                let autoCloseTimer = setTimeout(closeBanner, 5000);
+
+                card.onmouseenter = () => clearTimeout(autoCloseTimer);
+                card.onmouseleave = () => {
+                    clearTimeout(autoCloseTimer);
+                    autoCloseTimer = setTimeout(closeBanner, 2500);
+                };
 
                 container.appendChild(card);
                 requestAnimationFrame(() => {
