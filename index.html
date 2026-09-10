@@ -3713,6 +3713,20 @@
                         return a === 26 || a === 2026 || (r.data && r.data >= '2026-08-15');
                     });
 
+                    // Normalizzazione automatica rate mensili stagione 26/27 (es. De Filippis, Vigo, Biggio rata 90€ o 102.50€ = scadenza mensile)
+                    seasonReceipts.forEach(r => {
+                        const qVal = parseFloat(r.quota) || (parseFloat(r.importo) > 25 ? parseFloat(r.importo) - 25 : parseFloat(r.importo) || 0);
+                        const txt = `${r.tipo || ''} ${r.note || ''}`.toLowerCase();
+                        const isRata = r.rateale || txt.includes('rata') || txt.includes('rateal') || qVal === 90 || qVal === 102.5;
+                        if (isRata && qVal <= 115) {
+                            if (r.durata !== '1' || !r.rateale) {
+                                r.durata = '1';
+                                r.rateale = true;
+                                changed = true;
+                            }
+                        }
+                    });
+
                     const quotaReceipts = seasonReceipts.filter(r => {
                         const qVal = parseFloat(r.quota) || 0;
                         const impVal = parseFloat(r.importo) || 0;
@@ -3722,8 +3736,9 @@
                     });
 
                     // Auto-ripristino quote annuali pluriennali in corso (es. Senis Filippo pagato in 4 rate annuale scadente ad aprile 2027)
-                    if (socio.id == 1787644999976 || (socio.cognome && socio.cognome.toLowerCase() === 'senis' && socio.nome && socio.nome.toLowerCase() === 'filippo')) {
-                        if (!socio.quota_scadenza || socio.quota_scadenza === '2026-08-31' || socio.quota_scadenza < '2027-04-21') {
+                    const isSenisFilippo = socio.id == 1787644999976 || (socio.cognome && socio.cognome.toLowerCase() === 'senis' && socio.nome && socio.nome.toLowerCase() === 'filippo');
+                    if (isSenisFilippo) {
+                        if (!socio.quota_scadenza || socio.quota_scadenza < '2027-04-21') {
                             socio.quota_scadenza = '2027-04-21';
                             changed = true;
                         }
@@ -3747,10 +3762,7 @@
                             }
                         });
 
-                        // Protezione quote legittime in corso oltre la stagione (es. annuali con scadenza nel 2027):
-                        // non retrocedere mai una quota già attiva con scadenza futura oltre la stagione in corso
-                        const hasLegitFutureQuota = socio.quota_scadenza && socio.quota_scadenza > '2026-08-31' && socio.quota_scadenza !== '2027-08-31';
-                        if (!hasLegitFutureQuota || maxScadenza > socio.quota_scadenza) {
+                        if (!isSenisFilippo) {
                             if (maxScadenza && socio.quota_scadenza !== maxScadenza) {
                                 socio.quota_scadenza = maxScadenza;
                                 changed = true;
@@ -6403,9 +6415,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                             <option value="annuale_promo">🏆 Quota Annuale Promo fino al 31 Ottobre (€360.00 — Fino al 31/08)</option>
                                             <option value="annuale_standard">🏆 Quota Associativa Annuale dal 1 Novembre (€410.00 — Fino al 31/08)</option>
                                         </optgroup>
-                                        <optgroup label="💳 RATEIZZAZIONI QUOTA ANNUALE (4 Rate)">
-                                            <option value="rateale_promo_90">💳 Quota Annuale a Rate (fino al 31 Ottobre) — €90.00 / Rata (4 rate da €90 = €360)</option>
-                                            <option value="rateale_nov_102">💳 Quota Annuale a Rate (dal 1 Novembre) — €102.50 / Rata (4 rate da €102.50 = €410)</option>
+                                        <optgroup label="💳 RATEIZZAZIONI QUOTA ANNUALE (Rate Mensili)">
+                                            <option value="rateale_promo_90">💳 Quota Annuale a Rate (fino al 31 Ottobre) — €90.00 / Rata Mensile (4 rate da €90 = €360)</option>
+                                            <option value="rateale_nov_102">💳 Quota Annuale a Rate (dal 1 Novembre) — €102.50 / Rata Mensile (4 rate da €102.50 = €410)</option>
                                         </optgroup>
                                         <optgroup label="👨‍👩‍👦 PACCHETTI FAMILY (2 Persone)">
                                             <option value="family_1m">👨‍👩‍👦 Family 2 - 1 Mese (€80.00)</option>
@@ -7093,22 +7105,25 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             
             let mesi = parseInt(durataMonths, 10);
             if (isRateale) {
-                // Pagamento rateale interno: calcola la scadenza della singola rata (es. 90€ fino a ott, 102.50€ da nov) o rate multiple
-                if (isNaN(mesi) || mesi <= 0 || mesi >= 12) {
-                    const qAmt = parseFloat(quotaAmount) || 0;
-                    if (qAmt >= 80 && qAmt <= 115) mesi = 2;
-                    else if (qAmt >= 170 && qAmt <= 225) mesi = 5;
-                    else if (qAmt >= 260 && qAmt <= 325) mesi = 8;
-                    else if (qAmt >= 350) mesi = 12;
-                    else mesi = 1;
+                // Pagamento rateale interno: ogni rata copre 1 MESE (la scadenza della quota rata è mensile)
+                const qAmt = parseFloat(quotaAmount) || 0;
+                if (qAmt >= 170 && qAmt <= 225) {
+                    mesi = 2; // Versamento di due rate insieme (es. 2 x 90€ = 180€ o 2 x 102.50€ = 205€)
+                } else if (qAmt >= 260 && qAmt <= 325) {
+                    mesi = 3; // 3 rate
+                } else if (qAmt >= 350) {
+                    mesi = 12; // Saldo completo
+                } else if (!isNaN(mesi) && mesi > 0 && mesi !== 2) {
+                    // Mantiene durata se specificata esplicitamente e diversa dal vecchio 2
+                } else {
+                    mesi = 1; // Rata singola mensile
                 }
             } else if (isNaN(mesi) || mesi <= 0) {
                 const isRataTxt = txt.includes('rata') || txt.includes('rateal');
                 if (isRataTxt) {
                     const qAmt = parseFloat(quotaAmount) || 0;
-                    if (qAmt >= 80 && qAmt <= 115) mesi = 2;
-                    else if (qAmt >= 170 && qAmt <= 225) mesi = 5;
-                    else if (qAmt >= 260 && qAmt <= 325) mesi = 8;
+                    if (qAmt >= 170 && qAmt <= 225) mesi = 2;
+                    else if (qAmt >= 260 && qAmt <= 325) mesi = 3;
                     else if (qAmt >= 350) mesi = 12;
                     else mesi = 1;
                 } else if (txt.includes('annuale') || txt.includes('12 mesi') || txt.includes('1 anno')) {
@@ -7144,8 +7159,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 noteEl.value = 'Quota Rateale / Pagamento Rata';
             }
             const durataEl = document.getElementById('receipt-durata');
-            if (checked && durataEl && (!durataEl.value || durataEl.value === '12')) {
-                durataEl.value = '2';
+            if (checked && durataEl && (!durataEl.value || durataEl.value === '12' || durataEl.value === '2')) {
+                durataEl.value = '1';
             }
             this.updateReceiptScadenzaPreview();
         },
@@ -7193,12 +7208,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Associativa Annuale dal 1 Novembre';
             } else if (tipo === 'rateale_promo_90') {
                 quotaVal = 90.00;
-                if (durataEl) durataEl.value = '2';
+                if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = true; this.onReceiptRatealeChange(true); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Annuale a Rate (fino al 31 Ottobre) - Rata €90';
             } else if (tipo === 'rateale_nov_102') {
                 quotaVal = 102.50;
-                if (durataEl) durataEl.value = '2';
+                if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = true; this.onReceiptRatealeChange(true); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Annuale a Rate (dal 1 Novembre) - Rata €102,50';
             } else if (tipo === 'family_1m') {
