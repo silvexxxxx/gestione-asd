@@ -3770,18 +3770,37 @@
                             }
                         }
 
-                        if (socio.stato === 'MOROSO' || socio.stato === 'NON ATTIVO' || !socio.stato) {
-                            socio.stato = 'ATTIVO';
-                            changed = true;
+                        const nowZero = new Date();
+                        nowZero.setHours(0, 0, 0, 0);
+                        const isQuotaExpired = socio.quota_scadenza && new Date(socio.quota_scadenza) < nowZero;
+
+                        if (isQuotaExpired) {
+                            if (socio.stato !== 'MOROSO' && socio.stato !== 'CESSATO') {
+                                socio.stato = 'MOROSO';
+                                changed = true;
+                            }
+                        } else {
+                            if (socio.stato === 'MOROSO' || socio.stato === 'NON ATTIVO' || !socio.stato) {
+                                socio.stato = 'ATTIVO';
+                                changed = true;
+                            }
                         }
                     }
 
-                    // 3. Se il socio non ha alcun pagamento per la stagione 26/27 ed ha il tesseramento scaduto
+                    // 3. Allineamento stato socio in base a tesseramento e scadenza quota
                     const hasPayment26 = seasonReceipts.length > 0;
                     const isTessActive = this.isTesseramentoAttivo(socio);
                     if (!hasPayment26 && !isTessActive && socio.stato !== 'CESSATO') {
                         if (socio.stato !== 'NON ATTIVO') {
                             socio.stato = 'NON ATTIVO';
+                            changed = true;
+                        }
+                    } else if (isTessActive && socio.stato !== 'CESSATO') {
+                        const nowZero = new Date();
+                        nowZero.setHours(0, 0, 0, 0);
+                        const isExpiredQ = socio.quota_scadenza && new Date(socio.quota_scadenza) < nowZero;
+                        if (isExpiredQ && socio.stato !== 'MOROSO') {
+                            socio.stato = 'MOROSO';
                             changed = true;
                         }
                     }
@@ -5228,11 +5247,43 @@
 
                 return soci.map(s => {
                     const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
+                    if (qScad) qScad.setHours(0, 0, 0, 0);
                     const tessScadStr = this.getTesseramentoScadenza(s);
                     const isTessActive = this.isTesseramentoAttivo(s);
                     const displayStato = this.getSocioDisplayStato(s);
-                    const isExpired = (displayStato !== 'ATTIVO') && ((qScad && qScad < now) || (tessScadStr && !isTessActive));
-                    const rowStyle = isExpired ? 'color: var(--danger); font-weight: 500;' : '';
+
+                    // Scadenza avvenuta: quota scaduta, tesseramento scaduto, o stato MOROSO / NON ATTIVO (se non CESSATO)
+                    const hasExpiredQuota = qScad && qScad < now;
+                    const hasExpiredTess = tessScadStr && !isTessActive;
+                    const isExpired = (displayStato === 'MOROSO' || displayStato === 'NON ATTIVO' || hasExpiredQuota || hasExpiredTess) && displayStato !== 'CESSATO';
+
+                    // Negli ultimi 5 giorni: quota o tesseramento in scadenza imminente (diffDays >= 0 && diffDays <= 5)
+                    let isWarning = false;
+                    if (!isExpired && displayStato !== 'CESSATO') {
+                        if (qScad) {
+                            const diffQuota = Math.ceil((qScad - now) / (1000 * 60 * 60 * 24));
+                            if (diffQuota >= 0 && diffQuota <= 5) {
+                                isWarning = true;
+                            }
+                        }
+                        if (!isWarning && tessScadStr && isTessActive) {
+                            const tScad = new Date(tessScadStr);
+                            tScad.setHours(0, 0, 0, 0);
+                            const diffTess = Math.ceil((tScad - now) / (1000 * 60 * 60 * 24));
+                            if (diffTess >= 0 && diffTess <= 5) {
+                                isWarning = true;
+                            }
+                        }
+                    }
+
+                    let rowStyle = '';
+                    if (displayStato === 'CESSATO') {
+                        rowStyle = 'color: var(--text-muted); opacity: 0.6;';
+                    } else if (isExpired) {
+                        rowStyle = 'color: var(--danger); font-weight: 500;';
+                    } else if (isWarning) {
+                        rowStyle = 'color: var(--warning); font-weight: 500;';
+                    }
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
                     const isMinore = eta < 18;
@@ -5242,11 +5293,13 @@
                         <td style="font-weight: 600;">${s.cognome || '-'}</td>
                         <td style="font-weight: 500;">${s.nome || '-'} ${isMinore ? '<span style="font-size:0.65rem; background:rgba(59,130,246,0.1); color:var(--primary); padding:2px 4px; border-radius:4px;">U18</span>' : ''}</td>
                         <td>
-                            <div style="font-size: 0.8rem; color: ${isExpired ? 'var(--danger)' : 'var(--text-muted)'}; opacity: 0.8;">${s.residenza || '-'}</div>
+                            <div style="font-size: 0.8rem; color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'}; opacity: 0.85;">${s.residenza || '-'}</div>
                             <div style="font-size: 0.75rem;">${s.tel || '-'}</div>
-                            ${s.email ? `<div style="font-size: 0.72rem; color: var(--primary); opacity: 0.9;">${s.email}</div>` : ''}
+                            ${s.email ? `<div style="font-size: 0.72rem; color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--primary)'}; opacity: 0.9;">${s.email}</div>` : ''}
                         </td>
-                        <td style="font-weight: 700;">${this.formatDate(s.quota_scadenza)}</td>
+                        <td style="font-weight: 700;">
+                            <span class="${this.getQuoteColor(s.quota_scadenza)}">${this.formatDate(s.quota_scadenza)}</span>
+                        </td>
                         <td>
                             <span class="${this.getCertColor(s.certificato_scadenza)}">
                                 ${this.formatDate(s.certificato_scadenza)}
@@ -5263,9 +5316,9 @@
                                 }
                                 ${s.tesseramento_data
                                     ? `<span class="${this.getCertColor(tessScadStr)}" style="font-size: 0.78rem; font-weight: 600;">Dal: ${this.formatDate(s.tesseramento_data)}</span>`
-                                    : `<span style="font-size: 0.72rem; color: var(--text-muted);">Data non inserita</span>`
+                                    : `<span style="font-size: 0.72rem; color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'};">Data non inserita</span>`
                                 }
-                                ${tessScadStr ? `<span style="font-size: 0.7rem; color: ${!isTessActive ? 'var(--danger)' : 'var(--text-muted)'}; font-weight: 500;">Scad: ${this.formatDate(tessScadStr)}</span>` : ''}
+                                ${tessScadStr ? `<span style="font-size: 0.7rem; color: ${!isTessActive ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'}; font-weight: 500;">Scad: ${this.formatDate(tessScadStr)}</span>` : ''}
                             </div>
                         </td>
                         <td><span class="badge badge-${displayStato.toLowerCase().replace(/\s+/g, '-')}">${displayStato}</span></td>
@@ -5276,7 +5329,7 @@
                                     : `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗨️</button>`
                                 }
                                 ${isMinore ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" title="Liberatoria Minori" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
-                                <button class="btn btn-outline" style="padding: 5px; border-color: ${isExpired ? 'var(--danger)' : 'var(--border)'};" title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
+                                <button class="btn btn-outline" style="padding: 5px; border-color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--border)'};" title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
                                 <button class="btn btn-outline text-danger" style="padding: 5px; border-color: rgba(239, 68, 68, 0.2);" title="Elimina" onclick="app.deleteSocio(${s.id})">🗑️</button>
                             </div>
                         </td>
@@ -5295,13 +5348,21 @@
                 return '';
             },
 
+            getQuoteColor(date) {
+                if (!date) return '';
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const scad = new Date(date);
+                scad.setHours(0, 0, 0, 0);
+                const diff = (scad - now) / (1000 * 60 * 60 * 24);
+                const diffDays = Math.ceil(diff);
+                if (diffDays < 0) return 'text-danger';   // Scaduta -> Rosso
+                if (diffDays <= 5) return 'text-warning'; // Negli ultimi 5 gg -> Arancione
+                return ''; // Regolare -> Bianco / Default
+            },
+
             getSocioDisplayStato(s) {
                 if (!s || s.stato === 'CESSATO') return 'CESSATO';
-
-                // Se il socio ha pagamenti o tesseramenti registrati nella stagione 26/27, è sempre ATTIVO
-                if (app.hasSeasonPayment && app.hasSeasonPayment(s)) {
-                    return 'ATTIVO';
-                }
 
                 const isTessActive = app.isActiveMember ? app.isActiveMember(s) : false;
                 if (!isTessActive) {
@@ -5310,8 +5371,12 @@
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
                 const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
+                if (qScad) qScad.setHours(0, 0, 0, 0);
                 const hasExpiredQuota = qScad && qScad < now;
                 if (hasExpiredQuota) {
+                    return 'MOROSO';
+                }
+                if (s.stato === 'MOROSO' && !qScad) {
                     return 'MOROSO';
                 }
                 return 'ATTIVO';
@@ -8347,19 +8412,23 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         openQuoteAlertsModal() {
             const now = new Date();
+            now.setHours(0, 0, 0, 0);
             // Mostra tutti i soci con quota scaduta o in scadenza entro 30gg (non solo 3)
             const alerts = this.state.soci.filter(s => {
                 if (!s.quota_scadenza || s.stato === 'CESSATO') return false;
-                const diff = (new Date(s.quota_scadenza) - now) / 86400000;
+                const qd = new Date(s.quota_scadenza);
+                qd.setHours(0, 0, 0, 0);
+                const diff = (qd - now) / 86400000;
                 return diff <= 30;
             }).sort((a, b) => new Date(a.quota_scadenza) - new Date(b.quota_scadenza));
 
             const rows = alerts.length === 0
                 ? `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Nessuna quota in scadenza nei prossimi 30 giorni. ✅</td></tr>`
                 : alerts.map(s => {
-                    const diff = (new Date(s.quota_scadenza) - now) / 86400000;
-                    const diffDays = Math.ceil(diff);
-                    const color = diffDays < 0 ? 'var(--danger)' : diffDays <= 2 ? '#f97316' : diffDays <= 7 ? 'var(--warning)' : 'var(--text-main)';
+                    const qd = new Date(s.quota_scadenza);
+                    qd.setHours(0, 0, 0, 0);
+                    const diffDays = Math.ceil((qd - now) / 86400000);
+                    const color = diffDays < 0 ? 'var(--danger)' : diffDays <= 5 ? 'var(--warning)' : 'var(--text-main)';
                     const statusText = diffDays < 0 ? `SCADUTA (${Math.abs(diffDays)}gg fa)` : diffDays === 0 ? 'SCADE OGGI' : diffDays === 1 ? 'MANCA 1 GIORNO' : `MANCANO ${diffDays} GIORNI`;
                     const today = new Date().toISOString().split('T')[0];
                     const sentList = this.state.sent_reminders[today] || [];
@@ -13241,12 +13310,15 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         getQuoteColor(date) {
             if (!date) return '';
             const now = new Date();
+            now.setHours(0, 0, 0, 0);
             const scad = new Date(date);
+            scad.setHours(0, 0, 0, 0);
             const diff = (scad - now) / (1000 * 60 * 60 * 24);
+            const diffDays = Math.ceil(diff);
 
-            if (diff <= 1) return 'text-danger'; // 1 giorno o scaduto
-            if (diff <= 2) return 'text-warning'; // 2 giorni (Arancione)
-            return 'text-main'; // 3 giorni (Default/Main)
+            if (diffDays < 0) return 'text-danger'; // Scaduta (Rosso)
+            if (diffDays <= 5) return 'text-warning'; // Ultimi 5 gg (Arancione)
+            return ''; // Regolare (Bianco / Default)
         },
 
         dismissQuoteAlert(socioId) {
@@ -13318,6 +13390,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             if (alerts.length === 0) return `<p style="color: var(--text-muted); font-size: 0.85rem;">Nessuna quota in scadenza.</p>`;
 
             const now = new Date();
+            now.setHours(0, 0, 0, 0);
             return `
                     <div class="table-container">
                     <table style="font-size: 0.8rem;">
@@ -13332,6 +13405,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <tbody>
                             ${alerts.slice(0, 10).map(s => {
                 const qDate = new Date(s.quota_scadenza);
+                qDate.setHours(0, 0, 0, 0);
                 const diff = (qDate - now) / (1000 * 60 * 60 * 24);
                 const diffDays = Math.ceil(diff);
                 const colorClass = this.getQuoteColor(s.quota_scadenza);
@@ -13342,25 +13416,23 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 else if (diffDays === 1) statusText = "MANCA 1 GIORNO";
                 else statusText = `MANCANO ${diffDays} GIORNI`;
 
-                // For orange requirement: we use var(--warning) which is orange-ish in the theme
-                // Actually the user wants "arancione quelle a cui mancano due giorni"
                 let customStyle = "";
-                if (diffDays === 2) {
-                    customStyle = "color: #f97316; font-weight: 700; background: rgba(249, 115, 22, 0.1); border-radius: 4px; padding: 2px 4px;";
-                } else if (diffDays <= 1) {
+                if (diffDays < 0) {
                     customStyle = "color: var(--danger); font-weight: 700;";
+                } else if (diffDays <= 5) {
+                    customStyle = "color: var(--warning); font-weight: 700; background: rgba(245, 158, 11, 0.1); border-radius: 4px; padding: 2px 4px;";
                 }
 
                 return `
                                 <tr>
                                     <td>
                                         <div style="font-weight: 600;">${s.cognome || ''} ${s.nome || ''}</div>
-                                        <div style="font-size: 0.7rem; color: var(--text-muted);">${s.tel}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-muted);">${s.tel || ''}</div>
                                     </td>
                                     <td class="${colorClass}" style="${customStyle}">
                                         ${this.formatDate(s.quota_scadenza)}
                                     </td>
-                                    <td style="font-weight: 700; ${customStyle || (diffDays <= 1 ? 'color: var(--danger);' : '')}">
+                                    <td style="font-weight: 700; ${customStyle}">
                                         ${statusText}
                                     </td>
                                     <td>
