@@ -12236,32 +12236,44 @@
     {
       "nome": "Quota Associativa Mensile",
       "importo": 45,
-      "note": "",
+      "note": "Frequenza 1 mese",
       "id": 1788013839287
     },
     {
       "nome": "Quota Associativa Trimestrale",
       "importo": 120,
-      "note": "",
+      "note": "Abbonamento 3 mesi",
       "id": 1788013870136
     },
     {
       "nome": "Quota Associativa Semestrale",
       "importo": 230,
-      "note": "",
+      "note": "Abbonamento 6 mesi",
       "id": 1788014055094
     },
     {
       "nome": "Quota Annuale in promo fino al 31 Ottobre",
       "importo": 360,
-      "note": "",
+      "note": "Quota annuale saldo promozionale",
       "id": 1788014129157
     },
     {
       "nome": "Quota associativa Annuale dal 1 Novembre",
       "importo": 410,
-      "note": "",
+      "note": "Quota annuale saldo standard",
       "id": 1788014200191
+    },
+    {
+      "nome": "Quota Annuale a Rate (fino al 31 Ottobre)",
+      "importo": 90,
+      "note": "1ª di 4 rate (4 x €90 = €360)",
+      "id": 1788014250000
+    },
+    {
+      "nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "importo": 102.5,
+      "note": "1ª di 4 rate (4 x €102.50 = €410)",
+      "id": 1788014260000
     },
     {
       "nome": "Family 2 - 1 mese",
@@ -12282,7 +12294,7 @@
       "id": 1788330815645
     },
     {
-      "nome": "Tesseramento",
+      "nome": "Tesseramento Federale",
       "importo": 25,
       "note": "Tesseramento federale annuale, valido fino al 31 Agosto",
       "id": 1788330929996
@@ -12290,7 +12302,7 @@
     {
       "nome": "Ingresso Prova",
       "importo": 10,
-      "note": "",
+      "note": "Ingresso singolo di prova",
       "id": 1788330952555
     }
   ]
