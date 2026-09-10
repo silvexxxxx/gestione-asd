@@ -2007,27 +2007,42 @@
 
         sanitizeDates() {
             let changed = false;
-            const fixDate = (str) => {
-                if (typeof str === 'string' && str.match(/^00\d{2}-\d{2}-\d{2}$/)) {
+            const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+            const fixDate = (str, isBirthDate = false) => {
+                if (typeof str !== 'string') return str;
+                // Gestione formato 00YY-MM-DD
+                if (str.match(/^00\d{2}-\d{2}-\d{2}$/)) {
                     changed = true;
-                    return '20' + str.substring(2);
+                    const yy = parseInt(str.substring(2, 4), 10);
+                    let yyyy;
+                    if (isBirthDate) {
+                        yyyy = yy <= currentYearShort ? (2000 + yy) : (1900 + yy);
+                    } else {
+                        yyyy = yy <= (currentYearShort + 10) ? (2000 + yy) : (1900 + yy);
+                    }
+                    return yyyy + str.substring(4);
+                }
+                // Ripara date di nascita corrotte in precedenza (es. nate nel 2050-2099 invece che 1950-1999)
+                if (isBirthDate && str.match(/^20([3-9]\d)-\d{2}-\d{2}$/)) {
+                    changed = true;
+                    return '19' + str.substring(2);
                 }
                 return str;
             };
 
-            this.state.ricevute.forEach(r => { r.data = fixDate(r.data); });
-            this.state.primanota.forEach(t => { t.data = fixDate(t.data); });
+            this.state.ricevute.forEach(r => { r.data = fixDate(r.data, false); });
+            this.state.primanota.forEach(t => { t.data = fixDate(t.data, false); });
             this.state.soci.forEach(s => {
-                if (s.data_nascita) s.data_nascita = fixDate(s.data_nascita);
-                if (s.scadenza_medica) s.scadenza_medica = fixDate(s.scadenza_medica);
-                if (s.quota_scadenza) s.quota_scadenza = fixDate(s.quota_scadenza);
-                if (s.certificato_scadenza) s.certificato_scadenza = fixDate(s.certificato_scadenza);
-                if (s.tesseramento_data) s.tesseramento_data = fixDate(s.tesseramento_data);
+                if (s.data_nascita) s.data_nascita = fixDate(s.data_nascita, true);
+                if (s.scadenza_medica) s.scadenza_medica = fixDate(s.scadenza_medica, false);
+                if (s.quota_scadenza) s.quota_scadenza = fixDate(s.quota_scadenza, false);
+                if (s.certificato_scadenza) s.certificato_scadenza = fixDate(s.certificato_scadenza, false);
+                if (s.tesseramento_data) s.tesseramento_data = fixDate(s.tesseramento_data, false);
             });
             this.state.istruttori.forEach(i => {
-                if (i.data_nascita) i.data_nascita = fixDate(i.data_nascita);
-                if (i.certificato_scadenza) i.certificato_scadenza = fixDate(i.certificato_scadenza);
-                if (i.scadenza_contratto) i.scadenza_contratto = fixDate(i.scadenza_contratto);
+                if (i.data_nascita) i.data_nascita = fixDate(i.data_nascita, true);
+                if (i.certificato_scadenza) i.certificato_scadenza = fixDate(i.certificato_scadenza, false);
+                if (i.scadenza_contratto) i.scadenza_contratto = fixDate(i.scadenza_contratto, false);
             });
             if (changed) { this.saveAll(); }
         },
@@ -3486,14 +3501,17 @@
                         if (!isNaN(d.getTime())) {
                             const y = d.getFullYear();
                             const m = d.getMonth();
-                            const correctExp = `${m >= 8 ? y + 1 : y}-08-31`;
+                            // Se tesserato a fine agosto (es. dal 15/08 in poi) o da settembre (m>=8), appartiene alla nuova stagione y/(y+1)
+                            const isCampagnaNuovaStagione = (m >= 8) || (m === 7 && d.getDate() >= 15);
+                            const expYear = isCampagnaNuovaStagione ? y + 1 : y;
+                            const correctExp = `${expYear}-08-31`;
                             if (updated.tesseramento_scadenza !== correctExp) {
                                 updated.tesseramento_scadenza = correctExp;
                                 migrated = true;
                             }
                         }
-                    } else if (updated.tesserato === 'SI' && (!updated.tesseramento_scadenza || updated.tesseramento_scadenza > '2026-08-31')) {
-                        // Se tesserato senza data registrata avviato nel 25/26 o precedente: scaduto il 31/08/2026
+                    } else if (updated.tesserato === 'SI' && !updated.tesseramento_scadenza) {
+                        // Solo se non ha alcuna scadenza impostata, imposta la chiusura della stagione passata
                         updated.tesseramento_scadenza = '2026-08-31';
                         migrated = true;
                     }
@@ -3507,8 +3525,19 @@
                         }
                     }
 
-                    // Se il tesseramento è scaduto (scadenza <= 31/08/2026 o antecedente ad oggi),
-                    // per il nuovo anno sportivo 26/27 il socio risulta NON tesserato finché non rinnova
+                    // Se il tesseramento è per la stagione 26/27 (scadenza >= 31/08/2027), il socio è sicuramente TESSERATO SI e ATTIVO
+                    if (updated.tesseramento_scadenza && updated.tesseramento_scadenza >= '2027-08-31') {
+                        if (updated.tesserato !== 'SI') {
+                            updated.tesserato = 'SI';
+                            migrated = true;
+                        }
+                        if (updated.stato === 'NON ATTIVO' || !updated.stato) {
+                            updated.stato = 'ATTIVO';
+                            migrated = true;
+                        }
+                    }
+
+                    // Se il tesseramento è scaduto (scadenza antecedente ad oggi)
                     if (updated.tesseramento_scadenza) {
                         const sExp = new Date(updated.tesseramento_scadenza);
                         sExp.setHours(23, 59, 59, 999);
@@ -3523,6 +3552,160 @@
                 });
 
                 if (migrated) this.saveAll();
+                this.syncSociFromRicevute();
+            },
+
+            hasSeasonTesseramento(s) {
+                if (!s || !this.state.ricevute) return false;
+                const normalize = str => (str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                const sFullName = normalize(`${s.cognome || ''} ${s.nome || ''}`);
+                const sReversed = normalize(`${s.nome || ''} ${s.cognome || ''}`);
+
+                return this.state.ricevute.some(r => {
+                    if (r.annullata) return false;
+                    const matchId = r.socio_id && (r.socio_id == s.id || String(r.socio_id) === String(s.id));
+                    const rName = normalize(r.socio_nome);
+                    const matchName = rName && (rName === sFullName || rName === sReversed);
+                    if (!matchId && !matchName) return false;
+
+                    const a = parseInt(r.anno);
+                    const isSeason26 = (a === 26 || a === 2026);
+                    const isRecent = (r.data && r.data >= '2026-08-01');
+                    if (!isSeason26 && !isRecent) return false;
+
+                    const tVal = parseFloat(r.tess) || 0;
+                    const txt = `${r.tipo || ''} ${r.note || ''}`.toLowerCase();
+                    return tVal > 0 || txt.includes('tesseramento');
+                });
+            },
+
+            hasSeasonPayment(s) {
+                if (!s || !this.state.ricevute) return false;
+                const normalize = str => (str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                const sFullName = normalize(`${s.cognome || ''} ${s.nome || ''}`);
+                const sReversed = normalize(`${s.nome || ''} ${s.cognome || ''}`);
+
+                return this.state.ricevute.some(r => {
+                    if (r.annullata) return false;
+                    const matchId = r.socio_id && (r.socio_id == s.id || String(r.socio_id) === String(s.id));
+                    const rName = normalize(r.socio_nome);
+                    const matchName = rName && (rName === sFullName || rName === sReversed);
+                    if (!matchId && !matchName) return false;
+
+                    const a = parseInt(r.anno);
+                    const isSeason26 = (a === 26 || a === 2026);
+                    const isRecent = (r.data && r.data >= '2026-08-01');
+                    return isSeason26 || isRecent;
+                });
+            },
+
+            syncSociFromRicevute() {
+                if (!this.state.soci || !this.state.ricevute) return;
+                let changed = false;
+                const normalize = str => (str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+                this.state.soci.forEach(socio => {
+                    const sFullName = normalize(`${socio.cognome || ''} ${socio.nome || ''}`);
+                    const sReversed = normalize(`${socio.nome || ''} ${socio.cognome || ''}`);
+
+                    // Tutte le ricevute non annullate del socio
+                    const sReceipts = this.state.ricevute.filter(r => {
+                        if (r.annullata) return false;
+                        if (r.socio_id && (r.socio_id == socio.id || String(r.socio_id) === String(socio.id))) return true;
+                        if (r.socio_nome) {
+                            const rName = normalize(r.socio_nome);
+                            if (rName && (rName === sFullName || rName === sReversed)) return true;
+                        }
+                        return false;
+                    });
+
+                    if (sReceipts.length === 0) return;
+
+                    // Ricevute per la stagione corrente 26/27 (oppure con data >= 01/08/2026 o anno 26/2026)
+                    const seasonReceipts = sReceipts.filter(r => {
+                        const a = parseInt(r.anno);
+                        return a === 26 || a === 2026 || (r.data && r.data >= '2026-08-01');
+                    });
+
+                    if (seasonReceipts.length === 0) return;
+
+                    // 1. Allineamento Tesseramento
+                    const tessReceipt = seasonReceipts.find(r => {
+                        const tVal = parseFloat(r.tess) || 0;
+                        const txt = `${r.tipo || ''} ${r.note || ''}`.toLowerCase();
+                        return tVal > 0 || txt.includes('tesseramento');
+                    });
+
+                    if (tessReceipt) {
+                        if (socio.tesserato !== 'SI') {
+                            socio.tesserato = 'SI';
+                            changed = true;
+                        }
+                        if (!socio.tesseramento_scadenza || socio.tesseramento_scadenza < '2027-08-31') {
+                            socio.tesseramento_scadenza = '2027-08-31';
+                            changed = true;
+                        }
+                        if (!socio.tesseramento_data || socio.tesseramento_data < tessReceipt.data) {
+                            socio.tesseramento_data = tessReceipt.data;
+                            changed = true;
+                        }
+                        if (socio.stato === 'NON ATTIVO' || !socio.stato) {
+                            socio.stato = 'ATTIVO';
+                            changed = true;
+                        }
+                    }
+
+                    // 2. Allineamento Quota Associativa / Corsi
+                    const quotaReceipts = seasonReceipts.filter(r => {
+                        const qVal = parseFloat(r.quota) || 0;
+                        const impVal = parseFloat(r.importo) || 0;
+                        const txt = `${r.tipo || ''} ${r.note || ''}`.toLowerCase();
+                        return qVal > 0 || txt.includes('quota') || txt.includes('corso') || (!txt.includes('tesseramento') && impVal > 0);
+                    });
+
+                    if (quotaReceipts.length > 0) {
+                        quotaReceipts.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+                        const latest = quotaReceipts[0];
+                        const rData = latest.inizio_validita || latest.data || '2026-09-01';
+                        const txt = `${latest.tipo || ''} ${latest.note || ''}`.toLowerCase();
+                        const imp = parseFloat(latest.importo) || parseFloat(latest.quota) || 0;
+
+                        let targetExpiry = null;
+                        if (latest.durata && !isNaN(parseInt(latest.durata))) {
+                            const d = new Date(rData);
+                            d.setMonth(d.getMonth() + parseInt(latest.durata));
+                            targetExpiry = d.toISOString().split('T')[0];
+                        } else if (txt.includes('annuale') || (txt.includes('associativa') && !txt.includes('mensile')) || imp >= 70) {
+                            targetExpiry = '2027-08-31';
+                        } else if (txt.includes('semestrale')) {
+                            const d = new Date(rData);
+                            d.setMonth(d.getMonth() + 6);
+                            targetExpiry = d.toISOString().split('T')[0];
+                        } else if (txt.includes('trimestrale')) {
+                            const d = new Date(rData);
+                            d.setMonth(d.getMonth() + 3);
+                            targetExpiry = d.toISOString().split('T')[0];
+                        } else {
+                            const d = new Date(rData);
+                            d.setMonth(d.getMonth() + 1);
+                            targetExpiry = d.toISOString().split('T')[0];
+                        }
+
+                        if (targetExpiry && (!socio.quota_scadenza || socio.quota_scadenza < targetExpiry)) {
+                            socio.quota_scadenza = targetExpiry;
+                            changed = true;
+                        }
+
+                        if (socio.stato === 'MOROSO' || socio.stato === 'NON ATTIVO' || !socio.stato) {
+                            socio.stato = 'ATTIVO';
+                            changed = true;
+                        }
+                    }
+                });
+
+                if (changed) {
+                    this.saveAll();
+                }
             },
 
             migrateIstruttori() {
@@ -4864,6 +5047,7 @@
             // --- SOCI MANAGEMENT ---
 
             renderSoci() {
+                this.syncSociFromRicevute();
                 const totalSoci = this.state.soci.length;
                 const attiviAnno = this.state.soci.filter(s => this.isActiveMember(s)).length;
                 const sociStagione = this.state.soci.filter(s => this.isSeasonMember(s));
@@ -5020,7 +5204,13 @@
             },
 
             getSocioDisplayStato(s) {
-                if (s.stato === 'CESSATO') return 'CESSATO';
+                if (!s || s.stato === 'CESSATO') return 'CESSATO';
+
+                // Se il socio ha pagamenti o tesseramenti registrati nella stagione 26/27, è sempre ATTIVO
+                if (app.hasSeasonPayment && app.hasSeasonPayment(s)) {
+                    return 'ATTIVO';
+                }
+
                 const isTessActive = app.isActiveMember ? app.isActiveMember(s) : false;
                 if (!isTessActive) {
                     return 'NON ATTIVO';
@@ -5172,7 +5362,15 @@
                 const data = form.querySelector('[name="data_nascita"]').value;
 
                 if (nome && cognome && sesso && luogo && data) {
-                    const [year, month, day] = data.split('-');
+                    let [year, month, day] = data.split('-');
+                    let yNum = parseInt(year, 10);
+                    if (yNum < 100) {
+                        const curY = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                        yNum = yNum <= curY ? 2000 + yNum : 1900 + yNum;
+                        year = yNum.toString();
+                        const inputDate = form.querySelector('[name="data_nascita"]');
+                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
+                    }
                     try {
                         const cf = new CodiceFiscale({
                             name: nome,
@@ -5180,7 +5378,7 @@
                             gender: sesso,
                             day: parseInt(day, 10),
                             month: parseInt(month, 10),
-                            year: parseInt(year, 10),
+                            year: yNum,
                             birthplace: luogo
                         });
                         form.querySelector('[name="cf"]').value = cf.code;
@@ -5201,7 +5399,15 @@
                 const data = form.querySelector('[name="data_nascita"]').value;
 
                 if (nome && cognome && sesso && luogo && data) {
-                    const [year, month, day] = data.split('-');
+                    let [year, month, day] = data.split('-');
+                    let yNum = parseInt(year, 10);
+                    if (yNum < 100) {
+                        const curY = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                        yNum = yNum <= curY ? 2000 + yNum : 1900 + yNum;
+                        year = yNum.toString();
+                        const inputDate = form.querySelector('[name="data_nascita"]');
+                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
+                    }
                     try {
                         const cf = new CodiceFiscale({
                             name: nome,
@@ -5209,7 +5415,7 @@
                             gender: sesso,
                             day: parseInt(day, 10),
                             month: parseInt(month, 10),
-                            year: parseInt(year, 10),
+                            year: yNum,
                             birthplace: luogo
                         });
                         form.querySelector('[name="cf"]').value = cf.code;
@@ -5390,13 +5596,36 @@
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
-            Object.keys(data).forEach(k => {
-                if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
-                    data[k] = '20' + data[k].substring(2);
-                }
-            });
+                const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                Object.keys(data).forEach(k => {
+                    if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
+                        const yy = parseInt(data[k].substring(2, 4), 10);
+                        const isBirth = k.includes('nascita');
+                        let yyyy;
+                        if (isBirth) {
+                            yyyy = yy <= currentYearShort ? (2000 + yy) : (1900 + yy);
+                        } else {
+                            yyyy = yy <= (currentYearShort + 10) ? (2000 + yy) : (1900 + yy);
+                        }
+                        data[k] = yyyy + data[k].substring(4);
+                    }
+                });
                 const editId = parseInt(e.target.dataset.editId);
                 data.updated_at = Date.now();
+
+                // Normalizza tesseramento per campagne anticipate di fine agosto
+                if (data.tesseramento_data) {
+                    const d = new Date(data.tesseramento_data);
+                    if (!isNaN(d.getTime())) {
+                        const isCampagna = (d.getMonth() >= 8) || (d.getMonth() === 7 && d.getDate() >= 15);
+                        if (isCampagna) {
+                            data.tesserato = 'SI';
+                            if (!data.tesseramento_scadenza || data.tesseramento_scadenza <= '2026-08-31') {
+                                data.tesseramento_scadenza = `${d.getFullYear() + 1}-08-31`;
+                            }
+                        }
+                    }
+                }
 
                 // Verifica coerenza tesseramento per la stagione corrente
                 if (data.tesserato === 'SI' && data.tesseramento_scadenza) {
@@ -7129,36 +7358,52 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             // Aggiorna validità quota in anagrafica socio
             const inizio = data.inizio_validita || data.data;
-            const durata = data.durata;
+            let durata = data.durata;
+            const quotaVal = parseFloat(data.quota) || 0;
+            const importoVal = parseFloat(data.importo) || 0;
+            const hasQuota = quotaVal > 0 || tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso');
+
+            if (!durata && hasQuota) {
+                if (tipoCausale.toLowerCase().includes('annuale') || (tipoCausale.toLowerCase().includes('associativa') && !tipoCausale.toLowerCase().includes('mensile')) || importoVal >= 70) {
+                    durata = '12';
+                } else {
+                    durata = '1';
+                }
+            }
+
             if (durata && socio) {
                 const date = new Date(inizio);
-                date.setMonth(date.getMonth() + parseInt(durata));
-                socio.quota_scadenza = date.toISOString().split('T')[0];
-                if (socio.stato === 'NON ATTIVO' || socio.stato === 'CESSATO' || socio.stato === 'MOROSO') {
-                    socio.stato = 'ATTIVO';
+                if (durata === '12' && (tipoCausale.toLowerCase().includes('associativa') || importoVal >= 70)) {
+                    const expY = (date.getMonth() >= 8 || (date.getMonth() === 7 && date.getDate() >= 15)) ? date.getFullYear() + 1 : date.getFullYear();
+                    socio.quota_scadenza = `${expY}-08-31`;
+                } else {
+                    date.setMonth(date.getMonth() + parseInt(durata));
+                    socio.quota_scadenza = date.toISOString().split('T')[0];
                 }
+                socio.stato = 'ATTIVO';
             }
 
             // Se la ricevuta include tesseramento, rinnova automaticamente il tesseramento del socio
             const tessImporto = parseFloat(data.tess) || 0;
-            const hasTessNote = (data.note || '').toLowerCase().includes('tesseramento');
+            const hasTessNote = (data.note || '').toLowerCase().includes('tesseramento') || tipoCausale.toLowerCase().includes('tesseramento');
             if ((tessImporto > 0 || hasTessNote) && socio) {
                 const tessDate = data.data || new Date().toISOString().split('T')[0];
                 const d = new Date(tessDate);
-                let expYear = d.getMonth() >= 8 ? d.getFullYear() + 1 : d.getFullYear();
+                const isCampagnaNuovaStagione = (d.getMonth() === 7 && d.getDate() >= 15);
+                let expYear = (d.getMonth() >= 8 || isCampagnaNuovaStagione) ? d.getFullYear() + 1 : d.getFullYear();
                 if (data.anno && !isNaN(parseInt(data.anno))) {
-                    expYear = 2000 + parseInt(data.anno) + 1;
+                    const a = parseInt(data.anno);
+                    expYear = (a < 100 ? 2000 + a : a) + 1;
                 }
                 socio.tesserato = 'SI';
                 socio.tesseramento_data = tessDate;
                 socio.tesseramento_scadenza = `${expYear}-08-31`;
-                if (socio.stato === 'NON ATTIVO' || socio.stato === 'CESSATO' || socio.stato === 'MOROSO') {
-                    socio.stato = 'ATTIVO';
-                }
+                socio.stato = 'ATTIVO';
             }
 
-            // Sincronizza Prima Nota
+            // Sincronizza Prima Nota e Anagrafica Soci
             this.syncPrimaNotaFromRicevuta(receipt);
+            this.syncSociFromRicevute();
 
             this.saveAll();
             this.renderRicevute(true, receipt.id);
@@ -12242,28 +12487,36 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         getTesseramentoScadenza(s) {
             if (!s) return null;
 
+            // Se il socio ha una ricevuta con tesseramento per la stagione 26/27 (o con data da agosto 2026 in poi)
+            if (this.hasSeasonTesseramento && this.hasSeasonTesseramento(s)) {
+                return '2027-08-31';
+            }
+
             // Se ha una scadenza esplicita già registrata (es. da una ricevuta)
             if (s.tesseramento_scadenza) {
+                // Se la scadenza è stata forzata al 31/08/2026 ma il tesseramento è avvenuto da agosto 2026 in poi
+                if (s.tesseramento_scadenza === '2026-08-31' && s.tesseramento_data && s.tesseramento_data >= '2026-08-01') {
+                    return '2027-08-31';
+                }
                 return s.tesseramento_scadenza;
             }
 
             // Altrimenti, se ha una data esplicita di avvenuto tesseramento, calcola:
             // Regola federale Anno Sportivo (1 Settembre - 31 Agosto):
-            // - Da 1° Settembre a 31 Dicembre (mesi 8-11): scade il 31 Agosto dell'anno successivo (Y+1).
-            // - Da 1° Gennaio a 31 Agosto (mesi 0-7): scade il 31 Agosto dello stesso anno (Y).
+            // - Da metà Agosto o da 1° Settembre: scade il 31 Agosto dell'anno successivo (Y+1).
+            // - Prima di metà Agosto: scade il 31 Agosto dello stesso anno (Y).
             if (s.tesseramento_data) {
                 const d = new Date(s.tesseramento_data);
                 if (!isNaN(d.getTime())) {
                     const y = d.getFullYear();
                     const m = d.getMonth();
-                    const expYear = m >= 8 ? y + 1 : y;
+                    const isCampagnaNuovaStagione = (m >= 8) || (m === 7 && d.getDate() >= 15);
+                    const expYear = isCampagnaNuovaStagione ? y + 1 : y;
                     return `${expYear}-08-31`;
                 }
             }
 
-
             // Se è tesserato SI ma senza data (es. dati storici/importati):
-            // I tesseramenti pregressi (avviati nell'anno sportivo 25/26 o prima del 1° Settembre 2026) sono scaduti il 31/08/2026.
             if (s.tesserato === 'SI') {
                 return '2026-08-31';
             }
@@ -12272,7 +12525,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         },
 
         isTesseramentoAttivo(s) {
-            if (!s || s.stato === 'CESSATO' || s.tesserato !== 'SI') return false;
+            if (!s || s.stato === 'CESSATO') return false;
+
+            // Se ha una ricevuta per tesseramento della nuova stagione, è attivo
+            if (this.hasSeasonTesseramento && this.hasSeasonTesseramento(s)) {
+                return true;
+            }
 
             const scadStr = this.getTesseramentoScadenza(s);
             if (!scadStr) return false;
@@ -23544,28 +23802,26 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initAppLogo, 100);
 
     // Fix per anni inseriti a due cifre (es. 0072 -> 1972 o 0026 -> 2026)
-    document.addEventListener('change', function(e) {
-        if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'date') {
-            const val = e.target.value;
-            if (val) {
-                const parts = val.split('-');
-                if (parts.length === 3 && parts[0].length === 4 && parts[0].startsWith('00')) {
-                    const twoDigitYear = parseInt(parts[0].substring(2), 10);
-                    const currentYearShort = parseInt(new Date().getFullYear().toString().substring(2), 10);
-                    // Se l'anno a due cifre è <= anno corrente + 10, è 20xx (es. 26 -> 2026, 30 -> 2030)
-                    // altrimenti è 19xx (es. 72 -> 1972)
-                    const threshold = currentYearShort + 10;
-                    const fullYear = twoDigitYear <= threshold ? 2000 + twoDigitYear : 1900 + twoDigitYear;
-                    parts[0] = fullYear.toString();
-                    e.target.value = parts.join('-');
-                    
-                    // Dispatch change event to trigger any logic bound to the input
-                    e.target.dispatchEvent(new Event('input', { bubbles: true }));
-                    e.target.dispatchEvent(new Event('change', { bubbles: true }));
-                }
+    function fixTwoDigitYear(el) {
+        if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
+        const val = el.value;
+        if (val) {
+            const parts = val.split('-');
+            if (parts.length === 3 && parts[0].length === 4 && parts[0].startsWith('00')) {
+                const twoDigitYear = parseInt(parts[0].substring(2), 10);
+                const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                const isBirth = (el.name && el.name.includes('nascita')) || (el.id && el.id.includes('nascita'));
+                const threshold = isBirth ? currentYearShort : (currentYearShort + 10);
+                const fullYear = twoDigitYear <= threshold ? 2000 + twoDigitYear : 1900 + twoDigitYear;
+                parts[0] = fullYear.toString();
+                el.value = parts.join('-');
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
-    });
+    }
+    document.addEventListener('change', e => fixTwoDigitYear(e.target), true);
+    document.addEventListener('blur', e => fixTwoDigitYear(e.target), true);
 });
 
 window.addEventListener('focus', () => {
