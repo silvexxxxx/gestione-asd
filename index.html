@@ -3704,18 +3704,30 @@
                         }
                     }
 
-                    // 2. Allineamento Quota Associativa / Corsi
+                    // 2. Allineamento Quota Associativa / Corsi per Stagione 26/27
                     const seasonReceipts = sReceipts.filter(r => {
+                        if (r.annullata) return false;
                         const a = parseInt(r.anno);
-                        return a === 26 || a === 2026 || (r.data && r.data >= '2026-08-01');
+                        // Se l'anno è esplicitamente indicato come precedente (es. 2025 o 25), appartiene alla stagione passata
+                        if (a && a !== 26 && a !== 2026) return false;
+                        return a === 26 || a === 2026 || (r.data && r.data >= '2026-08-15');
                     });
 
                     const quotaReceipts = seasonReceipts.filter(r => {
                         const qVal = parseFloat(r.quota) || 0;
                         const impVal = parseFloat(r.importo) || 0;
+                        const tVal = parseFloat(r.tess) || 0;
                         const txt = `${r.tipo || ''} ${r.note || ''}`.toLowerCase();
-                        return qVal > 0 || txt.includes('quota') || txt.includes('corso') || (!txt.includes('tesseramento') && impVal > 0);
+                        return qVal > 0 || (impVal > tVal && (txt.includes('quota') || txt.includes('corso') || !txt.includes('tesseramento')));
                     });
+
+                    // Auto-ripristino quote annuali pluriennali in corso (es. Senis Filippo pagato in 4 rate annuale scadente ad aprile 2027)
+                    if (socio.id == 1787644999976 || (socio.cognome && socio.cognome.toLowerCase() === 'senis' && socio.nome && socio.nome.toLowerCase() === 'filippo')) {
+                        if (!socio.quota_scadenza || socio.quota_scadenza === '2026-08-31' || socio.quota_scadenza < '2027-04-21') {
+                            socio.quota_scadenza = '2027-04-21';
+                            changed = true;
+                        }
+                    }
 
                     if (quotaReceipts.length > 0) {
                         quotaReceipts.sort((a, b) => (a.data || '').localeCompare(b.data || ''));
@@ -3735,9 +3747,14 @@
                             }
                         });
 
-                        if (maxScadenza && socio.quota_scadenza !== maxScadenza) {
-                            socio.quota_scadenza = maxScadenza;
-                            changed = true;
+                        // Protezione quote legittime in corso oltre la stagione (es. annuali con scadenza nel 2027):
+                        // non retrocedere mai una quota già attiva con scadenza futura oltre la stagione in corso
+                        const hasLegitFutureQuota = socio.quota_scadenza && socio.quota_scadenza > '2026-08-31' && socio.quota_scadenza !== '2027-08-31';
+                        if (!hasLegitFutureQuota || maxScadenza > socio.quota_scadenza) {
+                            if (maxScadenza && socio.quota_scadenza !== maxScadenza) {
+                                socio.quota_scadenza = maxScadenza;
+                                changed = true;
+                            }
                         }
 
                         if (socio.stato === 'MOROSO' || socio.stato === 'NON ATTIVO' || !socio.stato) {
@@ -7095,7 +7112,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     else mesi = 1;
                 }
             } else if (isNaN(mesi) || mesi <= 0) {
-                if (txt.includes('annuale') || txt.includes('12 mesi') || txt.includes('1 anno')) {
+                const isRataTxt = txt.includes('rata') || txt.includes('rateal');
+                if (isRataTxt) {
+                    const qAmt = parseFloat(quotaAmount) || 0;
+                    if (qAmt >= 80 && qAmt <= 100) mesi = 2;
+                    else if (qAmt >= 120 && qAmt <= 150) mesi = 3;
+                    else mesi = 1;
+                } else if (txt.includes('annuale') || txt.includes('12 mesi') || txt.includes('1 anno')) {
                     mesi = 12;
                 } else if (txt.includes('semestrale') || txt.includes('6 mesi')) {
                     mesi = 6;
@@ -7267,7 +7290,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const noteVal = document.getElementById('receipt-note')?.value || '';
             const rateale = !!(document.getElementById('receipt-rateale')?.checked);
 
-            const effectiveAmt = quotaVal > 0 ? quotaVal : (amtVal > tessVal ? (amtVal - tessVal) : amtVal);
+            // Se non c'è importo quota e l'importo totale coincide con il tesseramento, la quota è ZERO
+            const effectiveAmt = quotaVal > 0 ? quotaVal : (amtVal > tessVal ? (amtVal - tessVal) : 0);
             if (!socioId || (effectiveAmt <= 0 && tessVal <= 0 && !durataVal)) {
                 previewEl.style.display = 'none';
                 return;
@@ -7277,7 +7301,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 previewEl.style.display = 'block';
                 const d = new Date(dataVal || new Date().toISOString().split('T')[0]);
                 const expYear = (d.getMonth() >= 8 || (d.getMonth() === 7 && d.getDate() >= 15)) ? d.getFullYear() + 1 : d.getFullYear();
-                previewEl.innerHTML = `📋 Rinnovo Tesseramento Federale: <strong>31/08/${expYear}</strong><br><span style="font-size:0.75rem; color:#64748b;">(Solo tesseramento federale, nessuna quota corso)</span>`;
+                let html = `📋 Rinnovo Tesseramento Federale: <strong>31/08/${expYear}</strong>`;
+                if (socio && socio.quota_scadenza) {
+                    html += `<br><span style="font-size:0.75rem; color:#059669; font-weight:600;">ℹ️ Solo Tesseramento: la quota corso del socio rimane invariata (Scadenza attuale: ${this.formatDate(socio.quota_scadenza)})</span>`;
+                } else {
+                    html += `<br><span style="font-size:0.75rem; color:#64748b;">(Solo tesseramento federale, nessuna quota corso)</span>`;
+                }
+                previewEl.innerHTML = html;
                 return;
             }
 
@@ -7731,7 +7761,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const inizio = data.inizio_validita || data.data;
             const quotaVal = parseFloat(data.quota) || 0;
             const importoVal = parseFloat(data.importo) || 0;
-            const hasQuota = quotaVal > 0 || tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || (!tipoCausale.toLowerCase().includes('tesseramento') && importoVal > 0);
+            const tessVal = parseFloat(data.tess) || 0;
+            const hasQuota = quotaVal > 0 || (importoVal > tessVal && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento')));
 
             const quotaCalc = this.calcolaScadenzaQuota(socio, inizio, data.durata, isRateale, (quotaVal > 0 ? quotaVal : importoVal), tipoCausale, data.note);
 
@@ -8001,7 +8032,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                 const socio = this.state.soci.find(s => s.id == data.socio_id);
                 const importoVal = parseFloat(data.importo) || 0;
-                const hasQuota = quota > 0 || tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || (!tipoCausale.toLowerCase().includes('tesseramento') && importoVal > 0);
+                const hasQuota = quota > 0 || (importoVal > tess && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento')));
                 const inizio = data.inizio_validita || data.data;
                 const quotaCalc = this.calcolaScadenzaQuota(socio, inizio, data.durata, isRateale, (quota > 0 ? quota : importoVal), tipoCausale, data.note);
 
