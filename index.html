@@ -6409,6 +6409,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const isInsert = (insertNum !== null && insertNum !== undefined && initialNum <= lastNum);
             const defaultDate = forcedDate || today.toISOString().split('T')[0];
             const presets = this.state.quote_presets || [];
+            const defaultTess = this.getTesseramentoDefaultAmount();
             
             this.openModal(isInsert ? `➕ Inserimento Ricevuta Intermedia (N. ${initialNum})` : 'Emissione Ricevuta', `
                 <form id="receipt-form" onsubmit="app.handleRicevutaSubmit(event)">
@@ -6528,7 +6529,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                             <option value="family_6m">👨‍👩‍👦 Family 2 - 6 Mesi (€400.00)</option>
                                         </optgroup>
                                         <optgroup label="📋 TESSERAMENTO E INGRESSI">
-                                            <option value="solo_tess">📋 Solo Tesseramento Federale (€25.00)</option>
+                                            <option value="solo_tess">📋 Solo Tesseramento Federale (€${defaultTess.toFixed(2)})</option>
                                             <option value="singolo">🎟️ Ingresso Singolo / Prova (€10.00)</option>
                                         </optgroup>
                                         <optgroup label="✏️ PERSONALIZZATO">
@@ -6545,7 +6546,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <div style="display:flex; justify-content:space-between; align-items:center;">
                                             <label style="font-size:0.85rem; font-weight:600;">Tesseramento (€)</label>
-                                            <button type="button" class="btn btn-outline" style="padding:1px 6px; font-size:0.7rem; height:auto; color:#0284c7; border-color:#bae6fd;" onclick="app.setTesseramentoQuick(25)" title="Aggiungi / Rimuovi quota tesseramento federale €25">+ €25</button>
+                                            <button type="button" class="btn btn-outline" style="padding:1px 6px; font-size:0.7rem; height:auto; color:#0284c7; border-color:#bae6fd;" onclick="app.setTesseramentoQuick(${defaultTess})" title="Aggiungi / Rimuovi quota tesseramento federale €${defaultTess}">+ €${defaultTess}</button>
                                         </div>
                                         <input type="number" step="0.01" name="tess" id="receipt-tess" class="form-control" placeholder="0.00" oninput="app.onQuotaOrTessInput()">
                                     </div>
@@ -7342,7 +7343,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata') || noteVal.includes('Family'))) noteEl.value = 'Family 2 - 6 Mesi';
             } else if (tipo === 'solo_tess') {
                 quotaVal = 0;
-                tessVal = 25.00;
+                tessVal = this.getTesseramentoDefaultAmount();
                 if (durataEl) durataEl.value = '';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota'))) noteEl.value = 'Tesseramento Federale';
@@ -7401,7 +7402,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.updateReceiptScadenzaPreview();
         },
 
-        setTesseramentoQuick(val) {
+        getTesseramentoDefaultAmount() {
+            const p = (this.state.quote_presets || []).find(x => (x.nome || '').toLowerCase().includes('tesseramento'));
+            return p ? (parseFloat(p.importo) || 25) : 25;
+        },
+
+        setTesseramentoQuick(val = null) {
+            if (val === null || val === undefined) val = this.getTesseramentoDefaultAmount();
             const tessEl = document.getElementById('receipt-tess');
             if (tessEl) {
                 const current = parseFloat(tessEl.value) || 0;
