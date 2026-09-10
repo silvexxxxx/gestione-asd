@@ -5029,10 +5029,10 @@
                 now.setHours(0, 0, 0, 0);
                 const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
                 const hasExpiredQuota = qScad && qScad < now;
-                if (s.stato === 'ATTIVO' && hasExpiredQuota) {
+                if (hasExpiredQuota) {
                     return 'MOROSO';
                 }
-                return s.stato || 'ATTIVO';
+                return 'ATTIVO';
             },
 
             filterSoci() {
@@ -7134,6 +7134,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const date = new Date(inizio);
                 date.setMonth(date.getMonth() + parseInt(durata));
                 socio.quota_scadenza = date.toISOString().split('T')[0];
+                if (socio.stato === 'NON ATTIVO' || socio.stato === 'CESSATO' || socio.stato === 'MOROSO') {
+                    socio.stato = 'ATTIVO';
+                }
             }
 
             // Se la ricevuta include tesseramento, rinnova automaticamente il tesseramento del socio
@@ -7142,11 +7145,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if ((tessImporto > 0 || hasTessNote) && socio) {
                 const tessDate = data.data || new Date().toISOString().split('T')[0];
                 const d = new Date(tessDate);
-                const expYear = d.getMonth() >= 8 ? d.getFullYear() + 1 : d.getFullYear();
+                let expYear = d.getMonth() >= 8 ? d.getFullYear() + 1 : d.getFullYear();
+                if (data.anno && !isNaN(parseInt(data.anno))) {
+                    expYear = 2000 + parseInt(data.anno) + 1;
+                }
                 socio.tesserato = 'SI';
                 socio.tesseramento_data = tessDate;
                 socio.tesseramento_scadenza = `${expYear}-08-31`;
-                if (socio.stato === 'NON ATTIVO' || socio.stato === 'CESSATO') {
+                if (socio.stato === 'NON ATTIVO' || socio.stato === 'CESSATO' || socio.stato === 'MOROSO') {
                     socio.stato = 'ATTIVO';
                 }
             }
@@ -12236,7 +12242,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         getTesseramentoScadenza(s) {
             if (!s) return null;
 
-            // Se ha una data esplicita di avvenuto tesseramento:
+            // Se ha una scadenza esplicita già registrata (es. da una ricevuta)
+            if (s.tesseramento_scadenza) {
+                return s.tesseramento_scadenza;
+            }
+
+            // Altrimenti, se ha una data esplicita di avvenuto tesseramento, calcola:
             // Regola federale Anno Sportivo (1 Settembre - 31 Agosto):
             // - Da 1° Settembre a 31 Dicembre (mesi 8-11): scade il 31 Agosto dell'anno successivo (Y+1).
             // - Da 1° Gennaio a 31 Agosto (mesi 0-7): scade il 31 Agosto dello stesso anno (Y).
@@ -12250,10 +12261,6 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 }
             }
 
-            // Se ha una scadenza esplicita già registrata
-            if (s.tesseramento_scadenza) {
-                return s.tesseramento_scadenza;
-            }
 
             // Se è tesserato SI ma senza data (es. dati storici/importati):
             // I tesseramenti pregressi (avviati nell'anno sportivo 25/26 o prima del 1° Settembre 2026) sono scaduti il 31/08/2026.
@@ -23535,6 +23542,30 @@ window.loadAndApplyLogo = function(placeholder, imgEl) {
 // Auto-inizializzazione
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initAppLogo, 100);
+
+    // Fix per anni inseriti a due cifre (es. 0072 -> 1972 o 0026 -> 2026)
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'date') {
+            const val = e.target.value;
+            if (val) {
+                const parts = val.split('-');
+                if (parts.length === 3 && parts[0].length === 4 && parts[0].startsWith('00')) {
+                    const twoDigitYear = parseInt(parts[0].substring(2), 10);
+                    const currentYearShort = parseInt(new Date().getFullYear().toString().substring(2), 10);
+                    // Se l'anno a due cifre è <= anno corrente + 10, è 20xx (es. 26 -> 2026, 30 -> 2030)
+                    // altrimenti è 19xx (es. 72 -> 1972)
+                    const threshold = currentYearShort + 10;
+                    const fullYear = twoDigitYear <= threshold ? 2000 + twoDigitYear : 1900 + twoDigitYear;
+                    parts[0] = fullYear.toString();
+                    e.target.value = parts.join('-');
+                    
+                    // Dispatch change event to trigger any logic bound to the input
+                    e.target.dispatchEvent(new Event('input', { bubbles: true }));
+                    e.target.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+    });
 });
 
 window.addEventListener('focus', () => {
