@@ -3525,39 +3525,21 @@
                         }
                     }
 
-                    // Se il socio è ATTIVO con quota che si estende nella nuova stagione 26/27 (o oltre il 31/08/2026):
-                    if (updated.stato === 'ATTIVO' && updated.quota_scadenza && updated.quota_scadenza > '2026-08-31') {
-                        if (!updated.tesseramento_scadenza || updated.tesseramento_scadenza <= '2026-08-31') {
-                            updated.tesseramento_scadenza = '2027-08-31';
-                            migrated = true;
-                        }
-                        if (updated.tesserato !== 'SI') {
-                            updated.tesserato = 'SI';
-                            migrated = true;
-                        }
-                    }
-
-                    // Se il tesseramento è per la stagione 26/27 (scadenza >= 31/08/2027), il socio è sicuramente TESSERATO SI e ATTIVO
-                    if (updated.tesseramento_scadenza && updated.tesseramento_scadenza >= '2027-08-31') {
-                        if (updated.tesserato !== 'SI') {
-                            updated.tesserato = 'SI';
-                            migrated = true;
-                        }
-                        if (updated.stato === 'NON ATTIVO' || !updated.stato) {
-                            updated.stato = 'ATTIVO';
-                            migrated = true;
-                        }
-                    }
-
-                    // Se il tesseramento è scaduto (scadenza antecedente ad oggi)
+                    // Se il tesseramento è scaduto rispetto ad oggi
                     if (updated.tesseramento_scadenza) {
                         const sExp = new Date(updated.tesseramento_scadenza);
                         sExp.setHours(23, 59, 59, 999);
                         const nowDate = new Date();
-                        const hasFutureQuota = updated.quota_scadenza && new Date(updated.quota_scadenza) >= nowDate;
-                        if (sExp < nowDate && updated.tesserato === 'SI' && !hasFutureQuota && updated.stato !== 'ATTIVO') {
-                            updated.tesserato = 'NO';
-                            migrated = true;
+                        if (sExp < nowDate) {
+                            if (updated.tesserato !== 'NO') {
+                                updated.tesserato = 'NO';
+                                migrated = true;
+                            }
+                        } else {
+                            if (updated.tesserato !== 'SI') {
+                                updated.tesserato = 'SI';
+                                migrated = true;
+                            }
                         }
                     }
 
@@ -3574,11 +3556,6 @@
                 const sFullName = normalize(`${s.cognome || ''} ${s.nome || ''}`);
                 const sReversed = normalize(`${s.nome || ''} ${s.cognome || ''}`);
 
-                const now = new Date();
-                const oneYearAgo = new Date(now);
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
-
                 return this.state.ricevute.some(r => {
                     if (r.annullata) return false;
                     const matchId = r.socio_id && (r.socio_id == s.id || String(r.socio_id) === String(s.id));
@@ -3592,21 +3569,10 @@
                     if (!hasTess) return false;
 
                     const a = parseInt(r.anno);
+                    if (a && a !== 26 && a !== 2026) return false;
                     const isSeason26 = (a === 26 || a === 2026);
                     const isRecentSeason = (r.data && r.data >= '2026-08-15');
-                    if (isSeason26 || isRecentSeason) return true;
-
-                    // Tesseramento annuale o associato a quota estesa alla stagione 26/27
-                    const isAnnual = txt.includes('annuale');
-                    const hasActiveQuota = s.quota_scadenza && s.quota_scadenza > '2026-08-31';
-                    if ((isAnnual || hasActiveQuota) && s.stato === 'ATTIVO') return true;
-
-                    // Tesseramento emesso entro 365 giorni per socio con stato attivo
-                    if (r.data && r.data >= oneYearAgoStr && s.stato === 'ATTIVO' && s.quota_scadenza && s.quota_scadenza >= now.toISOString().split('T')[0]) {
-                        return true;
-                    }
-
-                    return false;
+                    return isSeason26 || isRecentSeason;
                 });
             },
 
@@ -3624,8 +3590,9 @@
                     if (!matchId && !matchName) return false;
 
                     const a = parseInt(r.anno);
+                    if (a && a !== 26 && a !== 2026) return false;
                     const isSeason26 = (a === 26 || a === 2026);
-                    const isRecent = (r.data && r.data >= '2026-08-01');
+                    const isRecent = (r.data && r.data >= '2026-08-15');
                     return isSeason26 || isRecent;
                 });
             },
@@ -3665,26 +3632,22 @@
                         allTessReceipts.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
                         const latestTess = allTessReceipts[0];
 
-                        // Popola la data del tesseramento dalla ricevuta storica più recente se non inserita
+                        // Popola la data del tesseramento dalla ricevuta storica più recente se non inserita o se più recente
                         if (latestTess.data && (!socio.tesseramento_data || socio.tesseramento_data < latestTess.data)) {
                             socio.tesseramento_data = latestTess.data;
                             changed = true;
                         }
 
                         const a = parseInt(latestTess.anno);
-                        const isSeason26 = (a === 26 || a === 2026);
-                        const isRecentSeason = (latestTess.data && latestTess.data >= '2026-08-15');
-                        const txt = `${latestTess.tipo || ''} ${latestTess.note || ''}`.toLowerCase();
-                        const isAnnual = txt.includes('annuale');
-                        const hasActiveQuota = socio.quota_scadenza && socio.quota_scadenza > '2026-08-31';
-                        const isWithin365 = latestTess.data && latestTess.data >= oneYearAgoStr;
+                        const isSeason26 = (a === 26 || a === 2026) || (!a && latestTess.data && latestTess.data >= '2026-08-15');
+                        const isPriorSeason = (a && a !== 26 && a !== 2026) || (latestTess.data && latestTess.data < '2026-08-15');
 
-                        if (isSeason26 || isRecentSeason || isAnnual || hasActiveQuota || (isWithin365 && socio.stato === 'ATTIVO')) {
+                        if (isSeason26 && !isPriorSeason) {
                             if (socio.tesserato !== 'SI') {
                                 socio.tesserato = 'SI';
                                 changed = true;
                             }
-                            if (!socio.tesseramento_scadenza || socio.tesseramento_scadenza < '2027-08-31') {
+                            if (socio.tesseramento_scadenza !== '2027-08-31') {
                                 socio.tesseramento_scadenza = '2027-08-31';
                                 changed = true;
                             }
@@ -3692,15 +3655,53 @@
                                 socio.stato = 'ATTIVO';
                                 changed = true;
                             }
-                        }
-                    } else {
-                        // Se non ha ricevute di tesseramento registrate ma è ATTIVO con quota valida per il 26/27 (dati importati)
-                        if (socio.stato === 'ATTIVO' && socio.quota_scadenza && socio.quota_scadenza > '2026-08-31') {
-                            if (!socio.tesseramento_scadenza || socio.tesseramento_scadenza <= '2026-08-31') {
-                                socio.tesseramento_scadenza = '2027-08-31';
-                                socio.tesserato = 'SI';
+                        } else {
+                            // Tesseramento appartenente alla stagione passata (es. 25/26):
+                            // Scade il 31/08/2026 (o anno relativo all'emissione), NON deve estendersi al 2027!
+                            const d = new Date(latestTess.data || socio.tesseramento_data);
+                            let correctExp = '2026-08-31';
+                            if (!isNaN(d.getTime())) {
+                                const y = d.getFullYear();
+                                const m = d.getMonth();
+                                const isCampagna = (m >= 8) || (m === 7 && d.getDate() >= 15);
+                                const expYear = isCampagna ? y + 1 : y;
+                                correctExp = `${expYear}-08-31`;
+                            }
+                            if (socio.tesseramento_scadenza !== correctExp) {
+                                socio.tesseramento_scadenza = correctExp;
                                 changed = true;
                             }
+                            const nowStr = now.toISOString().split('T')[0];
+                            const isStillValid = correctExp >= nowStr;
+                            if (socio.tesserato !== (isStillValid ? 'SI' : 'NO')) {
+                                socio.tesserato = isStillValid ? 'SI' : 'NO';
+                                changed = true;
+                            }
+                        }
+                    } else {
+                        // Nessuna ricevuta di tesseramento registrata: controlla la data tesseramento del profilo socio
+                        if (socio.tesseramento_data) {
+                            const d = new Date(socio.tesseramento_data);
+                            if (!isNaN(d.getTime())) {
+                                const y = d.getFullYear();
+                                const m = d.getMonth();
+                                const isCampagna = (m >= 8) || (m === 7 && d.getDate() >= 15);
+                                const expYear = isCampagna ? y + 1 : y;
+                                const correctExp = `${expYear}-08-31`;
+                                if (socio.tesseramento_scadenza !== correctExp) {
+                                    socio.tesseramento_scadenza = correctExp;
+                                    changed = true;
+                                }
+                                const isStillValid = correctExp >= now.toISOString().split('T')[0];
+                                if (socio.tesserato !== (isStillValid ? 'SI' : 'NO')) {
+                                    socio.tesserato = isStillValid ? 'SI' : 'NO';
+                                    changed = true;
+                                }
+                            }
+                        } else if (socio.tesseramento_scadenza && socio.tesseramento_scadenza > '2026-08-31') {
+                            socio.tesseramento_scadenza = '2026-08-31';
+                            socio.tesserato = 'NO';
+                            changed = true;
                         }
                     }
 
@@ -3771,6 +3772,16 @@
 
                         if (socio.stato === 'MOROSO' || socio.stato === 'NON ATTIVO' || !socio.stato) {
                             socio.stato = 'ATTIVO';
+                            changed = true;
+                        }
+                    }
+
+                    // 3. Se il socio non ha alcun pagamento per la stagione 26/27 ed ha il tesseramento scaduto
+                    const hasPayment26 = seasonReceipts.length > 0;
+                    const isTessActive = this.isTesseramentoAttivo(socio);
+                    if (!hasPayment26 && !isTessActive && socio.stato !== 'CESSATO') {
+                        if (socio.stato !== 'NON ATTIVO') {
+                            socio.stato = 'NON ATTIVO';
                             changed = true;
                         }
                     }
@@ -5257,7 +5268,7 @@
                                 ${tessScadStr ? `<span style="font-size: 0.7rem; color: ${!isTessActive ? 'var(--danger)' : 'var(--text-muted)'}; font-weight: 500;">Scad: ${this.formatDate(tessScadStr)}</span>` : ''}
                             </div>
                         </td>
-                        <td><span class="badge badge-${displayStato.toLowerCase()}">${displayStato}</span></td>
+                        <td><span class="badge badge-${displayStato.toLowerCase().replace(/\s+/g, '-')}">${displayStato}</span></td>
                         <td style="text-align: right; padding-right: 1.5rem;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap;">
                                 ${s.note 
@@ -5694,26 +5705,17 @@
                 const editId = parseInt(e.target.dataset.editId);
                 data.updated_at = Date.now();
 
-                // Normalizza tesseramento per campagne anticipate di fine agosto
+                // Normalizza tesseramento federale (Anno sportivo: 1 Set - 31 Ago)
                 if (data.tesseramento_data) {
                     const d = new Date(data.tesseramento_data);
                     if (!isNaN(d.getTime())) {
                         const isCampagna = (d.getMonth() >= 8) || (d.getMonth() === 7 && d.getDate() >= 15);
-                        if (isCampagna) {
-                            data.tesserato = 'SI';
-                            if (!data.tesseramento_scadenza || data.tesseramento_scadenza <= '2026-08-31') {
-                                data.tesseramento_scadenza = `${d.getFullYear() + 1}-08-31`;
-                            }
-                        }
-                    }
-                }
-
-                // Verifica coerenza tesseramento per la stagione corrente
-                if (data.tesserato === 'SI' && data.tesseramento_scadenza) {
-                    const sExp = new Date(data.tesseramento_scadenza);
-                    sExp.setHours(23, 59, 59, 999);
-                    if (sExp < new Date()) {
-                        data.tesserato = 'NO';
+                        const expYear = isCampagna ? d.getFullYear() + 1 : d.getFullYear();
+                        const correctExp = `${expYear}-08-31`;
+                        data.tesseramento_scadenza = correctExp;
+                        const sExp = new Date(correctExp);
+                        sExp.setHours(23, 59, 59, 999);
+                        data.tesserato = (sExp >= new Date()) ? 'SI' : 'NO';
                     }
                 }
 
@@ -13068,34 +13070,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         getTesseramentoScadenza(s) {
             if (!s) return null;
 
-            // Se il socio ha una ricevuta con tesseramento per la stagione 26/27 (o con data da agosto 2026 in poi o annuale attivo)
+            // Se il socio ha una ricevuta con tesseramento per la stagione 26/27
             if (this.hasSeasonTesseramento && this.hasSeasonTesseramento(s)) {
-                if (s.tesseramento_scadenza && s.tesseramento_scadenza >= '2027-08-31') {
-                    return s.tesseramento_scadenza;
-                }
                 return '2027-08-31';
             }
 
-            // Se il socio è ATTIVO con quota valida per la nuova stagione (quota_scadenza > 31/08/2026): non deve essere limitato al 2026
-            if (s.stato === 'ATTIVO' && s.quota_scadenza && s.quota_scadenza > '2026-08-31') {
-                if (!s.tesseramento_scadenza || s.tesseramento_scadenza <= '2026-08-31') {
-                    return '2027-08-31';
-                }
-            }
-
-            // Se ha una scadenza esplicita già registrata (es. da una ricevuta)
-            if (s.tesseramento_scadenza) {
-                // Se la scadenza è stata forzata al 31/08/2026 ma il tesseramento è avvenuto da agosto 2026 in poi
-                if (s.tesseramento_scadenza === '2026-08-31' && s.tesseramento_data && s.tesseramento_data >= '2026-08-01') {
-                    return '2027-08-31';
-                }
-                return s.tesseramento_scadenza;
-            }
-
-            // Altrimenti, se ha una data esplicita di avvenuto tesseramento, calcola:
-            // Regola federale Anno Sportivo (1 Settembre - 31 Agosto):
-            // - Da metà Agosto o da 1° Settembre: scade il 31 Agosto dell'anno successivo (Y+1).
-            // - Prima di metà Agosto: scade il 31 Agosto dello stesso anno (Y).
+            // Se ha una data di avvenuto tesseramento, calcola la scadenza federale (Anno Sportivo: 1 Set - 31 Ago)
             if (s.tesseramento_data) {
                 const d = new Date(s.tesseramento_data);
                 if (!isNaN(d.getTime())) {
@@ -13105,6 +13085,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     const expYear = isCampagnaNuovaStagione ? y + 1 : y;
                     return `${expYear}-08-31`;
                 }
+            }
+
+            // Se ha una scadenza esplicita già registrata
+            if (s.tesseramento_scadenza) {
+                return s.tesseramento_scadenza;
             }
 
             // Se è tesserato SI ma senza data (es. dati storici/importati):
@@ -13118,24 +13103,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         isTesseramentoAttivo(s) {
             if (!s || s.stato === 'CESSATO') return false;
 
-            // Se ha una ricevuta per tesseramento della nuova stagione o annuale attivo
+            // Se ha una ricevuta con tesseramento per la nuova stagione 26/27
             if (this.hasSeasonTesseramento && this.hasSeasonTesseramento(s)) {
                 return true;
             }
 
             const now = new Date();
             now.setHours(0, 0, 0, 0);
-
-            // Protezione socio attivo: se lo stato complessivo è ATTIVO con quota valida
-            // e possiede un tesseramento pregresso, nello storico o registrato, non deve essere marcato come SCADUTO
-            if (s.stato === 'ATTIVO' && s.quota_scadenza) {
-                const qScad = new Date(s.quota_scadenza);
-                if (!isNaN(qScad.getTime()) && qScad >= now) {
-                    if (s.tesseramento_data || s.tesseramento_scadenza || s.tesserato === 'SI') {
-                        return true;
-                    }
-                }
-            }
 
             const scadStr = this.getTesseramentoScadenza(s);
             if (!scadStr) return false;
