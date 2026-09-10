@@ -6668,11 +6668,12 @@
       "email": "silviagalli55@icloud.com",
       "tel": "3332897653",
       "certificato_scadenza": "2026-10-29",
-      "quota_scadenza": "2026-06-05",
-      "tesserato": "NO",
+      "quota_scadenza": "2027-03-03",
+      "tesserato": "SI",
       "note": "1 ok da 100 2 100k ok di 4 saldato il 30/12/25 con 200€",
       "stato": "ATTIVO",
-      "tesseramento_scadenza": "2026-08-31"
+      "tesseramento_scadenza": "2027-08-31",
+      "tesseramento_data": "2026-09-03"
     },
     {
       "id": 1787644999917,
@@ -6700,11 +6701,12 @@
       "email": "dmereu@gmail.com",
       "tel": "3888956276",
       "certificato_scadenza": "2027-01-23",
-      "quota_scadenza": "2026-06-05",
-      "tesserato": "NO",
+      "quota_scadenza": "2027-03-03",
+      "tesserato": "SI",
       "note": "",
       "stato": "ATTIVO",
-      "tesseramento_scadenza": "2026-08-31"
+      "tesseramento_scadenza": "2027-08-31",
+      "tesseramento_data": "2026-09-03"
     },
     {
       "id": 1787644999919,

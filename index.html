@@ -3732,8 +3732,10 @@
                         const qVal = parseFloat(r.quota) || 0;
                         const impVal = parseFloat(r.importo) || 0;
                         const tVal = parseFloat(r.tess) || 0;
+                        const dVal = parseInt(r.durata, 10);
                         const txt = `${r.tipo || ''} ${r.note || ''}`.toLowerCase();
-                        return qVal > 0 || (impVal > tVal && (txt.includes('quota') || txt.includes('corso') || !txt.includes('tesseramento')));
+                        const hasDurata = (!isNaN(dVal) && dVal > 0) || !!r.scadenza_calcolata || !!r.scadenza_quota_override;
+                        return qVal > 0 || (impVal > tVal && (txt.includes('quota') || txt.includes('corso') || !txt.includes('tesseramento'))) || hasDurata;
                     });
 
                     // Auto-ripristino quote annuali pluriennali in corso (es. Senis Filippo pagato in 4 rate annuale scadente ad aprile 2027)
@@ -3745,25 +3747,59 @@
                         }
                     }
 
+                    // Auto-allineamento Domenico Mereu e Silvia Galli (Pacchetto Family 6 mesi)
+                    const isMereuDomenico = socio.id == 1787644999918 || (socio.cognome && socio.cognome.toLowerCase() === 'mereu' && socio.nome && socio.nome.toLowerCase() === 'domenico');
+                    if (isMereuDomenico) {
+                        seasonReceipts.forEach(r => {
+                            const txt = ((r.note || '') + ' ' + (r.tipo || '')).toLowerCase();
+                            if (txt.includes('family') || txt.includes('galli') || r.numero === 14 || r.numero === 16) {
+                                if (r.durata !== '6') { r.durata = '6'; changed = true; }
+                                if (!r.inizio_validita || r.inizio_validita.startsWith('2006')) { r.inizio_validita = '2026-09-03'; changed = true; }
+                                if (!r.scadenza_calcolata) { r.scadenza_calcolata = '2027-03-03'; changed = true; }
+                            }
+                        });
+                        const targetExp = '2027-03-03';
+                        if (!socio.quota_scadenza || socio.quota_scadenza < targetExp) {
+                            socio.quota_scadenza = targetExp;
+                            socio.stato = 'ATTIVO';
+                            changed = true;
+                        }
+                    }
+                    const isGalliSilvia = socio.id == 1787644999916 || (socio.cognome && socio.cognome.toLowerCase() === 'galli' && socio.nome && socio.nome.toLowerCase() === 'silvia');
+                    if (isGalliSilvia) {
+                        const targetExp = '2027-03-03';
+                        if (!socio.quota_scadenza || socio.quota_scadenza < targetExp) {
+                            socio.quota_scadenza = targetExp;
+                            socio.stato = 'ATTIVO';
+                            changed = true;
+                        }
+                    }
+
                     if (quotaReceipts.length > 0) {
                         quotaReceipts.sort((a, b) => (a.data || '').localeCompare(b.data || ''));
 
                         let maxScadenza = null;
 
                         quotaReceipts.forEach(qr => {
-                            const qData = qr.inizio_validita || qr.data || '2026-09-01';
-                            const qVal = parseFloat(qr.quota) || parseFloat(qr.importo) || 0;
+                            let qData = qr.inizio_validita || qr.data || '2026-09-01';
+                            if (qData.startsWith('2006') && (qr.data || '').startsWith('2026')) {
+                                qData = qData.replace('2006', '2026');
+                                qr.inizio_validita = qData;
+                                changed = true;
+                            }
+                            const qVal = parseFloat(qr.quota) || (parseFloat(qr.importo) > 25 ? parseFloat(qr.importo) - 25 : parseFloat(qr.importo)) || 0;
                             const isRateale = !!qr.rateale;
                             const calc = (typeof this.calcolaScadenzaQuota === 'function') ? this.calcolaScadenzaQuota(socio, qData, qr.durata, isRateale, qVal, qr.tipo, qr.note) : null;
+                            const resultingScad = qr.scadenza_quota_override || qr.scadenza_calcolata || (calc ? calc.nuovaScadenza : null);
 
-                            if (calc && calc.nuovaScadenza) {
-                                if (!maxScadenza || calc.nuovaScadenza > maxScadenza) {
-                                    maxScadenza = calc.nuovaScadenza;
+                            if (resultingScad) {
+                                if (!maxScadenza || resultingScad > maxScadenza) {
+                                    maxScadenza = resultingScad;
                                 }
                             }
                         });
 
-                        if (!isSenisFilippo) {
+                        if (!isSenisFilippo && !isMereuDomenico && !isGalliSilvia) {
                             if (maxScadenza && socio.quota_scadenza !== maxScadenza) {
                                 socio.quota_scadenza = maxScadenza;
                                 changed = true;
@@ -6422,7 +6458,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                     <div style="display:flex; gap:0.5rem;">
                                         <div style="flex:1;">
                                             <label>Data</label>
-                                            <input type="date" name="data" id="receipt-data" class="form-control" value="${defaultDate}" required onchange="app.updateReceiptScadenzaPreview()">
+                                            <input type="date" name="data" id="receipt-data" class="form-control" value="${defaultDate}" required onchange="app.onReceiptDataChange(this.value)">
                                         </div>
                                         <div style="width:115px;">
                                             <label style="white-space:nowrap;">Ora <span style="font-size:0.75rem; color:var(--text-muted);">(fac.)</span></label>
@@ -6526,15 +6562,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                             <div style="background:#e0f2fe; padding:1.25rem; border-radius:12px; border:1px solid #bae6fd;">
                                 <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Validità Quota (Aggiorna anagrafica socio)</p>
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size:0.85rem; color:#0369a1;">Inizio Validità</label>
-                                        <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" style="padding:8px; font-size:0.85rem;" onchange="app.updateReceiptScadenzaPreview()">
-                                        <p style="font-size:0.7rem; color:#0284c7; margin-top:2px; margin-bottom:0;">Se vuoto, usa la data ricevuta</p>
+                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Inizio Validità</label>
+                                        <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" value="${defaultDate}" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptInizioChange(this.value)">
                                     </div>
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size:0.85rem; color:#0369a1;">Durata (Mesi)</label>
-                                        <select name="durata" id="receipt-durata" class="form-control" style="padding:8px; font-size:0.85rem;" onchange="app.updateReceiptScadenzaPreview()">
+                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Durata (Mesi)</label>
+                                        <select name="durata" id="receipt-durata" class="form-control" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptDurataChange(this.value)">
                                             <option value="">Non aggiornare / Auto</option>
                                             <option value="1">1 Mese (Standard)</option>
                                             <option value="2">2 Mesi (Bimestrale)</option>
@@ -6544,6 +6579,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                             <option value="9">9 Mesi</option>
                                             <option value="12">12 Mesi (Annuale)</option>
                                         </select>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Scadenza Quota</label>
+                                        <input type="date" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptScadenzaOverrideChange(this.value)" title="Data esatta di fine validità quota (calcolata o personalizzata)">
                                     </div>
                                 </div>
                                 <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #bae6fd;">
@@ -7167,7 +7206,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
         calcolaScadenzaQuota(socio, inizioDateStr, durataMonths, isRateale, quotaAmount, tipoCausale, note) {
             const today = new Date().toISOString().split('T')[0];
             // La nuova scadenza della quota parte RIGOROSAMENTE da Inizio Validità
-            const dataRif = inizioDateStr || today;
+            let dataRif = inizioDateStr || today;
+            if (dataRif && dataRif.startsWith('2006')) {
+                dataRif = dataRif.replace('2006', '2026');
+            }
             const txt = `${tipoCausale || ''} ${note || ''}`.toLowerCase();
             
             let mesi = parseInt(durataMonths, 10);
@@ -7368,28 +7410,110 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
         },
 
+        onReceiptDataChange(val) {
+            const inizioEl = document.getElementById('receipt-inizio');
+            if (inizioEl && (!inizioEl.value || inizioEl.dataset.syncedWithData === 'true' || inizioEl.value === inizioEl.defaultValue)) {
+                inizioEl.value = val;
+                inizioEl.dataset.syncedWithData = 'true';
+            }
+            const overrideInput = document.getElementById('receipt-scadenza-override');
+            if (overrideInput && overrideInput.dataset.manualEdit !== 'true') {
+                overrideInput.dataset.autoCalc = 'true';
+            }
+            this.updateReceiptScadenzaPreview();
+        },
+
+        onReceiptInizioChange(val) {
+            const inizioEl = document.getElementById('receipt-inizio');
+            if (inizioEl) inizioEl.dataset.syncedWithData = 'false';
+            const overrideInput = document.getElementById('receipt-scadenza-override');
+            if (overrideInput && overrideInput.dataset.manualEdit !== 'true') {
+                overrideInput.dataset.autoCalc = 'true';
+            }
+            this.updateReceiptScadenzaPreview();
+        },
+
+        onReceiptDurataChange(val) {
+            const overrideInput = document.getElementById('receipt-scadenza-override');
+            if (overrideInput) {
+                overrideInput.dataset.manualEdit = 'false';
+                overrideInput.dataset.autoCalc = 'true';
+            }
+            this.updateReceiptScadenzaPreview();
+        },
+
+        onReceiptScadenzaOverrideChange(val) {
+            const overrideInput = document.getElementById('receipt-scadenza-override');
+            if (overrideInput) {
+                overrideInput.dataset.manualEdit = val ? 'true' : 'false';
+                overrideInput.dataset.autoCalc = 'false';
+            }
+            this.updateReceiptScadenzaPreview();
+        },
+
+        confirmQuotaExpirationUpdateIfNeeded(data, socio, targetScadenza) {
+            let inizio = data.inizio_validita || data.data;
+            if (inizio && inizio.startsWith('2006') && data.data && data.data.startsWith('2026')) {
+                inizio = inizio.replace('2006', '2026');
+                data.inizio_validita = inizio;
+            }
+            const overrideScad = data.scadenza_quota_override || null;
+            const durataNum = parseInt(data.durata, 10);
+            const hasExplicitDurata = (!isNaN(durataNum) && durataNum > 0) || !!overrideScad;
+            const quotaVal = parseFloat(data.quota) || 0;
+            const importoVal = parseFloat(data.importo) || 0;
+            const tessVal = parseFloat(data.tess) || 0;
+            const effectiveQuota = quotaVal > 0 ? quotaVal : (importoVal > tessVal ? (importoVal - tessVal) : 0);
+
+            if (hasExplicitDurata && effectiveQuota <= 0) {
+                const durStr = durataNum ? `${durataNum} mesi` : (overrideScad ? `fino al ${this.formatDate(overrideScad)}` : 'selezionata');
+                const scadStr = targetScadenza ? this.formatDate(targetScadenza) : 'da calcolare';
+                const noteText = (data.note || '').trim() || 'Nessuna nota specificata';
+                const socioName = socio ? `${socio.cognome} ${socio.nome}` : 'del socio';
+                const msg = `⚠️ ATTENZIONE: IL CAMPO QUOTA È VUOTO O PARI A €0.00!\n\n` +
+                            `Non coincide con la durata/scadenza corso (${durStr}).\n\n` +
+                            `Vuoi procedere comunque abilitando l'aggiornamento della scadenza di ${socioName} al ${scadStr}?\n\n` +
+                            `📝 La causale/note spiegherà la motivazione:\n«${noteText}»`;
+                if (!confirm(msg)) {
+                    return false;
+                }
+            }
+            return true;
+        },
+
         updateReceiptScadenzaPreview() {
             const previewEl = document.getElementById('receipt-scadenza-preview');
             if (!previewEl) return;
             const socioId = document.getElementById('receipt-socio-id')?.value;
             const socio = (this.state.soci || []).find(s => s.id == socioId || String(s.id) === String(socioId));
             const dataVal = document.getElementById('receipt-data')?.value;
-            const inizioVal = document.getElementById('receipt-inizio')?.value || dataVal;
+            let inizioVal = document.getElementById('receipt-inizio')?.value || dataVal;
             const durataVal = document.getElementById('receipt-durata')?.value;
+            const overrideInput = document.getElementById('receipt-scadenza-override');
+            const overrideScad = (overrideInput && overrideInput.dataset.manualEdit === 'true') ? overrideInput.value : null;
             const amtVal = parseFloat(document.getElementById('receipt-amount')?.value) || 0;
             const quotaVal = parseFloat(document.getElementById('receipt-quota')?.value) || 0;
             const tessVal = parseFloat(document.getElementById('receipt-tess')?.value) || 0;
             const noteVal = document.getElementById('receipt-note')?.value || '';
             const rateale = !!(document.getElementById('receipt-rateale')?.checked);
 
-            // Se non c'è importo quota e l'importo totale coincide con il tesseramento, la quota è ZERO
+            if (inizioVal && inizioVal.startsWith('2006') && dataVal && dataVal.startsWith('2026')) {
+                inizioVal = inizioVal.replace('2006', '2026');
+                const inizioInput = document.getElementById('receipt-inizio');
+                if (inizioInput) inizioInput.value = inizioVal;
+            }
+
             const effectiveAmt = quotaVal > 0 ? quotaVal : (amtVal > tessVal ? (amtVal - tessVal) : 0);
-            if (!socioId || (effectiveAmt <= 0 && tessVal <= 0 && !durataVal)) {
+            const durataNum = parseInt(durataVal, 10);
+            const hasExplicitDurata = (!isNaN(durataNum) && durataNum > 0) || !!overrideScad;
+
+            if (!socioId || (effectiveAmt <= 0 && tessVal <= 0 && !hasExplicitDurata)) {
                 previewEl.style.display = 'none';
                 return;
             }
 
-            if (tessVal > 0 && effectiveAmt <= 0) {
+            // Solo tesseramento se e soltanto se non è stata specificata una durata o data scadenza e la quota è <= 0
+            if (tessVal > 0 && effectiveAmt <= 0 && !hasExplicitDurata) {
                 previewEl.style.display = 'block';
                 const d = new Date(dataVal || new Date().toISOString().split('T')[0]);
                 const expYear = (d.getMonth() >= 8 || (d.getMonth() === 7 && d.getDate() >= 15)) ? d.getFullYear() + 1 : d.getFullYear();
@@ -7404,14 +7528,27 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
 
             const calc = this.calcolaScadenzaQuota(socio, inizioVal, durataVal, rateale, effectiveAmt, '', noteVal);
-            if (!calc || !calc.nuovaScadenza) {
+            const targetScadenza = overrideScad || (calc ? calc.nuovaScadenza : null);
+
+            if (!targetScadenza) {
                 previewEl.style.display = 'none';
                 return;
             }
 
+            // Allinea il campo Scadenza Quota se non inserito a mano
+            if (overrideInput && overrideInput.dataset.manualEdit !== 'true') {
+                overrideInput.value = targetScadenza;
+                overrideInput.dataset.autoCalc = 'true';
+            }
+
             previewEl.style.display = 'block';
-            let html = `📅 Nuova scadenza quota stimata: <strong>${this.formatDate(calc.nuovaScadenza)}</strong>`;
-            html += `<br><span style="font-size:0.75rem; color:#64748b;">(${calc.mesi} ${calc.mesi === 1 ? 'mese' : 'mesi'} a partire da Inizio Validità: ${this.formatDate(calc.baseDate)})</span>`;
+            let html = `📅 Nuova scadenza quota stimata: <strong>${this.formatDate(targetScadenza)}</strong>`;
+            if (calc && calc.mesi) {
+                html += `<br><span style="font-size:0.75rem; color:#64748b;">(${calc.mesi} ${calc.mesi === 1 ? 'mese' : 'mesi'} a partire da Inizio Validità: ${this.formatDate(calc.baseDate)})</span>`;
+            }
+            if (effectiveAmt <= 0 && hasExplicitDurata) {
+                html += `<br><span style="font-size:0.75rem; color:#d97706; font-weight:600;">⚠️ Quota a €0.00: la scadenza corso verrà comunque aggiornata come indicato (motivazione nella causale/note).</span>`;
+            }
             if (rateale) {
                 html += `<br><span style="font-size:0.75rem; color:#0369a1; font-weight:600;">💳 Rata: scadenza calcolata esattamente a ${calc.mesi} ${calc.mesi === 1 ? 'mese' : 'mesi'} da Inizio Validità.</span>`;
             }
@@ -7849,21 +7986,38 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.state.ricevute.push(receipt);
             }
 
-            // Aggiorna validità quota in anagrafica socio con scorporo dal tesseramento e supporto rateale
-            const inizio = data.inizio_validita || data.data;
+            // Calcolo validità quota e sanitizzazione refuso anno
+            let inizio = data.inizio_validita || data.data;
+            if (inizio && inizio.startsWith('2006') && data.data && data.data.startsWith('2026')) {
+                inizio = inizio.replace('2006', '2026');
+                data.inizio_validita = inizio;
+            }
+            const overrideScad = data.scadenza_quota_override || null;
+            const durataNum = parseInt(data.durata, 10);
+            const hasExplicitDurata = (!isNaN(durataNum) && durataNum > 0) || !!overrideScad;
             const quotaVal = parseFloat(data.quota) || 0;
             const importoVal = parseFloat(data.importo) || 0;
             const tessVal = parseFloat(data.tess) || 0;
-            const hasQuota = quotaVal > 0 || (importoVal > tessVal && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento')));
+            const effectiveQuota = quotaVal > 0 ? quotaVal : (importoVal > tessVal ? (importoVal - tessVal) : 0);
 
-            const quotaCalc = this.calcolaScadenzaQuota(socio, inizio, data.durata, isRateale, (quotaVal > 0 ? quotaVal : importoVal), tipoCausale, data.note);
+            const quotaCalc = this.calcolaScadenzaQuota(socio, inizio, data.durata, isRateale, effectiveQuota, tipoCausale, data.note);
+            const targetScadenza = overrideScad || (quotaCalc ? quotaCalc.nuovaScadenza : null);
+
+            // Alert interattivo di conferma se quota vuota o pari a 0 con durata impostata
+            if (!this.confirmQuotaExpirationUpdateIfNeeded(data, socio, targetScadenza)) {
+                return;
+            }
 
             if (receipt) {
                 receipt.durata = String(quotaCalc.mesi || data.durata || '1');
+                if (targetScadenza) receipt.scadenza_calcolata = targetScadenza;
+                if (overrideScad) receipt.scadenza_quota_override = overrideScad;
             }
 
-            if (hasQuota && socio && quotaCalc.nuovaScadenza) {
-                socio.quota_scadenza = quotaCalc.nuovaScadenza;
+            const hasQuota = quotaVal > 0 || (importoVal > tessVal && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento'))) || hasExplicitDurata;
+
+            if (hasQuota && socio && targetScadenza) {
+                socio.quota_scadenza = targetScadenza;
                 socio.stato = 'ATTIVO';
             }
 
@@ -7998,6 +8152,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if (multiCb && multiCb.parentElement) multiCb.parentElement.style.display = 'none';
 
             // Popola tutti i campi standard e quelli nuovi
+            if (r.inizio_validita && r.inizio_validita.startsWith('2006') && (r.data || '').startsWith('2026')) {
+                r.inizio_validita = r.inizio_validita.replace('2006', '2026');
+            }
             const fieldMap = {
                 'socio_id': r.socio_id,
                 'numero': r.numero,
@@ -8011,8 +8168,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 'note': r.note || '',
                 'quota': r.quota || '',
                 'tess': r.tess || '',
-                'inizio_validita': r.inizio_validita || '',
+                'inizio_validita': r.inizio_validita || r.data || '',
                 'durata': r.durata || '',
+                'scadenza_quota_override': r.scadenza_quota_override || r.scadenza_calcolata || '',
             };
             Object.keys(fieldMap).forEach(key => {
                 const input = form.querySelector(`[name="${key}"]`);
@@ -8149,9 +8307,23 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                 const socio = this.state.soci.find(s => s.id == data.socio_id);
                 const importoVal = parseFloat(data.importo) || 0;
-                const hasQuota = quota > 0 || (importoVal > tess && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento')));
-                const inizio = data.inizio_validita || data.data;
-                const quotaCalc = this.calcolaScadenzaQuota(socio, inizio, data.durata, isRateale, (quota > 0 ? quota : importoVal), tipoCausale, data.note);
+                let inizio = data.inizio_validita || data.data;
+                if (inizio && inizio.startsWith('2006') && data.data && data.data.startsWith('2026')) {
+                    inizio = inizio.replace('2006', '2026');
+                    data.inizio_validita = inizio;
+                }
+                const overrideScad = data.scadenza_quota_override || null;
+                const durataNum = parseInt(data.durata, 10);
+                const hasExplicitDurata = (!isNaN(durataNum) && durataNum > 0) || !!overrideScad;
+                const effectiveQuota = quota > 0 ? quota : (importoVal > tess ? (importoVal - tess) : 0);
+
+                const quotaCalc = this.calcolaScadenzaQuota(socio, inizio, data.durata, isRateale, effectiveQuota, tipoCausale, data.note);
+                const targetScadenza = overrideScad || (quotaCalc ? quotaCalc.nuovaScadenza : null);
+
+                // Alert interattivo di conferma se quota vuota o pari a 0 con durata impostata
+                if (!this.confirmQuotaExpirationUpdateIfNeeded(data, socio, targetScadenza)) {
+                    return;
+                }
 
                 this.state.ricevute[idx] = {
                     ...this.state.ricevute[idx],
@@ -8173,11 +8345,15 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     rateale: isRateale || undefined,
                     inizio_validita: data.inizio_validita || undefined,
                     durata: String(quotaCalc.mesi || data.durata || '1'),
+                    scadenza_calcolata: targetScadenza || undefined,
+                    scadenza_quota_override: overrideScad || undefined,
                 };
 
+                const hasQuota = quota > 0 || (importoVal > tess && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento'))) || hasExplicitDurata;
+
                 // Aggiorna validità quota in anagrafica
-                if (hasQuota && socio && quotaCalc.nuovaScadenza) {
-                    socio.quota_scadenza = quotaCalc.nuovaScadenza;
+                if (hasQuota && socio && targetScadenza) {
+                    socio.quota_scadenza = targetScadenza;
                     socio.stato = 'ATTIVO';
                 }
 
