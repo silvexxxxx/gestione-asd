@@ -3826,7 +3826,7 @@
                                 changed = true;
                             }
                             const qVal = parseFloat(qr.quota) || (parseFloat(qr.importo) > 25 ? parseFloat(qr.importo) - 25 : parseFloat(qr.importo)) || 0;
-                            const isRateale = !!qr.rateale;
+                            const isRateale = (typeof this.isReceiptRateale === 'function') ? this.isReceiptRateale(qr) : !!qr.rateale;
                             const calc = (typeof this.calcolaScadenzaQuota === 'function') ? this.calcolaScadenzaQuota(socio, qData, qr.durata, isRateale, qVal, qr.tipo, qr.note) : null;
                             const resultingScad = qr.scadenza_quota_override || qr.scadenza_calcolata || (calc ? calc.nuovaScadenza : null);
 
@@ -6052,14 +6052,14 @@
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('numero')">Numero <span id="sort-ricevute-numero">${this.ricevuteSortKey === 'numero' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('socio_nome')">Socio <span id="sort-ricevute-socio_nome">${this.ricevuteSortKey === 'socio_nome' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('data')">Data <span id="sort-ricevute-data">${this.ricevuteSortKey === 'data' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('tipo')">Tipo <span id="sort-ricevute-tipo">${this.ricevuteSortKey === 'tipo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('importo')">Importo <span id="sort-ricevute-importo">${this.ricevuteSortKey === 'importo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('metodo')">Metodo <span id="sort-ricevute-metodo">${this.ricevuteSortKey === 'metodo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortRicevute('cartacea')">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === 'cartacea' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="text-align: right;">Azioni</th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('numero')">Numero <span id="sort-ricevute-numero">${this.ricevuteSortKey === 'numero' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('socio_nome')">Socio <span id="sort-ricevute-socio_nome">${this.ricevuteSortKey === 'socio_nome' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('data')">Data <span id="sort-ricevute-data">${this.ricevuteSortKey === 'data' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('tipo')">Tipo <span id="sort-ricevute-tipo">${this.ricevuteSortKey === 'tipo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('importo')">Importo <span id="sort-ricevute-importo">${this.ricevuteSortKey === 'importo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('metodo')">Metodo <span id="sort-ricevute-metodo">${this.ricevuteSortKey === 'metodo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('cartacea')">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === 'cartacea' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="text-align: right; white-space: nowrap;">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="receipts-tbody">
@@ -6229,16 +6229,22 @@
                         pdfBtnStyle = "padding: 5px 10px; border-color: var(--warning); color: var(--warning); font-weight: 700;";
                     }
                     
+                    const isRateale = this.isReceiptRateale(r);
                     return `
                     <tr id="receipt-row-${r.id}" data-id="${r.id}">
-                        <td>${r.numero}/${app.formatAnno(r.anno)}</td>
-                        <td style="font-weight: 600;">${r.socio_nome}</td>
-                        <td>${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
-                        <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent);">${r.tipo}</span>${(r.rateale === true || String(r.rateale) === 'true') ? ' <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3);" title="Quota Rateale / Pagamento Rata (Accordo Interno)">💳 RATA</span>' : ''}</td>
-                        <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
-                        <td>${displayMetodo}</td>
-                        <td><span style="color: ${isCartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em;">${isCartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
-                        <td style="text-align: right;">
+                        <td style="white-space: nowrap;">${r.numero}/${app.formatAnno(r.anno)}</td>
+                        <td style="font-weight: 600; white-space: nowrap;">${r.socio_nome}</td>
+                        <td style="white-space: nowrap;">${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
+                        <td style="white-space: nowrap;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent); white-space: nowrap;">${r.tipo}</span>
+                                ${isRateale ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.35); white-space: nowrap;" title="Quota Rateale / Pagamento Rata (Accordo Interno)">💳 RATA</span>` : ''}
+                            </div>
+                        </td>
+                        <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; white-space: nowrap; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
+                        <td style="white-space: nowrap;">${displayMetodo}</td>
+                        <td style="white-space: nowrap;"><span style="color: ${isCartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em; white-space: nowrap;">${isCartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
+                        <td style="text-align: right; white-space: nowrap;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}">🖨️</button>
@@ -6535,7 +6541,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label style="margin-bottom: 4px; font-weight:600; color:var(--text-main);">Note Causale (Opzionale)</label>
-                                <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota Mensile (o precompilata dal menu pacchetti a destra)" oninput="app.updateReceiptScadenzaPreview()">
+                                <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota Mensile (o precompilata dal menu pacchetti a destra)" oninput="app.onReceiptNoteInput(this.value); app.updateReceiptScadenzaPreview()">
                             </div>
 
                         </div>
@@ -7292,6 +7298,26 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             return { mesi, baseDate, isChained: false, nuovaScadenza };
         },
 
+        isReceiptRateale(r) {
+            if (!r) return false;
+            if (r.rateale === true || String(r.rateale) === 'true') return true;
+            const note = String(r.note || '');
+            const tipo = String(r.tipo || '');
+            const regex = /(?:^|[^a-zA-Z0-9])(rata|rate|rateale|ratelae|rateal|rateizz\w*)(?:$|[^a-zA-Z0-9])/i;
+            return regex.test(note) || regex.test(tipo);
+        },
+
+        onReceiptNoteInput(val) {
+            const rateCb = document.getElementById('receipt-rateale');
+            if (rateCb) {
+                const isRate = /(?:^|[^a-zA-Z0-9])(rata|rate|rateale|ratelae|rateal|rateizz\w*)(?:$|[^a-zA-Z0-9])/i.test(val || '');
+                if (isRate && !rateCb.checked) {
+                    rateCb.checked = true;
+                    this.onReceiptRatealeChange(true);
+                }
+            }
+        },
+
         onReceiptRatealeChange(checked) {
             const infoEl = document.getElementById('receipt-rateale-info');
             if (infoEl) infoEl.style.display = checked ? 'block' : 'none';
@@ -7936,7 +7962,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             // Flags
             const isCartacea = !!data.cartacea;
             const isMultiplo = !!data.multiplo;
-            const isRateale = !!data.rateale;
+            let isRateale = !!data.rateale || this.isReceiptRateale({ rateale: data.rateale, note: data.note });
 
             // Numeric fields
             const socio = this.state.soci.find(s => s.id == data.socio_id);
@@ -7953,6 +7979,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (tess > 0) parts.push(`Tesseramento: €${tess.toFixed(2)}`);
                 if (quota > 0) parts.push(`Quota/Corso: €${quota.toFixed(2)}`);
                 tipoCausale = parts.join(' + ');
+            }
+            if (!isRateale && this.isReceiptRateale({ tipo: tipoCausale })) {
+                isRateale = true;
             }
 
             const targetNum = parseInt(data.numero);
@@ -8002,7 +8031,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 receipt.quota = quota || undefined;
                 receipt.tess = tess || undefined;
                 receipt.cartacea = isCartacea || undefined;
-                receipt.rateale = isRateale || undefined;
+                receipt.rateale = isRateale ? true : undefined;
                 receipt.inizio_validita = data.inizio_validita || undefined;
                 receipt.durata = data.durata || undefined;
                 receipt.anno = newAnno;
@@ -8040,7 +8069,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     quota: quota || undefined,
                     tess: tess || undefined,
                     cartacea: isCartacea || undefined,
-                    rateale: isRateale || undefined,
+                    rateale: isRateale ? true : undefined,
                     inizio_validita: data.inizio_validita || undefined,
                     durata: data.durata || undefined,
                 };
@@ -8348,7 +8377,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (idx < 0) return;
 
                 const isCartacea = !!data.cartacea;
-                const isRateale = !!data.rateale;
+                let isRateale = !!data.rateale || this.isReceiptRateale({ rateale: data.rateale, note: data.note });
                 const oldNum = parseInt(this.state.ricevute[idx].numero);
                 const oldAnno = parseInt(this.state.ricevute[idx].anno);
                 const newNum = parseInt(data.numero);
@@ -8388,6 +8417,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     if (quota > 0) parts.push(`Quota/Corso: €${quota.toFixed(2)}`);
                     tipoCausale = parts.join(' + ');
                 }
+                if (!isRateale && this.isReceiptRateale({ tipo: tipoCausale })) {
+                    isRateale = true;
+                }
 
                 const socio = this.state.soci.find(s => s.id == data.socio_id);
                 const importoVal = parseFloat(data.importo) || 0;
@@ -8426,7 +8458,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     quota: quota || undefined,
                     tess: tess || undefined,
                     cartacea: !!data.cartacea || undefined,
-                    rateale: isRateale || undefined,
+                    rateale: isRateale ? true : undefined,
                     inizio_validita: data.inizio_validita || undefined,
                     durata: undefined,
                     scadenza_calcolata: undefined,
