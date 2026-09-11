@@ -8197,8 +8197,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.state.primanota[txnEntrata].metodo = metodo;
                 this.state.primanota[txnEntrata].descrizione = descrizioneEntrata;
             } else {
+                const recTs = parseFloat(ricevuta.id) || Date.now();
                 this.state.primanota.push({
                     id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                    created_at: recTs,
                     data: ricevuta.data,
                     tipo: 'Entrata',
                     metodo: metodo,
@@ -8218,8 +8220,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     this.state.primanota[txnUscita].metodo = metodo;
                     this.state.primanota[txnUscita].descrizione = descUscita;
                 } else {
+                    const recTs = parseFloat(ricevuta.id) || Date.now();
                     this.state.primanota.push({
                         id: 'txn_comm_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                        created_at: recTs,
                         data: ricevuta.data,
                         tipo: 'Uscita',
                         metodo: metodo,
@@ -10525,6 +10529,75 @@ ${annullataBanner}
 
                 this.filterPrimaNota();
             },
+
+            getPnTxnSortMeta(t) {
+                if (!t) return { ts: 0, arrayIdx: 0, isCommission: false, recNum: 0, effectiveTxn: null };
+                let isCommission = false;
+                let parentRef = null;
+                let parentId = null;
+
+                const ref = t.riferimento || '';
+                if (ref.startsWith('COMM_RICEVUTA_')) {
+                    isCommission = true;
+                    parentRef = 'RICEVUTA_' + ref.replace('COMM_RICEVUTA_', '');
+                } else if (ref.startsWith('COMM_TXN_')) {
+                    isCommission = true;
+                    parentId = ref.replace('COMM_TXN_', '');
+                } else if (t.categoria === 'Commissioni Pagamento Digitale' || t.categoria === 'Spese e Commissioni Bancarie') {
+                    if (ref.startsWith('COMM_')) isCommission = true;
+                }
+
+                let effectiveTxn = t;
+                if (isCommission) {
+                    if (parentRef) {
+                        const parent = (this.state.primanota || []).find(x => x.riferimento === parentRef);
+                        if (parent) effectiveTxn = parent;
+                    } else if (parentId) {
+                        const parent = (this.state.primanota || []).find(x => String(x.id) === String(parentId));
+                        if (parent) effectiveTxn = parent;
+                    }
+                }
+
+                let ts = null;
+                if (effectiveTxn.created_at && !isNaN(Number(effectiveTxn.created_at))) {
+                    ts = Number(effectiveTxn.created_at);
+                }
+
+                let recNum = 0;
+                if (effectiveTxn.riferimento && effectiveTxn.riferimento.startsWith('RICEVUTA_')) {
+                    const recIdStr = effectiveTxn.riferimento.replace('RICEVUTA_', '');
+                    const m = recIdStr.match(/(\d{10,}(\.\d+)?)/);
+                    if (m) ts = parseFloat(m[0]);
+
+                    if (Array.isArray(this.state.ricevute)) {
+                        const rec = this.state.ricevute.find(r => String(r.id) === String(recIdStr));
+                        if (rec) {
+                            if (!ts && rec.created_at) ts = Number(rec.created_at);
+                            if (!ts && rec.id) {
+                                const rm = String(rec.id).match(/(\d{10,}(\.\d+)?)/);
+                                if (rm) ts = parseFloat(rm[0]);
+                            }
+                            if (rec.numero) recNum = parseInt(rec.numero, 10) || 0;
+                        }
+                    }
+                }
+
+                if (!ts) {
+                    const idStr = String(effectiveTxn.id || '');
+                    const m = idStr.match(/(\d{10,}(\.\d+)?)/);
+                    if (m) ts = parseFloat(m[0]);
+                }
+
+                const arrayIdx = Array.isArray(this.state.primanota) ? this.state.primanota.indexOf(effectiveTxn) : 0;
+
+                return {
+                    isCommission,
+                    effectiveTxn,
+                    recNum,
+                    ts: ts || (1000000000000 + arrayIdx),
+                    arrayIdx: arrayIdx >= 0 ? arrayIdx : 0
+                };
+            },
             
             getFilteredPrimaNota() {
                 let currentD = new Date();
@@ -10716,10 +10789,10 @@ ${annullataBanner}
 
                 filtered.sort((a, b) => {
                     // Mantieni la commissione collegata immediatamente dopo il rispettivo padre
-                    if (b.riferimento === 'COMM_TXN_' + a.id || (a.riferimento?.startsWith('RICEVUTA_') && b.riferimento === 'COMM_RICEVUTA_' + a.riferimento.replace('RICEVUTA_', ''))) {
+                    if (b.riferimento === 'COMM_TXN_' + a.id || (a.riferimento && a.riferimento.startsWith('RICEVUTA_') && b.riferimento === 'COMM_RICEVUTA_' + a.riferimento.replace('RICEVUTA_', ''))) {
                         return -1;
                     }
-                    if (a.riferimento === 'COMM_TXN_' + b.id || (b.riferimento?.startsWith('RICEVUTA_') && a.riferimento === 'COMM_RICEVUTA_' + b.riferimento.replace('RICEVUTA_', ''))) {
+                    if (a.riferimento === 'COMM_TXN_' + b.id || (b.riferimento && b.riferimento.startsWith('RICEVUTA_') && a.riferimento === 'COMM_RICEVUTA_' + b.riferimento.replace('RICEVUTA_', ''))) {
                         return 1;
                     }
 
@@ -10729,16 +10802,46 @@ ${annullataBanner}
                         const dateB = new Date(b.data).getTime() || 0;
                         diff = dateA - dateB;
                         if (diff === 0) {
-                            diff = (parseInt(a.id) || 0) - (parseInt(b.id) || 0);
+                            const metaA = this.getPnTxnSortMeta(a);
+                            const metaB = this.getPnTxnSortMeta(b);
+                            if (metaA.effectiveTxn !== metaB.effectiveTxn) {
+                                if (metaA.recNum && metaB.recNum && metaA.recNum !== metaB.recNum) {
+                                    diff = metaA.recNum - metaB.recNum;
+                                } else if (metaA.ts !== metaB.ts) {
+                                    diff = metaA.ts - metaB.ts;
+                                } else {
+                                    diff = metaA.arrayIdx - metaB.arrayIdx;
+                                }
+                            } else {
+                                return metaA.isCommission ? 1 : -1;
+                            }
                         }
                     } else if (key === 'importo') {
                         const amtA = parseFloat(a.importo) || 0;
                         const amtB = parseFloat(b.importo) || 0;
                         diff = amtA - amtB;
+                        if (diff === 0) {
+                            const metaA = this.getPnTxnSortMeta(a);
+                            const metaB = this.getPnTxnSortMeta(b);
+                            if (metaA.effectiveTxn !== metaB.effectiveTxn) {
+                                diff = metaA.ts !== metaB.ts ? (metaA.ts - metaB.ts) : (metaA.arrayIdx - metaB.arrayIdx);
+                            } else {
+                                return metaA.isCommission ? 1 : -1;
+                            }
+                        }
                     } else {
                         const valA = (a[key] || '').toString().toLowerCase();
                         const valB = (b[key] || '').toString().toLowerCase();
                         diff = valA.localeCompare(valB);
+                        if (diff === 0) {
+                            const metaA = this.getPnTxnSortMeta(a);
+                            const metaB = this.getPnTxnSortMeta(b);
+                            if (metaA.effectiveTxn !== metaB.effectiveTxn) {
+                                diff = metaA.ts !== metaB.ts ? (metaA.ts - metaB.ts) : (metaA.arrayIdx - metaB.arrayIdx);
+                            } else {
+                                return metaA.isCommission ? 1 : -1;
+                            }
+                        }
                     }
                     return dir === 'asc' ? diff : -diff;
                 });
@@ -11614,6 +11717,7 @@ ${annullataBanner}
                         targetTxnId = 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5);
                         this.state.primanota.push({
                             id: targetTxnId,
+                            created_at: Date.now(),
                             data: dataVal,
                             tipo: tipoVal,
                             metodo: metodoVal,
