@@ -6009,9 +6009,9 @@
                                 <span class="header-subtitle">Emissione e archivio ricevute non fiscali.</span>
                             </div>
                             <div class="header-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Allinea automaticamente la cartella: rimuove i vecchi PDF obsoleti e archivia i PDF con la corretta numerazione">📁 Allinea ed Archivia PDF Cartella</button>
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta le ricevute in formato Excel (considera l'anno sportivo o l'intervallo temporale isolato).">Esporta Excel</button>
                                 ${this.state.debugMode ? `
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Allinea automaticamente la cartella: rimuove i vecchi PDF obsoleti e archivia i PDF con la corretta numerazione">📁 Allinea ed Archivia PDF Cartella</button>
                                     <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea e riordina i registri (da 1 a N)">🪄 Ripara Registri (Opz. 1)</button>
                                     <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
                                     <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 / -1)">⏩ Sposta Sequenza</button>
