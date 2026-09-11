@@ -1586,6 +1586,108 @@
             opacity: 0.6;
         }
 
+        /* --- POST-IT ROSSO FLUO PER SOCI (NOTE INTERNE) --- */
+        .socio-postit-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            margin-left: 6px;
+            background: linear-gradient(135deg, #ff4b72 0%, #ff1744 55%, #d50000 100%);
+            color: #ffffff;
+            border-radius: 3px 3px 9px 3px;
+            font-size: 0.75rem;
+            line-height: 1;
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.8), 0 2px 4px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            cursor: pointer;
+            vertical-align: middle;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            user-select: none;
+        }
+        .socio-postit-icon:hover {
+            transform: scale(1.25);
+            box-shadow: 0 0 16px rgba(255, 23, 68, 1), 0 3px 6px rgba(0, 0, 0, 0.45);
+        }
+        .postit-note-red {
+            position: fixed;
+            width: 290px;
+            min-height: 220px;
+            background: linear-gradient(155deg, #fff1f2 0%, #ffe4e8 20%, #fda4af 60%, #fb7185 85%, #f43f5e 100%);
+            border: 1px solid rgba(225, 29, 72, 0.75);
+            border-radius: 4px 4px 18px 4px;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 26px rgba(244, 63, 94, 0.7);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            user-select: none;
+            transition: box-shadow 0.2s, transform 0.15s, opacity 0.15s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            z-index: 999999;
+        }
+        .postit-note-red:hover {
+            box-shadow: 0 18px 38px rgba(0, 0, 0, 0.65), 0 0 32px rgba(244, 63, 94, 0.9);
+        }
+        .postit-note-red .postit-header {
+            cursor: default;
+            padding: 7px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(225, 29, 72, 0.35);
+            border-bottom: 1px dashed rgba(190, 18, 60, 0.5);
+            border-radius: 4px 4px 0 0;
+        }
+        .postit-note-red .postit-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: #881337;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .postit-note-red .postit-btn:hover {
+            background: rgba(190, 18, 60, 0.25);
+            transform: scale(1.15);
+        }
+        .postit-note-red .postit-textarea {
+            flex: 1;
+            width: 100%;
+            min-height: 125px;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 0.90rem;
+            font-weight: 600;
+            line-height: 1.4;
+            color: #4c0519;
+            padding: 8px 10px;
+            user-select: text;
+        }
+        .postit-note-red .postit-textarea::placeholder {
+            color: rgba(136, 19, 55, 0.55);
+            font-weight: 500;
+        }
+        .postit-note-red .postit-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            background: rgba(225, 29, 72, 0.25);
+            border-top: 1px dashed rgba(190, 18, 60, 0.4);
+            border-radius: 0 0 18px 4px;
+            font-size: 0.75rem;
+            color: #881337;
+        }
+
     </style>
 </head>
 
@@ -1772,6 +1874,7 @@
 
     <!-- Floating Post-it Container -->
     <div id="postit-floating-container" style="position: fixed; inset: 0; pointer-events: none; z-index: 99998; overflow: hidden;"></div>
+    <div id="socio-postit-floating-popup" class="postit-note-red" style="display:none;" onmouseenter="app.onSocioPostitPopupEnter()" onmouseleave="app.onSocioPostitPopupLeave()"></div>
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
@@ -5579,11 +5682,25 @@
                     
                     const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
                     const isMinore = eta < 18;
+                    const hasNote = Boolean(s.note && String(s.note).trim());
 
                     return `
                     <tr style="${rowStyle}">
                         <td style="font-weight: 600;">${s.cognome || '-'}</td>
-                        <td style="font-weight: 500;">${s.nome || '-'} ${isMinore ? '<span style="font-size:0.65rem; background:rgba(59,130,246,0.1); color:var(--primary); padding:2px 4px; border-radius:4px;">U18</span>' : ''}</td>
+                        <td style="font-weight: 500; white-space: nowrap;">
+                            <span>${s.nome || '-'}</span>
+                            ${isMinore ? '<span style="font-size:0.65rem; background:rgba(59,130,246,0.1); color:var(--primary); padding:2px 4px; border-radius:4px; margin-left:4px;">U18</span>' : ''}
+                            ${hasNote ? `
+                                <span class="socio-postit-icon" 
+                                      data-socio-id="${s.id}" 
+                                      onmouseenter="app.onSocioPostitHover(event, ${s.id})" 
+                                      onmouseleave="app.onSocioPostitLeave(event, ${s.id})" 
+                                      onclick="app.onSocioPostitClick(event, ${s.id})" 
+                                      title="Post-it Nota Socio (Passa col mouse per leggere o clicca per modificare)">
+                                    📌
+                                </span>
+                            ` : ''}
+                        </td>
                         <td>
                             <div style="font-size: 0.8rem; color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'}; opacity: 0.85;">${s.residenza || '-'}</div>
                             <div style="font-size: 0.75rem;">${s.tel || '-'}</div>
@@ -6061,6 +6178,227 @@
                 this.renderSoci();
                 this.toast("Nota aggiornata con successo!");
             },
+        /* ==========================================================================
+           GESTIONE POST-IT ROSSO FLUO SOCI (NOTE INTERNE)
+           ========================================================================== */
+        ensureSocioPostitPopupContainer() {
+            let popup = document.getElementById('socio-postit-floating-popup');
+            if (!popup) {
+                popup = document.createElement('div');
+                popup.id = 'socio-postit-floating-popup';
+                popup.className = 'postit-note-red';
+                popup.style.display = 'none';
+                popup.onmouseenter = () => this.onSocioPostitPopupEnter();
+                popup.onmouseleave = () => this.onSocioPostitPopupLeave();
+                document.body.appendChild(popup);
+            }
+            this.initSocioPostitGlobalListeners();
+            return popup;
+        },
+
+        initSocioPostitGlobalListeners() {
+            if (this._socioPostitListenersInitialized) return;
+            this._socioPostitListenersInitialized = true;
+            document.addEventListener('click', (e) => {
+                const popup = document.getElementById('socio-postit-floating-popup');
+                if (!popup || popup.style.display === 'none') return;
+                if (!popup.contains(e.target) && !e.target.closest('.socio-postit-icon')) {
+                    this.hideSocioPostitPopup(true);
+                }
+            });
+            window.addEventListener('scroll', () => {
+                if (this._socioPostitIsFocused) return;
+                const popup = document.getElementById('socio-postit-floating-popup');
+                if (popup && popup.style.display !== 'none') {
+                    this.hideSocioPostitPopup();
+                }
+            }, { passive: true });
+        },
+
+        showSocioPostitPopup(e, socioId) {
+            const s = (this.state.soci || []).find(x => x.id === socioId || String(x.id) === String(socioId));
+            if (!s || !s.note || !s.note.trim()) return;
+
+            if (this._socioPostitCloseTimer) {
+                clearTimeout(this._socioPostitCloseTimer);
+                this._socioPostitCloseTimer = null;
+            }
+
+            const popup = this.ensureSocioPostitPopupContainer();
+            this._activePostitSocioId = socioId;
+
+            const safeNote = s.note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const safeName = ((s.cognome || '') + ' ' + (s.nome || '')).trim() || 'Socio';
+
+            popup.innerHTML = `
+                <div class="postit-header">
+                    <span style="display:flex; align-items:center; gap:5px; font-weight:700; font-size:0.84rem; color:#881337; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:205px;" title="Nota per ${safeName}">
+                        <span>📌</span> <span>${safeName}</span>
+                    </span>
+                    <div style="display:flex; gap:3px; align-items:center;">
+                        <button type="button" class="postit-btn" onclick="app.copyActiveSocioPostitText()" title="Copia appunto">📋</button>
+                        <button type="button" class="postit-btn" onclick="app.deleteSocioPostit(${s.id})" title="Elimina questa nota">🗑️</button>
+                        <button type="button" class="postit-btn" onclick="app.hideSocioPostitPopup(true)" title="Chiudi finestra">✖️</button>
+                    </div>
+                </div>
+                <textarea id="socio-postit-active-text" 
+                          class="postit-textarea" 
+                          placeholder="Scrivi qui la nota del socio..."
+                          oninput="app.onSocioPostitTextInput(${s.id})"
+                          onfocus="app.onSocioPostitFocus()"
+                          onblur="app.onSocioPostitBlur()">${safeNote}</textarea>
+                <div class="postit-footer">
+                    <span id="socio-postit-status" style="font-size:0.72rem; color:#881337; opacity:0.85;">✏️ Modifica e premi Salva</span>
+                    <div style="display:flex; gap:4px;">
+                        <button type="button" class="btn btn-primary" style="padding:2px 8px; font-size:0.75rem; background:#e11d48; border-color:#be123c; color:#fff;" onclick="app.saveActiveSocioPostit(${s.id})">💾 Salva</button>
+                    </div>
+                </div>
+            `;
+
+            const targetEl = e.currentTarget || e.target;
+            const rect = targetEl.getBoundingClientRect();
+
+            popup.style.display = 'flex';
+            popup.style.opacity = '1';
+
+            const popupWidth = 290;
+            const popupHeight = 220;
+
+            let left = rect.right + 10;
+            if (left + popupWidth > window.innerWidth - 15) {
+                left = rect.left - popupWidth - 10;
+            }
+            if (left < 10) left = 10;
+
+            let top = rect.top - 15;
+            if (top + popupHeight > window.innerHeight - 15) {
+                top = window.innerHeight - popupHeight - 15;
+            }
+            if (top < 10) top = 10;
+
+            popup.style.left = `${left}px`;
+            popup.style.top = `${top}px`;
+        },
+
+        onSocioPostitHover(e, socioId) {
+            this.showSocioPostitPopup(e, socioId);
+        },
+
+        onSocioPostitLeave(e, socioId) {
+            if (this._socioPostitIsFocused) return;
+            this._socioPostitCloseTimer = setTimeout(() => {
+                this.hideSocioPostitPopup();
+            }, 300);
+        },
+
+        onSocioPostitClick(e, socioId) {
+            e.stopPropagation();
+            this.showSocioPostitPopup(e, socioId);
+            const textarea = document.getElementById('socio-postit-active-text');
+            if (textarea) {
+                textarea.focus();
+            }
+        },
+
+        onSocioPostitPopupEnter() {
+            if (this._socioPostitCloseTimer) {
+                clearTimeout(this._socioPostitCloseTimer);
+                this._socioPostitCloseTimer = null;
+            }
+        },
+
+        onSocioPostitPopupLeave() {
+            if (this._socioPostitIsFocused) return;
+            this._socioPostitCloseTimer = setTimeout(() => {
+                this.hideSocioPostitPopup();
+            }, 300);
+        },
+
+        onSocioPostitFocus() {
+            this._socioPostitIsFocused = true;
+            if (this._socioPostitCloseTimer) {
+                clearTimeout(this._socioPostitCloseTimer);
+                this._socioPostitCloseTimer = null;
+            }
+        },
+
+        onSocioPostitBlur() {
+            this._socioPostitIsFocused = false;
+        },
+
+        hideSocioPostitPopup(force = false) {
+            if (!force && this._socioPostitIsFocused) return;
+            const popup = document.getElementById('socio-postit-floating-popup');
+            if (popup) {
+                popup.style.display = 'none';
+            }
+            this._activePostitSocioId = null;
+            this._socioPostitIsFocused = false;
+        },
+
+        onSocioPostitTextInput(socioId) {
+            const status = document.getElementById('socio-postit-status');
+            if (status) {
+                status.textContent = '✏️ Modifiche non salvate';
+                status.style.color = '#be123c';
+            }
+        },
+
+        saveActiveSocioPostit(socioId) {
+            const id = socioId || this._activePostitSocioId;
+            if (!id) return;
+            const s = (this.state.soci || []).find(x => x.id === id || String(x.id) === String(id));
+            if (!s) return;
+
+            const textarea = document.getElementById('socio-postit-active-text');
+            if (!textarea) return;
+
+            const newText = textarea.value.trim();
+            s.note = newText;
+            s.updated_at = Date.now();
+
+            this.saveAll();
+            this.toast('💾 Nota socio salvata con successo!', 'success');
+            
+            const status = document.getElementById('socio-postit-status');
+            if (status) {
+                status.textContent = '✅ Nota salvata!';
+                status.style.color = '#15803d';
+            }
+
+            this.renderSoci();
+            if (!newText) {
+                this.hideSocioPostitPopup(true);
+            }
+        },
+
+        deleteSocioPostit(socioId) {
+            const id = socioId || this._activePostitSocioId;
+            if (!id) return;
+            const s = (this.state.soci || []).find(x => x.id === id || String(x.id) === String(id));
+            if (!s) return;
+
+            if (confirm(`Sei sicuro di voler eliminare la nota per ${s.cognome || ''} ${s.nome || ''}?`)) {
+                s.note = '';
+                s.updated_at = Date.now();
+                this.saveAll();
+                this.hideSocioPostitPopup(true);
+                this.renderSoci();
+                this.toast('🗑️ Nota socio eliminata', 'info');
+            }
+        },
+
+        copyActiveSocioPostitText() {
+            const textarea = document.getElementById('socio-postit-active-text');
+            if (textarea && textarea.value) {
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    this.toast('📋 Nota copiata negli appunti!', 'success');
+                }).catch(() => {
+                    this.toast('Errore nella copia della nota', 'warning');
+                });
+            }
+        },
+
 
             handleSocioSubmit(e) {
                 e.preventDefault();
@@ -6824,6 +7162,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label style="margin-bottom: 4px; font-weight:600; color:var(--text-main);">Note Causale (Opzionale)</label>
                                 <input type="text" name="note" id="receipt-note" class="form-control" placeholder="Es: Quota Mensile (o precompilata dal menu pacchetti a destra)" oninput="app.onReceiptNoteInput(this.value); app.updateReceiptScadenzaPreview()">
+                            </div>
+
+                            <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px; font-weight:600; color:#ff4d6d; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>📌 Note Interne Socio (Salva in Anagrafica)</span>
+                                    <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">(si sincronizza con scheda socio)</span>
+                                </label>
+                                <textarea name="socio_note" id="receipt-socio-note" class="form-control" rows="2" style="font-size:0.84rem; resize:vertical; min-height:48px;" placeholder="Note interne per il socio (visibili in anagrafica soci col post-it rosso fluo)..."></textarea>
                             </div>
 
                         </div>
@@ -8043,13 +8389,19 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         updateReceiptSocioInfo(val, previewId = 'receipt-socio-preview') {
             const preview = document.getElementById(previewId);
-            if (!preview) return;
             if (!val) {
-                preview.style.display = 'none';
+                if (preview) preview.style.display = 'none';
+                const socioNoteInput = document.getElementById('receipt-socio-note');
+                if (socioNoteInput) socioNoteInput.value = '';
                 return;
             }
             const s = this.state.soci.find(x => x.id == val);
             if (!s) return;
+            const socioNoteInput = document.getElementById('receipt-socio-note');
+            if (socioNoteInput) {
+                socioNoteInput.value = (s && s.note) ? s.note : '';
+            }
+            if (!preview) return;
             preview.style.display = 'block';
             preview.innerHTML = `
                 <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
@@ -8447,6 +8799,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 socio.stato = 'ATTIVO';
             }
 
+            // Aggiorna / aggrega note interne socio in anagrafica
+            const socioNoteInput = document.getElementById('receipt-socio-note');
+            if (socio && socioNoteInput) {
+                socio.note = socioNoteInput.value.trim();
+                socio.updated_at = Date.now();
+            }
+
             // Sincronizza Prima Nota e Anagrafica Soci
             this.syncPrimaNotaFromRicevuta(receipt);
             this.syncSociFromRicevute();
@@ -8471,6 +8830,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 });
                 const searchInput = document.getElementById('receipt-socio-search');
                 if (searchInput) searchInput.value = '';
+                const socioNoteInputMulti = document.getElementById('receipt-socio-note');
+                if (socioNoteInputMulti) socioNoteInputMulti.value = '';
                 const preview = document.getElementById('receipt-socio-preview');
                 if (preview) preview.style.display = 'none';
                 const commRow = document.getElementById('receipt-commissioni-row');
@@ -8618,6 +8979,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const hasManual = !!r.scadenza_quota_override;
                 overrideInputModal.dataset.manualEdit = hasManual ? 'true' : 'false';
                 overrideInputModal.dataset.autoCalc = hasManual ? 'false' : 'true';
+            }
+            // Prepopola note interne socio
+            const editSocio = this.state.soci.find(x => x.id == r.socio_id);
+            const socioNoteEl = document.getElementById('receipt-socio-note');
+            if (socioNoteEl) {
+                socioNoteEl.value = (editSocio && editSocio.note) ? editSocio.note : '';
             }
             // Popola checkbox rateale
             const ratealeCb = document.getElementById('receipt-rateale');

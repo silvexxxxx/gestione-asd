@@ -7720,6 +7720,24 @@
       "tesserato": "NO",
       "stato": "MOROSO",
       "note": "Pagamento in ritardo"
+    },
+    {
+      "id": 1789123606490,
+      "cognome": "Mameli",
+      "nome": "Giuseppe",
+      "luogo_nascita": "Carloforte",
+      "data_nascita": "1983-04-03",
+      "cf": "MMLGPP83D03B745Z",
+      "email": "giuseppe.mameli@yahoo.com",
+      "tel": "3464999476",
+      "residenza": "Carloforte, via Cavallera, 29",
+      "quota_scadenza": "2026-10-10",
+      "tesserato": "SI",
+      "tesseramento_data": "2026-09-10",
+      "tesseramento_scadenza": "2027-08-31",
+      "certificato_scadenza": "",
+      "note": "verificare luogo di nascita. ha versato 100 euro ne deve 15 per completare la prima rata (+25) per pagamento annuale rateizzato",
+      "stato": "ATTIVO"
     }
   ],
   "ricevute": [
