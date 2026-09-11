@@ -5462,12 +5462,21 @@
             filterSoci() {
                 const searchInput = document.getElementById('socio-search');
                 const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+                const searchWords = search ? search.split(/\s+/).filter(Boolean) : [];
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
 
                 let filtered = this.state.soci.filter(s => {
-                    const fullName = `${s.cognome || ''} ${s.nome || ''}`.toLowerCase();
-                    const matchSearch = fullName.includes(search) || (s.cf && s.cf.toLowerCase().includes(search));
+                    let matchSearch = true;
+                    if (searchWords.length > 0) {
+                        const cognome = (s.cognome || '').toLowerCase();
+                        const nome = (s.nome || '').toLowerCase();
+                        const cf = (s.cf || '').toLowerCase();
+                        const email = (s.email || '').toLowerCase();
+                        const tel = (s.tel || s.telefono || s.cellulare || '').toString().toLowerCase();
+                        const socioAllText = `${cognome} ${nome} ${cf} ${email} ${tel}`;
+                        matchSearch = searchWords.every(word => socioAllText.includes(word));
+                    }
                     
                     let matchStatus = false;
                     const now = new Date();
@@ -6351,6 +6360,7 @@
                 const endEl = document.getElementById('receipt-date-end');
 
                 const search = (searchEl ? searchEl.value : '').toLowerCase().trim();
+                const searchWords = search ? search.split(/\s+/).filter(Boolean) : [];
                 const anno = annoEl ? annoEl.value : (this.selectedRicevuteAnno || 'all');
                 const reg = regEl ? regEl.value : 'all';
                 const start = startEl ? startEl.value : '';
@@ -6361,9 +6371,16 @@
                 return this.state.ricevute.filter(r => {
                     if (r.tipo === 'Compenso Sportivo') return false;
                     const isCart = (r.cartacea === true || String(r.cartacea) === 'true');
-                    const matchSearch = !search || 
-                        (r.socio_nome || '').toLowerCase().includes(search) || 
-                        `${r.numero}/${app.formatAnno(r.anno)}`.includes(search);
+                    let matchSearch = true;
+                    if (searchWords.length > 0) {
+                        const socioNome = (r.socio_nome || '').toLowerCase();
+                        const numFull = `${r.numero}/${app.formatAnno(r.anno)}`.toLowerCase();
+                        const numSimple = String(r.numero);
+                        const note = (r.note || '').toLowerCase();
+                        const tipo = (r.tipo || '').toLowerCase();
+                        const recAllText = `${socioNome} ${numFull} ${numSimple} ${note} ${tipo}`;
+                        matchSearch = searchWords.every(word => recAllText.includes(word));
+                    }
 
                     const matchReg = (reg === 'all') || 
                         (reg === 'cartaceo' && isCart) || 
@@ -10336,11 +10353,14 @@ ${annullataBanner}
                                     matchAmt = valStr.startsWith(cleanS) || valStr === cleanS;
                                 }
                             }
-                            const matchText = (t.descrizione || '').toLowerCase().includes(search) || 
-                                              (t.categoria || '').toLowerCase().includes(search) ||
-                                              (t.metodo || '').toLowerCase().includes(search) ||
-                                              (t.riferimento || '').toLowerCase().includes(search) ||
-                                              matchAmt;
+                            const desc = (t.descrizione || '').toLowerCase();
+                            const cat = (t.categoria || '').toLowerCase();
+                            const met = (t.metodo || '').toLowerCase();
+                            const ref = (t.riferimento || '').toLowerCase();
+                            const allText = `${desc} ${cat} ${met} ${ref}`;
+                            const searchWords = search.split(/\s+/).filter(Boolean);
+                            const matchWords = searchWords.every(word => allText.includes(word));
+                            const matchText = matchWords || matchAmt;
                             if (!matchText) return false;
                         }
 
