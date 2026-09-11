@@ -6001,6 +6001,11 @@
                     ? tableContainer.scrollTop
                     : (this.state.lastRicevuteScroll || savedScroll || 0);
 
+                if (!this.ricevuteSortKey) {
+                    this.ricevuteSortKey = 'numero';
+                    this.ricevuteSortDir = 'asc';
+                }
+
                 main.innerHTML = `
                     <div class="page-content">
                         <div class="page-header">
@@ -6109,7 +6114,7 @@
 
                 let sorted = [...receipts];
                 
-                const k = this.ricevuteSortKey || 'data';
+                const k = this.ricevuteSortKey || 'numero';
                 const dir = (this.ricevuteSortDir || 'asc') === 'asc' ? 1 : -1;
                 
                 const compareReceiptsCascade = (a, b, d = 1) => {
@@ -7189,8 +7194,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             // 1. Cartacee: ordina per numero e data
             cartacee.sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
 
-            // 2. Digitali: ordina per data cronologica, spareggiando con id
+            // 2. Digitali: ordina per numero progressivo esistente (se valido e distinto), altrimenti per data cronologica
             digitali.sort((a, b) => {
+                const numA = parseInt(a.numero) || 0;
+                const numB = parseInt(b.numero) || 0;
+                if (numA > 0 && numB > 0 && numA !== numB) {
+                    return numA - numB;
+                }
                 const dateA = new Date(a.data).getTime() || 0;
                 const dateB = new Date(b.data).getTime() || 0;
                 if (dateA !== dateB) return dateA - dateB;
