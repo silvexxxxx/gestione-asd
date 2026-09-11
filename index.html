@@ -5863,7 +5863,19 @@
 
                 if (editId) {
                     const idx = this.state.soci.findIndex(s => s.id === editId);
+                    const oldSocio = this.state.soci[idx];
                     this.state.soci[idx] = { ...this.state.soci[idx], ...data };
+                    
+                    // Se nome o cognome sono cambiati, aggiorna le ricevute collegate per coerenza immediata
+                    const newFullName = `${data.cognome || ''} ${data.nome || ''}`.trim();
+                    const oldFullName = oldSocio ? `${oldSocio.cognome || ''} ${oldSocio.nome || ''}`.trim() : '';
+                    if (newFullName && oldFullName && newFullName !== oldFullName) {
+                        (this.state.ricevute || []).forEach(r => {
+                            if (r.socio_id == editId) {
+                                r.socio_nome = newFullName;
+                            }
+                        });
+                    }
                     this.toast("Socio aggiornato con successo!");
                 } else {
                     data.id = Date.now(); // Simple ID generator
@@ -5873,7 +5885,7 @@
 
                 this.saveAll();
                 this.closeModal();
-                this.renderSoci();
+                this.refreshCurrentPageUI();
             },
 
             deleteSocio(id) {
@@ -5881,14 +5893,49 @@
                     this.state.soci = this.state.soci.filter(s => s.id !== id);
                     this.trackDeletion(id);
                     this.saveAll();
-                    this.renderSoci();
+                    this.refreshCurrentPageUI();
                     this.toast("Socio eliminato.", "danger");
                 }
             },
 
             // --- SCROLL & RICEVUTE MANAGEMENT ---
 
-            restoreTableScroll(page, targetScroll) {
+            refreshCurrentPageUI(highlightId = null) {
+            const page = this.state.currentPage || 'dashboard';
+            if (page === 'ricevute') {
+                this.renderRicevute(true, highlightId);
+            } else if (page === 'soci') {
+                if (document.getElementById('soci-tbody')) {
+                    this.filterSoci();
+                } else {
+                    this.renderSoci();
+                }
+            } else if (page === 'primanota') {
+                this.renderPrimaNota(true, highlightId);
+            } else if (page === 'dashboard') {
+                this.renderDashboard();
+            } else if (page === 'database') {
+                this.renderDatabase();
+            } else if (page === 'corsi') {
+                this.renderCorsi();
+            } else if (page === 'istruttori') {
+                this.renderIstruttori();
+            } else if (page === 'schede-atleti') {
+                this.renderSchedeAtleti();
+            } else if (page === 'sala-pesi') {
+                this.renderSalaPesi();
+            } else if (page === 'magazzino') {
+                this.renderMagazzino();
+            } else if (page === 'eventi') {
+                this.renderEventi();
+            } else if (page === 'rimborsi') {
+                this.renderRimborsi();
+            } else if (page === 'verbali') {
+                this.renderVerbali();
+            }
+        },
+
+        restoreTableScroll(page, targetScroll) {
                 if (!targetScroll || targetScroll <= 0) return;
 
                 if (page === 'soci') {
@@ -6850,7 +6897,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.resequenceRicevute(anno, onlyDigital);
         },
 
-        resequenceRicevute(anno, onlyDigital = false) {
+        async resequenceRicevute(anno, onlyDigital = false) {
             const targetAnno = parseInt(anno);
             if (isNaN(targetAnno)) return;
             
@@ -6885,16 +6932,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 }
             });
             
+            this.syncSociFromRicevute();
             this.saveAll();
-            this.renderRicevute();
+
+            try {
+                await this.allineaCartellaRicevutePDF(targetAnno, true);
+            } catch(eAll) {}
+
+            this.refreshCurrentPageUI();
             const scopeText = onlyDigital ? "digitali" : "totali";
             this.toast(`Rinumerazione completata (${scopeText}) per l'anno ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
-
-            if (scope === 'digitale' || scope === 'entrambi') {
-                try {
-                    this.allineaCartellaRicevutePDF(targetAnno, true);
-                } catch(eAll) {}
-            }
         },
 
         openShiftRicevuteModal(initialReceiptId = null) {
@@ -7076,7 +7123,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.updateShiftCheckedCount();
         },
 
-        executeShiftRicevuteFromModal() {
+        async executeShiftRicevuteFromModal() {
             const delta = parseInt(document.getElementById('shift-delta-input')?.value) || 0;
             if (delta === 0) {
                 this.toast("Lo spostamento deve essere diverso da 0.", "warning");
@@ -7088,10 +7135,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 return;
             }
             const selectedIds = new Set(cbs.map(cb => String(cb.value)));
+            const type = document.getElementById('shift-type-select')?.value || 'cartaceo';
+            const shiftAnno = parseInt(document.getElementById('shift-year-select')?.value);
             
             this.createSnapshot('pre-shift');
-            
-            const type = document.getElementById('shift-type-select')?.value || 'cartaceo';
             
             let toShift = this.state.ricevute.filter(r => selectedIds.has(String(r.id)));
             
@@ -7109,17 +7156,18 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.syncPrimaNotaFromRicevuta(r);
             });
             
+            this.syncSociFromRicevute();
             this.saveAll();
             this.closeModal();
-            this.renderRicevute(true, toShift[toShift.length - 1]?.id);
-            this.toast(`✅ Spostamento completato con successo: ${toShift.length} ricevute ${type} aggiornate di ${delta > 0 ? '+' : ''}${delta}!`, "success");
 
-            if (type !== 'cartaceo') {
-                const shiftAnno = parseInt(document.getElementById('shift-year-select')?.value);
+            if (type !== 'cartaceo' && !isNaN(shiftAnno)) {
                 try {
-                    this.allineaCartellaRicevutePDF(shiftAnno, true);
+                    await this.allineaCartellaRicevutePDF(shiftAnno, true);
                 } catch(eAll) {}
             }
+
+            this.refreshCurrentPageUI(toShift[toShift.length - 1]?.id);
+            this.toast(`✅ Spostamento completato con successo: ${toShift.length} ricevute ${type} aggiornate di ${delta > 0 ? '+' : ''}${delta}!`, "success");
         },
 
         riallineaRicevuteCartaceeOttobre() {
@@ -7181,7 +7229,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.toast("✅ Ricevute cartacee riallineate con successo al cartaceo reale!", "success");
         },
 
-        applicaOpzione1Database() {
+        async applicaOpzione1Database() {
             if (!confirm("Vuoi applicare la Riparazione Opzione 1?\n\n• Registro Cartaceo: Mantiene immutate le ricevute con contrassegno Cartaceo\n• Registro Digitale: Riordina le ricevute digitali in ordine cronologico da N. 1 a N (eliminando numeri zero e doppioni)\n• Prima Nota: Sincronizzazione automatica degli importi e numeri\n\nProcedere con la riparazione?")) {
                 return;
             }
@@ -7219,8 +7267,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             });
 
             this.state.ricevute = [...cartacee, ...digitali];
+            this.syncSociFromRicevute();
             this.saveAll();
-            this.renderRicevute();
+
+            try {
+                await this.allineaCartellaRicevutePDF(null, true);
+            } catch(eAll) {}
+
+            this.refreshCurrentPageUI();
             this.toast(`✅ Riparazione Opzione 1 completata! ${cartacee.length} cartacee e ${digitali.length} digitali (da 1 a ${digitali.length || 'N'}) perfettamente sincronizzate.`, "success");
         },
 
@@ -7956,7 +8010,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             });
         },
 
-        handleRicevutaSubmit(e) {
+        async handleRicevutaSubmit(e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
@@ -8055,7 +8109,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     .filter(r => (!!r.cartacea === isCartacea) && r.anno === targetAnno && r.numero >= targetNum)
                     .sort((a, b) => b.numero - a.numero);
                 
-                if (existingToShift.length > 0) {
+                const didShift = existingToShift.length > 0;
+                if (didShift) {
                     existingToShift.forEach(r => {
                         r.numero += 1;
                         this.syncPrimaNotaFromRicevuta(r);
@@ -8161,9 +8216,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             this.saveAll();
 
+            const wasShifted = (typeof didShift !== 'undefined' && didShift);
             if (isMultiplo && !editId) {
                 if (!receipt.cartacea) {
-                    try { this.generatePDF(receipt.id); } catch(ePdf) { console.error(ePdf); }
+                    if (wasShifted) {
+                        try { await this.allineaCartellaRicevutePDF(targetAnno, true); } catch(ePdf) { console.error(ePdf); }
+                    } else {
+                        try { await this.generatePDF(receipt.id); } catch(ePdf) { console.error(ePdf); }
+                    }
                 }
                 this.toast(`✅ Ricevuta n.${receipt.numero} salvata! Puoi inserire la prossima.`, 'success');
                 const numInput = document.getElementById('receipt-numero');
@@ -8182,37 +8242,39 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (socioSel) socioSel.focus();
             } else {
                 if (!receipt.cartacea) {
-                    try { this.generatePDF(receipt.id); } catch(ePdf) { console.error(ePdf); }
+                    if (wasShifted) {
+                        try { await this.allineaCartellaRicevutePDF(targetAnno, true); } catch(ePdf) { console.error(ePdf); }
+                    } else {
+                        try { await this.generatePDF(receipt.id); } catch(ePdf) { console.error(ePdf); }
+                    }
                 }
                 this.closeModal();
                 this.toast(editId ? 'Ricevuta modificata correttamente!' : 'Ricevuta emessa correttamente!');
             }
 
-            if (this.state.currentPage === 'ricevute') {
-                this.renderRicevute(true, receipt.id);
-            } else if (this.state.currentPage === 'soci') {
-                this.renderSoci();
-            } else if (this.state.currentPage === 'primanota') {
-                this.renderPrimaNota(true);
-            } else if (this.state.currentPage === 'dashboard') {
-                this.renderDashboard();
-            }
+            this.refreshCurrentPageUI(receipt.id);
         },
 
-        annullaRicevuta(id) {
+        async annullaRicevuta(id) {
             if (confirm("Sei sicuro di voler ANNULLARE questa ricevuta? Rimarrà visibile in archivio contrassegnata come annullata, ma non verrà conteggiata nei totali di cassa e prima nota.")) {
                 const r = this.state.ricevute.find(x => x.id == id || String(x.id) === String(id));
                 if (r) {
                     r.annullata = true;
                     this.removePrimaNotaFromRicevuta(r.id);
+                    this.syncSociFromRicevute();
                     this.saveAll();
-                    this.renderRicevute(true, id);
+                    if (!r.cartacea) {
+                        try {
+                            await this.generatePDF(r.id);
+                        } catch(ePdf) {}
+                    }
+                    this.refreshCurrentPageUI(id);
                     this.toast("Ricevuta annullata correttamente.", "warning");
                 }
             }
         },
 
-        permanentlyDeleteRicevuta(id) {
+        async permanentlyDeleteRicevuta(id) {
             const r = this.state.ricevute.find(x => String(x.id) === String(id) || x.id == id);
             if (!r) {
                 console.error("Ricevuta non trovata con ID:", id);
@@ -8243,16 +8305,18 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     this.syncPrimaNotaFromRicevuta(x);
                 });
                 
+                this.syncSociFromRicevute();
                 this.saveAll();
-                this.renderRicevute(true);
-                this.toast(`Ricevuta eliminata definitivamente. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
 
                 // Allinea automaticamente i file PDF in cartella rimuovendo il file eliminato e aggiornando i successivi
                 if (!isCartacea) {
                     try {
-                        this.allineaCartellaRicevutePDF(deletedAnno, true);
+                        await this.allineaCartellaRicevutePDF(deletedAnno, true);
                     } catch(eAll) {}
                 }
+
+                this.refreshCurrentPageUI();
+                this.toast(`Ricevuta eliminata definitivamente. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
             }
         },
 
@@ -8374,7 +8438,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             // Aggiorna pulsante submit
             form.querySelector('.btn-success').textContent = "Aggiorna Ricevuta";
-            form.onsubmit = (e) => {
+            form.onsubmit = async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
@@ -8531,21 +8595,17 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const updatedR = this.state.ricevute[idx];
                 if (updatedR && !updatedR.cartacea) {
                     try {
-                        this.generatePDF(id);
+                        if (oldNum !== newNum || oldAnno !== newAnno) {
+                            await this.allineaCartellaRicevutePDF(newAnno, true);
+                        } else {
+                            await this.generatePDF(id);
+                        }
                     } catch(ePdf) {
                         console.error("Errore rigenerazione PDF dopo modifica:", ePdf);
                     }
                 }
 
-                if (this.state.currentPage === 'ricevute') {
-                    this.renderRicevute(true, id);
-                } else if (this.state.currentPage === 'soci') {
-                    this.renderSoci();
-                } else if (this.state.currentPage === 'primanota') {
-                    this.renderPrimaNota(true);
-                } else if (this.state.currentPage === 'dashboard') {
-                    this.renderDashboard();
-                }
+                this.refreshCurrentPageUI(id);
             };
         },
 
@@ -9078,13 +9138,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (dirHandle) {
                     const yearDir = await dirHandle.getDirectoryHandle('anno ' + sportsYear, { create: false });
                     const catDir = await yearDir.getDirectoryHandle('ricevute', { create: false });
-                    const cognomeSocio = (r.socio_nome || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const fullSafeLower = safeName.toLowerCase();
                     for await (const entry of catDir.values()) {
                         if (entry.kind === 'file' && entry.name !== fileName && entry.name.toLowerCase().endsWith('.pdf')) {
                             const fn = entry.name.toLowerCase();
-                            const matchesSameNum = fn.includes(`_n${numStr}_`) || fn.includes(`_n${r.numero}_`) || fn.startsWith(`r_n${numStr}_`) || fn.startsWith(`r_n${r.numero}_`);
-                            const matchesSameSocio = cognomeSocio && cognomeSocio.length > 2 && fn.includes(cognomeSocio) && (fn.startsWith('r_n') || fn.includes('_n'));
-                            if (matchesSameNum || matchesSameSocio) {
+                            // Rimuovi SOLO una vecchia versione della STESSA ricevuta (stesso numero progressivo E stesso socio completo)
+                            const matchesExactNum = fn.startsWith(`r_n${numStr}_`) || fn.startsWith(`r_n${r.numero}_`) || fn.includes(`_n${numStr}_`) || fn.includes(`_n${r.numero}_`);
+                            const matchesExactSocio = fullSafeLower && fn.includes(fullSafeLower);
+                            if (matchesExactNum && matchesExactSocio) {
                                 try { await catDir.removeEntry(entry.name); } catch(eRm) {}
                             }
                         }
@@ -9180,13 +9241,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 try {
                     const numClean = parseInt(r.numero, 10);
                     const numPadded = String(numClean).padStart(2, '0');
+                    const fullSafeLower = (r.socio_nome || '').trim().replace(/[\/\s]+/g, '_').toLowerCase();
                     const cognome = (r.socio_nome || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
                     for await (const entry of catDir.values()) {
                         if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
                             const fn = entry.name.toLowerCase();
-                            const matchesNum = fn.includes(`_n${numPadded}_`) || fn.includes(`_n${numClean}_`) || fn.startsWith(`r_n${numPadded}_`) || fn.startsWith(`r_n${numClean}_`);
+                            const matchesNum = fn.startsWith(`r_n${numPadded}_`) || fn.startsWith(`r_n${numClean}_`) || fn.includes(`_n${numPadded}_`) || fn.includes(`_n${numClean}_`);
                             if (matchesNum) {
-                                if (!cognome || fn.includes(cognome)) {
+                                if (fullSafeLower && fn.includes(fullSafeLower)) {
+                                    return true;
+                                } else if (!fullSafeLower && (!cognome || fn.includes(cognome))) {
                                     return true;
                                 }
                             }
@@ -11353,7 +11417,7 @@ ${annullataBanner}
                 }
                 this.saveAll();
                 this.closeModal();
-                this.renderPrimaNota(true, highlightId);
+                this.refreshCurrentPageUI(highlightId);
             },
 
             deletePrimaNota(id) {
@@ -11365,7 +11429,7 @@ ${annullataBanner}
                         this.state.primanota = this.state.primanota.filter(t => t.giroconto_group !== gcGroup && !t.riferimento?.startsWith('GIROCONTO_' + gcGroup) && String(t.id) !== String(id) && t.riferimento !== ('COMM_TXN_' + id));
                         this.trackDeletion(id);
                         this.saveAll();
-                        this.renderPrimaNota(true);
+                        this.refreshCurrentPageUI();
                         this.toast('Giroconto eliminato (rimosse entrambe le voci collegate)', 'success');
                     }
                 } else {
@@ -11380,7 +11444,7 @@ ${annullataBanner}
                         this.state.primanota = this.state.primanota.filter(t => String(t.id) !== String(id) && t.riferimento !== ('COMM_TXN_' + id));
                         this.trackDeletion(id);
                         this.saveAll();
-                        this.renderPrimaNota(true);
+                        this.refreshCurrentPageUI();
                         this.toast('Movimento eliminato', 'success');
                     }
                 }
