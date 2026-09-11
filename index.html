@@ -6009,7 +6009,7 @@
                                 <span class="header-subtitle">Emissione e archivio ricevute non fiscali.</span>
                             </div>
                             <div class="header-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Genera ed archivia automaticamente in cartella tutti i PDF delle ricevute digitali non ancora salvate">📁 Archivia PDF Mancanti in Cartella</button>
+                                <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Allinea automaticamente la cartella: rimuove i vecchi PDF obsoleti e archivia i PDF con la corretta numerazione">📁 Allinea ed Archivia PDF Cartella</button>
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta le ricevute in formato Excel (considera l'anno sportivo o l'intervallo temporale isolato).">Esporta Excel</button>
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea e riordina i registri (da 1 a N)">🪄 Ripara Registri (Opz. 1)</button>
@@ -6878,6 +6878,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.renderRicevute();
             const scopeText = onlyDigital ? "digitali" : "totali";
             this.toast(`Rinumerazione completata (${scopeText}) per l'anno ${app.formatAnno(targetAnno)}: ${yearReceipts.length} ricevute riordinate da 1 a ${yearReceipts.length} (${countChanged} numeri aggiornati).`, "success");
+
+            if (scope === 'digitale' || scope === 'entrambi') {
+                try {
+                    this.allineaCartellaRicevutePDF(targetAnno, true);
+                } catch(eAll) {}
+            }
         },
 
         openShiftRicevuteModal(initialReceiptId = null) {
@@ -7096,6 +7102,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.closeModal();
             this.renderRicevute(true, toShift[toShift.length - 1]?.id);
             this.toast(`✅ Spostamento completato con successo: ${toShift.length} ricevute ${type} aggiornate di ${delta > 0 ? '+' : ''}${delta}!`, "success");
+
+            if (type !== 'cartaceo') {
+                const shiftAnno = parseInt(document.getElementById('shift-year-select')?.value);
+                try {
+                    this.allineaCartellaRicevutePDF(shiftAnno, true);
+                } catch(eAll) {}
+            }
         },
 
         riallineaRicevuteCartaceeOttobre() {
@@ -8194,6 +8207,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.saveAll();
                 this.renderRicevute(true);
                 this.toast(`Ricevuta eliminata definitivamente. ${shiftedReceipts.length > 0 ? shiftedReceipts.length + ' ricevute successive scalate di 1.' : ''}`, "danger");
+
+                // Allinea automaticamente i file PDF in cartella rimuovendo il file eliminato e aggiornando i successivi
+                if (!isCartacea) {
+                    try {
+                        this.allineaCartellaRicevutePDF(deletedAnno, true);
+                    } catch(eAll) {}
+                }
             }
         },
 
@@ -8927,7 +8947,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         // --- EXPORT TOOLS ---
 
-        generatePDF(receiptId) {
+        async generatePDF(receiptId) {
             const r = this.state.ricevute.find(x => x.id == receiptId || String(x.id) === String(receiptId));
             const s = this.state.soci.find(x => x.id == r?.socio_id);
             if (!r) return;
@@ -9010,28 +9030,27 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const suffix = r.annullata ? '_ANNULLATA' : '';
             const fileName = `R_N${numStr}_${dateStr}_${safeName}${suffix}.pdf`;
 
-            // Pulizia preventiva di eventuali PDF precedenti con nome differente per la stessa ricevuta
-            (async () => {
-                try {
-                    const dirHandle = await this.getOutputFolder();
-                    if (dirHandle) {
-                        const yearDir = await dirHandle.getDirectoryHandle('anno ' + sportsYear, { create: false });
-                        const catDir = await yearDir.getDirectoryHandle('ricevute', { create: false });
-                        const cognomeSocio = (r.socio_nome || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-                        for await (const entry of catDir.values()) {
-                            if (entry.kind === 'file' && entry.name !== fileName && entry.name.toLowerCase().endsWith('.pdf')) {
-                                const fn = entry.name.toLowerCase();
-                                const hasNum = fn.includes(`_n${numStr}_`) || fn.includes(`_n${r.numero}_`) || fn.startsWith(`r_n${numStr}_`) || fn.startsWith(`r_n${r.numero}_`);
-                                if (hasNum && cognomeSocio && fn.includes(cognomeSocio)) {
-                                    try { await catDir.removeEntry(entry.name); } catch(eRm) {}
-                                }
+            // Pulizia preventiva di eventuali PDF precedenti con vecchio numero o stesso intestatario
+            try {
+                const dirHandle = await this.getOutputFolder();
+                if (dirHandle) {
+                    const yearDir = await dirHandle.getDirectoryHandle('anno ' + sportsYear, { create: false });
+                    const catDir = await yearDir.getDirectoryHandle('ricevute', { create: false });
+                    const cognomeSocio = (r.socio_nome || '').trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                    for await (const entry of catDir.values()) {
+                        if (entry.kind === 'file' && entry.name !== fileName && entry.name.toLowerCase().endsWith('.pdf')) {
+                            const fn = entry.name.toLowerCase();
+                            const matchesSameNum = fn.includes(`_n${numStr}_`) || fn.includes(`_n${r.numero}_`) || fn.startsWith(`r_n${numStr}_`) || fn.startsWith(`r_n${r.numero}_`);
+                            const matchesSameSocio = cognomeSocio && cognomeSocio.length > 2 && fn.includes(cognomeSocio) && (fn.startsWith('r_n') || fn.includes('_n'));
+                            if (matchesSameNum || matchesSameSocio) {
+                                try { await catDir.removeEntry(entry.name); } catch(eRm) {}
                             }
                         }
                     }
-                } catch(eClean) {}
-            })();
+                }
+            } catch(eClean) {}
 
-            this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
+            await this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear);
 
             r.salvata_in_cartella = true;
             this.saveAll();
@@ -9146,25 +9165,137 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 !(r.cartacea === true || String(r.cartacea) === 'true') && 
                 !r.salvata_in_cartella
             );
-            if (digitaliUnsaved.length === 0) {
-                this.toast("Tutte le ricevute digitali sono già state salvate nella cartella ricevute!", "info");
-                return;
-            }
-            if (!confirm(`Trovate ${digitaliUnsaved.length} ricevute digitali non ancora archiviate in cartella.\n\nDesideri generare e salvare i relativi file PDF ora nella cartella dell'associazione?`)) {
+
+            const promptMsg = digitaliUnsaved.length > 0 
+                ? `Rilevati ${digitaliUnsaved.length} PDF da allineare/aggiornare nella cartella ricevute (inclusa la rimozione automatica dei vecchi PDF obsoleti con la precedente numerazione).\n\nVuoi procedere con l'allineamento automatico e la generazione dei PDF corretti?`
+                : `Vuoi verificare e riallineare tutti i PDF nella cartella ricevute, rimuovendo eventuali vecchi file obsoleti e aggiornando la sequenza?`;
+
+            if (!confirm(promptMsg)) {
                 return;
             }
 
-            let count = 0;
-            for (const r of digitaliUnsaved) {
-                try {
-                    await this.generatePDF(r.id);
-                    count++;
-                } catch(e) {
-                    console.error("Errore salvataggio PDF ricevuta:", r.id, e);
+            await this.allineaCartellaRicevutePDF(null, false);
+        },
+
+        async allineaCartellaRicevutePDF(targetAnno = null, silent = false) {
+            try {
+                const dirHandle = await this.getOutputFolder();
+                if (!dirHandle) {
+                    if (!silent) this.toast("Nessuna cartella di archiviazione collegata. Clicca su Cartella Documenti per impostarla.", "warning");
+                    return false;
                 }
+
+                let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+                    if (perm !== 'granted') {
+                        if (!silent) this.toast("Permesso di scrittura non concesso sulla cartella.", "danger");
+                        return false;
+                    }
+                }
+
+                const allSportsYears = new Set();
+                const digitalReceipts = (this.state.ricevute || []).filter(r => 
+                    r.tipo !== 'Compenso Sportivo' && 
+                    !(r.cartacea === true || String(r.cartacea) === 'true')
+                );
+
+                if (targetAnno) {
+                    allSportsYears.add(this.getSportsYear(targetAnno));
+                } else {
+                    digitalReceipts.forEach(r => allSportsYears.add(this.getSportsYear(r.anno || r.data)));
+                    allSportsYears.add(this.getSportsYear());
+                }
+
+                let totalRemoved = 0;
+                let totalUpdated = 0;
+
+                for (const sYear of allSportsYears) {
+                    let yearDir, catDir;
+                    try {
+                        yearDir = await dirHandle.getDirectoryHandle('anno ' + sYear, { create: false });
+                        catDir = await yearDir.getDirectoryHandle('ricevute', { create: false });
+                    } catch(e) {
+                        continue;
+                    }
+
+                    const yearReceipts = digitalReceipts.filter(r => this.getSportsYear(r.anno || r.data) === sYear);
+
+                    // Mappa dei nomi file corretti attesi per le ricevute digitali attive
+                    const validFileNames = new Set();
+
+                    yearReceipts.forEach(r => {
+                        const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
+                        const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+                        const numStr = String(r.numero).padStart(2, '0');
+                        const suffix = r.annullata ? '_ANNULLATA' : '';
+                        const expectedFileName = `R_N${numStr}_${dateStr}_${safeName}${suffix}.pdf`;
+                        validFileNames.add(expectedFileName.toLowerCase());
+                    });
+
+                    // 1. Rimuovi tutti i PDF orfani o con vecchia numerazione/vecchio intestatario
+                    const filesInDir = [];
+                    for await (const entry of catDir.values()) {
+                        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
+                            filesInDir.push(entry.name);
+                        }
+                    }
+
+                    for (const fName of filesInDir) {
+                        if (!validFileNames.has(fName.toLowerCase())) {
+                            try {
+                                await catDir.removeEntry(fName);
+                                totalRemoved++;
+                            } catch(eRm) {
+                                console.warn("Impossibile rimuovere vecchio PDF:", fName, eRm);
+                            }
+                        }
+                    }
+
+                    // 2. Genera i PDF mancanti o aggiornati con la corretta numerazione
+                    for (const r of yearReceipts) {
+                        const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
+                        const safeName = (r.socio_nome || 'socio').trim().replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+                        const numStr = String(r.numero).padStart(2, '0');
+                        const suffix = r.annullata ? '_ANNULLATA' : '';
+                        const expectedFileName = `R_N${numStr}_${dateStr}_${safeName}${suffix}.pdf`;
+
+                        let exists = false;
+                        try {
+                            await catDir.getFileHandle(expectedFileName, { create: false });
+                            exists = true;
+                        } catch(eCheck) {
+                            exists = false;
+                        }
+
+                        if (!exists || !r.salvata_in_cartella) {
+                            try {
+                                await this.generatePDF(r.id);
+                                totalUpdated++;
+                            } catch(eGen) {
+                                console.error("Errore generazione PDF:", r.id, eGen);
+                            }
+                        } else {
+                            r.salvata_in_cartella = true;
+                        }
+                    }
+                }
+
+                this.saveAll();
+                if (this.state.currentPage === 'ricevute') {
+                    this.renderRicevute(true);
+                }
+
+                const msg = `Allineamento cartella completato! ${totalRemoved > 0 ? `Rimossi ${totalRemoved} vecchi file obsoleti. ` : ''}Archiviati/aggiornati ${totalUpdated} PDF con la corretta numerazione.`;
+                if (!silent || totalRemoved > 0 || totalUpdated > 0) {
+                    this.toast(msg, "success");
+                }
+                return true;
+            } catch(e) {
+                console.error("Errore allineamento cartella:", e);
+                if (!silent) this.toast("Errore durante l'allineamento della cartella: " + e.message, "danger");
+                return false;
             }
-            this.renderRicevute();
-            this.toast(`Operazione completata! Salvati ${count} PDF nella cartella ricevute.`, "success");
         },
 
         getSportsYear(ref) {
