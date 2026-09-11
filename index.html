@@ -2005,6 +2005,181 @@
             }
         },
 
+        // --- SISTEMA UNIVERSALE GESTIONE DATE ITALIANE (gg/mm/aaaa) ---
+        parseItDate(val, isBirth = false) {
+            if (!val || typeof val !== 'string') return '';
+            const str = val.trim();
+            if (!str) return '';
+
+            const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+
+            function expandYear(yr) {
+                let y = parseInt(yr, 10);
+                if (y < 100) {
+                    const threshold = isBirth ? curYShort : (curYShort + 10);
+                    return (y <= threshold ? (2000 + y) : (1900 + y)).toString();
+                }
+                return y.toString();
+            }
+
+            // 1. Italian standard: DD/MM/YYYY or DD/MM/YY (separators / or - or . or space)
+            let m = str.match(/^(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{2,4})$/);
+            if (m) {
+                const d = m[1].padStart(2, '0');
+                const mo = m[2].padStart(2, '0');
+                let y = expandYear(m[3]);
+                if (isBirth && parseInt(y, 10) >= 2030 && parseInt(y, 10) < 2100) {
+                    y = (parseInt(y, 10) - 100).toString();
+                }
+                return `${y}-${mo}-${d}`;
+            }
+
+            // 2. ISO format: YYYY-MM-DD (e.g. 1995-04-14 or 0095-04-14)
+            m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            if (m) {
+                let y = expandYear(m[1]);
+                if (isBirth && parseInt(y, 10) >= 2030 && parseInt(y, 10) < 2100) {
+                    y = (parseInt(y, 10) - 100).toString();
+                }
+                const mo = m[2].padStart(2, '0');
+                const d = m[3].padStart(2, '0');
+                return `${y}-${mo}-${d}`;
+            }
+
+            // 3. Compact digits: DDMMYYYY (8 digits) or DDMMYY (6 digits)
+            m = str.match(/^(\d{2})(\d{2})(\d{4})$/);
+            if (m) {
+                return `${m[3]}-${m[2]}-${m[1]}`;
+            }
+            m = str.match(/^(\d{2})(\d{2})(\d{2})$/);
+            if (m) {
+                const y = expandYear(m[3]);
+                return `${y}-${m[2]}-${m[1]}`;
+            }
+
+            return '';
+        },
+
+        formatItDate(isoStr) {
+            if (!isoStr || typeof isoStr !== 'string') return '';
+            const s = isoStr.trim();
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+            const parts = s.split('-');
+            if (parts.length === 3) {
+                let y = parts[0];
+                if (y.length === 4 && y.startsWith('00')) {
+                    const yy = parseInt(y.substring(2), 10);
+                    const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                    y = (yy <= curYShort ? 2000 + yy : 1900 + yy).toString();
+                }
+                return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${y}`;
+            }
+            return s;
+        },
+
+        openCalendarFor(textInputId) {
+            const textInput = document.getElementById(textInputId);
+            if (!textInput) return;
+            let picker = document.getElementById(textInputId + '-native-picker');
+            if (!picker) {
+                picker = document.createElement('input');
+                picker.type = 'date';
+                picker.id = textInputId + '-native-picker';
+                picker.style.cssText = 'position:fixed; opacity:0; pointer-events:none; width:1px; height:1px; top:0; left:0; z-index:-1;';
+                picker.tabIndex = -1;
+                document.body.appendChild(picker);
+            }
+            const isBirth = textInputId.includes('nascita') || (textInput.name && textInput.name.includes('nascita'));
+            const isoVal = this.parseItDate(textInput.value, isBirth);
+            if (isoVal) picker.value = isoVal;
+
+            picker.onchange = () => {
+                if (picker.value) {
+                    textInput.value = this.formatItDate(picker.value);
+                    textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    textInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (isBirth && typeof this.autoCalcolaCF === 'function') {
+                        this.autoCalcolaCF();
+                    }
+                }
+            };
+
+            try {
+                if (typeof picker.showPicker === 'function') {
+                    picker.showPicker();
+                } else {
+                    picker.focus();
+                    picker.click();
+                }
+            } catch(e) {
+                picker.focus();
+                picker.click();
+            }
+        },
+
+        normalizeDateInput(input) {
+            if (!input || !input.value) return;
+            const isBirth = (input.name && input.name.includes('nascita')) || (input.id && input.id.includes('nascita')) || input.dataset.isBirth === 'true';
+            const iso = this.parseItDate(input.value, isBirth);
+            if (iso) {
+                input.value = this.formatItDate(iso);
+            }
+            if (isBirth && typeof this.autoCalcolaCF === 'function') {
+                this.autoCalcolaCF();
+            }
+        },
+
+        sanitizeFormData(data) {
+            if (!data || typeof data !== 'object') return data;
+            const dateKeys = ['data', 'data_nascita', 'data_inizio', 'data_seduta', 'data_c1', 'data_c2', 'data_chiusura', 'quota_scadenza', 'tesseramento_data', 'tesseramento_scadenza', 'certificato_scadenza', 'scadenza_medica', 'scadenza_contratto', 'inizio_validita', 'scadenza_quota_override', 'inizio', 'fine'];
+            Object.keys(data).forEach(k => {
+                if (typeof data[k] === 'string' && data[k].trim()) {
+                    const isDateKey = dateKeys.includes(k) || k.includes('data') || k.includes('scadenza') || k.includes('inizio') || k.includes('fine');
+                    if (isDateKey) {
+                        const isBirth = k.includes('nascita');
+                        const parsed = this.parseItDate(data[k], isBirth);
+                        if (parsed) data[k] = parsed;
+                    }
+                }
+            });
+            return data;
+        },
+
+        enhanceAllDateInputs(root = document) {
+            if (!root || !root.querySelectorAll) return;
+            const inputs = root.querySelectorAll('.it-date-input, input[type="date"]');
+            inputs.forEach(input => {
+                if (input.type === 'date') {
+                    input.addEventListener('blur', () => {
+                        const isBirth = input.name?.includes('nascita') || input.id?.includes('nascita');
+                        const iso = this.parseItDate(input.value, isBirth);
+                        if (iso && iso !== input.value) input.value = iso;
+                    });
+                }
+            });
+        },
+
+        dateInputHtml(cfg) {
+            const name = cfg.name || '';
+            const id = cfg.id || (name ? 'dt-' + name : 'dt-' + Math.random().toString(36).substring(2, 7));
+            const value = cfg.value ? this.formatItDate(cfg.value) : '';
+            const placeholder = cfg.placeholder || 'gg/mm/aaaa';
+            const req = cfg.required ? 'required' : '';
+            const isBirthAttr = cfg.isBirth ? 'data-is-birth="true"' : '';
+            const onInput = cfg.onInput ? `oninput="${cfg.onInput}"` : '';
+            const onChange = cfg.onChange ? `onchange="${cfg.onChange}"` : '';
+            const style = cfg.style || '';
+            const inputStyle = cfg.inputStyle || '';
+            const title = cfg.title || 'Data in formato gg/mm/aaaa (es. 14/04/1995 o 14/04/95)';
+
+            return `
+                <div class="it-date-wrapper" style="display:flex; gap:6px; align-items:center; position:relative; ${style}">
+                    <input type="text" name="${name}" id="${id}" class="form-control it-date-input" placeholder="${placeholder}" value="${value}" ${req} ${isBirthAttr} ${onInput} ${onChange} onblur="app.normalizeDateInput(this)" autocomplete="off" title="${title}" style="${inputStyle}">
+                    <button type="button" class="btn btn-outline" style="padding: 7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('${id}')" title="Scegli data da calendario">📅</button>
+                </div>
+            `;
+        },
+
         sanitizeDates() {
             let changed = false;
             const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
@@ -2044,6 +2219,19 @@
                 if (i.certificato_scadenza) i.certificato_scadenza = fixDate(i.certificato_scadenza, false);
                 if (i.scadenza_contratto) i.scadenza_contratto = fixDate(i.scadenza_contratto, false);
             });
+                        // Auto-riparazione per Negro Davide e date di nascita alterate
+            (this.state.soci || []).forEach(s => {
+                if (s.cognome && s.cognome.toLowerCase().includes('negro') && s.nome && s.nome.toLowerCase().includes('davide')) {
+                    if (s.data_nascita === '2005-04-14' || s.data_nascita === '0095-04-14' || s.data_nascita === '2095-04-14') {
+                        s.data_nascita = '1995-04-14';
+                        if (s.cf && s.cf.includes('05D14')) {
+                            s.cf = s.cf.replace('05D14', '95D14');
+                        }
+                        changed = true;
+                    }
+                }
+            });
+
             if (changed) { this.saveAll(); }
         },
 
@@ -4906,6 +5094,9 @@
                     ${contentHtml}
                 `;
                 overlay.style.display = 'flex';
+                if (typeof this.enhanceAllDateInputs === 'function') {
+                    this.enhanceAllDateInputs(content);
+                }
             },
             closeModal() {
                 if (this._onModalClose) {
@@ -5603,24 +5794,14 @@
                 const cognome = form.querySelector('[name="cognome"]').value.trim();
                 const sesso = form.querySelector('[name="sesso"]').value;
                 const luogo = form.querySelector('[name="luogo_nascita"]').value.trim();
-                const data = form.querySelector('[name="data_nascita"]').value;
+                const dataInput = form.querySelector('[name="data_nascita"]');
+                const rawData = dataInput ? dataInput.value.trim() : '';
 
-                if (nome && cognome && sesso && luogo && data) {
-                    let [year, month, day] = data.split('-');
+                if (nome && cognome && sesso && luogo && rawData) {
+                    const parsedIso = this.parseItDate(rawData, true);
+                    if (!parsedIso) return;
+                    let [year, month, day] = parsedIso.split('-');
                     let yNum = parseInt(year, 10);
-                    const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                    if (year.startsWith('00') || yNum < 100) {
-                        const yy = yNum < 100 ? yNum : parseInt(year.substring(2), 10);
-                        yNum = yy <= curYShort ? 2000 + yy : 1900 + yy;
-                        year = yNum.toString();
-                        const inputDate = form.querySelector('[name="data_nascita"]');
-                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
-                    } else if (yNum >= 2030 && yNum < 2100) {
-                        yNum = yNum - 100;
-                        year = yNum.toString();
-                        const inputDate = form.querySelector('[name="data_nascita"]');
-                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
-                    }
                     try {
                         const cf = new CodiceFiscale({
                             name: nome,
@@ -5631,7 +5812,8 @@
                             year: yNum,
                             birthplace: luogo
                         });
-                        form.querySelector('[name="cf"]').value = cf.code;
+                        const cfInput = form.querySelector('[name="cf"]');
+                        if (cfInput) cfInput.value = cf.code;
                     } catch (e) {
                         console.log("CF Error:", e.message);
                     }
@@ -5642,28 +5824,18 @@
                 const form = document.getElementById('istr-form');
                 if (!form || typeof CodiceFiscale === 'undefined') return;
 
-                const nome = form.querySelector('[name="nome_input"]').value.trim();
-                const cognome = form.querySelector('[name="cognome_input"]').value.trim();
-                const sesso = form.querySelector('[name="sesso"]').value;
-                const luogo = form.querySelector('[name="luogo_nascita"]').value.trim();
-                const data = form.querySelector('[name="data_nascita"]').value;
+                const nome = (form.querySelector('[name="nome_input"]') || form.querySelector('[name="nome"]'))?.value.trim() || '';
+                const cognome = (form.querySelector('[name="cognome_input"]') || form.querySelector('[name="cognome"]'))?.value.trim() || '';
+                const sesso = form.querySelector('[name="sesso"]')?.value || '';
+                const luogo = form.querySelector('[name="luogo_nascita"]')?.value.trim() || '';
+                const dataInput = form.querySelector('[name="data_nascita"]');
+                const rawData = dataInput ? dataInput.value.trim() : '';
 
-                if (nome && cognome && sesso && luogo && data) {
-                    let [year, month, day] = data.split('-');
+                if (nome && cognome && sesso && luogo && rawData) {
+                    const parsedIso = this.parseItDate(rawData, true);
+                    if (!parsedIso) return;
+                    let [year, month, day] = parsedIso.split('-');
                     let yNum = parseInt(year, 10);
-                    const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                    if (year.startsWith('00') || yNum < 100) {
-                        const yy = yNum < 100 ? yNum : parseInt(year.substring(2), 10);
-                        yNum = yy <= curYShort ? 2000 + yy : 1900 + yy;
-                        year = yNum.toString();
-                        const inputDate = form.querySelector('[name="data_nascita"]');
-                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
-                    } else if (yNum >= 2030 && yNum < 2100) {
-                        yNum = yNum - 100;
-                        year = yNum.toString();
-                        const inputDate = form.querySelector('[name="data_nascita"]');
-                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
-                    }
                     try {
                         const cf = new CodiceFiscale({
                             name: nome,
@@ -5674,7 +5846,8 @@
                             year: yNum,
                             birthplace: luogo
                         });
-                        form.querySelector('[name="cf"]').value = cf.code;
+                        const cfInput = form.querySelector('[name="cf"]') || form.querySelector('[name="cf_input"]');
+                        if (cfInput) cfInput.value = cf.code;
                     } catch (e) {
                         console.log("CF Error:", e.message);
                     }
@@ -5710,7 +5883,10 @@
                             </div>
                             <div class="form-group">
                                 <label>Data di Nascita</label>
-                                <input type="date" name="data_nascita" class="form-control" min="1900-01-01" max="2099-12-31" onchange="app.autoCalcolaCF()" onblur="app.autoCalcolaCF()">
+                                <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                    <input type="text" name="data_nascita" id="socio-data_nascita" class="form-control it-date-input" placeholder="gg/mm/aaaa" oninput="app.autoCalcolaCF()" onchange="app.autoCalcolaCF()" onblur="app.normalizeDateInput(this)" autocomplete="off" title="Data di nascita (es. 14/04/1995 o 14/04/95)">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('socio-data_nascita')" title="Scegli data da calendario">📅</button>
+                                </div>
                             </div>
                         </div>
 
@@ -5748,7 +5924,10 @@
 
                         <div class="form-group">
                             <label>Scadenza Quota</label>
-                            <input type="date" name="quota_scadenza" class="form-control">
+                            <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                <input type="text" name="quota_scadenza" id="socio-quota_scadenza" class="form-control it-date-input" placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
+                                <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('socio-quota_scadenza')" title="Scegli data da calendario">📅</button>
+                            </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -5761,18 +5940,27 @@
                             </div>
                             <div class="form-group">
                                 <label>Data Avvenuto Tess.</label>
-                                <input type="date" name="tesseramento_data" class="form-control" onchange="app.autoSetTessExpiry(this)">
+                                <div style="display:flex; gap:4px; align-items:center; position:relative;">
+                                    <input type="text" name="tesseramento_data" id="socio-tess_data" class="form-control it-date-input" placeholder="gg/mm/aaaa" onchange="app.autoSetTessExpiry(this)" onblur="app.normalizeDateInput(this); app.autoSetTessExpiry(this)" autocomplete="off">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 8px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('socio-tess_data')" title="Scegli data da calendario">📅</button>
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label>Scadenza Tesseramento (Auto 31/08)</label>
-                            <input type="date" name="tesseramento_scadenza" class="form-control">
+                            <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                <input type="text" name="tesseramento_scadenza" id="socio-tess_scadenza" class="form-control it-date-input" placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
+                                <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('socio-tess_scadenza')" title="Scegli data da calendario">📅</button>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label>Scadenza Certificato Medico</label>
-                            <input type="date" name="certificato_scadenza" class="form-control">
+                            <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                <input type="text" name="certificato_scadenza" id="socio-cert_scadenza" class="form-control it-date-input" placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
+                                <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('socio-cert_scadenza')" title="Scegli data da calendario">📅</button>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -5805,6 +5993,8 @@
                             input.value = this.getSocioDisplayStato(s);
                         } else if (key === 'tesserato') {
                             input.value = this.isTesseramentoAttivo(s) ? 'SI' : 'NO';
+                        } else if (key.includes('data') || key.includes('scadenza') || key.includes('nascita')) {
+                            input.value = this.formatItDate(s[key]);
                         } else {
                             input.value = s[key];
                         }
@@ -5852,22 +6042,7 @@
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
-                const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                Object.keys(data).forEach(k => {
-                    if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
-                        const yy = parseInt(data[k].substring(2, 4), 10);
-                        const isBirth = k.includes('nascita');
-                        let yyyy;
-                        if (isBirth) {
-                            yyyy = yy <= currentYearShort ? (2000 + yy) : (1900 + yy);
-                        } else {
-                            yyyy = yy <= (currentYearShort + 10) ? (2000 + yy) : (1900 + yy);
-                        }
-                        data[k] = yyyy + data[k].substring(4);
-                    } else if (typeof data[k] === 'string' && k.includes('nascita') && data[k].match(/^20([3-9]\d)-\d{2}-\d{2}$/)) {
-                        data[k] = '19' + data[k].substring(2);
-                    }
-                });
+                this.sanitizeFormData(data);
                 const editId = parseInt(e.target.dataset.editId);
                 data.updated_at = Date.now();
 
@@ -6590,7 +6765,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                     <div style="display:flex; gap:0.5rem;">
                                         <div style="flex:1;">
                                             <label>Data</label>
-                                            <input type="date" name="data" id="receipt-data" class="form-control" value="${defaultDate}" required onchange="app.onReceiptDataChange(this.value)">
+                                            <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                        <input type="text" name="data" id="receipt-data" class="form-control it-date-input" value="${this.formatItDate(defaultDate)}" required placeholder="gg/mm/aaaa" onchange="app.onReceiptDataChange(this.value)" onblur="app.normalizeDateInput(this); app.onReceiptDataChange(this.value)" autocomplete="off">
+                                        <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('receipt-data')" title="Scegli data da calendario">📅</button>
+                                    </div>
                                         </div>
                                         <div style="width:115px;">
                                             <label style="white-space:nowrap;">Ora <span style="font-size:0.75rem; color:var(--text-muted);">(fac.)</span></label>
@@ -6696,11 +6874,17 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:flex-end;">
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label style="font-size:0.8rem; color:#0369a1; font-weight:600; display:block; margin-bottom:4px; white-space:nowrap;">Inizio Validità</label>
-                                        <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" value="${defaultDate}" style="padding:7px; font-size:0.85rem; height:38px; width:100%; box-sizing:border-box;" onchange="app.onReceiptInizioChange(this.value)">
+                                        <div style="display:flex; gap:4px; align-items:center; position:relative;">
+                                            <input type="text" name="inizio_validita" id="receipt-inizio" class="form-control it-date-input" value="${this.formatItDate(defaultDate)}" style="padding:7px; font-size:0.85rem; height:38px; width:100%; box-sizing:border-box;" placeholder="gg/mm/aaaa" onchange="app.onReceiptInizioChange(this.value)" onblur="app.normalizeDateInput(this); app.onReceiptInizioChange(this.value)" autocomplete="off">
+                                            <button type="button" class="btn btn-outline" style="padding:7px 8px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:0.95rem; height:38px; line-height:1;" onclick="app.openCalendarFor('receipt-inizio')" title="Scegli data da calendario">📅</button>
+                                        </div>
                                     </div>
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label style="font-size:0.8rem; color:#0369a1; font-weight:600; display:block; margin-bottom:4px; white-space:nowrap;">Fine Validità</label>
-                                        <input type="date" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control" style="padding:7px; font-size:0.85rem; height:38px; width:100%; box-sizing:border-box;" onchange="app.onReceiptScadenzaOverrideChange(this.value)" title="Data di fine validità / scadenza quota (calcolata o personalizzata)">
+                                        <div style="display:flex; gap:4px; align-items:center; position:relative;">
+                                            <input type="text" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control it-date-input" style="padding:7px; font-size:0.85rem; height:38px; width:100%; box-sizing:border-box;" placeholder="gg/mm/aaaa" onchange="app.onReceiptScadenzaOverrideChange(this.value)" onblur="app.normalizeDateInput(this); app.onReceiptScadenzaOverrideChange(this.value)" autocomplete="off" title="Data di fine validità / scadenza quota (calcolata o personalizzata)">
+                                            <button type="button" class="btn btn-outline" style="padding:7px 8px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:0.95rem; height:38px; line-height:1;" onclick="app.openCalendarFor('receipt-scadenza-override')" title="Scegli data da calendario">📅</button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="receipt-scadenza-preview" style="display:none; margin-top:8px; font-size:0.8rem; padding:8px; background:#ffffff; border-radius:6px; border-left:3px solid #0284c7; color:#0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
@@ -6719,7 +6903,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             
             document.getElementById('modal-content').classList.add('modal-wide');
             const dateEl = document.getElementById('receipt-data');
-            if (dateEl) dateEl.value = defaultDate;
+            if (dateEl) dateEl.value = this.formatItDate(defaultDate);
         },
 
         openInsertRicevutaModal(insertNum, anno, dataDefault) {
@@ -8047,11 +8231,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const form = e.target;
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            Object.keys(data).forEach(k => {
-                if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
-                    data[k] = '20' + data[k].substring(2);
-                }
-            });
+            this.sanitizeFormData(data);
 
             const editId = form.dataset.editId;
 
@@ -8393,7 +8573,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             };
             Object.keys(fieldMap).forEach(key => {
                 const input = form.querySelector(`[name="${key}"]`);
-                if (input && fieldMap[key] !== undefined) input.value = fieldMap[key];
+                if (input && fieldMap[key] !== undefined) {
+                    if (key === 'data' || key === 'inizio_validita' || key === 'scadenza_quota_override') {
+                        input.value = this.formatItDate(fieldMap[key]);
+                    } else {
+                        input.value = fieldMap[key];
+                    }
+                }
             });
             
             // Popola checkbox rateale
@@ -8474,11 +8660,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const data = Object.fromEntries(formData.entries());
-                Object.keys(data).forEach(k => {
-                    if (typeof data[k] === 'string' && data[k].match(/^00\d{2}-\d{2}-\d{2}$/)) {
-                        data[k] = '20' + data[k].substring(2);
-                    }
-                });
+                this.sanitizeFormData(data);
                 const idx = this.state.ricevute.findIndex(x => x.id == id || String(x.id) === String(id));
                 if (idx < 0) return;
 
@@ -8934,14 +9116,19 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const dateVal = el.value;
             if (!dateVal) return;
 
-            const d = new Date(dateVal);
-            const year = d.getFullYear();
-            const month = d.getMonth(); // 0-indexed
+            const iso = this.parseItDate(dateVal, false);
+            if (!iso) return;
+            const [yStr, mStr, dStr] = iso.split('-');
+            const year = parseInt(yStr, 10);
+            const month = parseInt(mStr, 10); // 1-12
 
             // Se tesserato prima di Agosto (o in agosto), scade il 31 Agosto dello stesso anno
             // Se tesserato da Settembre in poi, scade il 31 Agosto dell'anno dopo
-            const expiryYear = month >= 8 ? year + 1 : year;
-            form.querySelector('[name="tesseramento_scadenza"]').value = `${expiryYear}-08-31`;
+            const expiryYear = month >= 9 ? year + 1 : year;
+            const scadInput = form.querySelector('[name="tesseramento_scadenza"]');
+            if (scadInput) {
+                scadInput.value = `31/08/${expiryYear}`;
+            }
         },
 
         parseExcelDate(val) {
@@ -10930,7 +11117,10 @@ ${annullataBanner}
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div class="form-group">
                                 <label>Data*</label>
-                                <input type="date" name="data" class="form-control" required value="${defaultData}">
+                                <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                    <input type="text" name="data" id="pn-data" class="form-control it-date-input" required value="${this.formatItDate(defaultData)}" placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('pn-data')" title="Scegli data da calendario">📅</button>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>Importo (€)*</label>
@@ -11291,7 +11481,8 @@ ${annullataBanner}
                 const editId = form.dataset.editId;
                 const existingGcGroup = form.dataset.gcGroup;
                 
-                const dataVal = formData.get('data');
+                const rawDataVal = formData.get('data');
+                const dataVal = this.parseItDate(rawDataVal, false) || rawDataVal;
                 const tipoVal = formData.get('tipo');
                 const metodoVal = (formData.get('metodo') || '').trim();
                 let categoriaVal = (formData.get('categoria') || '').trim();
@@ -16374,7 +16565,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         <div class="form-group">
                             <label>Data Rilevazione Giacenza*</label>
-                            <input type="date" name="data" id="saldo-data-input" class="form-control" required value="${defaultData}" onchange="app.onSaldoInizialeDataChange(this.value)">
+                            <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                <input type="text" name="data" id="saldo-data-input" class="form-control it-date-input" required value="${this.formatItDate(defaultData)}" placeholder="gg/mm/aaaa" onchange="app.onSaldoInizialeDataChange(this.value)" onblur="app.normalizeDateInput(this); app.onSaldoInizialeDataChange(this.value)" autocomplete="off">
+                                <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('saldo-data-input')" title="Scegli data da calendario">📅</button>
+                            </div>
                             <small id="saldo-data-helper" style="font-size:0.75rem; color:var(--text-muted);">Es: 31/08/${y1} se inizi dal 01/09/${y1}, oppure la data esatta di acquisto/avvio del gestionale.</small>
                         </div>
                         <div class="form-group">
@@ -16506,7 +16700,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
         onSaldoInizialeDataChange(dateVal) {
             if (!dateVal || typeof dateVal !== 'string') return;
-            const parts = dateVal.split('-');
+            const iso = this.parseItDate(dateVal, false) || dateVal;
+            const parts = iso.split('-');
             if (parts.length !== 3) return;
             const y = parseInt(parts[0], 10);
             const m = parseInt(parts[1], 10);
@@ -16548,7 +16743,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const formData = new FormData(form);
             const tipo = formData.get('tipo') || 'cassa';
             const conto = (formData.get('conto') || '').trim();
-            const dataGiacenza = (formData.get('data') || '').trim();
+            const rawDataGiacenza = (formData.get('data') || '').trim();
+            const dataGiacenza = this.parseItDate(rawDataGiacenza, false) || rawDataGiacenza;
             const annoSportivo = (formData.get('anno_sportivo') || '').trim();
             const importo = parseFloat(formData.get('importo'));
             const note = (formData.get('note') || '').trim();
@@ -18125,6 +18321,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             e.preventDefault();
             const fd = new FormData(e.target);
             const data = Object.fromEntries(fd.entries());
+            this.sanitizeFormData(data);
             let nome = data.nome === '__custom__' ? (data.nome_custom || '').trim() : data.nome;
             if (!nome) { this.toast('Inserire il nome del corso!', 'warning'); return; }
             const giorni = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Gio', 5: 'Ven', 6: 'Sab', 7: 'Dom' };
@@ -18781,7 +18978,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             </div>
                             <div class="form-group">
                                 <label>Data di Nascita</label>
-                                <input type="date" name="data_nascita" class="form-control" value="${i ? (i.data_nascita || '') : ''}" onchange="app.autoCalcolaCFIstruttore()">
+                                <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                    <input type="text" name="data_nascita" id="istr-data_nascita" class="form-control it-date-input" value="${i ? (this.formatItDate(i.data_nascita) || '') : ''}" placeholder="gg/mm/aaaa" oninput="app.autoCalcolaCFIstruttore()" onchange="app.autoCalcolaCFIstruttore()" onblur="app.normalizeDateInput(this)" autocomplete="off" title="Data di nascita (es. 14/04/1995 o 14/04/95)">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('istr-data_nascita')" title="Scegli data da calendario">📅</button>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>Codice Fiscale</label>
@@ -18848,6 +19048,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             e.preventDefault();
             const fd = new FormData(e.target);
             const data = Object.fromEntries(fd.entries());
+            this.sanitizeFormData(data);
             
             data.nome = `${data.nome_input || ''} ${data.cognome_input || ''}`.trim();
             delete data.nome_input;
@@ -19002,7 +19203,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             </div>
                             <div class="form-group">
                                 <label>Data Pagamento *</label>
-                                <input type="date" name="data" class="form-control" value="${today}" required>
+                                <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                    <input type="text" name="data" id="compenso-data" class="form-control it-date-input" value="${this.formatItDate(today)}" required placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('compenso-data')" title="Scegli data da calendario">📅</button>
+                                </div>
                             </div>
                             <div class="form-group" style="grid-column:1/-1;">
                                 <label>Periodo di Riferimento</label>
@@ -24983,72 +25187,38 @@ window.loadAndApplyLogo = function(placeholder, imgEl) {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initAppLogo, 100);
 
-    // Normalizzazione uniforme per date a 2 cifre e date incollate (es. 95 -> 1995 o 26 -> 2026)
-    function fixTwoDigitYear(el) {
-        if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
-        const val = el.value;
-        if (!val) return;
-        const parts = val.split('-');
-        if (parts.length === 3) {
-            let y = parseInt(parts[0], 10);
-            const isBirth = (el.name && el.name.includes('nascita')) || (el.id && el.id.includes('nascita'));
-            const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-            let modified = false;
-
-            // Se l'anno è inserito a 2 cifre (es. 0095 o 0026 o y < 100)
-            if (parts[0].startsWith('00') || y < 100) {
-                const twoDigitYear = y < 100 ? y : parseInt(parts[0].substring(2), 10);
-                const threshold = isBirth ? currentYearShort : (currentYearShort + 10);
-                y = twoDigitYear <= threshold ? 2000 + twoDigitYear : 1900 + twoDigitYear;
-                parts[0] = y.toString();
-                modified = true;
-            } 
-            // Se è data di nascita e l'anno è finito erroneamente nel futuro (es. 2030-2099 invece di 1930-1999)
-            else if (isBirth && y >= 2030 && y < 2100) {
-                y = y - 100;
-                parts[0] = y.toString();
-                modified = true;
-            }
-
-            if (modified) {
-                el.value = parts.join('-');
-                if (typeof app !== 'undefined') {
-                    if (el.name === 'data_nascita' && typeof app.autoCalcolaCF === 'function') {
-                        app.autoCalcolaCF();
-                    }
-                }
+    // Normalizzazione globale per input data italiani su blur e paste
+    document.addEventListener('blur', e => {
+        const el = e.target;
+        if (!el || el.tagName !== 'INPUT') return;
+        if (el.classList.contains('it-date-input') || el.name?.includes('data') || el.name?.includes('nascita') || el.name?.includes('scadenza')) {
+            if (typeof app !== 'undefined' && typeof app.normalizeDateInput === 'function') {
+                app.normalizeDateInput(el);
             }
         }
-    }
+    }, true);
 
-    // Esegui SOLO su blur (quando l'utente ha finito di digitare), MAI durante la digitazione attiva (change/input)!
-    document.addEventListener('blur', e => fixTwoDigitYear(e.target), true);
-
-    // Supporto per incollare date in qualsiasi formato italiano (es. 14/04/1995 o 14/04/95)
+    // Supporto universale per incollare date in qualsiasi formato (es. 14/04/1995 o 14/04/95)
     document.addEventListener('paste', e => {
         const el = e.target;
-        if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
-        const pasted = (e.clipboardData || window.clipboardData)?.getData('text');
-        if (pasted) {
-            const m = pasted.trim().match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-            if (m) {
-                e.preventDefault();
-                const d = String(m[1]).padStart(2, '0');
-                const mo = String(m[2]).padStart(2, '0');
-                let yr = parseInt(m[3], 10);
-                const isBirth = (el.name && el.name.includes('nascita')) || (el.id && el.id.includes('nascita'));
-                const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                if (yr < 100) {
-                    const thresh = isBirth ? curYShort : (curYShort + 10);
-                    yr = yr <= thresh ? 2000 + yr : 1900 + yr;
-                } else if (isBirth && yr >= 2030 && yr < 2100) {
-                    yr = yr - 100;
-                }
-                el.value = `${yr}-${mo}-${d}`;
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                if (typeof app !== 'undefined' && el.name === 'data_nascita' && typeof app.autoCalcolaCF === 'function') {
-                    app.autoCalcolaCF();
+        if (!el || el.tagName !== 'INPUT') return;
+        if (el.classList.contains('it-date-input') || el.type === 'date' || el.name?.includes('data') || el.name?.includes('nascita') || el.name?.includes('scadenza')) {
+            const pasted = (e.clipboardData || window.clipboardData)?.getData('text');
+            if (pasted && typeof app !== 'undefined' && typeof app.parseItDate === 'function') {
+                const isBirth = el.name?.includes('nascita') || el.id?.includes('nascita');
+                const iso = app.parseItDate(pasted, isBirth);
+                if (iso) {
+                    e.preventDefault();
+                    if (el.type === 'date') {
+                        el.value = iso;
+                    } else {
+                        el.value = app.formatItDate(iso);
+                    }
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    if (isBirth && typeof app.autoCalcolaCF === 'function') {
+                        app.autoCalcolaCF();
+                    }
                 }
             }
         }
