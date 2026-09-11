@@ -5474,7 +5474,8 @@
                     now.setHours(0,0,0,0);
 
                     if (status === 'ANNO_CORRENTE') {
-                        matchStatus = this.isSeasonMember(s);
+                        // Se l'utente sta digitando un nome/CF nel campo cerca, cerca in tutta l'anagrafica
+                        matchStatus = search ? true : this.isSeasonMember(s);
                     } else if (status === 'TESS_ATTIVO') {
                         matchStatus = this.isActiveMember(s);
                     } else if (status === 'ALL') {
@@ -5598,9 +5599,15 @@
                 if (nome && cognome && sesso && luogo && data) {
                     let [year, month, day] = data.split('-');
                     let yNum = parseInt(year, 10);
-                    if (yNum < 100) {
-                        const curY = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                        yNum = yNum <= curY ? 2000 + yNum : 1900 + yNum;
+                    const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                    if (year.startsWith('00') || yNum < 100) {
+                        const yy = yNum < 100 ? yNum : parseInt(year.substring(2), 10);
+                        yNum = yy <= curYShort ? 2000 + yy : 1900 + yy;
+                        year = yNum.toString();
+                        const inputDate = form.querySelector('[name="data_nascita"]');
+                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
+                    } else if (yNum >= 2030 && yNum < 2100) {
+                        yNum = yNum - 100;
                         year = yNum.toString();
                         const inputDate = form.querySelector('[name="data_nascita"]');
                         if (inputDate) inputDate.value = `${year}-${month}-${day}`;
@@ -5635,9 +5642,15 @@
                 if (nome && cognome && sesso && luogo && data) {
                     let [year, month, day] = data.split('-');
                     let yNum = parseInt(year, 10);
-                    if (yNum < 100) {
-                        const curY = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                        yNum = yNum <= curY ? 2000 + yNum : 1900 + yNum;
+                    const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                    if (year.startsWith('00') || yNum < 100) {
+                        const yy = yNum < 100 ? yNum : parseInt(year.substring(2), 10);
+                        yNum = yy <= curYShort ? 2000 + yy : 1900 + yy;
+                        year = yNum.toString();
+                        const inputDate = form.querySelector('[name="data_nascita"]');
+                        if (inputDate) inputDate.value = `${year}-${month}-${day}`;
+                    } else if (yNum >= 2030 && yNum < 2100) {
+                        yNum = yNum - 100;
                         year = yNum.toString();
                         const inputDate = form.querySelector('[name="data_nascita"]');
                         if (inputDate) inputDate.value = `${year}-${month}-${day}`;
@@ -5688,7 +5701,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Data di Nascita</label>
-                                <input type="date" name="data_nascita" class="form-control" onchange="app.autoCalcolaCF()">
+                                <input type="date" name="data_nascita" class="form-control" min="1900-01-01" max="2099-12-31" onchange="app.autoCalcolaCF()" onblur="app.autoCalcolaCF()">
                             </div>
                         </div>
 
@@ -5842,6 +5855,8 @@
                             yyyy = yy <= (currentYearShort + 10) ? (2000 + yy) : (1900 + yy);
                         }
                         data[k] = yyyy + data[k].substring(4);
+                    } else if (typeof data[k] === 'string' && k.includes('nascita') && data[k].match(/^20([3-9]\d)-\d{2}-\d{2}$/)) {
+                        data[k] = '19' + data[k].substring(2);
                     }
                 });
                 const editId = parseInt(e.target.dataset.editId);
@@ -13694,6 +13709,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
         isSeasonMember(s) {
             if (!s || s.stato === 'CESSATO') return false;
+            // I nuovi soci inseriti con stato ATTIVO appartengono alla stagione corrente
+            if (s.stato === 'ATTIVO') return true;
             // Soci appartenenti alla stagione corrente (rinnovati o in attesa di rinnovo dal 25/26)
             return this.isActiveMember(s) || this.isPreviousSportYearMember(s);
         },
@@ -24946,27 +24963,76 @@ window.loadAndApplyLogo = function(placeholder, imgEl) {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(initAppLogo, 100);
 
-    // Fix per anni inseriti a due cifre (es. 0072 -> 1972 o 0026 -> 2026)
+    // Normalizzazione uniforme per date a 2 cifre e date incollate (es. 95 -> 1995 o 26 -> 2026)
     function fixTwoDigitYear(el) {
         if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
         const val = el.value;
-        if (val) {
-            const parts = val.split('-');
-            if (parts.length === 3 && parts[0].length === 4 && parts[0].startsWith('00')) {
-                const twoDigitYear = parseInt(parts[0].substring(2), 10);
-                const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
-                const isBirth = (el.name && el.name.includes('nascita')) || (el.id && el.id.includes('nascita'));
+        if (!val) return;
+        const parts = val.split('-');
+        if (parts.length === 3) {
+            let y = parseInt(parts[0], 10);
+            const isBirth = (el.name && el.name.includes('nascita')) || (el.id && el.id.includes('nascita'));
+            const currentYearShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+            let modified = false;
+
+            // Se l'anno è inserito a 2 cifre (es. 0095 o 0026 o y < 100)
+            if (parts[0].startsWith('00') || y < 100) {
+                const twoDigitYear = y < 100 ? y : parseInt(parts[0].substring(2), 10);
                 const threshold = isBirth ? currentYearShort : (currentYearShort + 10);
-                const fullYear = twoDigitYear <= threshold ? 2000 + twoDigitYear : 1900 + twoDigitYear;
-                parts[0] = fullYear.toString();
+                y = twoDigitYear <= threshold ? 2000 + twoDigitYear : 1900 + twoDigitYear;
+                parts[0] = y.toString();
+                modified = true;
+            } 
+            // Se è data di nascita e l'anno è finito erroneamente nel futuro (es. 2030-2099 invece di 1930-1999)
+            else if (isBirth && y >= 2030 && y < 2100) {
+                y = y - 100;
+                parts[0] = y.toString();
+                modified = true;
+            }
+
+            if (modified) {
                 el.value = parts.join('-');
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
+                if (typeof app !== 'undefined') {
+                    if (el.name === 'data_nascita' && typeof app.autoCalcolaCF === 'function') {
+                        app.autoCalcolaCF();
+                    }
+                }
             }
         }
     }
-    document.addEventListener('change', e => fixTwoDigitYear(e.target), true);
+
+    // Esegui SOLO su blur (quando l'utente ha finito di digitare), MAI durante la digitazione attiva (change/input)!
     document.addEventListener('blur', e => fixTwoDigitYear(e.target), true);
+
+    // Supporto per incollare date in qualsiasi formato italiano (es. 14/04/1995 o 14/04/95)
+    document.addEventListener('paste', e => {
+        const el = e.target;
+        if (!el || el.tagName !== 'INPUT' || el.type !== 'date') return;
+        const pasted = (e.clipboardData || window.clipboardData)?.getData('text');
+        if (pasted) {
+            const m = pasted.trim().match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+            if (m) {
+                e.preventDefault();
+                const d = String(m[1]).padStart(2, '0');
+                const mo = String(m[2]).padStart(2, '0');
+                let yr = parseInt(m[3], 10);
+                const isBirth = (el.name && el.name.includes('nascita')) || (el.id && el.id.includes('nascita'));
+                const curYShort = parseInt(new Date().getFullYear().toString().slice(-2), 10);
+                if (yr < 100) {
+                    const thresh = isBirth ? curYShort : (curYShort + 10);
+                    yr = yr <= thresh ? 2000 + yr : 1900 + yr;
+                } else if (isBirth && yr >= 2030 && yr < 2100) {
+                    yr = yr - 100;
+                }
+                el.value = `${yr}-${mo}-${d}`;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                if (typeof app !== 'undefined' && el.name === 'data_nascita' && typeof app.autoCalcolaCF === 'function') {
+                    app.autoCalcolaCF();
+                }
+            }
+        }
+    }, true);
 });
 
 window.addEventListener('focus', () => {
