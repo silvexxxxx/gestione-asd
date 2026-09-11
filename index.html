@@ -6603,14 +6603,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                 <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Variazione (Aggiorna anagrafica socio)</p>
                                 <input type="hidden" name="durata" id="receipt-durata" value="">
                                 <input type="checkbox" name="rateale" id="receipt-rateale" style="display:none;">
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:flex-end;">
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Inizio Validità</label>
-                                        <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" value="${defaultDate}" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptInizioChange(this.value)">
+                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600; display:block; margin-bottom:4px; white-space:nowrap;">Inizio Validità</label>
+                                        <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" value="${defaultDate}" style="padding:7px; font-size:0.85rem; height:38px; width:100%; box-sizing:border-box;" onchange="app.onReceiptInizioChange(this.value)">
                                     </div>
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Fine Periodo (Scadenza Quota)</label>
-                                        <input type="date" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptScadenzaOverrideChange(this.value)" title="Data di fine periodo / scadenza quota (calcolata o personalizzata)">
+                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600; display:block; margin-bottom:4px; white-space:nowrap;">Fine Validità</label>
+                                        <input type="date" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control" style="padding:7px; font-size:0.85rem; height:38px; width:100%; box-sizing:border-box;" onchange="app.onReceiptScadenzaOverrideChange(this.value)" title="Data di fine validità / scadenza quota (calcolata o personalizzata)">
                                     </div>
                                 </div>
                                 <div id="receipt-scadenza-preview" style="display:none; margin-top:8px; font-size:0.8rem; padding:8px; background:#ffffff; border-radius:6px; border-left:3px solid #0284c7; color:#0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
@@ -7589,8 +7589,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             previewEl.style.display = 'block';
             let html = overrideScad 
-                ? `📅 Fine Periodo (impostata manualmente): <strong>${this.formatDate(targetScadenza)}</strong>`
-                : `📅 Fine Periodo calcolata: <strong>${this.formatDate(targetScadenza)}</strong>`;
+                ? `📅 Fine Validità (impostata manualmente): <strong>${this.formatDate(targetScadenza)}</strong>`
+                : `📅 Fine Validità calcolata: <strong>${this.formatDate(targetScadenza)}</strong>`;
             if (!overrideScad && calc && calc.mesi) {
                 html += `<br><span style="font-size:0.75rem; color:#64748b;">(${calc.mesi} ${calc.mesi === 1 ? 'mese' : 'mesi'} a partire da Inizio Validità: ${this.formatDate(calc.baseDate)})</span>`;
             }
