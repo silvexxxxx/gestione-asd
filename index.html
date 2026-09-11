@@ -6551,12 +6551,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                     </label>
                                     <select id="receipt-tipo-quota" class="form-control" onchange="app.onTipoQuotaChange(this.value)" style="font-size:0.85rem; font-weight:600;">
                                         <option value="">-- Seleziona Quota / Pacchetto --</option>
+                                        <optgroup label="📋 TESSERAMENTO E INGRESSI">
+                                            <option value="solo_tess">📋 Solo Tesseramento Federale (€${defaultTess.toFixed(2)})</option>
+                                            <option value="singolo">🎟️ Ingresso Singolo / Prova (€10.00)</option>
+                                        </optgroup>
                                         <optgroup label="📅 QUOTE PERIODICHE STANDARD">
                                             <option value="mensile">📅 Quota Mensile Standard (€45.00 — 1 Mese)</option>
                                             <option value="trimestrale">📅 Quota Trimestrale (€120.00 — 3 Mesi)</option>
                                             <option value="semestrale">📅 Quota Semestrale (€230.00 — 6 Mesi)</option>
                                         </optgroup>
-                                        <optgroup label="🏆 QUOTE ANNUALI (Saldate)">
+                                        <optgroup label="🏆 QUOTE ANNUALI">
                                             <option value="annuale_promo">🏆 Quota Annuale Promo fino al 31 Ottobre (€360.00 — Fino al 31/08)</option>
                                             <option value="annuale_standard">🏆 Quota Associativa Annuale dal 1 Novembre (€410.00 — Fino al 31/08)</option>
                                         </optgroup>
@@ -6568,10 +6572,6 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                             <option value="family_1m">👨‍👩‍👦 Family 2 - 1 Mese (€80.00)</option>
                                             <option value="family_3m">👨‍👩‍👦 Family 2 - 3 Mesi (€220.00)</option>
                                             <option value="family_6m">👨‍👩‍👦 Family 2 - 6 Mesi (€400.00)</option>
-                                        </optgroup>
-                                        <optgroup label="📋 TESSERAMENTO E INGRESSI">
-                                            <option value="solo_tess">📋 Solo Tesseramento Federale (€${defaultTess.toFixed(2)})</option>
-                                            <option value="singolo">🎟️ Ingresso Singolo / Prova (€10.00)</option>
                                         </optgroup>
                                         <optgroup label="✏️ PERSONALIZZATO">
                                             <option value="custom">✏️ Pagamento Personalizzato (Rate multiple / Importo libero)</option>
@@ -6585,10 +6585,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                         <input type="number" step="0.01" name="quota" id="receipt-quota" class="form-control" placeholder="0.00" oninput="app.onQuotaOrTessInput()">
                                     </div>
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <label style="font-size:0.85rem; font-weight:600;">Tesseramento (€)</label>
-                                            <button type="button" class="btn btn-outline" style="padding:1px 6px; font-size:0.7rem; height:auto; color:#0284c7; border-color:#bae6fd;" onclick="app.setTesseramentoQuick(${defaultTess})" title="Aggiungi / Rimuovi quota tesseramento federale €${defaultTess}">+ €${defaultTess}</button>
-                                        </div>
+                                        <label style="font-size:0.85rem; font-weight:600;">Tesseramento (€)</label>
                                         <input type="number" step="0.01" name="tess" id="receipt-tess" class="form-control" placeholder="0.00" oninput="app.onQuotaOrTessInput()">
                                     </div>
                                 </div>
@@ -6603,37 +6600,17 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                             </div>
 
                             <div style="background:#e0f2fe; padding:1.25rem; border-radius:12px; border:1px solid #bae6fd;">
-                                <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Validità Quota (Aggiorna anagrafica socio)</p>
-                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                                <p style="font-size:0.85rem; color:#0369a1; margin-bottom:10px; font-weight:bold;">📅 Variazione (Aggiorna anagrafica socio)</p>
+                                <input type="hidden" name="durata" id="receipt-durata" value="">
+                                <input type="checkbox" name="rateale" id="receipt-rateale" style="display:none;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Inizio Validità</label>
                                         <input type="date" name="inizio_validita" id="receipt-inizio" class="form-control" value="${defaultDate}" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptInizioChange(this.value)">
                                     </div>
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Durata (Mesi)</label>
-                                        <select name="durata" id="receipt-durata" class="form-control" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptDurataChange(this.value)">
-                                            <option value="">Non aggiornare / Auto</option>
-                                            <option value="1">1 Mese (Standard)</option>
-                                            <option value="2">2 Mesi (Bimestrale)</option>
-                                            <option value="3">3 Mesi (Trimestrale)</option>
-                                            <option value="4">4 Mesi</option>
-                                            <option value="6">6 Mesi (Semestrale)</option>
-                                            <option value="9">9 Mesi</option>
-                                            <option value="12">12 Mesi (Annuale)</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Scadenza Quota</label>
-                                        <input type="date" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptScadenzaOverrideChange(this.value)" title="Data esatta di fine validità quota (calcolata o personalizzata)">
-                                    </div>
-                                </div>
-                                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #bae6fd;">
-                                    <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600; color:#0369a1; cursor:pointer; margin-bottom:0;">
-                                        <input type="checkbox" name="rateale" id="receipt-rateale" onchange="app.onReceiptRatealeChange(this.checked)" style="width:16px; height:16px;">
-                                        💳 Quota Rateale / Pagamento Rata (Accordo Interno)
-                                    </label>
-                                    <div id="receipt-rateale-info" style="display:none; margin-top:6px; font-size:0.75rem; color:#0c4a6e; background:#f0f9ff; border:1px solid #7dd3fc; border-radius:6px; padding:6px 10px;">
-                                        💡 <strong>Accordo interno:</strong> Calcola la scadenza della singola rata esattamente a partire dalla data di <strong>Inizio Validità</strong> indicata (+30 giorni / 1 mese standard), senza scadenze annuali fisse.
+                                        <label style="font-size:0.8rem; color:#0369a1; font-weight:600;">Fine Periodo (Scadenza Quota)</label>
+                                        <input type="date" name="scadenza_quota_override" id="receipt-scadenza-override" class="form-control" style="padding:7px; font-size:0.85rem;" onchange="app.onReceiptScadenzaOverrideChange(this.value)" title="Data di fine periodo / scadenza quota (calcolata o personalizzata)">
                                     </div>
                                 </div>
                                 <div id="receipt-scadenza-preview" style="display:none; margin-top:8px; font-size:0.8rem; padding:8px; background:#ffffff; border-radius:6px; border-left:3px solid #0284c7; color:#0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
@@ -7323,8 +7300,21 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const durataEl = document.getElementById('receipt-durata');
             const ratealeEl = document.getElementById('receipt-rateale');
             const noteEl = document.getElementById('receipt-note');
+            const overrideInput = document.getElementById('receipt-scadenza-override');
 
-            if (!tipo) return;
+            if (!tipo) {
+                if (durataEl) durataEl.value = '';
+                if (overrideInput && overrideInput.dataset.manualEdit !== 'true') {
+                    overrideInput.value = '';
+                }
+                this.updateReceiptScadenzaPreview();
+                return;
+            }
+
+            if (overrideInput && tipo !== 'custom') {
+                overrideInput.dataset.manualEdit = 'false';
+                overrideInput.dataset.autoCalc = 'true';
+            }
 
             let quotaVal = parseFloat(quotaEl?.value) || 0;
             let tessVal = parseFloat(tessEl?.value) || 0;
@@ -7386,11 +7376,19 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 quotaVal = 0;
                 tessVal = this.getTesseramentoDefaultAmount();
                 if (durataEl) durataEl.value = '';
+                if (overrideInput) {
+                    overrideInput.value = '';
+                    overrideInput.dataset.manualEdit = 'false';
+                }
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota'))) noteEl.value = 'Tesseramento Federale';
             } else if (tipo === 'singolo') {
                 quotaVal = 10.00;
                 if (durataEl) durataEl.value = '';
+                if (overrideInput) {
+                    overrideInput.value = '';
+                    overrideInput.dataset.manualEdit = 'false';
+                }
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl) noteEl.value = 'Ingresso Singolo / Prova';
             } else if (tipo === 'custom') {
@@ -7590,8 +7588,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
 
             previewEl.style.display = 'block';
-            let html = `📅 Nuova scadenza quota stimata: <strong>${this.formatDate(targetScadenza)}</strong>`;
-            if (calc && calc.mesi) {
+            let html = overrideScad 
+                ? `📅 Fine Periodo (impostata manualmente): <strong>${this.formatDate(targetScadenza)}</strong>`
+                : `📅 Fine Periodo calcolata: <strong>${this.formatDate(targetScadenza)}</strong>`;
+            if (!overrideScad && calc && calc.mesi) {
                 html += `<br><span style="font-size:0.75rem; color:#64748b;">(${calc.mesi} ${calc.mesi === 1 ? 'mese' : 'mesi'} a partire da Inizio Validità: ${this.formatDate(calc.baseDate)})</span>`;
             }
             if (effectiveAmt <= 0 && hasExplicitDurata) {
