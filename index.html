@@ -4797,6 +4797,270 @@
                 app.toast("✅ Google Drive sovrascritto con successo con i dati locali!", "success");
             },
 
+            async saveCloudNamedFile(fileName, contentStr) {
+                if (!this.accessToken) return null;
+                try {
+                    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name="${fileName}" and trashed=false&spaces=drive`, {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                    });
+                    const searchData = await searchRes.json();
+                    let targetId = null;
+                    if (searchData.files && searchData.files.length > 0) {
+                        targetId = searchData.files[0].id;
+                        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${targetId}?uploadType=media`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${this.accessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: contentStr
+                        });
+                    } else {
+                        const metadata = { name: fileName, mimeType: 'application/json' };
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                        form.append('file', new Blob([contentStr], { type: 'application/json' }));
+                        const postRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` },
+                            body: form
+                        });
+                        const postData = await postRes.json();
+                        targetId = postData.id;
+                    }
+                    return targetId;
+                } catch(e) {
+                    console.error(`Errore salvataggio ${fileName} su Drive:`, e);
+                    return null;
+                }
+            },
+
+            async promptInheritFromCloudModal(targetFileId = null, targetFileName = 'GestioneASD_CloudSync.json') {
+                if (!this.accessToken) {
+                    if (this.syncEnabled) {
+                        this.login();
+                    } else {
+                        app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
+                    }
+                    return;
+                }
+                const fId = targetFileId || this.fileId;
+                if (!fId) {
+                    app.toast("Nessun file di backup trovato su Google Drive.", "warning");
+                    return;
+                }
+
+                app.toast('Lettura dati da Google Drive in corso...', 'info');
+                try {
+                    const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?fields=id,name,modifiedTime,size`, {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                    });
+                    const meta = await metaRes.json();
+
+                    const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?alt=media`, {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                    });
+                    const cloudData = await fileRes.json();
+                    if (!cloudData) throw new Error("Contenuto file non valido");
+
+                    const localSoci = (app.state.soci || []).length;
+                    const localRic = (app.state.ricevute || []).length;
+                    const localPn = (app.state.primanota || []).length;
+
+                    const cloudSoci = (cloudData.soci || []).length;
+                    const cloudRic = (cloudData.ricevute || []).length;
+                    const cloudPn = (cloudData.primanota || []).length;
+
+                    const cloudDateStr = meta.modifiedTime ? new Date(meta.modifiedTime).toLocaleString('it-IT') : 'N/D';
+
+                    let localLastTs = 0;
+                    (app.state.ricevute || []).forEach(r => {
+                        const t = new Date(r.data_creazione || r.data || r.data_emissione || 0).getTime();
+                        if (t > localLastTs) localLastTs = t;
+                    });
+                    const cloudLastTs = meta.modifiedTime ? new Date(meta.modifiedTime).getTime() : 0;
+                    const isCloudOlder = localLastTs > 0 && cloudLastTs > 0 && (localLastTs - cloudLastTs > 60000);
+                    const hasFewerRecords = cloudRic < localRic || cloudSoci < localSoci;
+
+                    const warningBox = (isCloudOlder || hasFewerRecords) ? `
+                        <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
+                            <strong>⚠️ ATTENZIONE: Disallineamento Dati Rilevato!</strong><br>
+                            ${isCloudOlder ? `• La copia su Google Drive risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su questo PC.<br>` : ''}
+                            ${hasFewerRecords ? `• Il Cloud contiene meno ricevute o soci rispetto a questo computer locale.<br>` : ''}
+                            Assicurati di trovarti sul computer secondario che desideri aggiornare prima di confermare.
+                        </div>
+                    ` : `
+                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 14px; color: #93c5fd; font-size: 0.85rem; line-height: 1.45;">
+                            ℹ️ Stai per allineare questo computer ai dati salvati su Google Drive. I dati locali attuali verranno sostituiti.
+                        </div>
+                    `;
+
+                    this._pendingCloudData = cloudData;
+
+                    const modalHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            ${warningBox}
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <div class="glass-card" style="padding: 14px; border-top: 3px solid #3b82f6;">
+                                    <div style="font-weight: 700; color: #60a5fa; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
+                                        <span>🖥️</span> Questo PC (Attuale)
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                        <div>Soci: <strong style="color:var(--text-main); font-size: 0.95rem;">${localSoci}</strong></div>
+                                        <div>Ricevute: <strong style="color:var(--text-main); font-size: 0.95rem;">${localRic}</strong></div>
+                                        <div>Prima Nota: <strong style="color:var(--text-main); font-size: 0.95rem;">${localPn}</strong></div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: var(--text-muted);">Stato: Memoria Locale</div>
+                                    </div>
+                                </div>
+
+                                <div class="glass-card" style="padding: 14px; border-top: 3px solid #10b981;">
+                                    <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
+                                        <span>☁️</span> Google Drive (${targetFileName === 'GestioneASD_Backup_Precedente.json' ? 'Riserva' : 'Cloud'})
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                        <div>Soci: <strong style="color:#34d399; font-size: 0.95rem;">${cloudSoci}</strong></div>
+                                        <div>Ricevute: <strong style="color:#34d399; font-size: 0.95rem;">${cloudRic}</strong></div>
+                                        <div>Prima Nota: <strong style="color:#34d399; font-size: 0.95rem;">${cloudPn}</strong></div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: #34d399;">Salvataggio: ${cloudDateStr}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #fbbf24; line-height: 1.4;">
+                                🛡️ <strong>Paracadute di Sicurezza Attivo:</strong><br>
+                                Prima di procedere alla sostituzione, il sistema creerà in automatico uno <strong>Snapshot di emergenza locale denominato "PRE-DOWNLOAD-CLOUD"</strong>. Se ti accorgerai di aver sbagliato PC, potrai annullare e ripristinare tutto da <em>Impostazioni ➔ Backup & Snapshot</em>.
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px;">
+                                <button type="button" class="btn btn-outline" onclick="app.closeModal()">❌ Annulla (Non fare nulla)</button>
+                                <button type="button" class="btn btn-primary" style="background: #ca8a04; border-color: #ca8a04; font-weight: 700;" onclick="app.cloudSync.executeInheritData()">
+                                    🛡️ Conferma e Sostituisci Dati sul PC
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    app.openModal('📥 Eredita Dati dal Cloud (Doppia Sicurezza)', modalHtml);
+                } catch(e) {
+                    console.error('Errore lettura dati cloud:', e);
+                    app.toast('Impossibile leggere i dati dal Cloud: ' + e.message, 'danger');
+                }
+            },
+
+            async executeInheritData() {
+                const cloudData = this._pendingCloudData;
+                this._pendingCloudData = null;
+                if (!cloudData) return;
+
+                app.createSnapshot('pre-cloud-download');
+
+                const myRole = app.getDeviceRole();
+                const mySplash = localStorage.getItem('asd_show_splashscreen');
+
+                app.state = cloudData;
+                if (!app.state.settings) app.state.settings = {};
+                app.state.settings.device_role = myRole;
+                if (mySplash !== null) {
+                    app.state.settings.show_splashscreen = (mySplash !== 'false');
+                }
+
+                try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci || [])); } catch(e) {}
+                app.syncAthletesIframe();
+
+                if (cloudData._localStorageBackup) {
+                    if (cloudData._localStorageBackup.asd_custom_logo) localStorage.setItem('asd_custom_logo', cloudData._localStorageBackup.asd_custom_logo);
+                    if (cloudData._localStorageBackup.asd_esercizi_images) localStorage.setItem('asd_esercizi_images', cloudData._localStorageBackup.asd_esercizi_images);
+                }
+
+                await app.idbSet('main_state', app.state);
+
+                if (app.getDeviceRole() === 'server') {
+                    setTimeout(() => app.autoGenerateMissingPDFs(), 600);
+                }
+
+                app.closeModal();
+                app.toast('✅ Dati ereditati da Google Drive! Creato snapshot di emergenza PRE-DOWNLOAD-CLOUD.', 'success');
+                app.showPage(app.state.currentPage || 'dashboard');
+            },
+
+            async openCloudVersionsModal() {
+                if (!this.accessToken) {
+                    if (this.syncEnabled) {
+                        this.login();
+                    } else {
+                        app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
+                    }
+                    return;
+                }
+
+                app.toast("Ricerca versioni su Google Drive in corso...", "info");
+                try {
+                    const searchRes = await fetch('https://www.googleapis.com/drive/v3/files?q=name contains "GestioneASD_" and trashed=false&spaces=drive&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc', {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                    });
+                    const data = await searchRes.json();
+                    const files = data.files || [];
+
+                    let filesListHtml = '';
+                    if (files.length === 0) {
+                        filesListHtml = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Nessun file di backup trovato su Google Drive.</div>`;
+                    } else {
+                        filesListHtml = files.map(f => {
+                            const isCurrent = f.name === 'GestioneASD_CloudSync.json';
+                            const isPrev = f.name === 'GestioneASD_Backup_Precedente.json';
+                            const badge = isCurrent 
+                                ? `<span style="font-size:0.72rem; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 COPIA ATTUALE (PRINCIPALE)</span>`
+                                : isPrev 
+                                    ? `<span style="font-size:0.72rem; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3);">🟠 COPIA DI RISERVA PRECEDENTE</span>`
+                                    : `<span style="font-size:0.72rem; padding: 2px 8px; border-radius: 6px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.3);">📁 BACKUP STORICO</span>`;
+                            
+                            const modDate = f.modifiedTime ? new Date(f.modifiedTime).toLocaleString('it-IT') : 'N/D';
+                            const sizeKb = f.size ? Math.round(parseInt(f.size, 10) / 1024) + ' KB' : '';
+
+                            return `
+                                <div class="glass-card" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                            <strong style="font-size: 0.92rem; color: var(--text-main);">${f.name}</strong>
+                                            ${badge}
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                            Ultimo salvataggio: <strong style="color: var(--text-light);">${modDate}</strong> ${sizeKb ? `• Dimensione: ${sizeKb}` : ''}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline" style="border-color: #ca8a04; color: #fbbf24; font-size: 0.82rem; padding: 6px 12px; font-weight: 600;" onclick="app.cloudSync.promptInheritFromCloudModal('${f.id}', '${f.name}')">
+                                        📥 Ripristina questa Versione
+                                    </button>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    const modalHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 12px 14px; font-size: 0.84rem; color: #a5b4fc; line-height: 1.45;">
+                                ℹ️ <strong>Gestione Versioni & Copie su Google Drive:</strong><br>
+                                Il gestionale mantiene online sia la <strong>Copia Attuale</strong> sia la <strong>Copia di Riserva Precedente</strong> creata ad ogni caricamento. Puoi esaminare e ripristinare qualsiasi versione con protezione a doppio livello e snapshot automatico.
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow-y: auto;">
+                                ${filesListHtml}
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+                                <button type="button" class="btn btn-primary" onclick="app.closeModal()">Chiudi</button>
+                            </div>
+                        </div>
+                    `;
+
+                    app.openModal('📂 Versioni & Copie su Google Drive', modalHtml);
+                } catch(e) {
+                    console.error('Errore recupero versioni cloud:', e);
+                    app.toast("Errore nel recupero delle versioni da Google Drive: " + e.message, "danger");
+                }
+            },
+
             promptSyncConflictModal() {
                 return new Promise((resolve) => {
                     this._syncResolve = resolve;
@@ -4850,7 +5114,24 @@
                                 </div>
                             </div>
 
-                            <!-- TASTO 3: NON FARE NULLA (LASCIA TUTTO COSÌ) -->
+                            <!-- TASTO 3: EREDITA DAL CLOUD (SOVRASCRIVI QUESTO PC) -->
+                            <div onclick="app.cloudSync.resolveSyncChoice('inherit')" 
+                                 style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.45); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;"
+                                 onmouseover="this.style.background='rgba(16, 185, 129, 0.18)'; this.style.borderColor='#10b981';" 
+                                 onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                    <div style="font-weight: 700; font-size: 1.05rem; color: #34d399; display: flex; align-items: center; gap: 8px;">
+                                        <span>📥</span> Eredita dal Cloud (Sovrascrivi questo PC)
+                                    </div>
+                                    <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3); white-space: nowrap;">ALLINEA QUESTO PC</span>
+                                </div>
+                                <div style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
+                                    <strong>Cosa fa:</strong> Sostituisce integralmente i dati di questo computer con la versione salvata su Google Drive, senza effettuare alcuna fusione.<br>
+                                    <span style="color: #6ee7b7;">👉 <strong>CONSIGLIATO</strong> se stai aprendo il gestionale su un secondo computer (es. in palestra o sul portatile) e vuoi scaricare fedelmente il lavoro svolto dal PC principale. Include confronto a specchio di sicurezza e salvataggio automatico di ripristino ("PRE-DOWNLOAD-CLOUD").</span>
+                                </div>
+                            </div>
+
+                            <!-- TASTO 4: NON FARE NULLA (LASCIA TUTTO COSÌ) -->
                             <div onclick="app.cloudSync.resolveSyncChoice('cancel')" 
                                  style="background: rgba(255, 255, 255, 0.03); border: 1.5px solid var(--border); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;"
                                  onmouseover="this.style.background='rgba(255, 255, 255, 0.08)'; this.style.borderColor='rgba(255, 255, 255, 0.3)';" 
@@ -4923,6 +5204,8 @@
                                 app.toast('Caricamento su Google Drive in corso...', 'info');
                                 await this.uploadBackup(false, true);
                                 app.toast('✅ Google Drive sovrascritto con successo con i dati locali!', 'success');
+                            } else if (choice === 'inherit') {
+                                await this.promptInheritFromCloudModal();
                             } else if (choice === 'merge') {
                                 app.toast('Fusione dati con Google Drive in corso...', 'info');
                                 await this.mergeBackup(false);
@@ -5160,6 +5443,27 @@
                 // AUTO-MERGE PRIMA DELL'UPLOAD PER EVITARE SOVRASCRITTURE DISTRUTTIVE (se non siamo in fase di isCreate o se non esplicitamente skippato)
                 if (!isCreate && this.fileId && !skipMerge) {
                     await this.mergeBackup(true); 
+                }
+                
+                // PRESERVAZIONE COPIA DI RISERVA SU GOOGLE DRIVE ("GestioneASD_Backup_Precedente.json")
+                // Viene salvata prima di sovrascrivere: sempre in caso di sovrascrittura forzata (skipMerge), oppure a intervalli regolari (min. ogni 15 minuti) durante l'autosave
+                const shouldRotateBackup = skipMerge || !this._lastBackupRotationTime || (Date.now() - this._lastBackupRotationTime > 15 * 60 * 1000);
+                if (shouldRotateBackup && !isCreate && this.fileId) {
+                    try {
+                        const oldRes = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        });
+                        if (oldRes.ok) {
+                            const prevContent = await oldRes.text();
+                            if (prevContent && prevContent.length > 20) {
+                                await this.saveCloudNamedFile('GestioneASD_Backup_Precedente.json', prevContent);
+                                this._lastBackupRotationTime = Date.now();
+                                console.log('Copia di riserva GestioneASD_Backup_Precedente.json archiviata con successo su Drive.');
+                            }
+                        }
+                    } catch(rotErr) {
+                        console.warn('Rotazione backup cloud precedente fallita (non bloccante):', rotErr);
+                    }
                 }
                 
                 this.isSyncing = true;
@@ -5814,18 +6118,29 @@
                                 </ul>`;
                         break;
                     case 'backup':
-                        html = `<h2>10. Archiviazione File System Local-First, Backup & Excel</h2>
-                                <p>Protezione totale dei dati societari ed esportazione verso sistemi contabili esterni.</p>
-                                <h3>Funzionalità Chiave:</h3>
+                        html = `<h2>10. Archiviazione File System Local-First, Backup, Snapshot & Excel</h2>
+                                <p>Protezione totale dei dati societari, time-machine locale a snapshot ed esportazione verso sistemi contabili esterni.</p>
+                                
+                                <h3>🛡️ Time-Machine Locale: Gli Snapshot di Sicurezza:</h3>
+                                <p>Il gestionale è dotato di un sistema di snapshot automatici che memorizza interi stati contabili nella memoria protetta del browser, consentendo di annullare qualsiasi operazione errata:</p>
                                 <ul>
-                                    <li><strong>File System Access API & Google Drive:</strong> Seleziona una cartella del tuo PC o del tuo Google Drive per consentire al gestionale di archiviare automaticamente ogni documento generato senza dialog di scaricamento.</li>
+                                    <li><strong>🛡️ PRE-DOWNLOAD-CLOUD (Paracadute di Emergenza):</strong> Viene generato automaticamente una frazione di secondo prima di scaricare, allineare o sovrascrivere i dati del PC dal Cloud. Se per sbaglio avvii un'eredità dal cloud su un computer che conteneva dati più recenti, puoi fare clic su <em>Undo</em> per ripristinare all'istante l'esatto stato locale precedente!</li>
+                                    <li><strong>EXIT (Chiusura Sessione):</strong> Creato in automatico ogni volta che fai clic su <em>Esci</em>.</li>
+                                    <li><strong>AUTO (Autosave Periodico):</strong> Creato ad intervalli regolari (es. ogni 2, 6, 12 o 24 ore a seconda delle preferenze impostate).</li>
+                                    <li><strong>MANUAL (Salvataggio Volontario):</strong> Creato manualmente cliccando su <em>Crea Snapshot Ora</em> in Impostazioni.</li>
+                                </ul>
+                                <p>Ogni snapshot riporta data e ora al secondo, nonché il riepilogo del numero di soci e ricevute memorizzati. Per ripristinare uno snapshot, vai in <strong>Impostazioni ➔ Backup & Snapshot</strong> e clicca su <strong>🔄 Undo</strong> accanto allo snapshot desiderato.</p>
+
+                                <h3>Funzionalità di Salvataggio ed Esportazione:</h3>
+                                <ul>
+                                    <li><strong>File System Access API & Google Drive:</strong> Seleziona una cartella del tuo PC o del tuo Google Drive per consentire al gestionale di archiviare automaticamente ogni documento generato senza finestre di download.</li>
                                     <li><strong>Backup Completo (.JSON):</strong> Esportazione ed importazione con un click dell'intero database dell'associazione (soci, movimenti, verbali, configurazioni).</li>
-                                    <li><strong>Esportazione Excel Universal:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
+                                    <li><strong>Esportazione Excel Universale:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
                                 </ul>`;
                         break;
                     case 'multidevice':
-                        html = `<h2>11. Architettura Multi-Dispositivo (Server & Client)</h2>
-                                <p>Il gestionale supporta un'architettura ibrida collaborativa per consentire l'utilizzo contemporaneo o distribuito su più postazioni (PC reception, smartphone o tablet degli istruttori) senza rischio di perdere dati o sovrascrivere ricevute.</p>
+                        html = `<h2>11. Architettura Multi-Dispositivo & Sincronizzazione Google Drive</h2>
+                                <p>Il gestionale supporta un'architettura collaborativa a prova di errore per consentire l'utilizzo contemporaneo o alternato su più postazioni (PC banco reception, PC da casa, smartphone/tablet) senza rischio di perdere dati o generare duplicati.</p>
                                 
                                 <h3>I Due Ruoli del Dispositivo:</h3>
                                 <ul>
@@ -5833,25 +6148,36 @@
                                         <p>È la postazione centrale della palestra, collegata alla cartella documenti locale su disco fisso.</p>
                                         <ul>
                                             <li>Conserva fisicamente tutti i file PDF ufficiali generati (ricevute soci, verbali assemblee, compensi, esportazioni Excel).</li>
-                                            <li><strong>Auto-Generatore Intelligente di Ricevute PDF:</strong> quando un istruttore da smartphone o dispositivo client registra una ricevuta per un socio, l'operazione viene sincronizzata istantaneamente sul Cloud Google Drive. Non appena il PC Server effettua la sincronizzazione (o all'avvio), il sistema rileva in automatico che il file PDF non è ancora presente nella cartella del PC e lo genera e archivia da solo, pronto per la stampa cartacea o consultazione! Non serve alcun passaggio manuale di file.</li>
+                                            <li><strong>Auto-Generatore Intelligente di Ricevute PDF:</strong> quando un collaboratore da smartphone registra una ricevuta per un socio, l'operazione si sincronizza sul Cloud Google Drive. Non appena il PC Server sincronizza o si avvia, genera e archivia da solo i PDF nella cartella locale, pronti per la stampa cartacea!</li>
                                             <li>Gestisce i backup di sicurezza fisici in formato <code>.json</code> e la chiusura dell'esercizio contabile.</li>
                                         </ul>
                                     </li>
                                     <li><strong>📱 Dispositivo Client (Istruttori / Smartphone / Portatili):</strong>
-                                        <p>Progettato per la massima rapidità e leggerezza in mobilità.</p>
+                                        <p>Progettato per la massima rapidità e mobilità.</p>
                                         <ul>
-                                            <li>Non richiede di selezionare o conservare cartelle documenti pesanti sul dispositivo.</li>
-                                            <li>Consente all'istruttore o collaboratore di emettere ricevute, registrare soci, verificare scadenze o prendere appunti post-it al volo.</li>
-                                            <li>I dati vengono scambiati in tempo reale in formato testo/JSON leggerissimo tramite Google Drive.</li>
+                                            <li>Non richiede cartelle documenti pesanti sul dispositivo.</li>
+                                            <li>Consente di emettere ricevute, registrare soci, verificare idoneità mediche o gestire note post-it in tempo reale tramite Google Drive.</li>
                                         </ul>
                                     </li>
                                 </ul>
 
-                                <h3>Regola del Timestamp (Ultima Modifica Vince):</h3>
-                                <p>Ogni singola entità del gestionale (soci, ricevute, prima nota, corsi, note, compensi, magazzino, eventi e post-it) memorizza automaticamente la data e l'orario esatto dell'ultima modifica (<code>updated_at</code>). Durante la fusione dei dati (merge cloud), se due dispositivi hanno modificato la stessa anagrafica o lo stesso elemento, prevale sempre la versione con il timestamp più recente, evitando la perdita del lavoro svolto.</p>
+                                <h3>📥 Eredita dal Cloud (Allineamento Rapido senza Fusione):</h3>
+                                <p>Se lavori su un PC secondario (es. portatile o PC della palestra) dopo aver effettuato importanti modifiche o riordini dal PC principale, puoi utilizzare la funzione <strong>"📥 Eredita dal Cloud (Sovrascrivi questo PC)"</strong> (disponibile sia al primo accesso, sia in <em>Impostazioni ➔ Salvataggio Cloud</em>):</p>
+                                <ul>
+                                    <li><strong>Confronto a Specchio di Sicurezza:</strong> Prima di procedere, una finestra mette a confronto i dati del PC attuale con quelli salvati su Google Drive (numero soci, ricevute, prima nota e data ultimo salvataggio).</li>
+                                    <li><strong>Alert Intelligente di Disallineamento:</strong> Se la copia su Google Drive risulta più vecchia o con meno record rispetto al computer attuale, il sistema ti avvisa visivamente in arancione/rosso prima di consentire la conferma.</li>
+                                    <li><strong>Snapshot di Emergenza Automatico:</strong> Prima di applicare i dati del cloud, il software scatta automaticamente uno snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>. In caso di errore umano, puoi tornare indietro con un clic.</li>
+                                </ul>
 
-                                <h3>Ripristino di un Backup JSON su un Dispositivo:</h3>
-                                <p>Quando ripristini un file di backup JSON d'emergenza, il gestionale ti chiederà se desideri forzare immediatamente l'invio al Cloud Google Drive: confermando, la copia online verrà allineata al backup ripristinato evitando conflitti con precedenti timestamp.</p>
+                                <h3>☁️ Copia di Riserva su Google Drive & Storico Versioni:</h3>
+                                <p>Per azzerare il rischio di perdere dati sul Cloud:</p>
+                                <ul>
+                                    <li><strong>Rotazione Automatica:</strong> Ad ogni salvataggio o sovrascrittura su Google Drive, il gestionale archivia preventivamente lo stato online precedente nel file <code>GestioneASD_Backup_Precedente.json</code>. In questo modo sul tuo account Google Drive sono sempre conservate sia la versione corrente che quella precedente di riserva.</li>
+                                    <li><strong>📂 Esploratore Versioni Cloud:</strong> Dal pulsante <em>"Versioni & Copie sul Cloud"</em> in Impostazioni puoi esaminare la Copia Attuale e la Copia di Riserva Precedente con data, ora e dimensione, e ripristinare qualsiasi versione direttamente sul tuo PC con un click.</li>
+                                </ul>
+
+                                <h3>Regola del Timestamp (Ultima Modifica Vince):</h3>
+                                <p>Durante la fusione dati tradizionale (Merge), se due dispositivi hanno modificato la stessa anagrafica o lo stesso elemento, prevale sempre la versione con il timestamp più recente (<code>updated_at</code>), evitando sovrascritture accidentali.</p>
 
                                 <h3>Procedura di Chiusura / Uscita:</h3>
                                 <p>Al termine del lavoro, è sufficiente cliccare sul pulsante <strong>Esci</strong> in alto a destra: il gestionale eseguirà automaticamente il salvataggio dei dati in memoria locale e la sincronizzazione sicura con Google Drive prima della chiusura.</p>`;
@@ -16803,10 +17129,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 
                                 
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                    <button class="btn btn-outline" style="color: var(--text-muted); border-color: var(--text-muted);" onclick="app.cloudSync.logout()">Passa a Modalità Offline</button>
-                                    <button class="btn btn-primary" onclick="app.cloudSync.login()">Passa a Modalità Cloud (API)</button>
-                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer">⬆️ Sovrascrivi Cloud con Dati Locali</button>
-                                    <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione">🔄 Sincronizza Ora (Opzioni)</button>
+                                    <button class="btn btn-outline" style="color: var(--text-muted); border-color: var(--text-muted);" onclick="app.cloudSync.logout()" data-guide="Disconnette l'account Google Drive e passa alla modalità solo locale.">Passa a Modalità Offline</button>
+                                    <button class="btn btn-primary" onclick="app.cloudSync.login()" data-guide="Collega il gestionale al tuo account Google Drive per abilitare il salvataggio cloud.">Passa a Modalità Cloud (API)</button>
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer, conservando la copia precedente di riserva" data-guide="Carica l'intero database di questo PC su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
+                                    <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di questo computer con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare questo PC. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
+                                    <button class="btn btn-outline" style="border-color:#6366f1; color:#818cf8; font-weight:600;" onclick="app.cloudSync.openCloudVersionsModal()" title="Visualizza le copie di backup e le versioni storiche presenti su Google Drive" data-guide="Consulta lo storico dei backup salvati su Google Drive (Copia Attuale e Copia di Riserva Precedente) e ripristina con un click quella desiderata.">📂 Versioni & Copie sul Cloud</button>
+                                    <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione" data-guide="Apre la finestra di scelta per unire i dati, sovrascrivere il cloud o ereditare dal cloud.">🔄 Sincronizza Ora (Opzioni)</button>
                                 </div>
                                 
                                 <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;">Stato attuale: ${localStorage.getItem('asd_cloud_sync') === 'true' ? '<span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>' : '<span style="color:var(--text-muted);">Offline (Locale)</span>'}</div>
@@ -16900,7 +17228,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px; border-bottom: 1px solid var(--border-color);">
                                             <div>
                                                 <strong style="color:var(--text-light); font-size:0.9rem;">${s.date}</strong>
-                                                <span style="font-size:0.75rem; color:var(--text-muted); margin-left:10px; padding:2px 6px; background:var(--primary-dark); border-radius:10px;">${s.type.toUpperCase()}</span>
+                                                ${(s.type === 'pre-cloud-download' || s.type === 'PRE-DOWNLOAD-CLOUD')
+                                                    ? `<span style="font-size:0.75rem; color:#fef08a; margin-left:8px; padding:2px 8px; background:rgba(234, 179, 8, 0.2); border:1px solid rgba(234, 179, 8, 0.4); border-radius:10px; font-weight:700;">🛡️ PRE-DOWNLOAD-CLOUD</span>`
+                                                    : `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:10px; padding:2px 6px; background:var(--primary-dark); border-radius:10px;">${s.type.toUpperCase()}</span>`
+                                                }
+                                                ${s.counts ? `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:6px;">(${s.counts.soci || 0} soci, ${s.counts.ricevute || 0} ric.)</span>` : ''}
                                             </div>
                                             <div style="display:flex; gap:5px;">
                                                 <button class="btn btn-outline" style="padding: 4px 8px; font-size:0.8rem;" onclick="app.restoreSnapshot('${s.id}')">🔄 Undo</button>
@@ -18008,13 +18340,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 id: id,
                 date: now.toLocaleString('it-IT'),
                 type: type,
-                data: data
+                data: data,
+                counts: {
+                    soci: (data.soci || []).length,
+                    ricevute: (data.ricevute || []).length,
+                    primanota: (data.primanota || []).length
+                }
             });
             if (snapshots.length > max) {
                 snapshots = snapshots.slice(0, max);
             }
             localStorage.setItem('asd_snapshots', JSON.stringify(snapshots));
             if(type === 'manual') this.toast('Salvataggio di stato manuale creato.', 'success');
+            else if(type === 'pre-cloud-download') this.toast('🛡️ Snapshot di sicurezza locale creato!', 'info');
             else if(type === 'auto') console.log('Autosave created at', now.toLocaleString('it-IT'));
             this.renderDatabase();
         },
