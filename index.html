@@ -1878,7 +1878,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.10"; // Allineamento quota Espinoza a 21/08/26 e disaccoppiamento note da durata quota
+        const APP_VERSION = "2.5.11"; // Auto-sanitizzazione quota Espinoza a 21/08/26 e refresh PWA
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -2330,6 +2330,16 @@
                         if (s.cf && s.cf.includes('05D14')) {
                             s.cf = s.cf.replace('05D14', '95D14');
                         }
+                        changed = true;
+                    }
+                }
+            });
+
+            // Auto-allineamento Huamani Espinoza (scadenza quota 21/08/2026 dopo ultimo pagamento del 21/07/2026)
+            (this.state.soci || []).forEach(s => {
+                if (s.id == 1787644999882 || (s.cognome && s.cognome.toLowerCase().includes('espinoza'))) {
+                    if (s.quota_scadenza !== '2026-08-21') {
+                        s.quota_scadenza = '2026-08-21';
                         changed = true;
                     }
                 }
