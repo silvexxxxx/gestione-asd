@@ -6197,12 +6197,14 @@
                 if (!date) return '';
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
-                const scad = new Date(date);
+                const parts = String(date).split('T')[0].split('-');
+                const scad = parts.length === 3
+                    ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+                    : new Date(date);
                 scad.setHours(0, 0, 0, 0);
-                const diff = (scad - now) / (1000 * 60 * 60 * 24);
-                const diffDays = Math.ceil(diff);
+                const diffDays = Math.round((scad - now) / (1000 * 60 * 60 * 24));
                 if (diffDays < 0) return 'text-danger';   // Scaduta -> Rosso
-                if (diffDays <= 5) return 'text-warning'; // Negli ultimi 5 gg -> Arancione
+                if (diffDays <= 5) return 'text-warning'; // Negli ultimi 5 gg o oggi -> Arancione
                 return ''; // Regolare -> Bianco / Default
             },
 
@@ -14973,46 +14975,64 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
         getQuoteAlerts() {
             const now = new Date();
+            now.setHours(0, 0, 0, 0);
             const valide = [];
+
+            const parseDateOnly = (str) => {
+                if (!str) return null;
+                const parts = String(str).split('T')[0].split('-');
+                if (parts.length === 3) {
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                }
+                const d = new Date(str);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            };
 
             this.state.soci.forEach(s => {
                 if (!s.quota_scadenza || s.stato === 'CESSATO') return;
 
-                const scad = new Date(s.quota_scadenza);
-                const diff = (scad - now) / (1000 * 60 * 60 * 24);
+                const scad = parseDateOnly(s.quota_scadenza);
+                if (!scad || isNaN(scad.getTime())) return;
+
+                const diffDays = Math.round((scad - now) / (1000 * 60 * 60 * 24));
 
                 // Gestione rimozione una volta scadute
-                if (diff < 0 && this.state.dismissed_quotes.includes(s.id)) return;
+                if (diffDays < 0 && this.state.dismissed_quotes.includes(s.id)) return;
 
-                valide.push({ s, diff, date: scad.getTime() });
+                valide.push({ s, diffDays, date: scad.getTime() });
             });
 
-            // Ultime 5 scadute (diff < 0), ordinate dalla più recente alla più vecchia
-            const scadute = valide.filter(x => x.diff < 0)
-                .sort((a, b) => b.date - a.date)
-                .slice(0, 5)
-                .map(x => x.s);
-
-            // Prossime 5 in scadenza (diff >= 0), ordinate dalla più imminente alla più lontana
-            const inScadenza = valide.filter(x => x.diff >= 0)
+            // Prossime 5 in scadenza (diffDays >= 0):
+            // Si prendono le 5 più imminenti a oggi (a.date - b.date),
+            // poi si ordinano dal più lontano a scendere verso oggi (b.date - a.date) -> Opzione 2
+            const inScadenza = valide.filter(x => x.diffDays >= 0)
                 .sort((a, b) => a.date - b.date)
                 .slice(0, 5)
-                .map(x => x.s);
+                .sort((a, b) => b.date - a.date);
 
-            return [...scadute, ...inScadenza];
+            // Ultime 5 già scadute (diffDays < 0):
+            // Dalla più recente (più vicina a oggi) alla più vecchia nel passato
+            const scadute = valide.filter(x => x.diffDays < 0)
+                .sort((a, b) => b.date - a.date)
+                .slice(0, 5);
+
+            return [...inScadenza.map(x => x.s), ...scadute.map(x => x.s)];
         },
 
         getQuoteColor(date) {
             if (!date) return '';
             const now = new Date();
             now.setHours(0, 0, 0, 0);
-            const scad = new Date(date);
+            const parts = String(date).split('T')[0].split('-');
+            const scad = parts.length === 3
+                ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+                : new Date(date);
             scad.setHours(0, 0, 0, 0);
-            const diff = (scad - now) / (1000 * 60 * 60 * 24);
-            const diffDays = Math.ceil(diff);
+            const diffDays = Math.round((scad - now) / (1000 * 60 * 60 * 24));
 
             if (diffDays < 0) return 'text-danger'; // Scaduta (Rosso)
-            if (diffDays <= 5) return 'text-warning'; // Ultimi 5 gg (Arancione)
+            if (diffDays <= 5) return 'text-warning'; // Ultimi 5 gg o oggi (Arancione)
             return ''; // Regolare (Bianco / Default)
         },
 
@@ -15086,6 +15106,18 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             const now = new Date();
             now.setHours(0, 0, 0, 0);
+
+            const parseDateOnly = (str) => {
+                if (!str) return null;
+                const parts = String(str).split('T')[0].split('-');
+                if (parts.length === 3) {
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                }
+                const d = new Date(str);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            };
+
             return `
                     <div class="table-container">
                     <table style="font-size: 0.8rem;">
@@ -15099,10 +15131,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         </thead>
                         <tbody>
                             ${alerts.slice(0, 10).map(s => {
-                const qDate = new Date(s.quota_scadenza);
-                qDate.setHours(0, 0, 0, 0);
-                const diff = (qDate - now) / (1000 * 60 * 60 * 24);
-                const diffDays = Math.ceil(diff);
+                const qDate = parseDateOnly(s.quota_scadenza);
+                const diffDays = qDate ? Math.round((qDate - now) / (1000 * 60 * 60 * 24)) : 0;
                 const colorClass = this.getQuoteColor(s.quota_scadenza);
 
                 let statusText = "";
@@ -15112,14 +15142,18 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 else statusText = `MANCANO ${diffDays} GIORNI`;
 
                 let customStyle = "";
+                let rowStyle = "";
                 if (diffDays < 0) {
                     customStyle = "color: var(--danger); font-weight: 700;";
+                } else if (diffDays === 0) {
+                    customStyle = "color: #f59e0b; font-weight: 800; background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 4px; padding: 2px 6px;";
+                    rowStyle = "background: rgba(245, 158, 11, 0.08);";
                 } else if (diffDays <= 5) {
                     customStyle = "color: var(--warning); font-weight: 700; background: rgba(245, 158, 11, 0.1); border-radius: 4px; padding: 2px 4px;";
                 }
 
                 return `
-                                <tr>
+                                <tr style="${rowStyle}">
                                     <td>
                                         <div style="font-weight: 600;">${s.cognome || ''} ${s.nome || ''}</div>
                                         <div style="font-size: 0.7rem; color: var(--text-muted);">${s.tel || ''}</div>
