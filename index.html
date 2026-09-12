@@ -6017,9 +6017,8 @@
                             <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
                                 <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.onSocioSearchInput()" data-guide="Digita un nome o CF per cercare rapidamente un socio nella lista.">
                                 <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato.">
-                                    <option value="ANNO_CORRENTE" selected>⭐ Soci Anno Sportivo Corrente (${currSportYearLabel}) (${sociStagioneCount})</option>
+                                    <option value="ANNO_CORRENTE" selected>⭐ Soci Anno Sportivo Corrente (${currSportYearLabel}) (${attiviAnno})</option>
                                     <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
-                                    <option value="TESS_ATTIVO">✅ Tesserati Attivi ${currSportYearLabel} (${attiviAnno})</option>
                                     <option value="TESS_SCADUTO">💳 Tesseramenti da Rinnovare (${daRinnovareCount})</option>
                                     <option value="ATTIVO">🟢 Attivi con Quota Valida</option>
                                     <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
@@ -6252,11 +6251,9 @@
                     const now = new Date();
                     now.setHours(0,0,0,0);
 
-                    if (status === 'ANNO_CORRENTE') {
+                    if (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO') {
                         // Se l'utente sta digitando un nome/CF nel campo cerca, cerca in tutta l'anagrafica
-                        matchStatus = search ? true : this.isSeasonMember(s);
-                    } else if (status === 'TESS_ATTIVO') {
-                        matchStatus = this.isActiveMember(s);
+                        matchStatus = search ? true : this.isActiveMember(s);
                     } else if (status === 'ALL') {
                         matchStatus = true;
                     } else if (status === 'QUOTA_SCADUTA') {
