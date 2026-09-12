@@ -1726,36 +1726,42 @@
     <div id="global-guide-tooltip"></div>
 
     <!-- Splash Screen Overlay all'avvio -->
-    <div id="splash-screen-overlay" style="display: none; position: fixed; inset: 0; z-index: 100000; background: linear-gradient(135deg, #0b1120 0%, #0f172a 50%, #1e293b 100%); flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: inherit; transition: opacity 0.4s ease, visibility 0.4s ease;" onclick="if (event.target === this || event.target.id === 'splash-card-inner') app.dismissSplashScreen();">
-        <div id="splash-card-inner" style="background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 2.5rem 2.8rem; text-align: center; max-width: 500px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); position: relative; animation: slideDown 0.35s ease-out;">
-            <div style="width: 72px; height: 72px; margin: 0 auto 1.25rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);">
-                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <div id="splash-screen-overlay" style="display: none; position: fixed; inset: 0; z-index: 100000; background: linear-gradient(135deg, #0b1120 0%, #0f172a 50%, #1e293b 100%); flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: inherit; transition: opacity 0.4s ease, visibility 0.4s ease;" onclick="if (event.target === this) app.dismissSplashScreen();">
+        <div id="splash-card-inner" style="background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 2.3rem 2.6rem; text-align: center; max-width: 500px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); position: relative; animation: slideDown 0.35s ease-out;">
+            <button type="button" onclick="app.dismissSplashScreen()" style="position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 1rem; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.18)';" onmouseout="this.style.color='#94a3b8'; this.style.background='rgba(255,255,255,0.06)';" title="Chiudi (Esc)">✕</button>
+
+            <div style="width: 68px; height: 68px; margin: 0 auto 1.1rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18 20V10"></path>
                     <path d="M12 20V4"></path>
                     <path d="M6 20v-6"></path>
                 </svg>
             </div>
-            <h1 style="margin: 0 0 0.35rem; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ASD GESTIONALE</h1>
-            <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.15rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
+            <h1 style="margin: 0 0 0.3rem; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ASD GESTIONALE</h1>
+            <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.1rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
             
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.4rem; font-size: 0.8rem;">
-                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.0</span>
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.25rem; font-size: 0.8rem;">
+                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.1</span>
                 <span style="color: #475569;">•</span>
                 <span id="splash-role-badge" style="color: #34d399; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                     🖥️ Server
                 </span>
             </div>
 
-            <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 10px; height: 6px; overflow: hidden; margin-bottom: 1.25rem; position: relative;">
-                <div id="splash-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+            <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 10px; height: 6px; overflow: hidden; margin-bottom: 1.1rem; position: relative;">
+                <div id="splash-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
             </div>
 
-            <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.2rem;">
+            <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.1rem;">
                 <div>Sviluppato da <strong style="color: #f1f5f9;">Silverio Pintus</strong></div>
                 <div style="color: #64748b; font-size: 0.72rem; margin-top: 2px;">© 2026 Tutti i diritti riservati</div>
             </div>
 
-            <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.9rem; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <button id="splash-enter-btn" type="button" onclick="app.dismissSplashScreen()" style="width: 100%; padding: 0.85rem 1.4rem; font-size: 0.98rem; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.5); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 1.1rem; transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 12px 24px -4px rgba(37, 99, 235, 0.65)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px -4px rgba(37, 99, 235, 0.5)';" onmousedown="this.style.transform='translateY(1px)';">
+                <span>🚀</span> Accedi al Gestionale
+            </button>
+
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.85rem; display: flex; flex-direction: column; align-items: center; gap: 4px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #cbd5e1; cursor: pointer; user-select: none;">
                     <input type="checkbox" id="splash-dont-show-checkbox" onchange="app.onSplashDontShowChange(this.checked)" style="accent-color: #3b82f6; width: 16px; height: 16px; cursor: pointer;">
                     <span>Non mostrare più all'avvio</span>
@@ -1925,7 +1931,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.0"; // Architettura Multi-Dispositivo Server/Client, Last-Write-Wins, Auto-PDF
+        const APP_VERSION = "2.6.1"; // Splash Screen interattivo con pulsante persistente
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -2153,17 +2159,37 @@
                 if (pbar) pbar.style.width = '100%';
             }, 60);
 
-            if (this._splashTimer) clearTimeout(this._splashTimer);
-            const duration = isPreview ? 2500 : 1600;
-            this._splashTimer = setTimeout(() => {
-                this.dismissSplashScreen();
-            }, duration);
+            if (this._splashTimer) {
+                clearTimeout(this._splashTimer);
+                this._splashTimer = null;
+            }
+
+            // Lasciato fisso e chiudibile con pulsante o tasti Esc/Invio
+            if (!this._splashKeyBound) {
+                this._splashKeyBound = true;
+                window.addEventListener('keydown', (e) => {
+                    const ov = document.getElementById('splash-screen-overlay');
+                    if (ov && ov.style.display !== 'none' && ov.style.visibility !== 'hidden' && ov.style.opacity !== '0') {
+                        if (e.key === 'Escape' || e.key === 'Enter') {
+                            this.dismissSplashScreen();
+                        }
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                const btn = document.getElementById('splash-enter-btn');
+                if (btn) btn.focus();
+            }, 100);
         },
 
         dismissSplashScreen() {
             const overlay = document.getElementById('splash-screen-overlay');
             if (!overlay) return;
-            if (this._splashTimer) clearTimeout(this._splashTimer);
+            if (this._splashTimer) {
+                clearTimeout(this._splashTimer);
+                this._splashTimer = null;
+            }
             overlay.style.opacity = '0';
             setTimeout(() => {
                 overlay.style.display = 'none';
