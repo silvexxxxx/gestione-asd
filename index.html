@@ -1725,6 +1725,46 @@
     <div id="toast-container"></div>
     <div id="global-guide-tooltip"></div>
 
+    <!-- Splash Screen Overlay all'avvio -->
+    <div id="splash-screen-overlay" style="display: none; position: fixed; inset: 0; z-index: 100000; background: linear-gradient(135deg, #0b1120 0%, #0f172a 50%, #1e293b 100%); flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: inherit; transition: opacity 0.4s ease, visibility 0.4s ease;" onclick="if (event.target === this || event.target.id === 'splash-card-inner') app.dismissSplashScreen();">
+        <div id="splash-card-inner" style="background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 2.5rem 2.8rem; text-align: center; max-width: 500px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); position: relative; animation: slideDown 0.35s ease-out;">
+            <div style="width: 72px; height: 72px; margin: 0 auto 1.25rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5);">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 20V10"></path>
+                    <path d="M12 20V4"></path>
+                    <path d="M6 20v-6"></path>
+                </svg>
+            </div>
+            <h1 style="margin: 0 0 0.35rem; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ASD GESTIONALE</h1>
+            <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.15rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
+            
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.4rem; font-size: 0.8rem;">
+                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.0</span>
+                <span style="color: #475569;">•</span>
+                <span id="splash-role-badge" style="color: #34d399; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                    🖥️ Server
+                </span>
+            </div>
+
+            <div style="width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 10px; height: 6px; overflow: hidden; margin-bottom: 1.25rem; position: relative;">
+                <div id="splash-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+            </div>
+
+            <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.2rem;">
+                <div>Sviluppato da <strong style="color: #f1f5f9;">Silverio Pintus</strong></div>
+                <div style="color: #64748b; font-size: 0.72rem; margin-top: 2px;">© 2026 Tutti i diritti riservati</div>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.9rem; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #cbd5e1; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="splash-dont-show-checkbox" onchange="app.onSplashDontShowChange(this.checked)" style="accent-color: #3b82f6; width: 16px; height: 16px; cursor: pointer;">
+                    <span>Non mostrare più all'avvio</span>
+                </label>
+                <div style="font-size: 0.72rem; color: #64748b;">(Riconfigurabile in qualsiasi momento da Impostazioni)</div>
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar Navigation (Top Navbar) -->
         <aside>
@@ -1808,6 +1848,13 @@
                     </button>
                 </div>
 
+                <!-- Ruolo Dispositivo (Server / Client) -->
+                <button id="device-role-btn" class="btn btn-outline" title="Ruolo dispositivo (Server / Client) - Clicca per cambiare" onclick="app.showDeviceRoleModal()"
+                    style="padding: 5px 8px; font-size: 0.74rem; font-weight: 700; border-color: rgba(52, 211, 153, 0.5); color: #34d399; display: flex; align-items: center; gap: 4px; flex-shrink: 0; background: rgba(52, 211, 153, 0.08); border-radius: 8px;">
+                    <span id="device-role-icon">🖥️</span>
+                    <span id="device-role-label">Server</span>
+                </button>
+
                 <button id="cloud-indicator-btn" class="btn btn-outline" title="Stato Sincronizzazione" onclick="app.cloudSync.syncEnabled && !app.cloudSync.accessToken ? app.cloudSync.login() : app.showPage('database')"
                     style="padding: 5px 8px; font-size: 0.74rem; border-color: rgba(239, 68, 68, 0.5); color: var(--danger); display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                     <span id="cloud-indicator-icon">☁️</span>
@@ -1878,7 +1925,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.5.11"; // Auto-sanitizzazione quota Espinoza a 21/08/26 e refresh PWA
+        const APP_VERSION = "2.6.0"; // Architettura Multi-Dispositivo Server/Client, Last-Write-Wins, Auto-PDF
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -1938,7 +1985,9 @@
                     autoSaveHours: 0,
                     maxSnapshots: 5,
                     saldi_iniziali: [],
-                    backup_sequence_counter: 0
+                    backup_sequence_counter: 0,
+                    device_role: "server", // "server" (PC banco/principale) o "client" (istruttore/smartphone)
+                    show_splashscreen: true
                 },
                 guideMode: false,
                 sent_reminders: {}, // Structure: { "YYYY-MM-DD": ["socioId_type", ...] }
@@ -1955,6 +2004,231 @@
                 corsi_colori: { "Pole Dance": "#ec4899", "Body Building": "#ef4444" } // Colori predefiniti e personalizzati per corso
             },
 
+        // --- ARCHITETTURA MULTI-DISPOSITIVO (SERVER & CLIENT) & TIMESTAMP ---
+        touchEntity(entity) {
+            if (entity && typeof entity === 'object') {
+                entity.updated_at = new Date().toISOString();
+            }
+            return entity;
+        },
+
+        getDeviceRole() {
+            return localStorage.getItem('asd_device_role') || (this.state && this.state.settings && this.state.settings.device_role) || 'server';
+        },
+
+        setDeviceRole(role) {
+            if (role !== 'server' && role !== 'client') role = 'server';
+            localStorage.setItem('asd_device_role', role);
+            if (!this.state.settings) this.state.settings = {};
+            this.state.settings.device_role = role;
+            this.saveAll();
+            this.updateDeviceRoleUI();
+            if (this.state.currentPage === 'database') {
+                this.renderDatabase();
+            }
+            const label = role === 'server' ? '🖥️ Server (Principale)' : '📱 Client (Secondario)';
+            this.toast(`Ruolo dispositivo impostato su: ${label}`, 'success');
+            if (role === 'server') {
+                this.autoGenerateMissingPDFs();
+            }
+        },
+
+        updateDeviceRoleUI() {
+            const role = this.getDeviceRole();
+            const btn = document.getElementById('device-role-btn');
+            const icon = document.getElementById('device-role-icon');
+            const label = document.getElementById('device-role-label');
+            if (btn && icon && label) {
+                if (role === 'server') {
+                    icon.textContent = '🖥️';
+                    label.textContent = 'Server';
+                    btn.style.borderColor = 'rgba(52, 211, 153, 0.5)';
+                    btn.style.color = '#34d399';
+                    btn.style.background = 'rgba(52, 211, 153, 0.08)';
+                    btn.title = 'Ruolo: Server (PC Banco Palestra - Conserva documenti e auto-genera PDF). Clicca per cambiare.';
+                } else {
+                    icon.textContent = '📱';
+                    label.textContent = 'Client';
+                    btn.style.borderColor = 'rgba(96, 165, 250, 0.5)';
+                    btn.style.color = '#60a5fa';
+                    btn.style.background = 'rgba(96, 165, 250, 0.08)';
+                    btn.title = 'Ruolo: Client (Smartphone/Istruttore - Nessun PDF locale, sync dati Google Drive). Clicca per cambiare.';
+                }
+            }
+
+            const pill = document.getElementById('settings-device-role-pill');
+            if (pill) {
+                pill.style.background = role === 'server' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(96, 165, 250, 0.2)';
+                pill.style.color = role === 'server' ? '#34d399' : '#60a5fa';
+                pill.style.borderColor = role === 'server' ? '#34d399' : '#60a5fa';
+                pill.textContent = role === 'server' ? '🖥️ Server (PC Banco)' : '📱 Client (Istruttore / Secondario)';
+            }
+        },
+
+        showDeviceRoleModal() {
+            const currentRole = this.getDeviceRole();
+            this.openModal('💻 Ruolo di questo Dispositivo', `
+                <div style="padding: 0.5rem 0;">
+                    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+                        Configura la funzione di questa postazione. Il ruolo è specifico per questo dispositivo e determina dove vengono salvati e generati i documenti cartacei.
+                    </p>
+
+                    <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+                        <!-- Opzione Server -->
+                        <div onclick="app.setDeviceRole('server'); app.closeModal();" style="cursor: pointer; padding: 1.15rem; border-radius: 12px; border: 2px solid ${currentRole === 'server' ? '#10b981' : 'rgba(255,255,255,0.1)'}; background: ${currentRole === 'server' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.03)'}; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <strong style="color: #34d399; font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                                    <span>🖥️</span> DISPOSITIVO SERVER (PC Banco Palestra)
+                                </strong>
+                                ${currentRole === 'server' ? '<span class="badge" style="background:#10b981; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px;">ATTIVO</span>' : ''}
+                            </div>
+                            <p style="font-size: 0.83rem; color: var(--text-muted); margin: 0 0 8px;">
+                                Da selezionare sul <strong>computer fisso o portatile principale della segreteria/reception</strong>.
+                            </p>
+                            <ul style="font-size: 0.8rem; color: var(--text-main); margin: 0; padding-left: 18px; line-height: 1.5;">
+                                <li>Conserva l'archivio cartaceo ufficiale (PDF, Excel, Ricevute) nella cartella locale.</li>
+                                <li><strong>Auto-Generazione Ricevute:</strong> genera automaticamente in background i PDF delle ricevute emesse dagli istruttori su smartphone o altri client non appena sincronizzati!</li>
+                                <li>Gestisce i backup di sicurezza fisici in formato JSON.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Opzione Client -->
+                        <div onclick="app.setDeviceRole('client'); app.closeModal();" style="cursor: pointer; padding: 1.15rem; border-radius: 12px; border: 2px solid ${currentRole === 'client' ? '#3b82f6' : 'rgba(255,255,255,0.1)'}; background: ${currentRole === 'client' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.03)'}; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <strong style="color: #60a5fa; font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                                    <span>📱</span> DISPOSITIVO CLIENT (Istruttore / Secondario)
+                                </strong>
+                                ${currentRole === 'client' ? '<span class="badge" style="background:#3b82f6; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px;">ATTIVO</span>' : ''}
+                            </div>
+                            <p style="font-size: 0.83rem; color: var(--text-muted); margin: 0 0 8px;">
+                                Da selezionare su <strong>Smartphone, Tablet o PC portatili degli istruttori</strong>.
+                            </p>
+                            <ul style="font-size: 0.8rem; color: var(--text-main); margin: 0; padding-left: 18px; line-height: 1.5;">
+                                <li>Leggero, veloce e senza dipendenza da cartelle locali su disco.</li>
+                                <li>Permette di emettere ricevute e registrare dati al volo: si sincronizza con Google Drive.</li>
+                                <li>I PDF cartacei verranno prodotti e conservati dal Server in palestra senza bisogno di inviarli a mano!</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button class="btn btn-primary" onclick="app.closeModal()">Chiudi</button>
+                    </div>
+                </div>
+            `);
+        },
+
+        // --- SPLASH SCREEN ALL'AVVIO ---
+        checkSplashScreen() {
+            const show = localStorage.getItem('asd_show_splashscreen') !== 'false' && (!this.state.settings || this.state.settings.show_splashscreen !== false);
+            if (!show) return;
+            this.showSplashScreen(false);
+        },
+
+        showSplashScreen(isPreview = false) {
+            const overlay = document.getElementById('splash-screen-overlay');
+            if (!overlay) return;
+            const role = this.getDeviceRole();
+            const roleBadge = document.getElementById('splash-role-badge');
+            if (roleBadge) {
+                roleBadge.innerHTML = role === 'server' ? '🖥️ Server' : '📱 Client';
+                roleBadge.style.color = role === 'server' ? '#34d399' : '#60a5fa';
+            }
+            const verBadge = document.getElementById('splash-version-badge');
+            if (verBadge) verBadge.textContent = 'v' + APP_VERSION;
+            
+            const cb = document.getElementById('splash-dont-show-checkbox');
+            if (cb) {
+                cb.checked = localStorage.getItem('asd_show_splashscreen') === 'false';
+            }
+
+            const pbar = document.getElementById('splash-progress-bar');
+            if (pbar) pbar.style.width = '0%';
+
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+            overlay.style.visibility = 'visible';
+
+            setTimeout(() => {
+                if (pbar) pbar.style.width = '100%';
+            }, 60);
+
+            if (this._splashTimer) clearTimeout(this._splashTimer);
+            const duration = isPreview ? 2500 : 1600;
+            this._splashTimer = setTimeout(() => {
+                this.dismissSplashScreen();
+            }, duration);
+        },
+
+        dismissSplashScreen() {
+            const overlay = document.getElementById('splash-screen-overlay');
+            if (!overlay) return;
+            if (this._splashTimer) clearTimeout(this._splashTimer);
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                overlay.style.visibility = 'hidden';
+            }, 400);
+        },
+
+        onSplashDontShowChange(checked) {
+            const show = !checked;
+            localStorage.setItem('asd_show_splashscreen', show.toString());
+            if (!this.state.settings) this.state.settings = {};
+            this.state.settings.show_splashscreen = show;
+            this.saveAll();
+        },
+
+        toggleSplashSetting(show) {
+            localStorage.setItem('asd_show_splashscreen', show.toString());
+            if (!this.state.settings) this.state.settings = {};
+            this.state.settings.show_splashscreen = show;
+            this.saveAll();
+            this.toast(`Schermata di avvio ${show ? 'attivata' : 'disattivata'}.`, 'info');
+        },
+
+        // --- AUTO-GENERATORE PDF RICEVUTE MANCANTI (SERVER) ---
+        async autoGenerateMissingPDFs(silent = true) {
+            if (this.getDeviceRole() !== 'server') return;
+            try {
+                const dirHandle = await this.getOutputFolder();
+                if (!dirHandle) return;
+                let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') return;
+
+                const list = (this.state.ricevute || []).filter(r => 
+                    r.tipo !== 'Compenso Sportivo' && 
+                    !(r.cartacea === true || String(r.cartacea) === 'true')
+                );
+
+                let generatedCount = 0;
+                for (const r of list) {
+                    const exists = await this.checkReceiptFileExists(r, dirHandle);
+                    if (!exists) {
+                        try {
+                            await this.generatePDF(r.id);
+                            generatedCount++;
+                        } catch(errGen) {
+                            console.warn(`[Auto-PDF] Impossibile generare PDF per ricevuta ${r.numero}:`, errGen);
+                        }
+                    } else {
+                        if (!r.salvata_in_cartella) {
+                            r.salvata_in_cartella = true;
+                        }
+                    }
+                }
+
+                if (generatedCount > 0) {
+                    this.saveAll();
+                    this.toast(`🖥️ Server: Generati e archiviati ${generatedCount} PDF ricevute emesse da Client!`, 'success');
+                    if (this.state.currentPage === 'ricevute') {
+                        this.filterRicevute();
+                    }
+                }
+            } catch(e) {
+                console.warn('[Auto-PDF] Errore verifica o generazione automatica:', e);
+            }
+        },
             
         forceFullscreen(overlay) {
             try {
@@ -2963,8 +3237,11 @@
 
         trackDeletion(id) {
             if (!this.state.deletedIds) this.state.deletedIds = [];
-            if (id && !this.state.deletedIds.includes(id)) {
-                this.state.deletedIds.push(id);
+            if (id !== undefined && id !== null) {
+                const sId = String(id);
+                if (!this.state.deletedIds.some(x => String(x) === sId)) {
+                    this.state.deletedIds.push(sId);
+                }
             }
         },
 
@@ -3083,8 +3360,13 @@
                 // Inizializza Sistema Post-it Giallo Fluo & Promemoria
                 this.initPostitSystem();
 
+                // Inizializza Ruolo Dispositivo & Schermata Splash
+                this.updateDeviceRoleUI();
+                this.checkSplashScreen();
+                if (this.getDeviceRole() === 'server') {
+                    setTimeout(() => this.autoGenerateMissingPDFs(), 2500);
+                }
 
-                
                 // Force maximize window size if in app mode
                 try {
                     window.moveTo(0, 0);
@@ -4643,23 +4925,56 @@
                     const cloudData = await res.json();
                     
                     if (cloudData) {
-                        // Logica di Fusione (Merge)
+                        // Logica di Fusione (Merge) Smart con Timestamp / Last-Write-Wins
                         const mergeArrays = (localArr, cloudArr) => {
                             const map = new Map();
-                            const deleted = new Set(app.state.deletedIds || []);
-                            if (cloudData.deletedIds) cloudData.deletedIds.forEach(id => deleted.add(id));
+                            const deleted = new Set((app.state.deletedIds || []).map(x => String(x)));
+                            if (cloudData.deletedIds) cloudData.deletedIds.forEach(id => deleted.add(String(id)));
                             
+                            const getTimestamp = (item) => {
+                                if (!item) return 0;
+                                if (item.updated_at) {
+                                    const t = new Date(item.updated_at).getTime();
+                                    if (!isNaN(t)) return t;
+                                }
+                                const fallback = item.data_modifica || item.data || item.data_emissione || item.dataIscrizione || item.data_creazione;
+                                if (fallback) {
+                                    const t = new Date(fallback).getTime();
+                                    if (!isNaN(t)) return t;
+                                }
+                                return 0;
+                            };
+
+                            // Inserisci prima elementi dal Cloud
                             (cloudArr || []).forEach(item => {
-                                if (item.id && !deleted.has(item.id)) map.set(item.id, item);
+                                if (item && item.id !== undefined && item.id !== null && !deleted.has(String(item.id))) {
+                                    map.set(String(item.id), item);
+                                }
                             });
-                            (localArr || []).forEach(item => {
-                                if (item.id && !deleted.has(item.id)) map.set(item.id, item);
+
+                            // Confronta con elementi locali (Last-Write-Wins)
+                            (localArr || []).forEach(localItem => {
+                                if (!localItem || localItem.id === undefined || localItem.id === null || deleted.has(String(localItem.id))) return;
+                                const key = String(localItem.id);
+                                if (!map.has(key)) {
+                                    map.set(key, localItem);
+                                } else {
+                                    const cloudItem = map.get(key);
+                                    const localTime = getTimestamp(localItem);
+                                    const cloudTime = getTimestamp(cloudItem);
+                                    if (localTime >= cloudTime) {
+                                        map.set(key, localItem);
+                                    } else {
+                                        map.set(key, cloudItem);
+                                    }
+                                }
                             }); 
                             return Array.from(map.values());
                         };
                         
-                        app.state.deletedIds = Array.from(new Set([...(app.state.deletedIds || []), ...(cloudData.deletedIds || [])]));
+                        app.state.deletedIds = Array.from(new Set([...(app.state.deletedIds || []).map(x => String(x)), ...(cloudData.deletedIds || []).map(x => String(x))]));
                         
+                        // Fusione di tutti gli array del database
                         app.state.soci = mergeArrays(app.state.soci, cloudData.soci);
                         try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci)); } catch(e) {}
                         app.syncAthletesIframe();
@@ -4667,6 +4982,38 @@
                         app.state.corsi = mergeArrays(app.state.corsi, cloudData.corsi);
                         app.state.istruttori = mergeArrays(app.state.istruttori, cloudData.istruttori);
                         app.state.primanota = mergeArrays(app.state.primanota, cloudData.primanota);
+                        
+                        if (cloudData.magazzino || app.state.magazzino) {
+                            app.state.magazzino = mergeArrays(app.state.magazzino || [], cloudData.magazzino || []);
+                        }
+                        if (cloudData.eventi || app.state.eventi) {
+                            app.state.eventi = mergeArrays(app.state.eventi || [], cloudData.eventi || []);
+                        }
+                        if (cloudData.rimborsi || app.state.rimborsi) {
+                            app.state.rimborsi = mergeArrays(app.state.rimborsi || [], cloudData.rimborsi || []);
+                        }
+                        if (cloudData.postit || app.state.postit) {
+                            app.state.postit = mergeArrays(app.state.postit || [], cloudData.postit || []);
+                            try { localStorage.setItem('asd_postit', JSON.stringify(app.state.postit)); } catch(e) {}
+                            app.renderPostit();
+                            app.updatePostitBadge();
+                        }
+                        if (cloudData.calendario_note || app.state.calendario_note) {
+                            app.state.calendario_note = mergeArrays(app.state.calendario_note || [], cloudData.calendario_note || []);
+                            try { localStorage.setItem('asd_calendario_note', JSON.stringify(app.state.calendario_note)); } catch(e) {}
+                        }
+                        if (cloudData.quote_presets && cloudData.quote_presets.length) {
+                            app.state.quote_presets = mergeArrays(app.state.quote_presets || [], cloudData.quote_presets);
+                        }
+                        if (cloudData.sale && cloudData.sale.length) {
+                            app.state.sale = mergeArrays(app.state.sale || [], cloudData.sale);
+                        }
+                        if (cloudData.corsi_disponibili && cloudData.corsi_disponibili.length) {
+                            app.state.corsi_disponibili = mergeArrays(app.state.corsi_disponibili || [], cloudData.corsi_disponibili);
+                        }
+                        if (cloudData.verbali_archive || app.state.verbali_archive) {
+                            app.state.verbali_archive = mergeArrays(app.state.verbali_archive || [], cloudData.verbali_archive || []);
+                        }
                         
                         // Merge delle immagini localStorage (il locale vince se presente)
                         if (cloudData._localStorageBackup) {
@@ -4682,22 +5029,29 @@
                             }
                         }
 
+                        // Preserva ruolo dispositivo locale e preferenza splashscreen
+                        const myDeviceRole = app.getDeviceRole();
+                        const mySplashPref = localStorage.getItem('asd_show_splashscreen');
                         app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
+                        app.state.settings.device_role = myDeviceRole;
+                        if (mySplashPref !== null) {
+                            app.state.settings.show_splashscreen = (mySplashPref !== 'false');
+                        }
                         app.sanitizeSettings();
                         
                         await app.idbSet('main_state', app.state);
                         
+                        // Se il dispositivo è Server, genera automaticamente i PDF delle ricevute mancanti emesse da Client
+                        if (app.getDeviceRole() === 'server') {
+                            setTimeout(() => app.autoGenerateMissingPDFs(), 600);
+                        }
+                        
                         if (!silent) {
                             await this.uploadBackup(false, true); // skipMerge = true
                             app.toast('Dati fusi e salvati con successo!', 'success');
-                            
-                            // Aggiorniamo le viste anziché ricaricare violentemente la pagina
-                            
                             app.showPage(app.state.currentPage || 'dashboard');
                         } else {
-                            // Se non ci sono modali aperti (l'utente non sta editando niente di bloccante), aggiorniamo in modo trasparente
                             if (!document.querySelector('.modal')) {
-                                
                                 app.showPage(app.state.currentPage || 'dashboard');
                             }
                         }
@@ -4718,7 +5072,14 @@
                     const data = await res.json();
                     
                     if (data) {
+                        const myRole = app.getDeviceRole();
+                        const mySplash = localStorage.getItem('asd_show_splashscreen');
                         app.state = data;
+                        if (!app.state.settings) app.state.settings = {};
+                        app.state.settings.device_role = myRole;
+                        if (mySplash !== null) {
+                            app.state.settings.show_splashscreen = (mySplash !== 'false');
+                        }
                         try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci || [])); } catch(e) {}
                         app.syncAthletesIframe();
                         if (data._localStorageBackup) {
@@ -4726,8 +5087,13 @@
                             if (data._localStorageBackup.asd_esercizi_images) localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
                         }
                         await app.idbSet('main_state', app.state);
-                        app.toast('Cloud: Dati scaricati con successo.', 'success');
                         
+                        // Se il dispositivo è Server, auto-genera PDF ricevute mancanti
+                        if (app.getDeviceRole() === 'server') {
+                            setTimeout(() => app.autoGenerateMissingPDFs(), 600);
+                        }
+
+                        app.toast('Cloud: Dati scaricati con successo.', 'success');
                         app.showPage(app.state.currentPage || 'dashboard');
                     }
                 } catch (e) {
@@ -5302,6 +5668,7 @@
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('verbali')">8. Governance, Verbali & Direttivo</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Cariche</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Excel</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo (Server & Client)</button></li>
                                 </ul>
                             </div>
                             
@@ -5429,6 +5796,39 @@
                                     <li><strong>Backup Completo (.JSON):</strong> Esportazione ed importazione con un click dell'intero database dell'associazione (soci, movimenti, verbali, configurazioni).</li>
                                     <li><strong>Esportazione Excel Universal:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
                                 </ul>`;
+                        break;
+                    case 'multidevice':
+                        html = `<h2>11. Architettura Multi-Dispositivo (Server & Client)</h2>
+                                <p>Il gestionale supporta un'architettura ibrida collaborativa per consentire l'utilizzo contemporaneo o distribuito su più postazioni (PC reception, smartphone o tablet degli istruttori) senza rischio di perdere dati o sovrascrivere ricevute.</p>
+                                
+                                <h3>I Due Ruoli del Dispositivo:</h3>
+                                <ul>
+                                    <li><strong>🖥️ Dispositivo Server (PC Banco Palestra / Principale):</strong>
+                                        <p>È la postazione centrale della palestra, collegata alla cartella documenti locale su disco fisso.</p>
+                                        <ul>
+                                            <li>Conserva fisicamente tutti i file PDF ufficiali generati (ricevute soci, verbali assemblee, compensi, esportazioni Excel).</li>
+                                            <li><strong>Auto-Generatore Intelligente di Ricevute PDF:</strong> quando un istruttore da smartphone o dispositivo client registra una ricevuta per un socio, l'operazione viene sincronizzata istantaneamente sul Cloud Google Drive. Non appena il PC Server effettua la sincronizzazione (o all'avvio), il sistema rileva in automatico che il file PDF non è ancora presente nella cartella del PC e lo genera e archivia da solo, pronto per la stampa cartacea o consultazione! Non serve alcun passaggio manuale di file.</li>
+                                            <li>Gestisce i backup di sicurezza fisici in formato <code>.json</code> e la chiusura dell'esercizio contabile.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>📱 Dispositivo Client (Istruttori / Smartphone / Portatili):</strong>
+                                        <p>Progettato per la massima rapidità e leggerezza in mobilità.</p>
+                                        <ul>
+                                            <li>Non richiede di selezionare o conservare cartelle documenti pesanti sul dispositivo.</li>
+                                            <li>Consente all'istruttore o collaboratore di emettere ricevute, registrare soci, verificare scadenze o prendere appunti post-it al volo.</li>
+                                            <li>I dati vengono scambiati in tempo reale in formato testo/JSON leggerissimo tramite Google Drive.</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+
+                                <h3>Regola del Timestamp (Ultima Modifica Vince):</h3>
+                                <p>Ogni singola entità del gestionale (soci, ricevute, prima nota, corsi, note, compensi, magazzino, eventi e post-it) memorizza automaticamente la data e l'orario esatto dell'ultima modifica (<code>updated_at</code>). Durante la fusione dei dati (merge cloud), se due dispositivi hanno modificato la stessa anagrafica o lo stesso elemento, prevale sempre la versione con il timestamp più recente, evitando la perdita del lavoro svolto.</p>
+
+                                <h3>Ripristino di un Backup JSON su un Dispositivo:</h3>
+                                <p>Quando ripristini un file di backup JSON d'emergenza, il gestionale ti chiederà se desideri forzare immediatamente l'invio al Cloud Google Drive: confermando, la copia online verrà allineata al backup ripristinato evitando conflitti con precedenti timestamp.</p>
+
+                                <h3>Procedura di Chiusura / Uscita:</h3>
+                                <p>Al termine del lavoro, è sufficiente cliccare sul pulsante <strong>Esci</strong> in alto a destra: il gestionale eseguirà automaticamente il salvataggio dei dati in memoria locale e la sincronizzazione sicura con Google Drive prima della chiusura.</p>`;
                         break;
                 }
                 contentDiv.innerHTML = html;
@@ -6182,7 +6582,7 @@
                 }
 
                 s.note = newNote;
-                s.updated_at = Date.now();
+                this.touchEntity(s);
                 this.saveAll();
                 this.closeModal();
                 this.renderSoci();
@@ -6365,7 +6765,7 @@
 
             const newText = textarea.value.trim();
             s.note = newText;
-            s.updated_at = Date.now();
+            this.touchEntity(s);
 
             this.saveAll();
             this.toast('💾 Nota socio salvata con successo!', 'success');
@@ -6390,7 +6790,7 @@
 
             if (confirm(`Sei sicuro di voler eliminare la nota per ${s.cognome || ''} ${s.nome || ''}?`)) {
                 s.note = '';
-                s.updated_at = Date.now();
+                this.touchEntity(s);
                 this.saveAll();
                 this.hideSocioPostitPopup(true);
                 this.renderSoci();
@@ -6416,7 +6816,7 @@
                 const data = Object.fromEntries(formData.entries());
                 this.sanitizeFormData(data);
                 const editId = parseInt(e.target.dataset.editId);
-                data.updated_at = Date.now();
+                this.touchEntity(data);
 
                 // Normalizza tesseramento federale (Anno sportivo: 1 Set - 31 Ago)
                 if (data.tesseramento_data) {
@@ -8560,9 +8960,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.state.primanota[txnEntrata].importo = importoLordo;
                 this.state.primanota[txnEntrata].metodo = metodo;
                 this.state.primanota[txnEntrata].descrizione = descrizioneEntrata;
+                this.touchEntity(this.state.primanota[txnEntrata]);
             } else {
                 const recTs = parseFloat(ricevuta.id) || Date.now();
-                this.state.primanota.push({
+                const newTxn = {
                     id: 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5),
                     created_at: recTs,
                     data: ricevuta.data,
@@ -8572,7 +8973,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     descrizione: descrizioneEntrata,
                     importo: importoLordo,
                     riferimento: refEntrata
-                });
+                };
+                this.touchEntity(newTxn);
+                this.state.primanota.push(newTxn);
             }
             
             // GESTIONE USCITA (Commissioni)
@@ -8583,9 +8986,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     this.state.primanota[txnUscita].importo = commissioni;
                     this.state.primanota[txnUscita].metodo = metodo;
                     this.state.primanota[txnUscita].descrizione = descUscita;
+                    this.touchEntity(this.state.primanota[txnUscita]);
                 } else {
                     const recTs = parseFloat(ricevuta.id) || Date.now();
-                    this.state.primanota.push({
+                    const newComm = {
                         id: 'txn_comm_' + Date.now() + Math.random().toString(36).substr(2, 5),
                         created_at: recTs,
                         data: ricevuta.data,
@@ -8595,7 +8999,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         descrizione: descUscita,
                         importo: commissioni,
                         riferimento: refUscita
-                    });
+                    };
+                    this.touchEntity(newComm);
+                    this.state.primanota.push(newComm);
                 }
             } else {
                 // Se prima c'erano commissioni e ora no, eliminiamo la transazione di uscita
@@ -8700,6 +9106,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 receipt.durata = data.durata || undefined;
                 receipt.anno = newAnno;
                 receipt.numero = newNum;
+                this.touchEntity(receipt);
             } else {
                 const targetNum = parseInt(data.numero);
                 const targetAnno = parseInt(data.anno);
@@ -8713,6 +9120,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (didShift) {
                     existingToShift.forEach(r => {
                         r.numero += 1;
+                        this.touchEntity(r);
                         this.syncPrimaNotaFromRicevuta(r);
                     });
                 }
@@ -8738,6 +9146,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     inizio_validita: data.inizio_validita || undefined,
                     durata: data.durata || undefined,
                 };
+                this.touchEntity(receipt);
                 this.state.ricevute.push(receipt);
             }
 
@@ -8791,6 +9200,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if (hasQuota && socio && targetScadenza) {
                 socio.quota_scadenza = targetScadenza;
                 socio.stato = 'ATTIVO';
+                this.touchEntity(socio);
             }
 
             // Se la ricevuta include tesseramento, rinnova automaticamente il tesseramento del socio
@@ -8809,13 +9219,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 socio.tesseramento_data = tessDate;
                 socio.tesseramento_scadenza = `${expYear}-08-31`;
                 socio.stato = 'ATTIVO';
+                this.touchEntity(socio);
             }
 
             // Aggiorna / aggrega note interne socio in anagrafica
             const socioNoteInput = document.getElementById('receipt-socio-note');
             if (socio && socioNoteInput) {
                 socio.note = socioNoteInput.value.trim();
-                socio.updated_at = Date.now();
+                this.touchEntity(socio);
             }
 
             // Sincronizza Prima Nota e Anagrafica Soci
@@ -8825,8 +9236,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             this.saveAll();
 
             const wasShifted = (typeof didShift !== 'undefined' && didShift);
+            const isServerDevice = this.getDeviceRole() === 'server';
             if (isMultiplo && !editId) {
-                if (!receipt.cartacea) {
+                if (!receipt.cartacea && isServerDevice) {
                     if (wasShifted) {
                         try { await this.allineaCartellaRicevutePDF(targetAnno, true); } catch(ePdf) { console.error(ePdf); }
                     } else {
@@ -8851,7 +9263,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const socioSel = form.querySelector('[name="socio_id"]');
                 if (socioSel) socioSel.focus();
             } else {
-                if (!receipt.cartacea) {
+                if (!receipt.cartacea && isServerDevice) {
                     if (wasShifted) {
                         try { await this.allineaCartellaRicevutePDF(targetAnno, true); } catch(ePdf) { console.error(ePdf); }
                     } else {
@@ -8870,10 +9282,11 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const r = this.state.ricevute.find(x => x.id == id || String(x.id) === String(id));
                 if (r) {
                     r.annullata = true;
+                    this.touchEntity(r);
                     this.removePrimaNotaFromRicevuta(r.id);
                     this.syncSociFromRicevute();
                     this.saveAll();
-                    if (!r.cartacea) {
+                    if (!r.cartacea && (this.getDeviceRole() === 'server' || this.directoryHandle)) {
                         try {
                             await this.generatePDF(r.id);
                         } catch(ePdf) {}
@@ -12049,7 +12462,7 @@ ${annullataBanner}
                     }
 
                     // Riga 1: Uscita (Origine)
-                    this.state.primanota.push({
+                    const txnOut = {
                         id: 'txn_' + groupId + '_OUT',
                         data: dataVal,
                         tipo: 'Uscita',
@@ -12059,10 +12472,12 @@ ${annullataBanner}
                         importo: importoVal,
                         riferimento: 'GIROCONTO_' + groupId + '_OUT',
                         giroconto_group: groupId
-                    });
+                    };
+                    this.touchEntity(txnOut);
+                    this.state.primanota.push(txnOut);
 
                     // Riga 2: Entrata (Destinazione)
-                    this.state.primanota.push({
+                    const txnIn = {
                         id: 'txn_' + groupId + '_IN',
                         data: dataVal,
                         tipo: 'Entrata',
@@ -12072,7 +12487,9 @@ ${annullataBanner}
                         importo: importoVal,
                         riferimento: 'GIROCONTO_' + groupId + '_IN',
                         giroconto_group: groupId
-                    });
+                    };
+                    this.touchEntity(txnIn);
+                    this.state.primanota.push(txnIn);
 
                     this.toast(editId ? 'Giroconto aggiornato (entrambe le voci riallineate)' : 'Giroconto registrato (create voci collegate Cassa e Banca)', 'success');
                 } else {
@@ -12090,11 +12507,12 @@ ${annullataBanner}
                             this.state.primanota[idx].categoria = categoriaVal;
                             this.state.primanota[idx].descrizione = descrizioneVal;
                             this.state.primanota[idx].importo = importoVal;
+                            this.touchEntity(this.state.primanota[idx]);
                         }
                         this.toast('Movimento aggiornato con successo', 'success');
                     } else {
                         targetTxnId = 'txn_' + Date.now() + Math.random().toString(36).substr(2, 5);
-                        this.state.primanota.push({
+                        const newTxn = {
                             id: targetTxnId,
                             created_at: Date.now(),
                             data: dataVal,
@@ -12104,7 +12522,9 @@ ${annullataBanner}
                             descrizione: descrizioneVal,
                             importo: importoVal,
                             riferimento: 'MANUALE'
-                        });
+                        };
+                        this.touchEntity(newTxn);
+                        this.state.primanota.push(newTxn);
                         this.toast('Movimento salvato con successo', 'success');
                     }
                     highlightId = targetTxnId;
@@ -12143,11 +12563,14 @@ ${annullataBanner}
                             };
                             if (commIdx >= 0) {
                                 this.state.primanota[commIdx] = { ...this.state.primanota[commIdx], ...commData };
+                                this.touchEntity(this.state.primanota[commIdx]);
                             } else {
-                                this.state.primanota.push({
+                                const commTxn = {
                                     id: 'txn_comm_' + Date.now() + Math.random().toString(36).substr(2, 5),
                                     ...commData
-                                });
+                                };
+                                this.touchEntity(commTxn);
+                                this.state.primanota.push(commTxn);
                             }
                         } else if (commIdx >= 0) {
                             this.state.primanota.splice(commIdx, 1);
@@ -12723,6 +13146,7 @@ ${annullataBanner}
                     nascosto: false
                 };
 
+                this.touchEntity(postit);
                 this.state.postit.push(postit);
                 this.postitVisible = true;
                 localStorage.setItem('asd_postit_visible', 'true');
@@ -12834,6 +13258,7 @@ ${annullataBanner}
                 const p = (this.state.postit || []).find(x => x.id === id);
                 if (p) {
                     p.testo = text;
+                    this.touchEntity(p);
                     if (this._postitSaveTimeout) clearTimeout(this._postitSaveTimeout);
                     this._postitSaveTimeout = setTimeout(() => {
                         this.saveAll();
@@ -12847,6 +13272,7 @@ ${annullataBanner}
                 
                 const doDelete = () => {
                     this.state.postit = (this.state.postit || []).filter(x => x.id !== id);
+                    this.trackDeletion(id);
                     this.saveAll();
                     this.renderPostit();
                     this.updatePostitBadge();
@@ -12866,6 +13292,7 @@ ${annullataBanner}
                 const p = (this.state.postit || []).find(x => x.id === id);
                 if (p) {
                     p.fatto = !p.fatto;
+                    this.touchEntity(p);
                     this.saveAll();
                     this.renderPostit();
                     if (p.fatto) {
@@ -16238,6 +16665,83 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
 
+                            <!-- 0. Ruolo Dispositivo & Schermata di Benvenuto -->
+                            <div class="glass-card" style="border-left: 4px solid #10b981; grid-column: 1 / -1;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 1.25rem;">
+                                    <div>
+                                        <h3 style="margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+                                            <span>💻</span> Ruolo Dispositivo & Schermata di Avvio
+                                        </h3>
+                                        <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+                                            Configura se questa postazione opera come <strong>Server Principale</strong> o come <strong>Client Secondario</strong> nell'architettura multi-dispositivo dell'ASD.
+                                        </p>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 0.85rem; color: var(--text-muted);">Ruolo attuale:</span>
+                                        <span id="settings-device-role-pill" class="badge" style="padding: 6px 14px; font-size: 0.85rem; font-weight: 700; border-radius: 20px; background: ${this.getDeviceRole() === 'server' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(96, 165, 250, 0.2)'}; color: ${this.getDeviceRole() === 'server' ? '#34d399' : '#60a5fa'}; border: 1px solid ${this.getDeviceRole() === 'server' ? '#34d399' : '#60a5fa'};">
+                                            ${this.getDeviceRole() === 'server' ? '🖥️ Server (PC Banco)' : '📱 Client (Istruttore / Secondario)'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+                                    <!-- Card Server -->
+                                    <div onclick="app.setDeviceRole('server')" style="cursor: pointer; padding: 1.2rem; border-radius: 12px; border: 2px solid ${this.getDeviceRole() === 'server' ? '#10b981' : 'rgba(255,255,255,0.08)'}; background: ${this.getDeviceRole() === 'server' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)'}; transition: all 0.2s;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                            <strong style="color: #34d399; font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                                                <span>🖥️</span> DISPOSITIVO SERVER (PC Banco Palestra)
+                                            </strong>
+                                            <input type="radio" name="device_role_radio" ${this.getDeviceRole() === 'server' ? 'checked' : ''} style="accent-color: #10b981; width: 18px; height: 18px; cursor: pointer;">
+                                        </div>
+                                        <p style="font-size: 0.83rem; color: var(--text-muted); margin: 0 0 10px;">
+                                            Consigliato per il <strong>computer fisso o portatile della reception / banco palestra</strong>.
+                                        </p>
+                                        <ul style="font-size: 0.82rem; color: var(--text-main); margin: 0; padding-left: 18px; line-height: 1.5;">
+                                            <li>Conserva fisicamente tutti i file PDF e i documenti ufficiali nella cartella documenti.</li>
+                                            <li><strong>Auto-Generatore PDF:</strong> rileva e genera in automatico i PDF delle ricevute emesse dagli istruttori su smartphone o client secondari!</li>
+                                            <li>Gestisce i backup JSON di sicurezza e la chiusura contabile.</li>
+                                        </ul>
+                                    </div>
+
+                                    <!-- Card Client -->
+                                    <div onclick="app.setDeviceRole('client')" style="cursor: pointer; padding: 1.2rem; border-radius: 12px; border: 2px solid ${this.getDeviceRole() === 'client' ? '#3b82f6' : 'rgba(255,255,255,0.08)'}; background: ${this.getDeviceRole() === 'client' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.02)'}; transition: all 0.2s;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                            <strong style="color: #60a5fa; font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                                                <span>📱</span> DISPOSITIVO CLIENT (Istruttore / Secondario)
+                                            </strong>
+                                            <input type="radio" name="device_role_radio" ${this.getDeviceRole() === 'client' ? 'checked' : ''} style="accent-color: #3b82f6; width: 18px; height: 18px; cursor: pointer;">
+                                        </div>
+                                        <p style="font-size: 0.83rem; color: var(--text-muted); margin: 0 0 10px;">
+                                            Consigliato per <strong>Smartphone, Tablet, Istruttori o PC portatili secondari</strong>.
+                                        </p>
+                                        <ul style="font-size: 0.82rem; color: var(--text-main); margin: 0; padding-left: 18px; line-height: 1.5;">
+                                            <li>Leggero, veloce e senza dipendenza da cartelle documenti locali.</li>
+                                            <li>Emette ricevute, gestisce soci e presenze sincronizzandosi unicamente con Google Drive.</li>
+                                            <li>I file PDF ufficiali verranno prodotti e archiviati dal Server PC in palestra.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Toggle Splash Screen -->
+                                <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                                            <span>✨</span> Schermata di Benvenuto (Splash Screen) all'avvio
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                            Mostra logo ASD, versione software, ruolo dispositivo e crediti all'apertura dell'applicazione.
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 14px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-main); cursor: pointer; user-select: none;">
+                                            <input type="checkbox" id="toggle-splashscreen-setting" ${localStorage.getItem('asd_show_splashscreen') !== 'false' ? 'checked' : ''} onchange="app.toggleSplashSetting(this.checked)" style="width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer;">
+                                            <span>Mostra all'avvio</span>
+                                        </label>
+                                        <button class="btn btn-outline" style="padding: 5px 12px; font-size: 0.8rem;" onclick="app.showSplashScreen(true)">Anteprima Splash Screen</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Sincronizzazione e Modalità -->
                             <div class="glass-card" style="border-left: 4px solid #3b82f6;">
                                 <h3 style="margin-bottom:1rem;">🚀 Modalità di Avvio e Cloud</h3>
@@ -17692,8 +18196,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         if (Array.isArray(data.calendario_note)) this.state.calendario_note = data.calendario_note;
 
                         // 2. Settings (merge con predefiniti per non perdere campi)
+                        const mySavedRole = this.getDeviceRole();
+                        const mySavedSplash = localStorage.getItem('asd_show_splashscreen');
                         if (data.settings && typeof data.settings === 'object') {
                             this.state.settings = { ...this.state.settings, ...data.settings };
+                        }
+                        this.state.settings.device_role = mySavedRole;
+                        if (mySavedSplash !== null) {
+                            this.state.settings.show_splashscreen = (mySavedSplash !== 'false');
                         }
                         if (data._backup_meta && typeof data._backup_meta.sequenza_backup === 'number') {
                             const curSeq = parseInt(this.state.settings.backup_sequence_counter, 10) || 0;
@@ -17734,6 +18244,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                         // 6. Salvataggio definitivo su IndexedDB, Cloud e localStorage
                         this.saveAll();
+
+                        // Se il Cloud Drive è attivo, chiedi se forzare l'upload per evitare conflitti coi timestamp
+                        if (this.cloudSync && this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
+                            if (confirm("Vuoi caricare immediatamente questo backup sul Cloud Google Drive sovrascrivendo la copia online?\n\n(Consigliato: impedisce che dati cloud con timestamp differenti vadano in conflitto con il ripristino)")) {
+                                this.cloudSync.uploadBackup(false, true); // skipMerge = true
+                            }
+                        }
+                        if (this.getDeviceRole() === 'server') {
+                            setTimeout(() => this.autoGenerateMissingPDFs(), 600);
+                        }
 
                         this.toast('🎉 Backup completo ripristinato con successo!', 'success');
 
@@ -18244,6 +18764,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     newCorso.fine = targetDateStr;
                 }
 
+                this.touchEntity(newCorso);
                 this.state.corsi.push(newCorso);
                 addedCount++;
             });
@@ -18585,6 +19106,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 data_creazione: new Date().toISOString()
             };
 
+            this.touchEntity(newNote);
             this.state.calendario_note.push(newNote);
             this.saveAll();
             this.closeModal();
@@ -18725,6 +19247,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             note.colore = data.get('colore') || '#facc15';
             note.ricorrente = data.get('ricorrente') === 'on';
 
+            this.touchEntity(note);
             this.saveAll();
             this.closeModal();
             this.renderSalaPesi();
@@ -18733,6 +19256,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
         deleteCalendarNote(noteId) {
             if (confirm('Vuoi rimuovere questa nota dal calendario?')) {
+                this.trackDeletion(noteId);
                 this.state.calendario_note = (this.state.calendario_note || []).filter(x => x.id !== noteId);
                 this.saveAll();
                 this.closeModal();
@@ -18856,6 +19380,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 iscritti: [],
                 schedule: `${giorni[parseInt(data.dayOfWeek)]} ${data.startTime}`
             };
+            this.touchEntity(newCorso);
             this.state.corsi.push(newCorso);
             this.saveAll();
             this.closeModal();
@@ -18914,7 +19439,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const sale = this.state.sale;
             const istruttori = this.state.istruttori;
 
-            this.openModal(`✏️ Modifica: ${c.nome}`, `
+            this.openModal(`Modifica Attività: ${c.nome}`, `
                     <form id="edit-attivita-form" onsubmit="app.handleEditCorso(event, ${id})">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                             <div class="form-group" style="grid-column:1/-1;">
@@ -18936,13 +19461,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             </div>
                             <div class="form-group">
                                 <label>Giorno</label>
-                                <select name="dayOfWeek" class="form-control">
-                                    ${[1, 2, 3, 4, 5, 6, 7].map(d => { const n = ['', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'][d]; return `<option value="${d}" ${c.dayOfWeek == d ? 'selected' : ''}>${n}</option>`; }).join('')}
+                                <select name="dayOfWeek" class="form-control" required>
+                                    <option value="1" ${c.dayOfWeek === 1 ? 'selected' : ''}>Lunedì</option>
+                                    <option value="2" ${c.dayOfWeek === 2 ? 'selected' : ''}>Martedì</option>
+                                    <option value="3" ${c.dayOfWeek === 3 ? 'selected' : ''}>Mercoledì</option>
+                                    <option value="4" ${c.dayOfWeek === 4 ? 'selected' : ''}>Giovedì</option>
+                                    <option value="5" ${c.dayOfWeek === 5 ? 'selected' : ''}>Venerdì</option>
+                                    <option value="6" ${c.dayOfWeek === 6 ? 'selected' : ''}>Sabato</option>
+                                    <option value="7" ${c.dayOfWeek === 7 ? 'selected' : ''}>Domenica</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Max Iscritti</label>
-                                <input type="number" name="max" class="form-control" value="${c.max || 15}" min="1">
+                                <label>Posti Max</label>
+                                <input type="number" name="max" class="form-control" value="${c.max || 15}" min="1" max="100" required>
                             </div>
                             <div class="form-group">
                                 <label>Ora Inizio</label>
@@ -18953,17 +19484,17 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <input type="time" name="endTime" class="form-control" value="${c.endTime}" required>
                             </div>
                             <div class="form-group">
-                                <label>Data Inizio Validità</label>
-                                <input type="date" name="inizio" class="form-control" value="${c.inizio}" required>
+                                <label>Data Inizio Attività</label>
+                                <input type="date" name="inizio" class="form-control" value="${c.inizio || ''}">
                             </div>
                             <div class="form-group">
-                                <label>Data Fine Validità</label>
+                                <label>Data Fine Attività</label>
                                 <input type="date" name="fine" class="form-control" value="${c.fine || ''}">
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1rem;">
-                            <button type="button" class="btn btn-outline" onclick="app.openCorsoDetail(${id})">Annulla</button>
-                            <button type="submit" class="btn btn-primary">💾 Salva Modifiche</button>
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Salva Modifiche</button>
                         </div>
                     </form>
                 `);
@@ -18989,6 +19520,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 max: parseInt(data.max) || 15,
                 schedule: `${giorni[parseInt(data.dayOfWeek)]} ${data.startTime}`
             };
+            this.touchEntity(this.state.corsi[idx]);
             this.saveAll();
             this.closeModal();
             this.toast('Attività modificata!');
@@ -19577,10 +20109,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 const idx = this.state.istruttori.findIndex(x => x.id === id);
                 if (idx !== -1) {
                     this.state.istruttori[idx] = { ...this.state.istruttori[idx], ...data };
+                    this.touchEntity(this.state.istruttori[idx]);
                     this.toast('Istruttore aggiornato!');
                 }
             } else {
                 data.id = Date.now();
+                this.touchEntity(data);
                 this.state.istruttori.push(data);
                 this.toast('Istruttore aggiunto!');
             }
@@ -19671,9 +20205,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                     if (shouldBeAssigned && !isCurrentlyAssigned) {
                         c.istruttore_id = String(istruttoreId);
+                        this.touchEntity(c);
                         countAssigned++;
                     } else if (!shouldBeAssigned && isCurrentlyAssigned) {
                         c.istruttore_id = "";
+                        this.touchEntity(c);
                         countRemoved++;
                     }
                 }
@@ -19780,11 +20316,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 prestazione: data.prestazione,
                 altri_compensi: parseFloat(data.altri_compensi) || 0
             };
+            this.touchEntity(receipt);
             this.state.ricevute.push(receipt);
             this.saveAll();
             this.toast('Ricevuta compenso generata e archiviata!');
             this.closeModal();
-            this.generateCompensoPDF(receipt.id, instrId, true);
+            const shouldArchive = (this.getDeviceRole() === 'server');
+            this.generateCompensoPDF(receipt.id, instrId, shouldArchive);
             this.renderIstruttori();
         },
 
@@ -20560,12 +21098,14 @@ ${r.annullata ? `
             const nome = document.getElementById('mag-nome').value;
             const qty = parseInt(document.getElementById('mag-qty').value);
             const min = parseInt(document.getElementById('mag-min').value);
-            this.state.magazzino.push({
+            const item = {
                 id: Date.now(),
                 nome,
                 quantita: qty,
                 scorta_minima: min
-            });
+            };
+            this.touchEntity(item);
+            this.state.magazzino.push(item);
             localStorage.setItem('asd_magazzino', JSON.stringify(this.state.magazzino));
             this.saveAll();
             this.closeModal();
@@ -20576,6 +21116,7 @@ ${r.annullata ? `
             const m = this.state.magazzino.find(x => x.id === id);
             if(m) {
                 m.quantita = Math.max(0, m.quantita + diff);
+                this.touchEntity(m);
                 localStorage.setItem('asd_magazzino', JSON.stringify(this.state.magazzino));
                 this.saveAll();
                 this.renderMagazzino();
@@ -20705,7 +21246,7 @@ ${r.annullata ? `
         },
         saveEvento(e) {
             e.preventDefault();
-            this.state.eventi.push({
+            const ev = {
                 id: Date.now(),
                 nome: document.getElementById('ev-nome').value,
                 data: document.getElementById('ev-data').value,
@@ -20713,7 +21254,9 @@ ${r.annullata ? `
                 sponsor: [],
                 entrate: [],
                 uscite: []
-            });
+            };
+            this.touchEntity(ev);
+            this.state.eventi.push(ev);
             localStorage.setItem('asd_eventi', JSON.stringify(this.state.eventi));
             this.saveAll();
             this.closeModal();
@@ -20794,9 +21337,10 @@ ${r.annullata ? `
             
             if(!ev.entrate) ev.entrate = [];
             ev.entrate.push({ descrizione: desc, importo: imp, data: new Date().toISOString().split('T')[0] });
+            this.touchEntity(ev);
             
             if(inPN) {
-                this.state.primanota.push({
+                const pnEntry = {
                     id: Date.now(),
                     data: new Date().toISOString().split('T')[0],
                     tipo: 'Entrata',
@@ -20804,7 +21348,9 @@ ${r.annullata ? `
                     categoria: 'Altre Entrate',
                     descrizione: `Sponsor/Entrata Evento: ${ev.nome} - ${desc}`,
                     metodo: 'Bonifico'
-                });
+                };
+                this.touchEntity(pnEntry);
+                this.state.primanota.push(pnEntry);
                 localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
             }
             
@@ -20823,9 +21369,10 @@ ${r.annullata ? `
             
             if(!ev.uscite) ev.uscite = [];
             ev.uscite.push({ descrizione: desc, importo: imp, data: new Date().toISOString().split('T')[0] });
+            this.touchEntity(ev);
             
             if(inPN) {
-                this.state.primanota.push({
+                const pnEntry = {
                     id: Date.now(),
                     data: new Date().toISOString().split('T')[0],
                     tipo: 'Uscita',
@@ -20833,7 +21380,9 @@ ${r.annullata ? `
                     categoria: 'Manutenzioni Ordinarie', // Generico
                     descrizione: `Spesa Evento: ${ev.nome} - ${desc}`,
                     metodo: 'Contanti'
-                });
+                };
+                this.touchEntity(pnEntry);
+                this.state.primanota.push(pnEntry);
                 localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
             }
             
@@ -21176,7 +21725,7 @@ ${r.annullata ? `
 
             if(!this.state.rimborsi) this.state.rimborsi = [];
             
-            this.state.rimborsi.push({
+            const rimborso = {
                 id: Date.now(),
                 data: dataVal,
                 richiedente: nomeVal,
@@ -21187,7 +21736,9 @@ ${r.annullata ? `
                 importo: total,
                 pagato: false,
                 annullato: false
-            });
+            };
+            this.touchEntity(rimborso);
+            this.state.rimborsi.push(rimborso);
 
             localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
             this.saveAll();
@@ -21202,6 +21753,7 @@ ${r.annullata ? `
 
             if(confirm(`Vuoi segnare il rimborso di €${r.importo.toFixed(2)} a ${r.richiedente} come PAGATO e registrare l'uscita in Prima Nota?`)) {
                 r.pagato = true;
+                this.touchEntity(r);
                 
                 // Riversa in prima nota con riferimento sicuro per storno futuro
                 if(!this.state.primanota) this.state.primanota = [];
@@ -21210,7 +21762,7 @@ ${r.annullata ? `
                     ? 'Rimborsi Spese'
                     : 'Manutenzioni Ordinarie';
 
-                this.state.primanota.push({
+                const pnEntry = {
                     id: Date.now(),
                     data: new Date().toISOString().split('T')[0],
                     tipo: 'Uscita',
@@ -21219,7 +21771,9 @@ ${r.annullata ? `
                     descrizione: `Rimborso Spese a ${r.richiedente}: ${r.descrizione}`,
                     metodo: r.metodo || 'Bonifico',
                     riferimento: 'RIMBORSO_' + r.id
-                });
+                };
+                this.touchEntity(pnEntry);
+                this.state.primanota.push(pnEntry);
                 
                 localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
                 localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
