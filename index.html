@@ -5992,9 +5992,6 @@
                 this.syncSociFromRicevute();
                 const totalSoci = this.state.soci.length;
                 const attiviAnno = this.state.soci.filter(s => this.isActiveMember(s)).length;
-                const sociStagione = this.state.soci.filter(s => this.isSeasonMember(s));
-                const sociStagioneCount = sociStagione.length;
-                const daRinnovareCount = sociStagione.filter(s => !this.isActiveMember(s)).length;
 
                 const now = new Date();
                 const currentMonth = now.getMonth();
@@ -6007,7 +6004,7 @@
                     <div class="page-content">
                         <div class="page-header">
                             <div class="header-title">
-                                <h1>Anagrafica Soci <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">(${attiviAnno} rinnovati ${currSportYearLabel} • ${daRinnovareCount} da rinnovare / ${totalSoci} totali)</span></h1>
+                                <h1>Anagrafica Soci <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">(${attiviAnno} attivi ${currSportYearLabel} / ${totalSoci} totali in archivio)</span></h1>
                                 <span class="header-subtitle">Gestisci l'elenco dei soci iscritti alla tua associazione.</span>
                             </div>
                             <button class="btn btn-primary" onclick="app.openAddSocioModal()" data-guide="Clicca qui per aggiungere un nuovo socio. Il Codice Fiscale verrà calcolato in automatico.">+ Aggiungi Socio</button>
@@ -6019,7 +6016,6 @@
                                 <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtra i soci per stato.">
                                     <option value="ANNO_CORRENTE" selected>⭐ Soci Anno Sportivo Corrente (${currSportYearLabel}) (${attiviAnno})</option>
                                     <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
-                                    <option value="TESS_SCADUTO">💳 Tesseramenti da Rinnovare (${daRinnovareCount})</option>
                                     <option value="ATTIVO">🟢 Attivi con Quota Valida</option>
                                     <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
                                     <option value="NON ATTIVO">💤 Non Attivi (Archivio)</option>
@@ -6055,14 +6051,14 @@
             onSocioFilterChange() {
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
-                this.state.sociVisibleCount = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO' || status === 'TESS_SCADUTO') ? 200 : 50;
+                this.state.sociVisibleCount = (status === 'ANNO_CORRENTE') ? 200 : 50;
                 this.filterSoci();
             },
 
             onSocioSearchInput() {
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
-                if (status !== 'ANNO_CORRENTE' && status !== 'TESS_ATTIVO' && status !== 'TESS_SCADUTO') {
+                if (status !== 'ANNO_CORRENTE') {
                     this.state.sociVisibleCount = 50;
                 }
                 this.filterSoci();
@@ -6259,8 +6255,6 @@
                     } else if (status === 'QUOTA_SCADUTA') {
                         const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
                         matchStatus = s.stato !== 'CESSATO' && qScad && qScad < now;
-                    } else if (status === 'TESS_SCADUTO') {
-                        matchStatus = s.stato !== 'CESSATO' && this.isSeasonMember(s) && !this.isActiveMember(s);
                     } else {
                         matchStatus = this.getSocioDisplayStato(s) === status;
                     }
@@ -6320,7 +6314,7 @@
                         return;
                     }
 
-                    const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO' || status === 'TESS_SCADUTO') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
+                    const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
                     const toRender = filtered.slice(0, visibleLimit);
                     tbody.innerHTML = this.renderSociRows(toRender);
                     if (filtered.length > visibleLimit) {
