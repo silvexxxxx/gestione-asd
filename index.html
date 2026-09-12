@@ -11218,9 +11218,9 @@ ${annullataBanner}
                                     <input type="text" id="pn-search-importo" class="form-control" style="width: 140px; padding-left: 1.8rem;" placeholder="Importo (€)..." value="${prevSearchImporto}" oninput="app.filterPrimaNota()">
                                     <span style="position: absolute; left: 10px; color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">€</span>
                                 </div>
-                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; margin-left: auto; padding: 5px 10px; background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 6px;" title="Attiva per nascondere dall'elenco i movimenti tecnici di rettifica estratto conto bancario generati a fine anno">
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; margin-left: auto; padding: 5px 10px; background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 6px;" title="Attiva per nascondere dall'elenco i movimenti tecnici di chiusura e apertura (riporti di saldo al 01/09 e scritture di quadratura estratto conto al 31/08)">
                                     <input type="checkbox" id="pn-hide-riconciliazione" onchange="app.toggleHideRiconciliazione(this.checked)" ${this.hideRiconciliazione ? 'checked' : ''}>
-                                    <span style="color: #fbbf24; font-weight: 500;">🚫 Nascondi Rettifiche Tecniche E/C</span>
+                                    <span style="color: #fbbf24; font-weight: 500;">🚫 Nascondi Riporti & Rettifiche Tecniche</span>
                                 </label>
                             </div>
 
@@ -11560,9 +11560,11 @@ ${annullataBanner}
                     let as = t.anno_sportivo || (d.getMonth() >= 8 ? y + "/" + (y + 1) : (y - 1) + "/" + y);
                     if (year !== 'all' && as !== year) return false;
 
-                    // Nascondi Scritture Tecniche di Quadratura E/C se la spunta è attiva
+                    // Nascondi Scritture Tecniche di Quadratura E/C, Riporti di Chiusura e Saldi Iniziali se la spunta è attiva
                     const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_')) || t.metodo === 'Rettifica E/C';
-                    if (hideRiconciliazione && isRiconciliazione) return false;
+                    const isChiusuraRiporto = t.riferimento && t.riferimento.startsWith('CHIUSURA_');
+                    const isSaldoIniziale = t.is_saldo_iniziale || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_'));
+                    if (hideRiconciliazione && (isRiconciliazione || isChiusuraRiporto || isSaldoIniziale)) return false;
                     
                     // Trimestre
                     if (quarter !== 'all') {
