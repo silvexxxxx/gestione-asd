@@ -6021,6 +6021,7 @@
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Cariche</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Excel</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo (Server & Client)</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem; color: #c4b5fd;" onclick="app.showGuideSection('debug')">12. Modalità Debug & Funzioni di Ripristino</button></li>
                                 </ul>
                             </div>
                             
@@ -6203,6 +6204,39 @@
 
                                 <h3>Procedura di Chiusura / Uscita:</h3>
                                 <p>Al termine del lavoro, è sufficiente cliccare sul pulsante <strong>Esci</strong> in alto a destra: il gestionale eseguirà automaticamente il salvataggio dei dati in memoria locale e la sincronizzazione sicura con Google Drive prima della chiusura.</p>`;
+                        break;
+                    case 'debug':
+                        html = `<h2>12. Modalità Debug & Funzioni di Manutenzione Strutturale</h2>
+                                <p>La <strong>Modalità Debug</strong> è un modulo avanzato protetto da crittografia (MasterKey) riservato all'amministratore e per interventi di riallineamento straordinario del database.</p>
+                                
+                                <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                                    <strong>🔒 Protezione Attiva:</strong> Nelle normali operazioni quotidiane, la numerazione fiscale progressiva delle ricevute e la cancellazione irreversibile dei record sono bloccate per evitare errori di battitura, buchi di numerazione o anomalie contabili da parte degli operatori di segreteria.
+                                </div>
+
+                                <h3>Strumenti e Funzioni di Debug:</h3>
+                                <ul>
+                                    <li><strong>🪄 Ripara Ricevute (Opzione 1 - Cartaceo & Digitale da 1 a N):</strong>
+                                        <p>Risolve disallineamenti complessi nei registri ricevute. Mantiene intatte le ricevute cartacee con il loro numero originale, mentre riordina cronologicamente le ricevute digitali assegnando la numerazione continua da 1 a N. Sincronizza contestualmente la Prima Nota Cassa/Banca e genera in automatico uno snapshot di sicurezza <code>pre-opzione1</code>.</p>
+                                    </li>
+                                    <li><strong>🔄 Rinumera Sequenza Ricevute (Eliminazione Buchi):</strong>
+                                        <p>Selezionando la stagione e il registro (Cartaceo o Digitale), ricompatta l'intera numerazione eliminando eventuali "buchi" intermedi generati da ricevute rimosse, assicurando la progressività richiesta ai fini contabili.</p>
+                                    </li>
+                                    <li><strong>⏩ Sposta Sequenza Ricevute (+1 / -1):</strong>
+                                        <p>Fa slittare in avanti (+1) o indietro (-1) una sequenza di ricevute a partire da una determinata data o numero. Utile per registrare a posteriori una ricevuta retrodatata senza dover riscrivere a mano l'intero archivio.</p>
+                                    </li>
+                                    <li><strong>✏️ Sblocco Modifica Numero Ricevuta:</strong>
+                                        <p>Nel form di emissione e modifica ricevuta, il campo numerico (normalmente in sola lettura automatica) diventa modificabile liberamente con controllo immediato di duplicati.</p>
+                                    </li>
+                                    <li><strong>📁 Allinea ed Archivia PDF Cartella:</strong>
+                                        <p>Disponibile nella pagina Ricevute: scansiona la cartella documenti locale, elimina file PDF obsoleti o con vecchie numerazioni errate e rigenera le copie PDF allineate allo stato attuale.</p>
+                                    </li>
+                                    <li><strong>🗑️ Eliminazione Definitiva (Hard Delete) Ricevute e Compensi:</strong>
+                                        <p>Sblocca la cancellazione fisica irreversibile della singola registrazione, alternativa all'ordinario Annullamento Contabile previsto per legge.</p>
+                                    </li>
+                                </ul>
+
+                                <h3>Come Accedere alla Modalità Debug:</h3>
+                                <p>Accedi a <strong>Impostazioni ➔ 🔒 Modalità Debug</strong> in fondo alla schermata, digita la password amministrativa e premi <strong>Sblocca</strong>. Terminata la manutenzione, clicca su <strong>Disattiva Debug</strong> per riattivare tutte le protezioni del gestionale.</p>`;
                         break;
                 }
                 contentDiv.innerHTML = html;
