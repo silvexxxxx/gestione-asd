@@ -4670,8 +4670,24 @@
             accessToken: null,
             fileId: localStorage.getItem('asd_gdrive_file_id') || null,
             isSyncing: false,
-            syncEnabled: localStorage.getItem('asd_cloud_sync') === 'true',
+            syncEnabled: false, // All'avvio dell'app si parte sempre in Modalità Offline Pura
             clientId: '961700483511-vg2k314pthheku37adm3vlniothabuae.apps.googleusercontent.com',
+
+            getStartupMode() {
+                return localStorage.getItem('asd_startup_cloud_mode') || 'offline';
+            },
+
+            setStartupMode(mode) {
+                localStorage.setItem('asd_startup_cloud_mode', mode);
+                if (mode === 'offline') {
+                    this.logout(true);
+                    app.toast('Avvio configurato: Sempre Modalità Offline Pura (Predefinito)', 'info');
+                } else {
+                    app.toast('Avvio configurato: Connetti Cloud all\'Avvio', 'info');
+                    if (!this.accessToken) this.login();
+                }
+                this.updateUIStatus();
+            },
 
             init() {
                 if (typeof google === 'undefined' || !google.accounts) {
@@ -4684,7 +4700,7 @@
                     scope: 'https://www.googleapis.com/auth/drive.file',
                     callback: (tokenResponse) => {
                         if (tokenResponse.error !== undefined) {
-                            app.toast('Errore di ricollegamento Cloud silente (Google richiede autorizzazione manuale).', 'warning');
+                            app.toast('Errore di collegamento a Google Drive.', 'warning');
                             this.updateUIStatus();
                             return;
                         }
@@ -4694,32 +4710,39 @@
                         localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
                         this.syncEnabled = true;
                         this.updateUIStatus();
-                        app.toast('Cloud ricollegato (Background)!', 'success');
+                        app.toast('Cloud Google Drive collegato con successo!', 'success');
                         
-                        if (this.isExplicitLogin || !sessionStorage.getItem('asd_cloud_sync_done')) {
-                            sessionStorage.setItem('asd_cloud_sync_done', 'true');
+                        if (this.isExplicitLogin) {
                             this.performInitialSync();
                         }
                     },
                 });
 
-                if (this.syncEnabled) {
-                    const savedToken = localStorage.getItem('asd_gdrive_token');
-                    const tokenExpiry = localStorage.getItem('asd_gdrive_token_expiry');
-                    if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
-                        // Usa il token ancora valido senza chiamare Google
-                        this.accessToken = savedToken;
-                        this.updateUIStatus();
-                        
-                        if (!sessionStorage.getItem('asd_cloud_sync_done')) {
-                            sessionStorage.setItem('asd_cloud_sync_done', 'true');
-                            this.performInitialSync();
-                        }
-                    } else {
-                        // Prova il login silente (potrebbe fallire per blocchi cookie 3ze parti)
-                        this.tokenClient.requestAccessToken({prompt: 'none'});
-                        this.updateUIStatus();
+                const startupMode = this.getStartupMode();
+                if (startupMode === 'offline') {
+                    // All'avvio l'applicazione parte SEMPRE in Modalità Offline Pura (Locale)
+                    this.syncEnabled = false;
+                    this.accessToken = null;
+                    localStorage.setItem('asd_cloud_sync', 'false');
+                    this.updateUIStatus();
+                    return;
+                }
+
+                // Se l'utente ha invece impostato esplicitamente l'avvio con Connetti Cloud:
+                const savedToken = localStorage.getItem('asd_gdrive_token');
+                const tokenExpiry = localStorage.getItem('asd_gdrive_token_expiry');
+                if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
+                    this.accessToken = savedToken;
+                    this.syncEnabled = true;
+                    this.updateUIStatus();
+                    
+                    if (!sessionStorage.getItem('asd_cloud_sync_done')) {
+                        sessionStorage.setItem('asd_cloud_sync_done', 'true');
+                        this.performInitialSync();
                     }
+                } else {
+                    this.tokenClient.requestAccessToken({prompt: 'none'});
+                    this.updateUIStatus();
                 }
             },
 
@@ -4733,8 +4756,8 @@
                 this.tokenClient.requestAccessToken({prompt: 'consent'});
             },
 
-            async logout() {
-                if (this.syncEnabled && this.accessToken) {
+            async logout(silent = false) {
+                if (this.syncEnabled && this.accessToken && !silent) {
                     app.toast('Sincronizzazione finale in corso...', 'info');
                     await this.uploadBackup();
                 }
@@ -4746,7 +4769,9 @@
                 localStorage.removeItem('asd_gdrive_token');
                 localStorage.removeItem('asd_gdrive_token_expiry');
                 localStorage.removeItem('asd_gdrive_file_id');
-                app.toast('Modalità Offline Pura attivata. I dati saranno salvati solo su questo computer.', 'info');
+                if (!silent) {
+                    app.toast('Modalità Offline Pura attivata. I dati saranno salvati solo su questo computer.', 'info');
+                }
                 this.updateUIStatus();
             },
 
@@ -4808,7 +4833,9 @@
 
             async forceUploadToCloud() {
                 if (!this.accessToken) {
-                    app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
+                    if (confirm("Per caricare i dati su Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
+                        this.login();
+                    }
                     return;
                 }
                 if (!confirm("⚠️ Vuoi forzare la sovrascrittura di Google Drive con i dati attuali di questo computer?\n\nQuesta operazione aggiornerà il Cloud allo stato esatto attuale del PC, senza rischiare di riesumare vecchi dati o vecchi numeri di ricevuta.")) {
@@ -4859,10 +4886,8 @@
 
             async promptInheritFromCloudModal(targetFileId = null, targetFileName = 'GestioneASD_CloudSync.json') {
                 if (!this.accessToken) {
-                    if (this.syncEnabled) {
+                    if (confirm("Per scaricare ed ereditare i dati da Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
                         this.login();
-                    } else {
-                        app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
                     }
                     return;
                 }
@@ -5008,10 +5033,8 @@
 
             async openCloudVersionsModal() {
                 if (!this.accessToken) {
-                    if (this.syncEnabled) {
+                    if (confirm("Per consultare le versioni su Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
                         this.login();
-                    } else {
-                        app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
                     }
                     return;
                 }
@@ -5196,10 +5219,8 @@
 
             async syncNow() {
                 if (!this.accessToken) {
-                    if (this.syncEnabled) {
+                    if (confirm("Per effettuare la sincronizzazione devi prima collegarti a Google Drive. Desideri accedere al tuo account Google ora?")) {
                         this.login();
-                    } else {
-                        app.toast("Devi prima collegarti a Google Drive (clicca su Passa a Modalità Cloud).", "warning");
                     }
                     return;
                 }
@@ -17197,8 +17218,36 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                             <!-- Sincronizzazione e Modalità -->
                             <div class="glass-card" style="border-left: 4px solid #3b82f6;">
-                                <h3 style="margin-bottom:1rem;">🚀 Modalità di Avvio e Cloud</h3>
-                                <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale (Modalità Offline Pura vs Sincronizzazione Google Drive).</p>
+                                <h3 style="margin-bottom:0.5rem; display: flex; align-items: center; gap: 8px;">
+                                    <span>🚀</span> Modalità di Avvio e Cloud
+                                </h3>
+                                <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale (Modalità Offline Pura vs Sincronizzazione Google Drive).</p>
+                                
+                                <!-- Selettore Comportamento all'Avvio -->
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                                            <span>⚡</span> Stato all'Avvio dell'Applicazione:
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                            All'avvio il gestionale parte sempre in locale, senza popup o attese di rete.
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-sm ${this.cloudSync.getStartupMode() === 'offline' ? 'btn-primary' : 'btn-outline'}" 
+                                                style="${this.cloudSync.getStartupMode() === 'offline' ? 'font-weight: bold; background: #10b981; border-color: #10b981;' : ''}"
+                                                onclick="app.cloudSync.setStartupMode('offline'); app.renderDatabase();"
+                                                title="All'avvio il gestionale parte sempre al 100% in locale">
+                                            🔒 Sempre Offline (Predefinito)
+                                        </button>
+                                        <button class="btn btn-sm ${this.cloudSync.getStartupMode() === 'cloud' ? 'btn-primary' : 'btn-outline'}" 
+                                                style="${this.cloudSync.getStartupMode() === 'cloud' ? 'font-weight: bold;' : ''}"
+                                                onclick="app.cloudSync.setStartupMode('cloud'); app.renderDatabase();"
+                                                title="All'avvio il gestionale tenta di ricollegare subito Google Drive">
+                                            ☁️ Connetti Cloud all'Avvio
+                                        </button>
+                                    </div>
+                                </div>
                                 
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                                     <div id="cloud-mode-toggle-buttons" style="display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap;"></div>
