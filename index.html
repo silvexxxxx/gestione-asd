@@ -7468,10 +7468,10 @@
                             <div class="header-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button class="btn btn-outline" onclick="app.exportRicevuteExcel()" data-guide="Esporta le ricevute in formato Excel (considera l'anno sportivo o l'intervallo temporale isolato).">Esporta Excel</button>
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Allinea automaticamente la cartella: rimuove i vecchi PDF obsoleti e archivia i PDF con la corretta numerazione">📁 Allinea ed Archivia PDF Cartella</button>
-                                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea e riordina i registri (da 1 a N)">🪄 Ripara Registri (Opz. 1)</button>
-                                    <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza">🔄 Rinumera Sequenza</button>
-                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 / -1)">⏩ Sposta Sequenza</button>
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.generaPDFMancantiCartella()" title="Allinea automaticamente la cartella: rimuove i vecchi PDF obsoleti e archivia i PDF con la corretta numerazione" data-guide="Allinea automaticamente la cartella documenti: rigenera i PDF mancanti con la corretta numerazione e rimuove i vecchi PDF obsoleti o duplicati.">📁 Allinea ed Archivia PDF Cartella</button>
+                                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="app.applicaOpzione1Database()" title="Allinea e riordina i registri (da 1 a N)" data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota. Crea uno snapshot prima di procedere.">🪄 Ripara Registri (Opz. 1)</button>
+                                    <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare eventuali buchi nella sequenza" data-guide="Ricompatta la sequenza numerica delle ricevute dell'anno sportivo selezionato, eliminando buchi o salti numerici e preservando l'ordine cronologico.">🔄 Rinumera Sequenza</button>
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 / -1)" data-guide="Strumento per scalare in avanti (+1) o indietro (-1) una sequenza di ricevute a partire da una data specificata. Include il pulsante verde di riallineamento reale.">⏩ Sposta Sequenza</button>
                                 ` : ''}
                                 <button class="btn btn-primary" onclick="app.openAddRicevutaModal()">+ Nuova Ricevuta</button>
                             </div>
@@ -7708,10 +7708,10 @@
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasEmail ? 'color: var(--primary); border-color: rgba(59,130,246,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptEmail('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasEmail ? 'Invia dettaglio ricevuta via Email a ' + socioEmail : 'Indirizzo Email socio non presente'}">📧</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasTel ? 'color: #10b981; border-color: rgba(16,185,129,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptWhatsApp('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Numero di telefono socio non presente'}">💬</button>
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
-                                    <button class="btn btn-outline" style="padding: 5px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" title="Sposta questa e tutte le successive di N posizioni (+1 / -1)" onclick="app.openShiftRicevuteModal('${r.id}')">⏩</button>
-                                    <button class="btn btn-outline" style="padding: 5px;" title="Modifica" onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
-                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
+                                    <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" data-guide="Inserisci una nuova ricevuta intermedia a questa posizione: questa e le successive scaleranno di +1." onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
+                                    <button class="btn btn-outline" style="padding: 5px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" title="Sposta questa e tutte le successive di N posizioni (+1 / -1)" data-guide="Sposta la numerazione di questa ricevuta e di tutte le successive di N posizioni avanti (+1) o indietro (-1)." onclick="app.openShiftRicevuteModal('${r.id}')">⏩</button>
+                                    <button class="btn btn-outline" style="padding: 5px;" title="Modifica dati strutturali ricevuta" data-guide="Modifica diretta dei dati e parametri strutturali di questa ricevuta (Solo Debug Mode)." onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
+                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" data-guide="Elimina definitivamente questa ricevuta dal database, ricompattando la sequenza e scalando di -1 le successive." onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
                                 ` : ''}
                                 ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" onclick="app.annullaRicevuta('${r.id}')">🚫</button>` : ''}
                             </div>
@@ -16373,7 +16373,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             
             // Inizializza il debugUI se siamo in debugMode
             if (app.state.debugMode) {
-                app.state.debugUI = `<button class="btn btn-warning" style="margin-left:10px;" onclick="app.openAutoCompileModal()">🔧 Compila Ricevute Auto</button>`;
+                app.state.debugUI = `<button class="btn btn-warning" onclick="app.openAutoCompileModal()" title="Genera massivamente ricevute di prova o quote associative automatiche per simulazione o collaudo contabile" data-guide="Modulo di autocompilazione massiva: permette di generare automaticamente ricevute simulate per gli iscritti attivi ai corsi per un determinato mese.">🔧 Compila Ricevute Auto</button>`;
             }
         },
 
@@ -17371,19 +17371,6 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </div>
                             </div>
 
-                            <!-- Manutenzione & Riparazione Registri -->
-                            <div class="glass-card" style="border-left: 4px solid #10b981;">
-                                <h3 style="margin-bottom:0.5rem; display:flex; align-items:center; gap:8px;">
-                                    <span>🪄</span> Manutenzione & Riparazione Registri
-                                </h3>
-                                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Riallinea i registri ricevute e sincronizza la Prima Nota in caso di disallineamenti o incongruenze numeriche.</p>
-                                <div style="display:flex; flex-direction:column; gap:10px;">
-                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="app.applicaOpzione1Database()" data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota. Crea in automatico uno snapshot di sicurezza prima di procedere.">
-                                        <span>🪄</span> Ripara Ricevute (Opz. 1: Cartaceo & Digitale da 1 a N)
-                                    </button>
-                                </div>
-                            </div>
-
                             <!-- Cancella Database Iscritti -->
                             <div class="glass-card" style="border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.04);">
                                 <h3 style="margin-bottom:1rem;">⚠️ Azioni Pericolose (Sovrascrittura)</h3>
@@ -17406,17 +17393,17 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 ${this.state.debugMode ? `
                                     <p style="color:var(--success); margin-bottom:1rem;">✓ Modalità debug attiva e moduli decriptati.</p>
                                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                                        <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()" data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota.">🪄 Ripara Ricevute (Opz. 1)</button>
-                                        <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()">🔄 Rinumera Sequenza</button>
-                                        <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()">⏩ Sposta Sequenza</button>
-                                        <button class="btn btn-outline" style="border-color:#a855f7; color:#c084fc; font-weight:600;" onclick="app.showPage('guida'); setTimeout(() => app.showGuideSection('debug'), 80);" title="Consulta il manuale delle funzioni di debug">📖 Manuale Tecnico Debug</button>
-                                        <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
+                                        <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()" title="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota. Crea uno snapshot prima di procedere." data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota. Crea in automatico uno snapshot di sicurezza preventivo.">🪄 Ripara Ricevute (Opz. 1)</button>
+                                        <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()" title="Ricompatta e rinumera le ricevute per eliminare buchi numerici intermedi nella sequenza." data-guide="Ricompatta la sequenza numerica delle ricevute dell'anno sportivo selezionato, eliminando buchi o salti numerici e preservando l'ordine cronologico.">🔄 Rinumera Sequenza</button>
+                                        <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()" title="Sposta una serie di ricevute avanti o indietro di N numeri (+1 o -1) a partire da una data. Include allineamento reale automatico." data-guide="Strumento per scalare in avanti (+1) o indietro (-1) una sequenza di ricevute a partire da una data specificata. Include il pulsante verde di riallineamento reale.">⏩ Sposta Sequenza</button>
+                                        <button class="btn btn-outline" style="border-color:#a855f7; color:#c084fc; font-weight:600;" onclick="app.showPage('guida'); setTimeout(() => app.showGuideSection('debug'), 80);" title="Consulta il manuale tecnico e la documentazione degli strumenti avanzati di debug e manutenzione." data-guide="Apre il capitolo 12 della Guida Utente dedicato alla risoluzione delle anomalie strutturali e all'uso avanzato degli strumenti di debug.">📖 Manuale Tecnico Debug</button>
+                                        <button class="btn btn-danger" onclick="app.toggleDebugMode(false)" title="Blocca nuovamente la modalità debug e nasconde gli strumenti di manutenzione strutturale." data-guide="Disattiva la Modalità Debug e ripristina la protezione dell'interfaccia utente standard.">Disattiva Debug</button>
                                         ${this.state.debugUI || ''}
                                     </div>
                                 ` : `
                                     <div style="display:flex; gap:10px; align-items:center;">
-                                        <input type="password" id="debug-password" class="form-control" placeholder="Password Debug" style="max-width:220px;">
-                                        <button class="btn btn-outline" onclick="app.toggleDebugMode(true)">Sblocca</button>
+                                        <input type="password" id="debug-password" class="form-control" placeholder="Password Debug" style="max-width:220px;" title="Inserisci la MasterKey di sicurezza" data-guide="Inserisci la MasterKey per decrittare e accedere agli strumenti di debug e manutenzione.">
+                                        <button class="btn btn-outline" onclick="app.toggleDebugMode(true)" title="Sblocca la modalità debug" data-guide="Verifica la MasterKey e sblocca gli strumenti avanzati di manutenzione e correzione.">Sblocca</button>
                                     </div>
                                 `}
                             </div>
@@ -21248,7 +21235,7 @@ ${r.annullata ? `
                                     <button class="btn btn-outline text-warning" style="padding: 5px 10px; font-size:0.8rem; border-color: rgba(245, 158, 11, 0.3);" title="Annulla Ricevuta" onclick="app.annullaCompensoReceipt('${r.id}')">🚫 Annulla</button>
                                 ` : ''}
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline text-danger" style="padding: 5px 8px; font-size:0.8rem;" title="Elimina Definitivamente (Debug Mode)" onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')">🗑️</button>
+                                    <button class="btn btn-outline text-danger" style="padding: 5px 8px; font-size:0.8rem;" title="Elimina Definitivamente (Debug Mode)" data-guide="Elimina definitivamente questa ricevuta compenso dal database (Solo Debug Mode)." onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')">🗑️</button>
                                 ` : ''}
                             </div>
                         </td>
@@ -22088,7 +22075,7 @@ ${r.annullata ? `
                                 <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id}, false)" title="Salva Modulo PDF nella cartella Documenti">💾 PDF</button>
                                 <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id}, true)" title="Stampa Modulo Spese (salva nella cartella e apre l'anteprima)">🖨️ Stampa</button>
                                 ${this.state.debugMode ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.permanentlyDeleteRimborso(${r.id})" title="Elimina definitivamente (Solo Debug Mode)">🗑️</button>
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.permanentlyDeleteRimborso(${r.id})" title="Elimina definitivamente (Solo Debug Mode)" data-guide="Elimina definitivamente questo rimborso spese dal database (Solo Debug Mode).">🗑️</button>
                                 ` : ''}
                             </td>
                         </tr>
