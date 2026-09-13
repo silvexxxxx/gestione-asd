@@ -1688,6 +1688,51 @@
             color: #881337;
         }
 
+        /* Cloud Indicator Top Navbar & Balloon */
+        #cloud-indicator-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        #cloud-indicator-btn {
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+            white-space: nowrap;
+        }
+        #cloud-indicator-btn:hover {
+            transform: translateY(-1px);
+        }
+        .cloud-indicator-balloon {
+            position: absolute;
+            top: calc(100% + 9px);
+            left: 50%;
+            transform: translateX(-50%) translateY(-5px);
+            background: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+            z-index: 99999;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.65);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #cloud-indicator-wrapper:hover .cloud-indicator-balloon,
+        #cloud-indicator-wrapper:focus-within .cloud-indicator-balloon {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
     </style>
 </head>
 
@@ -1871,11 +1916,19 @@
                     <span id="device-role-label">Server</span>
                 </button>
 
-                <button id="cloud-indicator-btn" class="btn btn-outline" title="Stato Sincronizzazione" onclick="app.cloudSync.syncEnabled && !app.cloudSync.accessToken ? app.cloudSync.login() : app.showPage('database')"
-                    style="padding: 5px 8px; font-size: 0.74rem; border-color: rgba(239, 68, 68, 0.5); color: var(--danger); display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                    <span id="cloud-indicator-icon">☁️</span>
-                    <span id="cloud-indicator-label">Offline</span>
-                </button>
+                <!-- Indicatore Cloud con Toggle e Balloon -->
+                <div id="cloud-indicator-wrapper">
+                    <button id="cloud-indicator-btn" class="btn btn-outline" onclick="app.cloudSync.toggleOnlineOffline()"
+                        title="premi per sincronizzarti con il cloud di google drive"
+                        style="padding: 5px 9px; font-size: 0.74rem; font-weight: 700; border-color: #ff3344; color: #ff3344; background: rgba(255, 51, 68, 0.12); box-shadow: 0 0 12px rgba(255, 51, 68, 0.35); display: flex; align-items: center; gap: 5px; flex-shrink: 0; border-radius: 8px;">
+                        <span id="cloud-indicator-icon">☁️</span>
+                        <span id="cloud-indicator-label">Offline</span>
+                    </button>
+                    <div id="cloud-balloon" class="cloud-indicator-balloon">
+                        <span id="cloud-balloon-arrow" style="position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 6px solid rgba(15, 23, 42, 0.96);"></span>
+                        <span id="cloud-balloon-text">premi per sincronizzarti con il cloud di google drive</span>
+                    </div>
+                </div>
                 <button id="fullscreen-btn" title="Schermo Intero" onclick="app.toggleFullscreen()">
                     <span style="font-size:0.85rem;">⛶</span> <span>Schermo Intero</span>
                 </button>
@@ -4930,13 +4983,23 @@
             setStartupMode(mode) {
                 localStorage.setItem('asd_startup_cloud_mode', mode);
                 if (mode === 'offline') {
-                    this.logout(true);
-                    app.toast('Avvio configurato: Sempre Modalità Offline Pura (Predefinito)', 'info');
+                    this.logout(false);
                 } else {
-                    app.toast('Avvio configurato: Connetti Cloud all\'Avvio', 'info');
+                    app.toast('Avvio configurato: Avvia con connessione Cloud', 'info');
                     if (!this.accessToken) this.login();
                 }
                 this.updateUIStatus();
+            },
+
+            toggleOnlineOffline() {
+                if (this.syncEnabled && this.accessToken) {
+                    this.setStartupMode('offline');
+                } else {
+                    this.setStartupMode('cloud');
+                }
+                if (app.state && app.state.currentPage === 'database') {
+                    app.renderDatabase();
+                }
             },
 
             init() {
@@ -4956,10 +5019,14 @@
                         }
                         this.accessToken = tokenResponse.access_token;
                         localStorage.setItem('asd_cloud_sync', 'true');
+                        localStorage.setItem('asd_startup_cloud_mode', 'cloud');
                         localStorage.setItem('asd_gdrive_token', this.accessToken);
                         localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
                         this.syncEnabled = true;
                         this.updateUIStatus();
+                        if (app.state && app.state.currentPage === 'database') {
+                            app.renderDatabase();
+                        }
                         app.toast('Cloud Google Drive collegato con successo!', 'success');
                         
                         if (this.isExplicitLogin) {
@@ -5020,7 +5087,7 @@
                 localStorage.removeItem('asd_gdrive_token_expiry');
                 localStorage.removeItem('asd_gdrive_file_id');
                 if (!silent) {
-                    app.toast('Modalità Offline Pura attivata. I dati saranno salvati solo su questo computer.', 'info');
+                    app.toast('Modalità Offline attivata. I dati saranno salvati solo su questo computer.', 'info');
                 }
                 this.updateUIStatus();
             },
@@ -5029,53 +5096,62 @@
                 const statusEl = document.getElementById('cloud-status-text');
                 const indicatorBtn = document.getElementById('cloud-indicator-btn');
                 const indicatorLabel = document.getElementById('cloud-indicator-label');
+                const indicatorIcon = document.getElementById('cloud-indicator-icon');
+                const balloonText = document.getElementById('cloud-balloon-text');
+                const balloonEl = document.getElementById('cloud-balloon');
                 const modeButtonsContainer = document.getElementById('cloud-mode-toggle-buttons');
                 
                 if (this.syncEnabled && this.accessToken) {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync attivo)</span>';
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:#00ff88; font-weight:700; text-shadow:0 0 8px rgba(0,255,136,0.35);">Online (Google Drive Auto-Sync attivo)</span>';
                     if (indicatorBtn) {
-                        indicatorBtn.style.borderColor = 'var(--success)';
-                        indicatorBtn.style.color = 'var(--success)';
-                        indicatorBtn.style.background = 'rgba(16, 185, 129, 0.1)';
-                        indicatorBtn.title = 'Cloud Online: sincronizzazione automatica attiva con Google Drive';
+                        indicatorBtn.style.borderColor = '#00ff88';
+                        indicatorBtn.style.color = '#00ff88';
+                        indicatorBtn.style.background = 'rgba(0, 255, 136, 0.12)';
+                        indicatorBtn.style.boxShadow = '0 0 12px rgba(0, 255, 136, 0.4)';
+                        indicatorBtn.title = 'premi per andare offline e lavorare solo in locale';
                     }
+                    if (indicatorIcon) indicatorIcon.textContent = '☁️';
                     if (indicatorLabel) indicatorLabel.textContent = 'Online';
-                    if (modeButtonsContainer) {
-                        modeButtonsContainer.innerHTML = `
-                            <button class="btn btn-outline" style="color: var(--text-muted); border-color: rgba(255, 255, 255, 0.25);" onclick="app.cloudSync.logout()" data-guide="Disconnette l'account Google Drive e imposta il gestionale in Modalità Offline Pura.">🔒 Passa a Modalità Offline Pura</button>
-                            <button class="btn btn-primary" onclick="app.cloudSync.login()" data-guide="Ricollega o cambia l'account Google Drive collegato.">🔄 Cambia Account Google</button>
-                        `;
+                    if (balloonText) balloonText.textContent = 'premi per andare offline e lavorare solo in locale';
+                    if (balloonEl) {
+                        balloonEl.style.borderColor = 'rgba(0, 255, 136, 0.45)';
+                        balloonEl.style.color = '#00ff88';
                     }
+                    if (modeButtonsContainer) modeButtonsContainer.innerHTML = '';
                 } else if (this.syncEnabled && !this.accessToken) {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--warning);">Sincronizzazione in Pausa: Accesso Google da rinnovare (oppure usa la Modalità Offline Pura)</span>';
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:#f59e0b; font-weight:700;">Sincronizzazione in Pausa (Accesso Google da rinnovare)</span>';
                     if (indicatorBtn) {
-                        indicatorBtn.style.borderColor = 'var(--warning)';
-                        indicatorBtn.style.color = 'var(--warning)';
-                        indicatorBtn.style.background = 'rgba(245, 158, 11, 0.1)';
-                        indicatorBtn.title = 'Sessione Google Drive scaduta: clicca per ricollegare o passa a Offline pura';
+                        indicatorBtn.style.borderColor = '#f59e0b';
+                        indicatorBtn.style.color = '#fbbf24';
+                        indicatorBtn.style.background = 'rgba(245, 158, 11, 0.12)';
+                        indicatorBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.4)';
+                        indicatorBtn.title = 'premi per sincronizzarti con il cloud di google drive';
                     }
-                    if (indicatorLabel) indicatorLabel.textContent = 'Ricollega Cloud';
-                    if (modeButtonsContainer) {
-                        modeButtonsContainer.innerHTML = `
-                            <button class="btn btn-outline" style="border-color: #3b82f6; color: #93c5fd; font-weight: 600;" onclick="app.cloudSync.logout()" data-guide="Disattiva i tentativi di connessione al Cloud e lavora in Modalità Offline Pura solo su questo computer.">🔒 Usa Modalità Offline Pura (Disattiva Cloud)</button>
-                            <button class="btn btn-primary" style="background:#f59e0b; border-color:#f59e0b; font-weight: 600;" onclick="app.cloudSync.login()" data-guide="Rinnova l'accesso al tuo account Google Drive per riattivare la sincronizzazione automatica.">🔑 Riconnetti Google Drive (Login)</button>
-                        `;
+                    if (indicatorIcon) indicatorIcon.textContent = '🔑';
+                    if (indicatorLabel) indicatorLabel.textContent = 'Ricollega';
+                    if (balloonText) balloonText.textContent = 'premi per sincronizzarti con il cloud di google drive';
+                    if (balloonEl) {
+                        balloonEl.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+                        balloonEl.style.color = '#fbbf24';
                     }
+                    if (modeButtonsContainer) modeButtonsContainer.innerHTML = '';
                 } else {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Modalità Offline Pura (Solo Locale - Nessun Cloud)</span>';
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:#ff3344; font-weight:700; text-shadow:0 0 8px rgba(255,51,68,0.35);">Offline (Modalità Locale)</span>';
                     if (indicatorBtn) {
-                        indicatorBtn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-                        indicatorBtn.style.color = 'var(--danger)';
-                        indicatorBtn.style.background = 'transparent';
-                        indicatorBtn.title = 'Gestionale in Modalità Offline Pura: dati salvati solo su questo computer';
+                        indicatorBtn.style.borderColor = '#ff3344';
+                        indicatorBtn.style.color = '#ff3344';
+                        indicatorBtn.style.background = 'rgba(255, 51, 68, 0.12)';
+                        indicatorBtn.style.boxShadow = '0 0 12px rgba(255, 51, 68, 0.4)';
+                        indicatorBtn.title = 'premi per sincronizzarti con il cloud di google drive';
                     }
+                    if (indicatorIcon) indicatorIcon.textContent = '☁️';
                     if (indicatorLabel) indicatorLabel.textContent = 'Offline';
-                    if (modeButtonsContainer) {
-                        modeButtonsContainer.innerHTML = `
-                            <button class="btn btn-outline" style="border-color: rgba(255, 255, 255, 0.2); color: #94a3b8; background: rgba(255, 255, 255, 0.03); cursor: default;" onclick="app.toast('La Modalità Offline Pura è già attiva. I dati sono salvati solo su questo PC.', 'info')" data-guide="Modalità Offline Pura attiva: i dati risiedono solo su questo computer.">✔️ Modalità Offline Pura (Attiva)</button>
-                            <button class="btn btn-primary" onclick="app.cloudSync.login()" data-guide="Collega il gestionale al tuo account Google Drive per abilitare il salvataggio e la sincronizzazione cloud.">☁️ Passa a Modalità Cloud (Google Drive)</button>
-                        `;
+                    if (balloonText) balloonText.textContent = 'premi per sincronizzarti con il cloud di google drive';
+                    if (balloonEl) {
+                        balloonEl.style.borderColor = 'rgba(255, 51, 68, 0.45)';
+                        balloonEl.style.color = '#ff6677';
                     }
+                    if (modeButtonsContainer) modeButtonsContainer.innerHTML = '';
                 }
                 // Sincronizza la mobile action bar
                 if (typeof syncMobileActionBar === 'function') syncMobileActionBar();
@@ -17469,45 +17545,42 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <!-- Sincronizzazione e Modalità -->
                             <div class="glass-card" style="border-left: 4px solid #3b82f6;">
                                 <h3 style="margin-bottom:0.5rem; display: flex; align-items: center; gap: 8px;">
-                                    <span>🚀</span> Modalità di Avvio e Cloud
+                                    <span>⚡</span> stato dell applicazione all avvio
                                 </h3>
-                                <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale (Modalità Offline Pura vs Sincronizzazione Google Drive).</p>
+                                <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale (Modalità Offline vs Sincronizzazione Google Drive).</p>
                                 
                                 <!-- Selettore Comportamento all'Avvio -->
                                 <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                                     <div>
                                         <div style="font-weight: 600; font-size: 0.88rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                                            <span>⚡</span> Stato all'Avvio dell'Applicazione:
+                                            <span>⚡</span> Modalità:
                                         </div>
                                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                            All'avvio il gestionale parte sempre in locale, senza popup o attese di rete.
+                                            ${this.cloudSync.getStartupMode() === 'offline' ? 'All\'avvio il gestionale parte sempre in locale, senza popup o attese di rete.' : 'All\'avvio il gestionale si collega a Google Drive per la sincronizzazione cloud.'}
                                         </div>
                                     </div>
-                                    <div style="display: flex; gap: 8px;">
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         <button class="btn btn-sm ${this.cloudSync.getStartupMode() === 'offline' ? 'btn-primary' : 'btn-outline'}" 
-                                                style="${this.cloudSync.getStartupMode() === 'offline' ? 'font-weight: bold; background: #10b981; border-color: #10b981;' : ''}"
+                                                style="${this.cloudSync.getStartupMode() === 'offline' ? 'font-weight: bold; background: #ff3344; border-color: #ff3344; box-shadow: 0 0 10px rgba(255,51,68,0.3);' : ''}"
                                                 onclick="app.cloudSync.setStartupMode('offline'); app.renderDatabase();"
-                                                title="All'avvio il gestionale parte sempre al 100% in locale">
-                                            🔒 Sempre Offline (Predefinito)
+                                                title="All'avvio il gestionale parte sempre in locale">
+                                            🔒 Avvio Offline
                                         </button>
                                         <button class="btn btn-sm ${this.cloudSync.getStartupMode() === 'cloud' ? 'btn-primary' : 'btn-outline'}" 
-                                                style="${this.cloudSync.getStartupMode() === 'cloud' ? 'font-weight: bold;' : ''}"
+                                                style="${this.cloudSync.getStartupMode() === 'cloud' ? 'font-weight: bold; background: #00ff88; border-color: #00ff88; color: #0f172a; box-shadow: 0 0 10px rgba(0,255,136,0.3);' : ''}"
                                                 onclick="app.cloudSync.setStartupMode('cloud'); app.renderDatabase();"
-                                                title="All'avvio il gestionale tenta di ricollegare subito Google Drive">
-                                            ☁️ Connetti Cloud all'Avvio
+                                                title="All'avvio il gestionale si collega a Google Drive">
+                                            ☁️ Avvia con connessione Cloud
                                         </button>
                                     </div>
                                 </div>
                                 
-                                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                    <div id="cloud-mode-toggle-buttons" style="display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap;"></div>
-                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer, conservando la copia precedente di riserva" data-guide="Carica l'intero database di questo PC su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
-                                    <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di questo computer con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare questo PC. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
-                                    <button class="btn btn-outline" style="border-color:#6366f1; color:#818cf8; font-weight:600;" onclick="app.cloudSync.openCloudVersionsModal()" title="Visualizza le copie di backup e le versioni storiche presenti su Google Drive" data-guide="Consulta lo storico dei backup salvati su Google Drive (Copia Attuale e Copia di Riserva Precedente) e ripristina con un click quella desiderata.">📂 Versioni & Copie sul Cloud</button>
-                                    <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione" data-guide="Apre la finestra di scelta per unire i dati, sovrascrivere il cloud o ereditare dal cloud.">🔄 Sincronizza Ora (Opzioni)</button>
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                                    <div id="cloud-status-text" style="font-size:0.88rem; font-weight:bold;"></div>
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #93c5fd; font-weight: 600;" onclick="app.cloudSync.login()" data-guide="Ricollega o cambia l'account Google Drive collegato (utile per migrazioni o cambio email).">
+                                        🔄 Cambia Account Google
+                                    </button>
                                 </div>
-                                
-                                <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;"></div>
                             </div>
 
                             <!-- App Lock / Sicurezza -->
