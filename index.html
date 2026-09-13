@@ -4977,25 +4977,23 @@
             clientId: '961700483511-vg2k314pthheku37adm3vlniothabuae.apps.googleusercontent.com',
 
             getStartupMode() {
-                return localStorage.getItem('asd_startup_cloud_mode') || 'offline';
+                return 'offline';
             },
 
             setStartupMode(mode) {
-                localStorage.setItem('asd_startup_cloud_mode', mode);
                 if (mode === 'offline') {
                     this.logout(false);
                 } else {
-                    app.toast('Avvio configurato: Avvia con connessione Cloud', 'info');
-                    if (!this.accessToken) this.login();
+                    this.login();
                 }
                 this.updateUIStatus();
             },
 
             toggleOnlineOffline() {
                 if (this.syncEnabled && this.accessToken) {
-                    this.setStartupMode('offline');
+                    this.logout(false);
                 } else {
-                    this.setStartupMode('cloud');
+                    this.login();
                 }
                 if (app.state && app.state.currentPage === 'database') {
                     app.renderDatabase();
@@ -5019,7 +5017,6 @@
                         }
                         this.accessToken = tokenResponse.access_token;
                         localStorage.setItem('asd_cloud_sync', 'true');
-                        localStorage.setItem('asd_startup_cloud_mode', 'cloud');
                         localStorage.setItem('asd_gdrive_token', this.accessToken);
                         localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
                         this.syncEnabled = true;
@@ -5035,32 +5032,12 @@
                     },
                 });
 
-                const startupMode = this.getStartupMode();
-                if (startupMode === 'offline') {
-                    // All'avvio l'applicazione parte SEMPRE in Modalità Offline Pura (Locale)
-                    this.syncEnabled = false;
-                    this.accessToken = null;
-                    localStorage.setItem('asd_cloud_sync', 'false');
-                    this.updateUIStatus();
-                    return;
-                }
-
-                // Se l'utente ha invece impostato esplicitamente l'avvio con Connetti Cloud:
-                const savedToken = localStorage.getItem('asd_gdrive_token');
-                const tokenExpiry = localStorage.getItem('asd_gdrive_token_expiry');
-                if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
-                    this.accessToken = savedToken;
-                    this.syncEnabled = true;
-                    this.updateUIStatus();
-                    
-                    if (!sessionStorage.getItem('asd_cloud_sync_done')) {
-                        sessionStorage.setItem('asd_cloud_sync_done', 'true');
-                        this.performInitialSync();
-                    }
-                } else {
-                    this.tokenClient.requestAccessToken({prompt: 'none'});
-                    this.updateUIStatus();
-                }
+                // All'avvio l'applicazione parte SEMPRE in Modalità Offline (Locale)
+                this.syncEnabled = false;
+                this.accessToken = null;
+                localStorage.setItem('asd_cloud_sync', 'false');
+                localStorage.removeItem('asd_startup_cloud_mode');
+                this.updateUIStatus();
             },
 
             login() {
@@ -17556,20 +17533,20 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                             <span>⚡</span> Modalità:
                                         </div>
                                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                            ${this.cloudSync.getStartupMode() === 'offline' ? 'All\'avvio il gestionale parte sempre in locale, senza popup o attese di rete.' : 'All\'avvio il gestionale si collega a Google Drive per la sincronizzazione cloud.'}
+                                            ${(!this.cloudSync.syncEnabled || !this.cloudSync.accessToken) ? 'All\'avvio il gestionale parte sempre in locale, senza popup o attese di rete.' : 'Attualmente collegato a Google Drive con sincronizzazione attiva.'}
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                        <button class="btn btn-sm ${this.cloudSync.getStartupMode() === 'offline' ? 'btn-primary' : 'btn-outline'}" 
-                                                style="${this.cloudSync.getStartupMode() === 'offline' ? 'font-weight: bold; background: #ff3344; border-color: #ff3344; box-shadow: 0 0 10px rgba(255,51,68,0.3);' : ''}"
-                                                onclick="app.cloudSync.setStartupMode('offline'); app.renderDatabase();"
-                                                title="All'avvio il gestionale parte sempre in locale">
+                                        <button class="btn btn-sm ${(!this.cloudSync.syncEnabled || !this.cloudSync.accessToken) ? 'btn-primary' : 'btn-outline'}" 
+                                                style="${(!this.cloudSync.syncEnabled || !this.cloudSync.accessToken) ? 'font-weight: bold; background: #ff3344; border-color: #ff3344; box-shadow: 0 0 10px rgba(255,51,68,0.3);' : ''}"
+                                                onclick="app.cloudSync.logout(false); app.renderDatabase();"
+                                                title="Lavora in locale (offline)">
                                             🔒 Avvio Offline
                                         </button>
-                                        <button class="btn btn-sm ${this.cloudSync.getStartupMode() === 'cloud' ? 'btn-primary' : 'btn-outline'}" 
-                                                style="${this.cloudSync.getStartupMode() === 'cloud' ? 'font-weight: bold; background: #00ff88; border-color: #00ff88; color: #0f172a; box-shadow: 0 0 10px rgba(0,255,136,0.3);' : ''}"
-                                                onclick="app.cloudSync.setStartupMode('cloud'); app.renderDatabase();"
-                                                title="All'avvio il gestionale si collega a Google Drive">
+                                        <button class="btn btn-sm ${(this.cloudSync.syncEnabled && this.cloudSync.accessToken) ? 'btn-primary' : 'btn-outline'}" 
+                                                style="${(this.cloudSync.syncEnabled && this.cloudSync.accessToken) ? 'font-weight: bold; background: #00ff88; border-color: #00ff88; color: #0f172a; box-shadow: 0 0 10px rgba(0,255,136,0.3);' : ''}"
+                                                onclick="app.cloudSync.login(); app.renderDatabase();"
+                                                title="Connettiti a Google Drive">
                                             ☁️ Avvia con connessione Cloud
                                         </button>
                                     </div>
