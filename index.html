@@ -4746,7 +4746,7 @@
                 localStorage.removeItem('asd_gdrive_token');
                 localStorage.removeItem('asd_gdrive_token_expiry');
                 localStorage.removeItem('asd_gdrive_file_id');
-                app.toast('Disconnesso dal Cloud. Modalità Offline attiva.', 'warning');
+                app.toast('Modalità Offline Pura attivata. I dati saranno salvati solo su questo computer.', 'info');
                 this.updateUIStatus();
             },
 
@@ -4754,31 +4754,53 @@
                 const statusEl = document.getElementById('cloud-status-text');
                 const indicatorBtn = document.getElementById('cloud-indicator-btn');
                 const indicatorLabel = document.getElementById('cloud-indicator-label');
+                const modeButtonsContainer = document.getElementById('cloud-mode-toggle-buttons');
                 
                 if (this.syncEnabled && this.accessToken) {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>';
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--success);">Online (Google Drive Auto-Sync attivo)</span>';
                     if (indicatorBtn) {
                         indicatorBtn.style.borderColor = 'var(--success)';
                         indicatorBtn.style.color = 'var(--success)';
                         indicatorBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+                        indicatorBtn.title = 'Cloud Online: sincronizzazione automatica attiva con Google Drive';
                     }
                     if (indicatorLabel) indicatorLabel.textContent = 'Online';
+                    if (modeButtonsContainer) {
+                        modeButtonsContainer.innerHTML = `
+                            <button class="btn btn-outline" style="color: var(--text-muted); border-color: rgba(255, 255, 255, 0.25);" onclick="app.cloudSync.logout()" data-guide="Disconnette l'account Google Drive e imposta il gestionale in Modalità Offline Pura.">🔒 Passa a Modalità Offline Pura</button>
+                            <button class="btn btn-primary" onclick="app.cloudSync.login()" data-guide="Ricollega o cambia l'account Google Drive collegato.">🔄 Cambia Account Google</button>
+                        `;
+                    }
                 } else if (this.syncEnabled && !this.accessToken) {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--warning);">Errore Cloud: Ri-eseguire Login</span>';
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--warning);">Sincronizzazione in Pausa: Accesso Google da rinnovare (oppure usa la Modalità Offline Pura)</span>';
                     if (indicatorBtn) {
                         indicatorBtn.style.borderColor = 'var(--warning)';
                         indicatorBtn.style.color = 'var(--warning)';
                         indicatorBtn.style.background = 'rgba(245, 158, 11, 0.1)';
+                        indicatorBtn.title = 'Sessione Google Drive scaduta: clicca per ricollegare o passa a Offline pura';
                     }
-                    if (indicatorLabel) indicatorLabel.textContent = 'Auth Persa';
+                    if (indicatorLabel) indicatorLabel.textContent = 'Ricollega Cloud';
+                    if (modeButtonsContainer) {
+                        modeButtonsContainer.innerHTML = `
+                            <button class="btn btn-outline" style="border-color: #3b82f6; color: #93c5fd; font-weight: 600;" onclick="app.cloudSync.logout()" data-guide="Disattiva i tentativi di connessione al Cloud e lavora in Modalità Offline Pura solo su questo computer.">🔒 Usa Modalità Offline Pura (Disattiva Cloud)</button>
+                            <button class="btn btn-primary" style="background:#f59e0b; border-color:#f59e0b; font-weight: 600;" onclick="app.cloudSync.login()" data-guide="Rinnova l'accesso al tuo account Google Drive per riattivare la sincronizzazione automatica.">🔑 Riconnetti Google Drive (Login)</button>
+                        `;
+                    }
                 } else {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Offline (Locale)</span>';
+                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:var(--text-muted);">Modalità Offline Pura (Solo Locale - Nessun Cloud)</span>';
                     if (indicatorBtn) {
                         indicatorBtn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
                         indicatorBtn.style.color = 'var(--danger)';
                         indicatorBtn.style.background = 'transparent';
+                        indicatorBtn.title = 'Gestionale in Modalità Offline Pura: dati salvati solo su questo computer';
                     }
                     if (indicatorLabel) indicatorLabel.textContent = 'Offline';
+                    if (modeButtonsContainer) {
+                        modeButtonsContainer.innerHTML = `
+                            <button class="btn btn-outline" style="border-color: rgba(255, 255, 255, 0.2); color: #94a3b8; background: rgba(255, 255, 255, 0.03); cursor: default;" onclick="app.toast('La Modalità Offline Pura è già attiva. I dati sono salvati solo su questo PC.', 'info')" data-guide="Modalità Offline Pura attiva: i dati risiedono solo su questo computer.">✔️ Modalità Offline Pura (Attiva)</button>
+                            <button class="btn btn-primary" onclick="app.cloudSync.login()" data-guide="Collega il gestionale al tuo account Google Drive per abilitare il salvataggio e la sincronizzazione cloud.">☁️ Passa a Modalità Cloud (Google Drive)</button>
+                        `;
+                    }
                 }
                 // Sincronizza la mobile action bar
                 if (typeof syncMobileActionBar === 'function') syncMobileActionBar();
@@ -17019,7 +17041,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         <li><strong>Passa a Modalità Cloud:</strong> si collega con OAuth al tuo account Google per il salvataggio automatico.</li>
                                         <li><strong>🔄 Sincronizza Ora:</strong> confronta i dati e ti permette di scegliere tra Unisci, Sovrascrivi online o Lascia tutto così.</li>
                                         <li><strong>⬆️ Sovrascrivi Cloud con Dati Locali:</strong> invia la versione del PC a Google Drive <em>senza</em> fare fusioni (evita che il cloud reinserisca vecchi dati o doppioni).</li>
-                                        <li><strong>Passa a Modalità Offline:</strong> disattiva la connessione al cloud per lavorare al 100% in locale.</li>
+                                        <li><strong>Modalità Offline Pura:</strong> disattiva la connessione al cloud per lavorare al 100% in locale in totale privacy e sicurezza.</li>
                                     </ul>
                                 </div>
 
@@ -17124,20 +17146,17 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <!-- Sincronizzazione e Modalità -->
                             <div class="glass-card" style="border-left: 4px solid #3b82f6;">
                                 <h3 style="margin-bottom:1rem;">🚀 Modalità di Avvio e Cloud</h3>
-                                <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale e la schermata di benvenuto.</p>
-                                
-                                
+                                <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Gestisci la modalità operativa del gestionale (Modalità Offline Pura vs Sincronizzazione Google Drive).</p>
                                 
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                    <button class="btn btn-outline" style="color: var(--text-muted); border-color: var(--text-muted);" onclick="app.cloudSync.logout()" data-guide="Disconnette l'account Google Drive e passa alla modalità solo locale.">Passa a Modalità Offline</button>
-                                    <button class="btn btn-primary" onclick="app.cloudSync.login()" data-guide="Collega il gestionale al tuo account Google Drive per abilitare il salvataggio cloud.">Passa a Modalità Cloud (API)</button>
+                                    <div id="cloud-mode-toggle-buttons" style="display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap;"></div>
                                     <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer, conservando la copia precedente di riserva" data-guide="Carica l'intero database di questo PC su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
                                     <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di questo computer con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare questo PC. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
                                     <button class="btn btn-outline" style="border-color:#6366f1; color:#818cf8; font-weight:600;" onclick="app.cloudSync.openCloudVersionsModal()" title="Visualizza le copie di backup e le versioni storiche presenti su Google Drive" data-guide="Consulta lo storico dei backup salvati su Google Drive (Copia Attuale e Copia di Riserva Precedente) e ripristina con un click quella desiderata.">📂 Versioni & Copie sul Cloud</button>
                                     <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione" data-guide="Apre la finestra di scelta per unire i dati, sovrascrivere il cloud o ereditare dal cloud.">🔄 Sincronizza Ora (Opzioni)</button>
                                 </div>
                                 
-                                <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;">Stato attuale: ${localStorage.getItem('asd_cloud_sync') === 'true' ? '<span style="color:var(--success);">Online (Google Drive Auto-Sync)</span>' : '<span style="color:var(--text-muted);">Offline (Locale)</span>'}</div>
+                                <div id="cloud-status-text" style="margin-top:15px; font-size:0.85rem; font-weight:bold;"></div>
                             </div>
 
                             <!-- App Lock / Sicurezza -->
@@ -17194,11 +17213,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <!-- Snapshots e Salvataggi -->
                             <div class="glass-card" style="border-color: rgba(59, 130, 246, 0.4);">
                                 <h3 style="margin-bottom:1rem;">💾 Salvataggi di Stato (Snapshots)</h3>
-                                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Salva copie complete del database da ripristinare in caso di errore.</p>
+                                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Salva copie complete del database in memoria locale da ripristinare rapidamente in caso di errore.</p>
                                 
                                 <div style="display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
                                     <button class="btn" style="background:var(--primary);" onclick="app.createSnapshot('manual')">➕ Crea Salvataggio Manuale</button>
-                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()">🪄 Ripara Ricevute (Opz. 1: Cartaceo & Digitale da 1 a N)</button>
                                 </div>
                                 
                                 <div style="display:flex; flex-direction:row; gap:10px; margin-bottom:1rem; align-items:flex-end;">
@@ -17252,6 +17270,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </div>
                             </div>
 
+                            <!-- Manutenzione & Riparazione Registri -->
+                            <div class="glass-card" style="border-left: 4px solid #10b981;">
+                                <h3 style="margin-bottom:0.5rem; display:flex; align-items:center; gap:8px;">
+                                    <span>🪄</span> Manutenzione & Riparazione Registri
+                                </h3>
+                                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Riallinea i registri ricevute e sincronizza la Prima Nota in caso di disallineamenti o incongruenze numeriche.</p>
+                                <div style="display:flex; flex-direction:column; gap:10px;">
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="app.applicaOpzione1Database()" data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota. Crea in automatico uno snapshot di sicurezza prima di procedere.">
+                                        <span>🪄</span> Ripara Ricevute (Opz. 1: Cartaceo & Digitale da 1 a N)
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- Cancella Database Iscritti -->
                             <div class="glass-card" style="border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.04);">
                                 <h3 style="margin-bottom:1rem;">⚠️ Azioni Pericolose (Sovrascrittura)</h3>
@@ -17274,6 +17305,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 ${this.state.debugMode ? `
                                     <p style="color:var(--success); margin-bottom:1rem;">✓ Modalità debug attiva e moduli decriptati.</p>
                                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                        <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()" data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota.">🪄 Ripara Ricevute (Opz. 1)</button>
+                                        <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()">🔄 Rinumera Sequenza</button>
+                                        <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()">⏩ Sposta Sequenza</button>
                                         <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
                                         ${this.state.debugUI || ''}
                                     </div>
