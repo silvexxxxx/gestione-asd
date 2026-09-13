@@ -6021,7 +6021,9 @@
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Cariche</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Excel</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo (Server & Client)</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem; color: #c4b5fd;" onclick="app.showGuideSection('debug')">12. Modalità Debug & Funzioni di Ripristino</button></li>
+                                    ${this.state.debugMode ? `
+                                        <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: 1px solid rgba(196, 181, 253, 0.4); background: rgba(139, 92, 246, 0.1); justify-content: flex-start; font-size: 0.85rem; color: #c4b5fd; font-weight: 600;" onclick="app.showGuideSection('debug')">🛠️ 12. Modalità Debug (Attiva)</button></li>
+                                    ` : ''}
                                 </ul>
                             </div>
                             
@@ -6206,6 +6208,16 @@
                                 <p>Al termine del lavoro, è sufficiente cliccare sul pulsante <strong>Esci</strong> in alto a destra: il gestionale eseguirà automaticamente il salvataggio dei dati in memoria locale e la sincronizzazione sicura con Google Drive prima della chiusura.</p>`;
                         break;
                     case 'debug':
+                        if (!this.state.debugMode) {
+                            contentDiv.innerHTML = `
+                                <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+                                    <div style="font-size:3rem; margin-bottom:1rem;">🔒</div>
+                                    <h3>Sezione Riservata: Modalità Debug</h3>
+                                    <p style="margin-top:0.5rem; font-size:0.9rem;">Questa guida tecnica è visibile solo quando la <strong>Modalità Debug</strong> è attiva.<br>Per sbloccarla, inserisci la MasterKey in <em>Impostazioni ➔ 🔒 Modalità Debug</em>.</p>
+                                </div>
+                            `;
+                            return;
+                        }
                         html = `<h2>12. Modalità Debug & Funzioni di Manutenzione Strutturale</h2>
                                 <p>La <strong>Modalità Debug</strong> è un modulo avanzato protetto da crittografia (MasterKey) riservato all'amministratore e per interventi di riallineamento straordinario del database.</p>
                                 
@@ -15737,7 +15749,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 this.toast("Modalità Debug Disattivata.");
             }
             this.saveAll();
-            this.renderDatabase();
+            if (this.state.currentPage === 'guida') {
+                this.renderGuida();
+            } else {
+                this.renderDatabase();
+            }
         },
 
         overrideAutoCompile() {
@@ -17079,21 +17095,23 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </ul>
                                 </div>
 
-                                <!-- 4. Modalità Utente vs Modalità Debug -->
-                                <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
-                                    <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #c4b5fd; display: flex; align-items: center; gap: 6px;">
-                                        <span>🛠️</span> Modalità Utente vs Debug
-                                    </h4>
-                                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
-                                        <strong>Protezione attiva:</strong> Le funzioni strutturali sono nascoste all'utente comune e disponibili solo sbloccando la Modalità Debug.
-                                    </p>
-                                    <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
-                                        <li><strong>🪄 Ripara Ricevute (Opz. 1):</strong> riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota.</li>
-                                        <li><strong>🔄 Rinumera Sequenza (Debug):</strong> ricompatta i numeri delle ricevute per eliminare buchi numerici intermedi.</li>
-                                        <li><strong>⏩ Sposta Sequenza (Debug):</strong> sposta in avanti o indietro (+1 / -1) una serie di ricevute a partire da una data. Include il tasto verde di riallineamento automatico reale.</li>
-                                        <li><strong>➕ / ✏️ / 🗑️ (Tabella Ricevute Debug):</strong> permettono di inserire ricevute intermedie (con slittamento +1) o eliminare singole ricevute (con slittamento -1).</li>
-                                    </ul>
-                                </div>
+                                ${this.state.debugMode ? `
+                                    <!-- 4. Modalità Utente vs Modalità Debug -->
+                                    <div style="background: rgba(255, 255, 255, 0.03); padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #c4b5fd; display: flex; align-items: center; gap: 6px;">
+                                            <span>🛠️</span> Modalità Utente vs Debug
+                                        </h4>
+                                        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+                                            <strong>Protezione attiva:</strong> Le funzioni strutturali sono nascoste all'utente comune e disponibili solo sbloccando la Modalità Debug.
+                                        </p>
+                                        <ul style="margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-main); line-height: 1.45;">
+                                            <li><strong>🪄 Ripara Ricevute (Opz. 1):</strong> riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota.</li>
+                                            <li><strong>🔄 Rinumera Sequenza (Debug):</strong> ricompatta i numeri delle ricevute per eliminare buchi numerici intermedi.</li>
+                                            <li><strong>⏩ Sposta Sequenza (Debug):</strong> sposta in avanti o indietro (+1 / -1) una serie di ricevute a partire da una data. Include il tasto verde di riallineamento automatico reale.</li>
+                                            <li><strong>➕ / ✏️ / 🗑️ (Tabella Ricevute Debug):</strong> permettono di inserire ricevute intermedie (con slittamento +1) o eliminare singole ricevute (con slittamento -1).</li>
+                                        </ul>
+                                    </div>
+                                ` : ''}
 
                             </div>
                         </div>
@@ -17342,6 +17360,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:bold;" onclick="app.applicaOpzione1Database()" data-guide="Riallinea i due registri separando Cartaceo e Digitale (da 1 a N) e sincronizzando la Prima Nota.">🪄 Ripara Ricevute (Opz. 1)</button>
                                         <button class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);" onclick="app.openResequenceModal()">🔄 Rinumera Sequenza</button>
                                         <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="app.openShiftRicevuteModal()">⏩ Sposta Sequenza</button>
+                                        <button class="btn btn-outline" style="border-color:#a855f7; color:#c084fc; font-weight:600;" onclick="app.showPage('guida'); setTimeout(() => app.showGuideSection('debug'), 80);" title="Consulta il manuale delle funzioni di debug">📖 Manuale Tecnico Debug</button>
                                         <button class="btn btn-danger" onclick="app.toggleDebugMode(false)">Disattiva Debug</button>
                                         ${this.state.debugUI || ''}
                                     </div>
