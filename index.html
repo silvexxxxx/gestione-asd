@@ -1696,15 +1696,21 @@
     <div id="paywall-overlay" style="display: none;">
         <div class="paywall-box">
             <svg style="width: 50px; height: 50px; color: #3b82f6; margin-bottom: 15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-            <h2>Licenza Software</h2>
-            <p>Inserisci la tua Chiave di Licenza per sbloccare ASD Gestionale. Se non ne hai una, acquistala sul nostro sito.</p>
-            <input type="text" id="license-key-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off">
-            <button class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;" onclick="app.verifyLicense()">
-                <svg style="width: 18px; height: 18px; margin-right: 5px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Verifica Licenza
-            </button>
+            <h2>Licenza Software ASD</h2>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 15px;">Ogni licenza include l'attivazione fino a un massimo di <strong>5 postazioni/dispositivi</strong> simultanee.</p>
+            
+            <div id="license-status-box" style="display: none;"></div>
+
+            <div id="license-input-wrapper">
+                <input type="text" id="license-key-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+                <button class="btn btn-primary" id="license-submit-btn" style="width:100%; justify-content:center; padding:12px;" onclick="app.verifyLicense()">
+                    <svg style="width: 18px; height: 18px; margin-right: 5px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Attiva Licenza su questo Dispositivo
+                </button>
+            </div>
+
             <button class="btn btn-outline" id="paywall-close-btn" style="width:100%; justify-content:center; padding:12px; margin-top:10px; display:none;" onclick="document.getElementById('paywall-overlay').style.display='none'">
-                Chiudi (Versione di Prova)
+                Chiudi
             </button>
             <script>
                 // Show close button only if trial is active and no license saved
@@ -1713,12 +1719,16 @@
                     if(id) {
                         const days = (Date.now() - parseInt(id)) / (1000 * 60 * 60 * 24);
                         if(days <= 15 && !localStorage.getItem('asd_license_key')) {
-                            document.getElementById('paywall-close-btn').style.display = 'flex';
+                            const btn = document.getElementById('paywall-close-btn');
+                            if (btn) {
+                                btn.innerText = 'Chiudi (Versione di Prova)';
+                                btn.style.display = 'flex';
+                            }
                         }
                     }
                 })();
             </script>
-            <div id="license-error" style="color: #ef4444; font-size: 0.85rem; margin-top: 15px; display: none;">Chiave non valida o scaduta.</div>
+            <div id="license-error" style="color: #ef4444; font-size: 0.85rem; margin-top: 15px; display: none; line-height: 1.4;">Chiave non valida o scaduta.</div>
         </div>
     </div>
 
@@ -2266,10 +2276,173 @@
             setTimeout(() => overlay.remove(), 300);
         },
 
+        getDeviceInstanceName() {
+            let devId = localStorage.getItem('asd_device_instance_id');
+            if (!devId) {
+                devId = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase().slice(-4);
+                localStorage.setItem('asd_device_instance_id', devId);
+            }
+            const role = this.getDeviceRole() === 'server' ? 'Server (Banco)' : 'Client (Secondario)';
+            const asdName = (this.state && this.state.settings && this.state.settings.nome_asd) ? (' - ' + this.state.settings.nome_asd) : '';
+            return `${role} [${devId}]${asdName}`.substring(0, 100);
+        },
+
+        openLicenseModal() {
+            const overlay = document.getElementById('paywall-overlay');
+            if (!overlay) return;
+
+            const savedKey = localStorage.getItem('asd_license_key');
+            const usage = localStorage.getItem('asd_license_usage');
+            const limit = localStorage.getItem('asd_license_limit') || '5';
+            const expires = localStorage.getItem('asd_license_expires_at');
+            const devName = this.getDeviceInstanceName();
+
+            const statusBox = document.getElementById('license-status-box');
+            const closeBtn = document.getElementById('paywall-close-btn');
+            const inputField = document.getElementById('license-key-input');
+            const submitBtn = document.getElementById('license-submit-btn');
+            const errorDiv = document.getElementById('license-error');
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            if (savedKey) {
+                if (statusBox) {
+                    statusBox.style.display = 'block';
+                    let expStr = 'Permanente (Lifetime)';
+                    if (expires && expires !== 'null') {
+                        try {
+                            expStr = new Date(expires).toLocaleDateString('it-IT');
+                        } catch(e) {
+                            expStr = expires;
+                        }
+                    }
+                    const usageDisplay = usage ? `${usage} / ${limit} postazioni utilizzate` : `Fino a ${limit} postazioni`;
+                    const maskedKey = savedKey.length > 8 ? `${savedKey.substring(0, 4)}••••-••••-${savedKey.slice(-4)}` : savedKey;
+
+                    statusBox.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: left; font-size: 0.85rem;">
+                            <div style="color: #34d399; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <span>✅ Licenza Attiva</span>
+                                <span style="background: rgba(16, 185, 129, 0.2); padding: 2px 8px; border-radius: 6px; font-size: 0.78rem;">${usageDisplay}</span>
+                            </div>
+                            <div style="color: #cbd5e1; margin-bottom: 4px;"><strong>Chiave:</strong> <span style="font-family: monospace;">${maskedKey}</span></div>
+                            <div style="color: #cbd5e1; margin-bottom: 4px;"><strong>Scadenza:</strong> ${expStr}</div>
+                            <div style="color: #94a3b8; font-size: 0.78rem; word-break: break-all;"><strong>Questo Dispositivo:</strong> ${devName}</div>
+                        </div>
+                        <button type="button" class="btn btn-outline" style="width: 100%; border-color: #ef4444; color: #ef4444; justify-content: center; padding: 9px; font-size: 0.85rem; margin-bottom: 15px;" onclick="app.deactivateLicense()">
+                            🚫 Disattiva da questo PC (libera 1 slot Lemon Squeezy)
+                        </button>
+                    `;
+                }
+                if (inputField) {
+                    inputField.placeholder = "Inserisci nuova chiave per sostituire...";
+                }
+                if (submitBtn) {
+                    submitBtn.innerText = "Cambia / Aggiorna Licenza";
+                }
+                if (closeBtn) {
+                    closeBtn.innerText = 'Chiudi';
+                    closeBtn.style.display = 'flex';
+                }
+            } else {
+                if (statusBox) statusBox.style.display = 'none';
+                if (inputField) {
+                    inputField.placeholder = "XXXX-XXXX-XXXX-XXXX";
+                }
+                if (submitBtn) {
+                    submitBtn.innerHTML = `
+                        <svg style="width: 18px; height: 18px; margin-right: 5px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Attiva Licenza su questo Dispositivo
+                    `;
+                }
+                let installDate = localStorage.getItem('asd_install_date');
+                let isTrialActive = false;
+                if (installDate) {
+                    const days = (Date.now() - parseInt(installDate)) / (1000 * 60 * 60 * 24);
+                    if (days <= 15) isTrialActive = true;
+                }
+                if (closeBtn) {
+                    if (isTrialActive) {
+                        closeBtn.innerText = 'Chiudi (Continua Prova)';
+                        closeBtn.style.display = 'flex';
+                    } else {
+                        closeBtn.style.display = 'none';
+                    }
+                }
+            }
+
+            overlay.style.display = 'flex';
+        },
+
+        async deactivateLicense() {
+            const savedKey = localStorage.getItem('asd_license_key');
+            const instanceId = localStorage.getItem('asd_license_instance_id');
+
+            if (!savedKey) {
+                this.toast('Nessuna licenza attiva su questo dispositivo.', 'warning');
+                return;
+            }
+
+            const confirmDeact = window.confirm(
+                "Vuoi davvero disattivare la licenza su questo dispositivo?\n\n" +
+                "Questa postazione verrà scollegata e libererà uno slot su Lemon Squeezy (massimo 5 dispositivi simultanei per licenza), consentendoti di riutilizzarlo su un altro computer.\n\n" +
+                "Vuoi procedere?"
+            );
+            if (!confirmDeact) return;
+
+            this.toast('Disattivazione postazione in corso...', 'info');
+
+            try {
+                const res = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        license_key: savedKey,
+                        instance_id: instanceId,
+                        action: 'deactivate'
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.deactivated || res.ok) {
+                    localStorage.removeItem('asd_license_key');
+                    localStorage.removeItem('asd_license_instance_id');
+                    localStorage.removeItem('asd_license_expires_at');
+                    localStorage.removeItem('asd_license_usage');
+                    localStorage.removeItem('asd_license_limit');
+                    localStorage.removeItem('asd_license_last_check');
+
+                    this.toast(data.message || 'Dispositivo scollegato con successo. Slot postazione liberato!', 'success');
+                    this.updateLicenseUI();
+
+                    const keyInput = document.getElementById('license-key-input');
+                    if (keyInput) keyInput.value = '';
+
+                    // Controlla se il periodo di prova di 15gg è ancora valido
+                    let installDate = localStorage.getItem('asd_install_date');
+                    const daysPassed = installDate ? (Date.now() - parseInt(installDate)) / (1000 * 60 * 60 * 24) : 999;
+                    if (daysPassed > 15) {
+                        this.openLicenseModal();
+                        const errDiv = document.getElementById('license-error');
+                        if (errDiv) {
+                            errDiv.innerText = 'Licenza disattivata. Inserisci una licenza valida per continuare a utilizzare il software.';
+                            errDiv.style.display = 'block';
+                        }
+                    } else {
+                        document.getElementById('paywall-overlay').style.display = 'none';
+                    }
+                } else {
+                    this.toast(data.error || 'Impossibile disattivare il dispositivo da Lemon Squeezy.', 'error');
+                }
+            } catch (err) {
+                this.toast('Errore di connessione durante la disattivazione del dispositivo.', 'error');
+            }
+        },
+
         async verifyLicense() {
             const input = document.getElementById('license-key-input').value.trim();
             const errorDiv = document.getElementById('license-error');
-            const btn = document.querySelector('#paywall-overlay button');
+            const btn = document.getElementById('license-submit-btn') || document.querySelector('#paywall-overlay button.btn-primary');
             
             if (input.length < 5) {
                 errorDiv.innerText = 'Inserisci una chiave di licenza valida.';
@@ -2278,51 +2451,105 @@
             }
 
             // UI Feedback
-            const originalBtnText = btn.innerHTML;
-            btn.innerHTML = 'Verifica in corso...';
-            btn.disabled = true;
+            const originalBtnText = btn ? btn.innerHTML : 'Verifica Licenza';
+            if (btn) {
+                btn.innerHTML = 'Verifica & Attivazione in corso...';
+                btn.disabled = true;
+            }
+            errorDiv.style.display = 'none';
 
             try {
-                // Chiama la Serverless Function su Vercel in modo sicuro
+                const instanceName = this.getDeviceInstanceName();
+                // Chiama la Serverless Function su Vercel con azione 'activate' per registrare il dispositivo su Lemon Squeezy
                 const res = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ license_key: input })
+                    body: JSON.stringify({
+                        license_key: input,
+                        instance_name: instanceName,
+                        action: 'activate'
+                    })
                 });
 
                 const data = await res.json();
 
                 if (data.valid) {
                     localStorage.setItem('asd_license_key', input);
+                    if (data.instance_id) {
+                        localStorage.setItem('asd_license_instance_id', data.instance_id);
+                    }
+                    if (data.activation_usage !== undefined && data.activation_usage !== null) {
+                        localStorage.setItem('asd_license_usage', data.activation_usage.toString());
+                    }
+                    if (data.activation_limit !== undefined && data.activation_limit !== null) {
+                        localStorage.setItem('asd_license_limit', data.activation_limit.toString());
+                    }
+                    localStorage.setItem('asd_license_last_check', Date.now().toString());
+
+                    if (data.expires_at === null) {
+                        localStorage.setItem('asd_license_expires_at', 'null');
+                    } else if (data.expires_at) {
+                        localStorage.setItem('asd_license_expires_at', data.expires_at);
+                    }
+
                     document.getElementById('paywall-overlay').style.display = 'none';
-                    app.toast(data.message || 'Licenza attivata con successo!', 'success');
+                    const usageInfo = (data.activation_usage && data.activation_limit) ? ` (Dispositivi attivi: ${data.activation_usage}/${data.activation_limit})` : '';
+                    this.toast((data.message || 'Licenza attivata con successo!') + usageInfo, 'success');
+                    this.updateLicenseUI();
                     this.init();
                 } else {
-                    errorDiv.innerText = data.error || 'Licenza non valida.';
+                    errorDiv.innerText = data.error || 'Licenza non valida o limite dispositivi raggiunto.';
                     errorDiv.style.display = 'block';
-                    btn.innerHTML = originalBtnText;
-                    btn.disabled = false;
                 }
             } catch (err) {
                 errorDiv.innerText = 'Errore di connessione al server di verifica.';
                 errorDiv.style.display = 'block';
-                btn.innerHTML = originalBtnText;
-                btn.disabled = false;
+            } finally {
+                if (btn) {
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                }
             }
         },
 
         async verifyLicenseBackground(savedKey) {
             try {
+                const savedInstanceId = localStorage.getItem('asd_license_instance_id');
+                const instanceName = this.getDeviceInstanceName();
+
+                // Se questo dispositivo ha già un'istanza registrata la valida; altrimenti esegue l'attivazione automatica
+                const action = savedInstanceId ? 'validate' : 'activate';
+                const payload = {
+                    license_key: savedKey,
+                    action: action
+                };
+                if (savedInstanceId) {
+                    payload.instance_id = savedInstanceId;
+                }
+                if (!savedInstanceId || action === 'activate') {
+                    payload.instance_name = instanceName;
+                }
+
                 const res = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ license_key: savedKey })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
                 if (data.valid) {
                     localStorage.setItem('asd_license_last_check', Date.now().toString());
                     
+                    if (data.instance_id) {
+                        localStorage.setItem('asd_license_instance_id', data.instance_id);
+                    }
+                    if (data.activation_usage !== undefined && data.activation_usage !== null) {
+                        localStorage.setItem('asd_license_usage', data.activation_usage.toString());
+                    }
+                    if (data.activation_limit !== undefined && data.activation_limit !== null) {
+                        localStorage.setItem('asd_license_limit', data.activation_limit.toString());
+                    }
+
                     if (data.expires_at === null) {
                          localStorage.setItem('asd_license_expires_at', 'null');
                     } else if (data.expires_at && !localStorage.getItem('asd_license_expires_at')) {
@@ -2333,21 +2560,29 @@
                     this.checkLicenseWarnings();
                 } else {
                     localStorage.removeItem('asd_license_key');
+                    localStorage.removeItem('asd_license_instance_id');
                     localStorage.removeItem('asd_license_expires_at');
-                    document.getElementById('paywall-overlay').style.display = 'flex';
+                    localStorage.removeItem('asd_license_usage');
+                    localStorage.removeItem('asd_license_limit');
+
+                    this.openLicenseModal();
                     const errorDiv = document.getElementById('license-error');
-                    errorDiv.innerText = data.error || 'La tua licenza è scaduta o è stata revocata.';
-                    errorDiv.style.display = 'block';
+                    if (errorDiv) {
+                        errorDiv.innerText = data.error || 'La tua licenza è scaduta, non è valida o il dispositivo è stato rimosso.';
+                        errorDiv.style.display = 'block';
+                    }
                 }
             } catch (err) {
                 const lastCheck = localStorage.getItem('asd_license_last_check');
                 if (lastCheck) {
                     const daysOffline = (Date.now() - parseInt(lastCheck)) / (1000 * 60 * 60 * 24);
                     if (daysOffline > 7) {
-                        document.getElementById('paywall-overlay').style.display = 'flex';
+                        this.openLicenseModal();
                         const errorDiv = document.getElementById('license-error');
-                        errorDiv.innerText = 'Dispositivo offline da troppo tempo. Connettiti ad internet per validare la licenza.';
-                        errorDiv.style.display = 'block';
+                        if (errorDiv) {
+                            errorDiv.innerText = 'Dispositivo offline da più di 7 giorni. Connettiti ad internet per validare la licenza.';
+                            errorDiv.style.display = 'block';
+                        }
                     } else {
                         this.updateLicenseUI();
                         this.checkLicenseWarnings();
@@ -2360,25 +2595,40 @@
             const btn = document.getElementById('license-btn');
             if (!btn) return;
             
+            const usage = localStorage.getItem('asd_license_usage');
+            const limit = localStorage.getItem('asd_license_limit');
+            const devBadge = (usage && limit) ? ` • ${usage}/${limit} disp.` : '';
+
             const expires = localStorage.getItem('asd_license_expires_at');
             if (expires === 'null') {
-                btn.innerHTML = '👑 Licenza PRO (Permanente)';
+                btn.innerHTML = `👑 Licenza PRO (Permanente)${devBadge}`;
                 btn.style.color = '#10b981';
                 btn.style.borderColor = '#10b981';
             } else if (expires) {
                 const daysLeft = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
                 if (daysLeft > 30) {
-                    btn.innerHTML = `🔑 Licenza Attiva (${daysLeft} gg rimasti)`;
+                    btn.innerHTML = `🔑 Licenza Attiva (${daysLeft} gg)${devBadge}`;
                     btn.style.color = '#10b981';
                     btn.style.borderColor = '#10b981';
                 } else if (daysLeft > 0) {
-                    btn.innerHTML = `⚠️ Licenza in Scadenza (${daysLeft} gg)`;
+                    btn.innerHTML = `⚠️ Licenza in Scadenza (${daysLeft} gg)${devBadge}`;
                     btn.style.color = '#f59e0b';
                     btn.style.borderColor = '#f59e0b';
                 } else {
                     btn.innerHTML = `❌ Licenza Scaduta`;
                     btn.style.color = '#ef4444';
                     btn.style.borderColor = '#ef4444';
+                }
+            } else {
+                const savedKey = localStorage.getItem('asd_license_key');
+                if (savedKey) {
+                    btn.innerHTML = `🔑 Licenza Attiva${devBadge}`;
+                    btn.style.color = '#10b981';
+                    btn.style.borderColor = '#10b981';
+                } else {
+                    btn.innerHTML = `🔑 Inserisci/Cambia Licenza`;
+                    btn.style.color = '#3b82f6';
+                    btn.style.borderColor = '#3b82f6';
                 }
             }
         },
@@ -3303,7 +3553,7 @@
                     const daysLeft = 15 - Math.floor(daysPassed);
                     
                     if (daysPassed > 15) {
-                        document.getElementById('paywall-overlay').style.display = 'flex';
+                        this.openLicenseModal();
                         const err = document.getElementById('license-error');
                         if(err) {
                             err.innerText = 'Il periodo di prova di 15 giorni è terminato. Inserisci una licenza valida per continuare.';
@@ -17047,7 +17297,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <button class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6; font-weight:600; display:flex; align-items:center; gap:6px;" onclick="app.toggleDbGuideBalloon()">
                                     💡 <span id="db-guide-toggle-text">${localStorage.getItem('asd_db_guide_open') === 'true' ? 'Nascondi Guida Pulsanti Database' : 'Guida Rapida Pulsanti Database'}</span>
                                 </button>
-                                <button id="license-btn" class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6;" onclick="document.getElementById('paywall-overlay').style.display='flex'">
+                                <button id="license-btn" class="btn btn-outline" style="border-color:#3b82f6; color:#3b82f6;" onclick="app.openLicenseModal()">
                                     🔑 Inserisci/Cambia Licenza
                                 </button>
                             </div>
