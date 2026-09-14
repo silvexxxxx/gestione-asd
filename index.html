@@ -6479,6 +6479,7 @@
                                     <li><strong>Monitoraggio Certificati Medici:</strong> Sistema integrato di alert che evidenzia i certificati in scadenza o già scaduti, impedendo l'accesso ad atleti non idonei.</li>
                                     <li><strong>Filtri Dinamici Intelligenti:</strong> Filtra i soci con un click per <em>Quote Scadute</em>, <em>Tesseramenti Scaduti</em>, <em>Certificati Medici Scaduti</em>, <em>Morosi</em>, <em>Attivi</em> o <em>Cessati</em>.</li>
                                     <li><strong>Taglie & Discipline:</strong> Tracciamento taglie abbigliamento per divise societarie e assegnazione corsi.</li>
+                                    <li><strong>Importazione Massiva da Excel:</strong> Se disponi di un elenco corposo di soci in un foglio di calcolo, puoi importarli in blocco tramite il nostro <em>Modello Excel collaudato</em> disponibile in <em>Impostazioni</em> (per la procedura completa vedi il Capitolo 10 della guida).</li>
                                 </ul>`;
                         break;
                     case 'ricevute':
@@ -6578,7 +6579,35 @@
                                     <li><strong>File System Access API & Google Drive:</strong> Seleziona una cartella del tuo PC o del tuo Google Drive per consentire al gestionale di archiviare automaticamente ogni documento generato senza finestre di download.</li>
                                     <li><strong>Backup Completo (.JSON):</strong> Esportazione ed importazione con un click dell'intero database dell'associazione (soci, movimenti, verbali, configurazioni).</li>
                                     <li><strong>Esportazione Excel Universale:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
-                                </ul>`;
+                                </ul>
+
+                                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 18px 20px; margin-top: 25px;">
+                                    <h3 style="color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">📋 Importazione Massiva Soci da Excel (.xlsx) & Modello Ufficiale</h3>
+                                    <p style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 12px;">
+                                        <strong>Cos'è e a cosa serve:</strong> È una <em>funzione di comodo facoltativa</em> (non obbligatoria). Nella normale routine quotidiana i soci possono essere registrati singolarmente dall'apposita schermata Soci. Tuttavia, se la tua associazione proviene da un altro software o possiede già un elenco corposo in formato Excel con decine o centinaia di tesserati, l'importazione massiva permette di caricarli tutti in pochi secondi, azzerando il tempo di digitazione manuale.
+                                    </p>
+                                    
+                                    <h4 style="font-size: 0.95rem; color: var(--text); margin-bottom: 8px;">Flusso di Lavoro in 3 Passaggi:</h4>
+                                    <ol style="font-size: 0.88rem; line-height: 1.55; padding-left: 20px; margin-bottom: 14px;">
+                                        <li><strong>Scarica il Modello Ufficiale:</strong> Vai in <em>Impostazioni ➔ Azioni Pericolose</em> e fai clic su <strong>📥 Scarica Modello Excel (.xlsx)</strong>. Verrà salvato sul tuo computer il foglio di calcolo ufficiale già collaudato con le colonne pronte e 2 righe di esempio fittizio esplicativo.</li>
+                                        <li><strong>Adatta i tuoi Dati (Copia-Incolla):</strong> Apri il modello scaricato con Excel, LibreOffice o Google Fogli. Copia ciascuna colonna dal tuo vecchio elenco e incollala nella colonna corrispondente del modello (es. i cognomi nella colonna <em>Cognome</em>, i telefoni in <em>Telefono</em>, ecc.). Rimuovi le 2 righe di esempio prima di salvare il file.</li>
+                                        <li><strong>Importa nel Gestionale:</strong> Torna in <em>Impostazioni</em>, fai doppio clic su <strong>📋 Importa Soci XLSX</strong> per disattivare la sicura e seleziona il tuo file compilato. Il sistema ti proporrà due modalità:
+                                            <ul style="margin-top: 6px;">
+                                                <li><strong>➕ Aggiungi in coda:</strong> mantiene tutti i soci già registrati e aggiunge i nuovi soci del file.</li>
+                                                <li><strong>🔄 Sostituisci tutto il database:</strong> azzera l'anagrafica attuale e inserisce esclusivamente i soci del file (raccomandato solo alla prima configurazione).</li>
+                                            </ul>
+                                        </li>
+                                    </ol>
+
+                                    <h4 style="font-size: 0.95rem; color: var(--text); margin-bottom: 8px;">Regole di Compilazione per Evitare Disallineamenti:</h4>
+                                    <ul style="font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 10px;">
+                                        <li><strong>Date:</strong> Usa preferibilmente il formato italiano <code>GG/MM/AAAA</code> (es. <code>15/05/1990</code>). Sono accettate anche date native Excel.</li>
+                                        <li><strong>Sesso:</strong> Inserisci <code>M</code> oppure <code>F</code>.</li>
+                                        <li><strong>Tesserato:</strong> Inserisci <code>SI</code> oppure <code>NO</code>.</li>
+                                        <li><strong>Campi Facoltativi:</strong> Se non possiedi alcuni dati (es. email, residenza o data iscrizione), puoi lasciare le celle vuote; i soci verranno importati regolarmente.</li>
+                                        <li><strong>Sicurezza Preventiva:</strong> Prima di effettuare un'importazione sostitutiva massiva, è sempre consigliabile cliccare su <em>⬇️ Esporta Backup JSON</em> per avere un paracadute di riserva istantaneo.</li>
+                                    </ul>
+                                </div>`;
                         break;
                     case 'multidevice':
                         html = `<h2>11. Architettura Multi-Dispositivo & Sincronizzazione Google Drive</h2>
@@ -10498,6 +10527,93 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             };
         },
 
+        downloadModelloExcelSoci() {
+            if (typeof XLSX === 'undefined') {
+                this.toast('Libreria Excel in caricamento. Riprova tra un istante.', 'warning');
+                return;
+            }
+
+            // Dati di esempio fittizio per mostrare all'utente i formati corretti
+            const sampleRows = [
+                {
+                    'Cognome': 'Rossi',
+                    'Nome': 'Mario',
+                    'Codice Fiscale': 'RSSMRA85E12H501Z',
+                    'Sesso': 'M',
+                    'Data di Nascita': '12/05/1985',
+                    'Luogo di Nascita': 'Roma',
+                    'Residenza': 'Via Garibaldi 10, Roma',
+                    'Telefono': '3331234567',
+                    'Email': 'mario.rossi@email.it',
+                    'Data Iscrizione': '01/09/2025',
+                    'Scadenza Quota': '31/12/2025',
+                    'Scad. Certificato': '15/07/2026',
+                    'Scad. Tesseramento': '31/08/2026',
+                    'Tesserato': 'SI',
+                    'Stato': 'ATTIVO',
+                    'Note': 'Esempio: Allievo corso avanzato'
+                },
+                {
+                    'Cognome': 'Bianchi',
+                    'Nome': 'Laura',
+                    'Codice Fiscale': 'BNCLRA90P21H501Y',
+                    'Sesso': 'F',
+                    'Data di Nascita': '21/09/1990',
+                    'Luogo di Nascita': 'Milano',
+                    'Residenza': 'Corso Italia 25, Milano',
+                    'Telefono': '3409876543',
+                    'Email': 'laura.bianchi@email.it',
+                    'Data Iscrizione': '15/09/2025',
+                    'Scadenza Quota': '31/12/2025',
+                    'Scad. Certificato': '10/05/2026',
+                    'Scad. Tesseramento': '31/08/2026',
+                    'Tesserato': 'SI',
+                    'Stato': 'ATTIVO',
+                    'Note': ''
+                }
+            ];
+
+            const colWidths = [
+                { wch: 18 }, // Cognome
+                { wch: 18 }, // Nome
+                { wch: 20 }, // Codice Fiscale
+                { wch: 8 },  // Sesso
+                { wch: 16 }, // Data di Nascita
+                { wch: 18 }, // Luogo di Nascita
+                { wch: 28 }, // Residenza
+                { wch: 16 }, // Telefono
+                { wch: 26 }, // Email
+                { wch: 16 }, // Data Iscrizione
+                { wch: 16 }, // Scadenza Quota
+                { wch: 18 }, // Scad. Certificato
+                { wch: 18 }, // Scad. Tesseramento
+                { wch: 12 }, // Tesserato
+                { wch: 12 }, // Stato
+                { wch: 30 }  // Note
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(sampleRows);
+            ws['!cols'] = colWidths;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Modello_Soci');
+
+            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            const fileName = 'Modello_Import_Soci_GestionaleASD.xlsx';
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+            this.toast('📥 Modello Excel scaricato! Incolla i tuoi dati nelle colonne e poi usa "Importa Soci XLSX".', 'success');
+        },
+
         importSociExcel(event) {
                 const fileInput = event.target;
                 if (!fileInput || !fileInput.files || !fileInput.files.length) {
@@ -10525,37 +10641,115 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         return;
                     }
 
-                    // Troviamo la riga delle intestazioni (Cerca "Cognome" nelle prime 20 righe)
-                    let headerRowIndex = 0;
-                    for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
-                        const row = jsonData[i];
-                        if (row.some(cell => cell.toString().toLowerCase().includes("cognome"))) {
+                    // Troviamo la riga delle intestazioni (Cerca "cognome" o "nome" nelle prime 25 righe)
+                    let headerRowIndex = -1;
+                    for (let i = 0; i < Math.min(jsonData.length, 25); i++) {
+                        const row = jsonData[i] || [];
+                        if (row.some(cell => {
+                            const str = (cell || '').toString().toLowerCase();
+                            return str.includes("cognome") || str === "cogn";
+                        })) {
                             headerRowIndex = i;
                             break;
                         }
+                    }
+
+                    if (headerRowIndex === -1) {
+                        // Fallback: se non trova "cognome", cerca "nome"
+                        for (let i = 0; i < Math.min(jsonData.length, 25); i++) {
+                            const row = jsonData[i] || [];
+                            if (row.some(cell => (cell || '').toString().toLowerCase().includes("nome"))) {
+                                headerRowIndex = i;
+                                break;
+                            }
+                        }
+                        if (headerRowIndex === -1) headerRowIndex = 0;
+                    }
+
+                    const headerRow = (jsonData[headerRowIndex] || []).map(cell => (cell || '').toString().trim().toLowerCase());
+                    
+                    // Helper per trovare l'indice della colonna tramite predicate
+                    const findCol = (predicate, fallbackIdx) => {
+                        const idx = headerRow.findIndex(predicate);
+                        return idx !== -1 ? idx : fallbackIdx;
+                    };
+
+                    const colMap = {
+                        cognome: findCol(h => h.includes('cognome') || h === 'cogn' || h.includes('surname'), 0),
+                        nome: findCol(h => (h === 'nome' || h === 'name' || (h.includes('nome') && !h.includes('cognome'))), 1),
+                        cf: findCol(h => h.includes('fiscale') || h === 'cf' || h === 'c.f.' || h.includes('cod.fisc'), -1),
+                        sesso: findCol(h => h === 'sesso' || h.startsWith('sesso') || h === 'sex' || h === 'genere', -1),
+                        data_nascita: findCol(h => (h.includes('data') && (h.includes('nascita') || h.includes('nato'))) || h === 'nascita', -1),
+                        luogo_nascita: findCol(h => h.includes('luogo') || h.includes('comune') || h.includes('città'), -1),
+                        residenza: findCol(h => h.includes('residenza') || h.includes('indirizzo') || h.includes('via') || h.includes('domicilio'), -1),
+                        tel: findCol(h => h.includes('telefono') || h.includes('tel') || h.includes('cell') || h.includes('mobile') || h.includes('recapito'), -1),
+                        email: findCol(h => h.includes('email') || h.includes('e-mail') || h.includes('mail'), -1),
+                        data_iscrizione: findCol(h => (h.includes('data') && h.includes('iscriz')) || h === 'iscrizione' || h === 'inizio', -1),
+                        quota_scadenza: findCol(h => (h.includes('scad') && h.includes('quota')) || h === 'quota', -1),
+                        certificato_scadenza: findCol(h => h.includes('certificato') || h.includes('visita medica') || h.includes('medico'), -1),
+                        tesseramento_scadenza: findCol(h => (h.includes('scad') && h.includes('tesser')) || h === 'tessera', -1),
+                        tesserato: findCol(h => h === 'tesserato' || (h.includes('tesserato') && !h.includes('scad')), -1),
+                        stato: findCol(h => h === 'stato', -1),
+                        note: findCol(h => h.includes('note') || h.includes('annotazioni') || h.includes('osservazioni'), -1)
+                    };
+
+                    // Se non sono state riconosciute intestazioni per le date/luogo, fallback posizionale storico
+                    if (colMap.data_nascita === -1 && colMap.luogo_nascita === -1) {
+                        colMap.luogo_nascita = 2;
+                        colMap.data_nascita = 3;
+                        colMap.residenza = 4;
+                        colMap.email = 5;
+                        colMap.tel = 6;
+                        colMap.certificato_scadenza = 7;
+                        colMap.quota_scadenza = 8;
+                        colMap.tesserato = 9;
+                        colMap.note = 10;
                     }
 
                     const rows = jsonData.slice(headerRowIndex + 1);
                     const importedSoci = [];
 
                     rows.forEach((row, index) => {
-                        // Salta se la riga è vuota (non c'è cognome o nome)
-                        if (!row[0] && !row[1]) return;
+                        const val = (idx) => (idx !== undefined && idx >= 0 && row[idx] !== undefined && row[idx] !== null) ? row[idx].toString().trim() : '';
+
+                        const cognome = val(colMap.cognome);
+                        const nome = val(colMap.nome);
+
+                        // Salta righe vuote
+                        if (!cognome && !nome) return;
+
+                        // Salta eventuale ripetizione dell'intestazione
+                        if (cognome.toLowerCase() === 'cognome' && nome.toLowerCase() === 'nome') return;
+
+                        const sessoRaw = val(colMap.sesso).toUpperCase();
+                        const sesso = (sessoRaw.startsWith('M') ? 'M' : (sessoRaw.startsWith('F') ? 'F' : ''));
+
+                        const tesseratoVal = val(colMap.tesserato).toUpperCase();
+                        const isTesserato = (tesseratoVal.includes('SI') || tesseratoVal === 'S' || tesseratoVal === 'YES') ? 'SI' : 'NO';
+
+                        const statoVal = val(colMap.stato).toUpperCase();
+                        let stato = 'ATTIVO';
+                        if (statoVal.includes('MOROS')) stato = 'MOROSO';
+                        else if (statoVal.includes('CESSAT') || statoVal.includes('NON ATTIV') || statoVal.includes('DISATTIV')) stato = 'NON_ATTIVO';
 
                         const s = {
                             id: Date.now() + index,
-                            cognome: (row[0] || "").toString().trim(),
-                            nome: (row[1] || "").toString().trim(),
-                            luogo_nascita: (row[2] || "").toString().trim(),
-                            data_nascita: this.parseExcelDate(row[3]),
-                            residenza: (row[4] || "").toString().trim(),
-                            email: (row[5] || "").toString().trim(),
-                            tel: (row[6] || "").toString().trim(),
-                            certificato_scadenza: this.parseExcelDate(row[7]),
-                            quota_scadenza: this.parseExcelDate(row[8]),
-                            tesserato: (row[9] && row[9].toString().toUpperCase().includes('SI')) ? 'SI' : 'NO',
-                            note: (row[10] || "").toString().trim(),
-                            stato: "ATTIVO"
+                            cognome: cognome,
+                            nome: nome,
+                            cf: val(colMap.cf).toUpperCase(),
+                            sesso: sesso,
+                            luogo_nascita: val(colMap.luogo_nascita),
+                            data_nascita: this.parseExcelDate(colMap.data_nascita >= 0 ? row[colMap.data_nascita] : ''),
+                            residenza: val(colMap.residenza),
+                            tel: val(colMap.tel),
+                            email: val(colMap.email),
+                            data_iscrizione: this.parseExcelDate(colMap.data_iscrizione >= 0 ? row[colMap.data_iscrizione] : ''),
+                            quota_scadenza: this.parseExcelDate(colMap.quota_scadenza >= 0 ? row[colMap.quota_scadenza] : ''),
+                            certificato_scadenza: this.parseExcelDate(colMap.certificato_scadenza >= 0 ? row[colMap.certificato_scadenza] : ''),
+                            tesseramento_scadenza: this.parseExcelDate(colMap.tesseramento_scadenza >= 0 ? row[colMap.tesseramento_scadenza] : ''),
+                            tesserato: isTesserato,
+                            note: val(colMap.note),
+                            stato: stato
                         };
                         importedSoci.push(s);
                     });
@@ -17711,7 +17905,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <button class="btn btn-outline" style="text-align:center;" onclick="app.safeAction('import-json', this, '⬆️ Importa Backup JSON', '#dc2626', () => document.getElementById('hidden-import-json').click())" data-guide="ATTENZIONE: Carica un file .json di backup per ripristinare il database. Effetto: I dati attuali verranno interamente sovrascritti (richiede doppio clic per sbloccare la sicura).">⬆️ Importa Backup JSON</button>
                                     
                                     <input type="file" id="hidden-import-excel" accept=".xlsx, .xls" style="display:none" onchange="app.importSociExcel(event)">
-                                    <button class="btn btn-outline" style="text-align:center;" onclick="app.safeAction('import-excel', this, '📋 Importa Soci XLSX', '#dc2626', () => document.getElementById('hidden-import-excel').click())" data-guide="ATTENZIONE: Importa massivamente una lista di soci da foglio Excel. Effetto: Aggiunge i nuovi soci e sovrascrive i campi anagrafici esistenti (richiede doppio clic per sbloccare la sicura).">📋 Importa Soci XLSX</button>
+                                    <button class="btn btn-outline" style="text-align:center;" onclick="app.safeAction('import-excel', this, '📋 Importa Soci XLSX', '#dc2626', () => document.getElementById('hidden-import-excel').click())" data-guide="ATTENZIONE: Importa massivamente una lista di soci da foglio Excel. Funzione di comodo facoltativa per chi ha elenchi ampi di tesserati. Per evitare disallineamenti, usa prima il pulsante sottostante 'Scarica Modello Excel' per preparare la tabella con le colonne esatte. Consulta il Capitolo 10 della Guida Online per la procedura passo-passo. Effetto: Aggiunge i nuovi soci o sovrascrive l'anagrafica (richiede doppio clic per sbloccare la sicura).">📋 Importa Soci XLSX</button>
+                                    <button class="btn btn-outline" style="text-align:center; border-color: rgba(59, 130, 246, 0.5); color: #60a5fa;" onclick="app.downloadModelloExcelSoci()" data-guide="Scarica il file Excel (.xlsx) preimpostato e collaudato per l'importazione massiva dei soci. Effetto: Salva sul tuo computer il modello ufficiale con tutte le colonne standard (Cognome, Nome, CF, Date, ecc.) e due righe di esempio fittizio. È una funzione di comodo non obbligatoria ma molto utile per caricare liste estese di soci adattandole al nostro gestionale: copia e incolla i tuoi dati nelle rispettive colonne e poi caricalo con 'Importa Soci XLSX'. Istruzioni complete disponibili nella Guida Online (Capitolo 10).">📥 Scarica Modello Excel (.xlsx)</button>
 
                                     <button class="btn btn-danger" onclick="app.safeAction('clear-db', this, '🗑️ Azzera Database Iscritti', '#991b1b', () => app.clearSociDatabase())" data-guide="ATTENZIONE: Elimina tutti gli iscritti dal database in modo irreversibile. Effetto: Cancella tutti i soci registrati lasciando intatte solo le impostazioni di base (richiede conferme multiple di sicurezza).">🗑️ Azzera Database Iscritti</button>
                                 </div>
