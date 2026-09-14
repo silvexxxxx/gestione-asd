@@ -6432,7 +6432,7 @@
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Corsi & Calendario. Effetto: Mostra le istruzioni su orari, planning settimanale, sale e presenze." onclick="app.showGuideSection('corsi')">6. Corsi & Calendario Settimanale</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Segreteria & Magazzino. Effetto: Mostra le istruzioni su gestione scorte, abbigliamento ed eventi sociali." onclick="app.showGuideSection('segreteria')">7. Segreteria, Magazzino & Eventi</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Governance & Verbali. Effetto: Mostra le istruzioni sulla redazione guidata dei verbali direttivo e assemblea." onclick="app.showGuideSection('verbali')">8. Governance, Verbali & Direttivo</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Impostazioni & Dati ASD. Effetto: Mostra come configurare anagrafica associazione, organi sociali e affiliazioni." onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Cariche</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Impostazioni, Dati ASD & Licenza. Effetto: Mostra come configurare anagrafica associazione, organi sociali, licenza fino a 5 postazioni e preferenze." onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Licenza</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Backup & Salvataggio. Effetto: Mostra come gestire snapshot di sicurezza locali, salvataggi e archivi Excel." onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Excel</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Multi-Dispositivo. Effetto: Mostra come utilizzare più postazioni o tablet collegati in rete locale o Cloud." onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo (Server & Client)</button></li>
                                     ${this.state.debugMode ? `
@@ -6462,12 +6462,13 @@
                                 <p><strong>Gestionale ASD</strong> è il software professionale sviluppato su misura per le esigenze gestionali, fiscali e legali delle <strong>Associazioni Sportive Dilettantistiche (ASD)</strong> e <strong>Società Sportive Dilettantistiche (SSD)</strong>.</p>
                                 <h3>Punti di Forza Architetturali & Modello di Licenza:</h3>
                                 <ul>
-                                    <li><strong>Sincronizzazione Sicura Google Drive & Uso Multi-Dispositivo:</strong> I dati risiedono sul tuo computer e si sincronizzano in modo trasparente tramite la cartella <em>Google Drive</em> del tuo account, permettendo l'utilizzo su più postazioni di segreteria senza server terzi o intermediari sconosciuti. Operativo anche 100% offline.</li>
-                                    <li><strong>Licenza Annuale ad Abbattimento Costi (>80% di Risparmio):</strong> Licenza annuale proposta ad un costo di oltre 5 volte inferiore rispetto ai software concorrenti (meno di 1/5 del prezzo di mercato), resa possibile dall'assenza di costose infrastrutture server cloud proprietarie.</li>
+                                    <li><strong>Avvio Istantaneo 100% Offline & Toggle Rapido Navbar:</strong> L'applicazione si avvia sempre e immediatamente in modalità Offline Locale pura, garantendo reattività fulminea senza schermate o popup bloccanti all'avvio. Tramite l'apposito pulsante Toggle rapido presente nella barra di navigazione in alto a destra, è possibile passare in qualsiasi momento dalla modalità Offline alla sincronizzazione Cloud con Google Drive e viceversa, con riscontro visivo a colori e balloon di stato.</li>
+                                    <li><strong>Sincronizzazione Sicura Google Drive & Uso Multi-Dispositivo:</strong> I dati risiedono sul tuo computer e si sincronizzano in modo trasparente tramite la cartella <em>Google Drive</em> del tuo account societario, permettendo l'utilizzo su più postazioni di segreteria senza server terzi o intermediari sconosciuti. Operativo anche 100% offline.</li>
+                                    <li><strong>Licenza Annuale Multi-Dispositivo (Fino a 5 Postazioni):</strong> Licenza annuale proposta ad un costo oltre 5 volte inferiore rispetto ai software concorrenti (meno di 1/5 del prezzo di mercato), utilizzabile simultaneamente su un massimo di 5 postazioni/dispositivi per associazione, con gestione flessibile degli slot per sostituire o liberare postazioni mantenendo i giorni residui di validità.</li>
                                     <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando la cartella locale o Google Drive nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, prima nota, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
                                     <li><strong>Integrazione Riforma dello Sport (D.Lgs. 36/2021 & RASD):</strong> Conforme alle nuove normative in materia di tesseramento, compensi lavoro sportivo, esenzioni INPS/IRPEF e rendicontazione per il Registro Nazionale delle Attività Sportive Dilettantistiche (RASD).</li>
                                 </ul>
-                                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Modalità Guida:</strong> Attivando la <em>Modalità Guida</em> dall'intestazione, ogni pulsante dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse.</div>`;
+                                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Tutor Interattivo & Guida Contestuale (Copertura 100%):</strong> Attivando la <em>Modalità Guida</em> dalla barra superiore, ogni pulsante, selettore e campo dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse.</div>`;
                         break;
                     case 'soci':
                         html = `<h2>2. Anagrafica Soci & Atleti</h2>
@@ -6548,12 +6549,14 @@
                                 </ul>`;
                         break;
                     case 'impostazioni':
-                        html = `<h2>9. Dati ASD, Registro RASD & Cariche Sociali</h2>
-                                <p>Configura l'anagrafica istituzionale dell'associazione che alimenterà l'intestazione di tutti i documenti e ricevute emessi.</p>
+                        html = `<h2>9. Dati ASD, Registro RASD, Licenza & Postazioni</h2>
+                                <p>Configura l'anagrafica istituzionale dell'associazione che alimenterà l'intestazione di tutti i documenti e ricevute emessi, gestisci la licenza e le preferenze operative.</p>
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
                                     <li><strong>Dati Fiscali & Registri:</strong> Codice Fiscale / P.IVA, Indirizzo Sede Legale, Codici di Affiliazione EPS/FSN e numero di iscrizione al Registro RASD (ex CONI).</li>
                                     <li><strong>Consiglio Direttivo in Carica:</strong> Registrazione del Presidente, Vicepresidente, Segretario e Consiglieri attualmente operativi, con conservazione dello storico dei mandati passati.</li>
+                                    <li><strong>Gestione Licenza & Postazioni (Fino a 5 Dispositivi):</strong> Visualizza lo stato della licenza annuale Lemon Squeezy, i giorni rimanenti e le postazioni collegate. Da questo pannello puoi visualizzare l'ID del dispositivo attuale e revocare/disattivare una postazione dismessa o sostituita per liberare immediatamente lo slot a favore di un nuovo PC o tablet, senza alterare la scadenza naturale e i giorni residui della licenza.</li>
+                                    <li><strong>Preferenze di Salvataggio & File System:</strong> Configurazione della frequenza degli snapshot automatici e collegamento della cartella locale o Google Drive per l'archiviazione ordinata dei PDF per Anno Sportivo.</li>
                                 </ul>`;
                         break;
                     case 'backup':
@@ -6581,6 +6584,18 @@
                         html = `<h2>11. Architettura Multi-Dispositivo & Sincronizzazione Google Drive</h2>
                                 <p>Il gestionale supporta un'architettura collaborativa a prova di errore per consentire l'utilizzo contemporaneo o alternato su più postazioni (PC banco reception, PC da casa, smartphone/tablet) senza rischio di perdere dati o generare duplicati.</p>
                                 
+                                <h3>⚡ Avvio Diretto 100% Offline & Toggle Rapido Navbar:</h3>
+                                <ul>
+                                    <li><strong>Avvio Istantaneo Senza Attese:</strong> All'apertura dell'applicazione non vengono mostrati popup o richieste bloccanti di rete: il gestionale si apre direttamente e al 100% in modalità Offline Locale pura.</li>
+                                    <li><strong>Toggle Rapido nella Barra di Navigazione:</strong> In alto a destra è presente il selettore rapido con badge cromatico fluorescente e balloon descrittivo. Con un solo clic puoi passare dalla modalità Offline pura alla connessione Cloud con Google Drive (e viceversa), sincronizzando i dati quando lo desideri.</li>
+                                </ul>
+
+                                <h3>🔑 Licenza Multi-Dispositivo & Limite 5 Postazioni:</h3>
+                                <ul>
+                                    <li><strong>Fino a 5 Postazioni Simultanee:</strong> Ogni licenza annuale consente l'utilizzo attivo su un massimo di 5 dispositivi (PC o tablet).</li>
+                                    <li><strong>Gestione Dinamica Postazioni:</strong> In <em>Impostazioni ➔ Licenza</em> è possibile monitorare i dispositivi collegati e disattivare qualsiasi postazione dismessa o sostituita per liberare istantaneamente lo slot. La disattivazione di una postazione non azzera la licenza: il computo dei giorni rimanenti prosegue regolarmente.</li>
+                                </ul>
+
                                 <h3>I Due Ruoli del Dispositivo:</h3>
                                 <ul>
                                     <li><strong>🖥️ Dispositivo Server (PC Banco Palestra / Principale):</strong>

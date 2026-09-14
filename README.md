@@ -7,11 +7,13 @@
 ## 🚀 Caratteristiche Principali
 
 - **Architettura Hybrid Local-First & Google Drive Native:** I dati risiedono sul computer dell'associazione e si sincronizzano tramite la cartella Google Drive dell'account societario, permettendo l'utilizzo su più postazioni senza server terzi o canoni cloud elevati. Operativo anche 100% offline.
+- **Avvio Diretto 100% Offline & Toggle Rapido Navbar:** Avvio fulmineo in modalità locale pura senza popup bloccanti o richieste di rete. Pratico pulsante Toggle nella barra di navigazione per passare istantaneamente dalla modalità offline alla sincronizzazione cloud Google Drive e viceversa, con badge cromatico ad alta visibilità e balloon di stato.
 - **Salvataggio Automatico File System Access API:** Organizzazione ed archiviazione automatica di tutti i PDF generati (ricevute, prima nota, compensi, verbali) suddivisi in sottocartelle per Anno Sportivo (es. `anno 2025-2026/ricevute/`, `anno 2025-2026/verbali direttivo/`, `anno 2025-2026/assemblee/`).
 - **Anagrafica Soci & Atleti:** Calcolo automatico Codice Fiscale, registro tesserati EPS/FSN e RASD, monitoraggio certificati medici con alert scadenze e filtri avanzati.
 - **Ricevute & Quote Associative:** Emissione ricevute singole/multiple, numerazione sequenziale cronologica fiscale, scorporo commissioni pagamenti digitali (SumUp, Stripe) e annullamenti/storni contabili.
 - **Prima Nota & Chiusura Esercizio:** Tracciamento Cassa Contanti vs Banca/Conti Digitali, giroconti, riconciliazione con Estratto Conto Bancario e procedura guidata di **🔒 Chiusura Esercizio Annuale (31/08)** con generazione dei saldi iniziali al 01/09.
 - **Governance & Verbali Automatizzati:** Wizard per la redazione dei Verbali di Consiglio Direttivo, Assemblee Ordinarie e Straordinarie con **importazione automatica dei dati di bilancio dalla Prima Nota** e rinnovo cariche sociali.
+- **Tutor Interattivo & Guida Contestuale Integrata (100% Copertura):** Assistente contestuale attivabile con un clic che spiega funzioni, effetti e procedure al passaggio del mouse su qualsiasi pulsante, menu o campo dell'interfaccia.
 
 ---
 
@@ -37,6 +39,7 @@ Al fine di garantire la massima trasparenza verso l'utente:
 
 ---
 
-## 📄 Licenza
+## 📄 Licenza & Gestione Postazioni
 
-Software rilasciato con **Licenza Annuale**.
+- **Licenza Annuale Multi-Dispositivo:** Software fornito con licenza annuale (gestita tramite Lemon Squeezy) che include l'utilizzo simultaneo su un massimo di **5 postazioni/dispositivi** per ciascuna associazione.
+- **Gestione Flessibile degli Slot:** Tramite il pannello Impostazioni è possibile monitorare i dispositivi collegati e disattivare postazioni dismesse o sostituite per liberare lo slot a favore di un nuovo dispositivo, mantenendo inalterata la scadenza naturale e i giorni residui della licenza.
