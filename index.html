@@ -7,6 +7,7 @@
     <title>ASD Gestionale - Sistema Professionale</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
+    <meta name="color-scheme" content="dark">
     <!-- Icona di fallback -->
     <link rel="icon" type="image/svg+xml" href="./icon.svg">
     <!-- Google APIs -->
@@ -24,6 +25,7 @@
 
     <style>
         :root {
+            color-scheme: dark;
             --bg-deep: #0f172a;
             --bg-card: rgba(30, 41, 59, 0.8);
             --primary: #3b82f6;
@@ -544,11 +546,35 @@
             color: var(--text-main);
             outline: none;
             transition: all 0.2s ease;
+            color-scheme: dark;
         }
 
         .form-control:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Supporto Dark Mode nativo completo per Select, Tendine e Input */
+        select,
+        input,
+        textarea {
+            color-scheme: dark;
+        }
+
+        select,
+        select.form-control {
+            cursor: pointer;
+        }
+
+        select option,
+        select optgroup {
+            background-color: #0f172a !important;
+            color: #f1f5f9 !important;
+        }
+
+        select option:checked {
+            background-color: #1e3a8a !important;
+            color: #ffffff !important;
         }
 
         /* Modal */
