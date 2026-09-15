@@ -5132,15 +5132,104 @@
                     return;
                 }
                 if (this.syncEnabled && this.accessToken) {
-                    if (confirm("Sei attualmente collegato a Google Drive (Online).\n\nVuoi disconnetterti e passare alla Modalità Offline (solo locale)?")) {
-                        this.logout(false);
-                        if (app.state && app.state.currentPage === 'database') {
-                            app.renderDatabase();
-                        }
-                    }
+                    this.openCloudQuickMenu();
                 } else {
+                    this._pendingAction = { type: 'openCloudMenu' };
                     this.login();
                 }
+            },
+
+            openCloudQuickMenu() {
+                const isOnline = this.syncEnabled && this.accessToken;
+                const statusHtml = isOnline
+                    ? `<div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 10px; padding: 12px 14px;">
+                        <div style="font-weight: 700; color: #00ff88; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                            <span>☁️</span> <span>Google Drive Collegato (Online)</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
+                            Scegli quale operazione desideri effettuare per sincronizzare questo dispositivo:
+                        </div>
+                    </div>`
+                    : `<div style="background: rgba(255, 51, 68, 0.08); border: 1px solid rgba(255, 51, 68, 0.3); border-radius: 10px; padding: 12px 14px;">
+                        <div style="font-weight: 700; color: #ff6677; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                            <span>🔒</span> <span>Modalità Offline (Locale)</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
+                            L'applicazione sta lavorando solo sulla memoria di questo computer.
+                        </div>
+                    </div>`;
+
+                const modalHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        ${statusHtml}
+
+                        <!-- TASTO 1: EREDITA DAL CLOUD (SCARICA) -->
+                        <div onclick="app.closeModal(); app.cloudSync.promptInheritFromCloudModal()" 
+                             style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
+                             onmouseover="this.style.background='rgba(245, 158, 11, 0.18)'; this.style.borderColor='var(--warning)';" 
+                             onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';">
+                            <span style="font-size: 1.6rem; flex-shrink: 0;">📥</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 700; font-size: 0.98rem; color: #fbbf24;">Eredita dal Cloud (Scarica sul PC)</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                    Sostituisce i dati locali di questo dispositivo con la copia online di Google Drive (con verifica a specchio).
+                                </div>
+                            </div>
+                            <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.2); color: #fde68a; font-weight: 700; white-space: nowrap;">SCARICA</span>
+                        </div>
+
+                        <!-- TASTO 2: SOVRASCRIVI CLOUD (INVIA) -->
+                        <div onclick="app.closeModal(); app.cloudSync.forceUploadToCloud()" 
+                             style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
+                             onmouseover="this.style.background='rgba(16, 185, 129, 0.18)'; this.style.borderColor='#10b981';" 
+                             onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';">
+                            <span style="font-size: 1.6rem; flex-shrink: 0;">⬆️</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 700; font-size: 0.98rem; color: #34d399;">Sovrascrivi Cloud con Dati Locali</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                    Invia i dati attuali di questo PC su Google Drive, aggiornando la copia online per gli altri dispositivi.
+                                </div>
+                            </div>
+                            <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0; font-weight: 700; white-space: nowrap;">CARICA</span>
+                        </div>
+
+                        <!-- TASTO 3: UNISCI I DATI (MERGE) -->
+                        <div onclick="app.closeModal(); app.cloudSync.syncNow()" 
+                             style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
+                             onmouseover="this.style.background='rgba(59, 130, 246, 0.18)'; this.style.borderColor='var(--primary)';" 
+                             onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';">
+                            <span style="font-size: 1.6rem; flex-shrink: 0;">🔄</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 700; font-size: 0.98rem; color: #60a5fa;">Sincronizza / Unisci i Dati (Merge)</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                    Combina i dati di questo computer con quelli su Drive senza cancellare nulla su entrambi i lati.
+                                </div>
+                            </div>
+                            <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-weight: 700; white-space: nowrap;">FUSIONE</span>
+                        </div>
+
+                        <!-- TASTO 4: VERSIONI & STORICO -->
+                        <div onclick="app.closeModal(); app.cloudSync.openCloudVersionsModal()" 
+                             style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.35); padding: 10px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
+                             onmouseover="this.style.background='rgba(99, 102, 241, 0.18)';" 
+                             onmouseout="this.style.background='rgba(99, 102, 241, 0.08)';">
+                            <span style="font-size: 1.3rem; flex-shrink: 0;">📂</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600; font-size: 0.9rem; color: #818cf8;">Versioni & Copie di Riserva sul Cloud</div>
+                            </div>
+                        </div>
+
+                        <!-- TASTO 5: DISCONNETTI -->
+                        <div style="display:flex; justify-content:flex-end; margin-top: 6px;">
+                            <button class="btn btn-outline text-danger" style="font-size: 0.8rem; padding: 6px 12px;" 
+                                    onclick="app.closeModal(); app.cloudSync.logout(false);">
+                                🔒 Disconnetti da Google Drive (Passa a Offline)
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                app.openModal('☁️ Gestione Cloud Google Drive', modalHtml);
             },
 
             init() {
@@ -5187,9 +5276,13 @@
                                 this.forceUploadToCloud();
                             } else if (act.type === 'openVersions') {
                                 this.openCloudVersionsModal();
+                            } else if (act.type === 'openCloudMenu') {
+                                this.openCloudQuickMenu();
+                            } else if (act.type === 'syncNow') {
+                                this.syncNow();
                             }
                         } else if (this.isExplicitLogin) {
-                            this.performInitialSync();
+                            this.openCloudQuickMenu();
                         }
                     },
                 });
@@ -5263,11 +5356,11 @@
                         indicatorBtn.style.color = '#00ff88';
                         indicatorBtn.style.background = 'rgba(0, 255, 136, 0.12)';
                         indicatorBtn.style.boxShadow = '0 0 12px rgba(0, 255, 136, 0.4)';
-                        indicatorBtn.title = 'premi per andare offline e lavorare solo in locale';
+                        indicatorBtn.title = 'Gestione Cloud: clicca per Sincronizzare, Ereditare o Inviare dati';
                     }
                     if (indicatorIcon) indicatorIcon.textContent = '☁️';
                     if (indicatorLabel) indicatorLabel.textContent = 'Online';
-                    if (balloonText) balloonText.textContent = 'premi per andare offline e lavorare solo in locale';
+                    if (balloonText) balloonText.textContent = 'Clicca per aprire le opzioni Cloud (Sincronizza, Eredita, Invia)';
                     if (balloonEl) {
                         balloonEl.style.borderColor = 'rgba(0, 255, 136, 0.45)';
                         balloonEl.style.color = '#00ff88';
@@ -5280,11 +5373,11 @@
                         indicatorBtn.style.color = '#fbbf24';
                         indicatorBtn.style.background = 'rgba(245, 158, 11, 0.12)';
                         indicatorBtn.style.boxShadow = '0 0 12px rgba(245, 158, 11, 0.4)';
-                        indicatorBtn.title = 'premi per sincronizzarti con il cloud di google drive';
+                        indicatorBtn.title = 'Clicca per ricollegare Google Drive e sincronizzare';
                     }
                     if (indicatorIcon) indicatorIcon.textContent = '🔑';
                     if (indicatorLabel) indicatorLabel.textContent = 'Ricollega';
-                    if (balloonText) balloonText.textContent = 'premi per sincronizzarti con il cloud di google drive';
+                    if (balloonText) balloonText.textContent = 'Clicca per ricollegare Google Drive e sincronizzare';
                     if (balloonEl) {
                         balloonEl.style.borderColor = 'rgba(245, 158, 11, 0.45)';
                         balloonEl.style.color = '#fbbf24';
@@ -5297,11 +5390,11 @@
                         indicatorBtn.style.color = '#ff3344';
                         indicatorBtn.style.background = 'rgba(255, 51, 68, 0.12)';
                         indicatorBtn.style.boxShadow = '0 0 12px rgba(255, 51, 68, 0.4)';
-                        indicatorBtn.title = 'premi per sincronizzarti con il cloud di google drive';
+                        indicatorBtn.title = 'Clicca per connetterti a Google Drive e sincronizzare';
                     }
                     if (indicatorIcon) indicatorIcon.textContent = '☁️';
                     if (indicatorLabel) indicatorLabel.textContent = 'Offline';
-                    if (balloonText) balloonText.textContent = 'premi per sincronizzarti con il cloud di google drive';
+                    if (balloonText) balloonText.textContent = 'Clicca per connetterti a Google Drive e sincronizzare';
                     if (balloonEl) {
                         balloonEl.style.borderColor = 'rgba(255, 51, 68, 0.45)';
                         balloonEl.style.color = '#ff6677';
