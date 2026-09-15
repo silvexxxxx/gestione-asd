@@ -5722,7 +5722,7 @@
 
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px;">
                                 <button type="button" class="btn btn-outline" data-guide="Annulla il download dal Cloud. Effetto: Chiude la modale senza modificare alcun dato locale." onclick="app.closeModal()">❌ Annulla (Non fare nulla)</button>
-                                <button type="button" class="btn btn-primary" style="background: #ca8a04; border-color: #ca8a04; font-weight: 700;" data-guide="Conferma la sostituzione dei dati locali con quelli del Cloud. Effetto: Crea uno snapshot di sicurezza locale e carica l'intero archivio salvato su Google Drive." onclick="app.cloudSync.executeInheritData()">
+                                <button type="button" id="btn-confirm-inherit-cloud" class="btn btn-primary" style="background: #ca8a04; border-color: #ca8a04; font-weight: 700;" data-guide="Conferma la sostituzione dei dati locali con quelli del Cloud. Effetto: Crea uno snapshot di sicurezza locale e carica l'intero archivio salvato su Google Drive." onclick="app.cloudSync.executeInheritData(this)">
                                     🛡️ Conferma e Sostituisci Dati sul PC
                                 </button>
                             </div>
@@ -5736,49 +5736,81 @@
                 }
             },
 
-            async executeInheritData() {
-                const cloudData = this._pendingCloudData;
-                this._pendingCloudData = null;
-                if (!cloudData) return;
-
-                app.createSnapshot('pre-cloud-download');
-
-                const myRole = app.getDeviceRole();
-                const mySplash = localStorage.getItem('asd_show_splashscreen');
-
-                app.state = { ...app.state, ...cloudData };
-                if (!app.state.settings) app.state.settings = {};
-                app.state.settings.device_role = myRole;
-                if (mySplash !== null) {
-                    app.state.settings.show_splashscreen = (mySplash !== 'false');
+            async executeInheritData(btnEl = null) {
+                if (btnEl) {
+                    btnEl.disabled = true;
+                    btnEl.innerHTML = '⏳ Sostituzione in corso...';
                 }
 
-                app.sanitizeSettings();
-                app.syncSaldiInizialiWithPrimaNota();
-                app.sanitizePrimaNota();
-                app.migrateSoci();
-                app.migrateIstruttori();
-                app.migrateCorsiNames();
-
-                try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci || [])); } catch(e) {}
-                app.syncAthletesIframe();
-
-                if (cloudData._localStorageBackup) {
-                    if (cloudData._localStorageBackup.asd_custom_logo) localStorage.setItem('asd_custom_logo', cloudData._localStorageBackup.asd_custom_logo);
-                    if (cloudData._localStorageBackup.asd_esercizi_images) localStorage.setItem('asd_esercizi_images', cloudData._localStorageBackup.asd_esercizi_images);
+                let cloudData = this._pendingCloudData;
+                if (!cloudData) {
+                    app.toast("Dati Cloud in acquisizione da Google Drive...", "info");
+                    await this.downloadBackup();
+                    app.closeModal();
+                    return;
                 }
 
-                await app.idbSet('main_state', app.state);
+                try {
+                    // Paracadute di emergenza locale (non deve mai bloccare il flusso se localStorage è saturo)
+                    try {
+                        app.createSnapshot('pre-cloud-download');
+                    } catch(snapErr) {
+                        console.warn('Avviso creazione snapshot pre-cloud:', snapErr);
+                    }
 
-                if (app.getDeviceRole() === 'server') {
-                    setTimeout(() => app.autoGenerateMissingPDFs(), 600);
+                    const myRole = app.getDeviceRole();
+                    const mySplash = localStorage.getItem('asd_show_splashscreen');
+
+                    app.state = { ...app.state, ...cloudData };
+                    if (!app.state.settings) app.state.settings = {};
+                    app.state.settings.device_role = myRole;
+                    if (mySplash !== null) {
+                        app.state.settings.show_splashscreen = (mySplash !== 'false');
+                    }
+
+                    try { app.sanitizeSettings(); } catch(e) { console.warn(e); }
+                    try { app.syncSaldiInizialiWithPrimaNota(); } catch(e) { console.warn(e); }
+                    try { app.sanitizePrimaNota(); } catch(e) { console.warn(e); }
+                    try { app.migrateSoci(); } catch(e) { console.warn(e); }
+                    try { app.migrateIstruttori(); } catch(e) { console.warn(e); }
+                    try { app.migrateCorsiNames(); } catch(e) { console.warn(e); }
+
+                    try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci || [])); } catch(e) {}
+                    try { app.syncAthletesIframe(); } catch(e) {}
+
+                    if (cloudData._localStorageBackup) {
+                        try {
+                            if (cloudData._localStorageBackup.asd_custom_logo) localStorage.setItem('asd_custom_logo', cloudData._localStorageBackup.asd_custom_logo);
+                        } catch(e) { console.warn('Impossibile salvare logo in localStorage:', e); }
+                        try {
+                            if (cloudData._localStorageBackup.asd_esercizi_images) localStorage.setItem('asd_esercizi_images', cloudData._localStorageBackup.asd_esercizi_images);
+                        } catch(e) { console.warn('Impossibile salvare immagini esercizi in localStorage:', e); }
+                    }
+
+                    await app.idbSet('main_state', app.state);
+
+                    this._pendingCloudData = null;
+
+                    app.closeModal();
+
+                    if (app.getDeviceRole() === 'server') {
+                        setTimeout(() => {
+                            try { app.autoGenerateMissingPDFs(); } catch(e) { console.error(e); }
+                        }, 600);
+                    }
+
+                    const sociNum = (app.state.soci || []).length;
+                    const ricNum = (app.state.ricevute || []).length;
+                    app.toast(`✅ Database aggiornato dal Cloud con successo! (${sociNum} soci, ${ricNum} ricevute)`, 'success');
+                    app.showPage('dashboard');
+                } catch(err) {
+                    console.error('Errore durante executeInheritData:', err);
+                    app.toast('Errore durante la sostituzione dati: ' + (err.message || err), 'danger');
+                    if (btnEl) {
+                        btnEl.disabled = false;
+                        btnEl.innerHTML = '🛡️ Riprova Sostituzione Dati';
+                    }
                 }
-
-                app.closeModal();
-                const sociNum = (app.state.soci || []).length;
-                const ricNum = (app.state.ricevute || []).length;
-                app.toast(`✅ Database aggiornato dal Cloud con successo! (${sociNum} soci, ${ricNum} ricevute)`, 'success');
-                app.showPage('dashboard');
             },
 
             async openCloudVersionsModal() {
@@ -19424,30 +19456,51 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         },
 
         createSnapshot(type = 'manual') {
-            const data = JSON.parse(JSON.stringify(this.state));
-            let snapshots = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
-            const max = parseInt(this.state.settings.maxSnapshots || 5);
-            const now = new Date();
-            const id = now.getTime().toString();
-            snapshots.unshift({
-                id: id,
-                date: now.toLocaleString('it-IT'),
-                type: type,
-                data: data,
-                counts: {
-                    soci: (data.soci || []).length,
-                    ricevute: (data.ricevute || []).length,
-                    primanota: (data.primanota || []).length
+            try {
+                if (!this.state) return;
+                if (!this.state.settings) this.state.settings = {};
+                const data = JSON.parse(JSON.stringify(this.state));
+                let snapshots = [];
+                try {
+                    snapshots = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
+                } catch(e) { snapshots = []; }
+                const max = parseInt(this.state.settings.maxSnapshots || 5);
+                const now = new Date();
+                const id = now.getTime().toString();
+                snapshots.unshift({
+                    id: id,
+                    date: now.toLocaleString('it-IT'),
+                    type: type,
+                    counts: {
+                        soci: (data.soci || []).length,
+                        ricevute: (data.ricevute || []).length,
+                        primanota: (data.primanota || []).length
+                    },
+                    data: data
+                });
+                if (snapshots.length > max) {
+                    snapshots = snapshots.slice(0, max);
                 }
-            });
-            if (snapshots.length > max) {
-                snapshots = snapshots.slice(0, max);
+                try {
+                    localStorage.setItem('asd_snapshots', JSON.stringify(snapshots));
+                } catch(quotaErr) {
+                    console.warn('Quota localStorage superata durante salvataggio snapshot, riduco a 1 copia:', quotaErr);
+                    try {
+                        snapshots = snapshots.slice(0, 1);
+                        localStorage.setItem('asd_snapshots', JSON.stringify(snapshots));
+                    } catch(e2) {
+                        console.warn('Impossibile salvare snapshot in localStorage (quota satura):', e2);
+                    }
+                }
+                if(type === 'manual') this.toast('Salvataggio di stato manuale creato.', 'success');
+                else if(type === 'pre-cloud-download') this.toast('🛡️ Snapshot di sicurezza locale creato!', 'info');
+                else if(type === 'auto') console.log('Autosave created at', now.toLocaleString('it-IT'));
+                if (this.state.currentPage === 'database') {
+                    this.renderDatabase();
+                }
+            } catch(e) {
+                console.error('Errore in createSnapshot:', e);
             }
-            localStorage.setItem('asd_snapshots', JSON.stringify(snapshots));
-            if(type === 'manual') this.toast('Salvataggio di stato manuale creato.', 'success');
-            else if(type === 'pre-cloud-download') this.toast('🛡️ Snapshot di sicurezza locale creato!', 'info');
-            else if(type === 'auto') console.log('Autosave created at', now.toLocaleString('it-IT'));
-            this.renderDatabase();
         },
         restoreSnapshot(id) {
             if(!confirm("ATTENZIONE: Ripristinare questo stato sovrascriverà i dati attuali. Vuoi procedere?")) return;
