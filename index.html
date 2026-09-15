@@ -5064,13 +5064,19 @@
             },
             
             async exitApp() {
+                // Crea snapshot di sicurezza prima di uscire
+                this.createSnapshot('exit');
+                
                 // Salva tutto prima di uscire
                 this.toast('💾 Salvataggio dati in corso...', 'info');
                 this.saveAll();
                 
                 if (this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
                     this.toast('☁️ Sincronizzazione Cloud in corso prima della chiusura...', 'info');
-                    await this.cloudSync.uploadBackup();
+                    const uploadOk = await this.cloudSync.uploadBackup(false, true);
+                    if (!uploadOk) {
+                        this.toast('⚠️ Salvataggio Cloud non riuscito, ma i dati locali sono al sicuro.', 'warning');
+                    }
                 }
                 
                 this.toast('✅ Dati salvati con successo. Chiusura in corso...', 'success');
@@ -5218,13 +5224,14 @@
                     await this.uploadBackup();
                 }
                 this.accessToken = null;
-                this.fileId = null;
+                // NOTA: NON cancellare this.fileId e asd_gdrive_file_id!
+                // Il fileId identifica il file su Drive e deve sopravvivere al logout
+                // per evitare la creazione di file duplicati al prossimo login.
                 this.syncEnabled = false;
                 this.isExplicitLogin = false;
                 localStorage.setItem('asd_cloud_sync', 'false');
                 localStorage.removeItem('asd_gdrive_token');
                 localStorage.removeItem('asd_gdrive_token_expiry');
-                localStorage.removeItem('asd_gdrive_file_id');
                 if (!silent) {
                     app.toast('Modalità Offline attivata. I dati saranno salvati solo su questo computer.', 'info');
                 }
@@ -5332,8 +5339,12 @@
                     return;
                 }
                 app.toast("Caricamento forzato su Google Drive in corso...", "info");
-                await this.uploadBackup(false, true);
-                app.toast("✅ Google Drive sovrascritto con successo con i dati locali!", "success");
+                const uploadOk = await this.uploadBackup(false, true);
+                if (uploadOk) {
+                    app.toast("✅ Google Drive sovrascritto con successo con i dati locali!", "success");
+                } else {
+                    app.toast("❌ Caricamento su Google Drive FALLITO! Controlla la connessione e riprova.", "danger");
+                }
             },
 
             async saveCloudNamedFile(fileName, contentStr) {
@@ -5749,8 +5760,12 @@
                             const choice = await this.promptSyncConflictModal();
                             if (choice === 'overwrite') {
                                 app.toast('Caricamento su Google Drive in corso...', 'info');
-                                await this.uploadBackup(false, true);
-                                app.toast('✅ Google Drive sovrascritto con successo con i dati locali!', 'success');
+                                const ok = await this.uploadBackup(false, true);
+                                if (ok) {
+                                    app.toast('✅ Google Drive sovrascritto con successo con i dati locali!', 'success');
+                                } else {
+                                    app.toast('❌ Caricamento su Google Drive FALLITO! Riprova.', 'danger');
+                                }
                             } else if (choice === 'inherit') {
                                 await this.promptInheritFromCloudModal();
                             } else if (choice === 'merge') {
@@ -5766,8 +5781,12 @@
                         const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
                         if (hasLocalData) {
                             if (confirm("Nessun archivio Cloud trovato su questo account Google Drive.\n\nVuoi creare ora il primo archivio Cloud caricando i dati di questo dispositivo?")) {
-                                await this.uploadBackup(true, true);
-                                app.toast('✅ Primo archivio caricato su Google Drive con successo!', 'success');
+                                const ok = await this.uploadBackup(true, true);
+                                if (ok) {
+                                    app.toast('✅ Primo archivio caricato su Google Drive con successo!', 'success');
+                                } else {
+                                    app.toast('❌ Creazione archivio Cloud FALLITA! Riprova.', 'danger');
+                                }
                             } else {
                                 app.toast('Caricamento Cloud annullato. I dati locali sono rimasti invariati.', 'info');
                             }
@@ -5980,25 +5999,30 @@
 
             async uploadBackup(isCreate = false, skipMerge = false) {
                 if (!this.accessToken) {
+                    console.warn('[CloudSync] uploadBackup ABORTITO: accessToken mancante. syncEnabled=' + this.syncEnabled);
                     if (this.syncEnabled) {
                         app.toast('⚠️ Connessione a Google persa. Ricollegati in Impostazioni!', 'warning');
                     }
-                    return;
+                    return false;
                 }
                 
                 // Se non abbiamo ancora il fileId e non siamo in creazione, cerchiamo il file su Drive
                 if (!isCreate && !this.fileId) {
                     try {
+                        console.log('[CloudSync] fileId mancante, ricerca su Drive...');
                         const existing = await this.findFileByName('GestioneASD_CloudSync.json');
                         if (existing) {
                             this.fileId = existing.id;
                             localStorage.setItem('asd_gdrive_file_id', this.fileId);
+                            console.log('[CloudSync] fileId trovato:', this.fileId);
                         } else {
+                            console.log('[CloudSync] Nessun file esistente, verrà creato nuovo.');
                             isCreate = true;
                         }
                     } catch(err) {
-                        console.error('Errore ricerca fileId Drive:', err);
-                        return;
+                        console.error('[CloudSync] uploadBackup ABORTITO: errore ricerca fileId:', err);
+                        app.toast('⚠️ Errore di ricerca file su Drive. Riprova.', 'warning');
+                        return false;
                     }
                 }
 
@@ -6020,11 +6044,11 @@
                             if (prevContent && prevContent.length > 20) {
                                 await this.saveCloudNamedFile('GestioneASD_Backup_Precedente.json', prevContent);
                                 this._lastBackupRotationTime = Date.now();
-                                console.log('Copia di riserva GestioneASD_Backup_Precedente.json archiviata con successo su Drive.');
+                                console.log('[CloudSync] Copia di riserva GestioneASD_Backup_Precedente.json archiviata su Drive.');
                             }
                         }
                     } catch(rotErr) {
-                        console.warn('Rotazione backup cloud precedente fallita (non bloccante):', rotErr);
+                        console.warn('[CloudSync] Rotazione backup precedente fallita (non bloccante):', rotErr);
                     }
                 }
                 
@@ -6040,6 +6064,7 @@
                 };
 
                 const fileContent = JSON.stringify(clone);
+                console.log('[CloudSync] Upload in corso... isCreate=' + isCreate + ', fileId=' + this.fileId + ', dimensione=' + fileContent.length + ' bytes');
                 
                 try {
                     let res;
@@ -6075,30 +6100,41 @@
                     }
                     
                     if (res && res.ok) {
+                        console.log('[CloudSync] ✅ Upload completato con successo! fileId=' + this.fileId);
                         app.toast('Cloud: Salvataggio aggiornato.', 'success');
+                        this.isSyncing = false;
+                        return true;
                     } else if (res && res.status === 401) {
                         // Token scaduto!
+                        console.warn('[CloudSync] ❌ Upload FALLITO: Token scaduto (401)');
                         app.toast('Sessione Cloud scaduta. Riconnessione automatica...', 'warning');
                         if (this.tokenClient) {
                             this.tokenClient.requestAccessToken({prompt: 'none'});
                         }
+                        this.isSyncing = false;
+                        return false;
                     } else if (res && res.status === 404) {
                         // File non trovato su Drive (eliminato o ID obsoleto): ricrea automaticamente
-                        console.warn('File Cloud non trovato (404), ricreazione in corso...');
+                        console.warn('[CloudSync] File Cloud non trovato (404), ricreazione in corso...');
                         this.fileId = null;
                         localStorage.removeItem('asd_gdrive_file_id');
+                        this.isSyncing = false;
                         return await this.uploadBackup(true, true);
                     } else if (res && res.status === 400) {
+                        console.error('[CloudSync] ❌ Upload FALLITO: Errore 400 (dati non validi)');
                         app.toast('Errore Cloud (Dati troppo grandi o formato non valido).', 'danger');
-                        console.error('Upload error 400', res);
+                        this.isSyncing = false;
+                        return false;
                     } else {
-                        throw new Error("HTTP error " + (res ? res.status : "unknown"));
+                        const status = res ? res.status : 'unknown';
+                        console.error('[CloudSync] ❌ Upload FALLITO: HTTP ' + status);
+                        throw new Error("HTTP error " + status);
                     }
                 } catch (e) {
-                    console.error('Upload error', e);
+                    console.error('[CloudSync] ❌ Upload FALLITO con eccezione:', e);
                     app.toast('Errore Cloud: ' + e.message, 'danger');
-                } finally {
                     this.isSyncing = false;
+                    return false;
                 }
             },
 
@@ -19203,9 +19239,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 }, 300);
             };
 
-            document.getElementById('btn-save-exit').onclick = () => {
-                this.createSnapshot('exit');
-                performExit();
+            document.getElementById('btn-save-exit').onclick = async () => {
+                modal.remove();
+                await app.exitApp();
             };
             document.getElementById('btn-exit').onclick = () => {
                 this.state.isDirty = false; // Prevents auto-exit snapshot
