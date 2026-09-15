@@ -295,6 +295,39 @@
             }
         }
 
+        .dati-org-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .consiglio-direttivo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+        .saldi-iniziali-summary {
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
         .page-content {
             flex: 1;
             display: flex;
@@ -1150,41 +1183,114 @@
             div[style*="grid-template-columns: repeat(auto-fit"],
             .form-grid,
             .receipt-form-grid,
-            .sign-grid {
-                grid-template-columns: 1fr !important;
+            .sign-grid,
+            .dati-org-columns {
+                display: flex !important;
+                flex-direction: column !important;
                 width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
                 gap: 1rem !important;
             }
 
-            .glass-card[style*="display:flex"] {
+            .dati-associazione-grid {
+                grid-template-columns: 1fr !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            .glass-card[style*="display:flex"],
+            .glass-card[style*="display: flex"] {
                 flex-direction: column !important;
                 align-items: stretch !important;
                 gap: 12px !important;
             }
-            .glass-card[style*="display:flex"] > div {
+            .glass-card[style*="display:flex"] > div,
+            .glass-card[style*="display: flex"] > div {
                 width: 100% !important;
+                min-width: 0 !important;
             }
-            .glass-card[style*="display:flex"] button {
+            .glass-card[style*="display:flex"] button,
+            .glass-card[style*="display: flex"] button {
                 width: 100% !important;
                 justify-content: center !important;
                 font-size: 0.95rem !important;
                 padding: 10px 14px !important;
             }
-            .glass-card div[style*="display:flex"] {
+            .glass-card div[style*="display:flex"],
+            .glass-card div[style*="display: flex"] {
                 flex-direction: column !important;
                 align-items: stretch !important;
                 gap: 8px !important;
                 width: 100% !important;
+                box-sizing: border-box !important;
             }
             .glass-card div[style*="display:flex"] button,
-            .glass-card div[style*="display:flex"] a {
+            .glass-card div[style*="display:flex"] a,
+            .glass-card div[style*="display: flex"] button,
+            .glass-card div[style*="display: flex"] a {
                 width: 100% !important;
                 justify-content: center !important;
                 box-sizing: border-box !important;
             }
 
+            /* Intestazioni riquadri su mobile */
+            .card-header-flex {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .card-header-flex > div {
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            .card-header-flex button,
+            .card-header-flex .btn {
+                width: 100% !important;
+                justify-content: center !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Consiglio direttivo e riassunti su mobile */
+            .consiglio-direttivo-grid,
+            div[style*="grid-template-columns: 1fr 1fr 1fr"],
+            div[style*="grid-template-columns:1fr 1fr 1fr"] {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            .saldi-iniziali-summary {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .saldi-iniziali-summary > div:first-child {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 10px !important;
+                width: 100% !important;
+            }
+            .saldi-iniziali-summary div[style*="border-left"] {
+                border-left: none !important;
+                border-top: 1px solid var(--border) !important;
+                padding-left: 0 !important;
+                padding-top: 10px !important;
+            }
+
             /* === TABELLE DATI: SCORRIMENTO ORIZZONTALE TOUCH E TESTO LEGGIBILE (13-14px) === */
-            .table-container {
+            .table-container,
+            .glass-card .table-container,
+            .glass-card div[style*="overflow-x:auto"],
+            .glass-card div[style*="overflow-x: auto"] {
+                display: block !important;
                 overflow-x: auto !important;
                 -webkit-overflow-scrolling: touch !important;
                 width: 100% !important;
@@ -1194,11 +1300,15 @@
                 border: 1px solid var(--border) !important;
                 background: rgba(15, 23, 42, 0.4) !important;
                 scrollbar-width: thin !important;
+                box-sizing: border-box !important;
             }
             .table-container table,
             table.data-table,
-            .glass-card > table {
-                min-width: 700px !important;
+            .glass-card > table,
+            .glass-card .table-container table,
+            .glass-card div[style*="overflow-x:auto"] table,
+            .glass-card div[style*="overflow-x: auto"] table {
+                min-width: 600px !important;
                 width: 100% !important;
                 border-collapse: collapse !important;
             }
@@ -1207,17 +1317,25 @@
             table.data-table th,
             table.data-table td,
             .glass-card > table th,
-            .glass-card > table td {
+            .glass-card > table td,
+            .glass-card .table-container th,
+            .glass-card .table-container td,
+            .glass-card div[style*="overflow-x:auto"] th,
+            .glass-card div[style*="overflow-x:auto"] td,
+            .glass-card div[style*="overflow-x: auto"] th,
+            .glass-card div[style*="overflow-x: auto"] td {
                 padding: 10px 12px !important;
                 font-size: 13.5px !important; /* Misura leggibile minimo 13-14px */
                 white-space: nowrap !important;
                 line-height: 1.4 !important;
             }
             .glass-card:has(> table),
-            .glass-card:has(> .data-table) {
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch !important;
+            .glass-card:has(> .data-table),
+            .glass-card:has(.table-container) {
+                overflow-x: hidden !important;
                 max-width: 100% !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
             }
 
             /* Page header: stack verticale */
@@ -1237,11 +1355,14 @@
                 justify-content: center !important;
             }
 
-            /* Cards: piena larghezza */
+            /* Cards: sempre inquadrate a tutta larghezza e mai troncate */
             .glass-card {
                 padding: 14px !important;
+                width: 100% !important;
                 max-width: 100% !important;
+                min-width: 0 !important;
                 box-sizing: border-box !important;
+                overflow: hidden !important;
             }
 
             /* Scroll verticale completo e padding di sicurezza */
@@ -17589,7 +17710,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const presets = this.state.quote_presets || [];
             const costiFissi = this.state.settings.costi_fissi_periodici || [];
             main.innerHTML = `
-                <div class="page-content" style="overflow-y:auto;">
+                <div class="page-content">
                     <div class="page-header">
                         <div class="header-title">
                             <h1>🏢 Dati ed Organizzazione ASD</h1>
@@ -17597,7 +17718,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         </div>
                     </div>
                     
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+                    <div class="dati-org-columns">
                         
                         <!-- 1. Dati Associazione -->
                         <div class="glass-card" style="grid-column: 1 / -1;">
@@ -17614,7 +17735,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                         <!-- 1b. Saldi Iniziali al Primo Utilizzo (Giacenze di Partenza) -->
                         <div class="glass-card" style="border-left: 4px solid #10b981; grid-column: 1 / -1;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:10px;">
+                            <div class="card-header-flex">
                                 <div>
                                     <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
                                         <span>💰 Saldi Iniziali al Primo Utilizzo (Giacenze di Partenza)</span>
@@ -17628,7 +17749,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </button>
                             </div>
 
-                            <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px 14px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                            <div class="saldi-iniziali-summary">
                                 <div style="display:flex; gap:20px; flex-wrap:wrap;">
                                     <div>
                                         <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Totale Giacenza Cassa:</span>
@@ -17654,7 +17775,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </div>
                             </div>
 
-                            <div style="overflow-x:auto;">
+                            <div class="table-container">
                                 <table class="table" style="width:100%; font-size:0.88rem; margin:0;">
                                     <thead>
                                         <tr style="border-bottom:1px solid var(--border); text-align:left;">
@@ -17680,7 +17801,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <button class="btn btn-outline" style="font-size:0.75rem;" onclick="app.openDirettivoHistoryModal()" data-guide="Visualizza archivio mandati direttivi. Effetto: Mostra lo storico delle cariche associative e dei consigli passati.">Storico</button>
                             </div>
                             
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:1rem;">
+                            <div class="consiglio-direttivo-grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:1rem;">
                                 <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
                                     <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Presidente</div>
                                     <div style="font-weight:600;">${(() => {
@@ -17722,7 +17843,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                         <!-- 3. Metodi di Pagamento e Commissioni -->
                         <div class="glass-card" style="grid-column: 1 / -1;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:gap; gap:10px;">
+                            <div class="card-header-flex" style="margin-bottom:1.25rem;">
                                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                                     <h3 style="margin:0;">💳 Metodi di Pagamento & Commissioni</h3>
                                     <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; border-color:var(--primary); color:var(--primary);" onclick="app.openCommissioniGuideModal()" data-guide="Guida al calcolo delle commissioni. Effetto: Spiega come dedurre le percentuali e quote fisse di POS e circuiti di pagamento.">
@@ -17732,7 +17853,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <button type="button" class="btn btn-primary" style="font-size:0.85rem;" onclick="app.openMetodoModal()" data-guide="Aggiungi nuovo metodo di incasso. Effetto: Definisce un nuovo canale di pagamento (es. Satispay, Stripe, POS) con relative commissioni.">+ Nuovo Metodo</button>
                             </div>
 
-                            <div style="overflow-x:auto;">
+                            <div class="table-container">
                                 <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
                                     <thead>
                                         <tr style="border-bottom: 2px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
@@ -17751,7 +17872,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                         <!-- 3b. Costi Fissi e Spese Bancarie Periodiche -->
                         <div class="glass-card" style="grid-column: 1 / -1; border-left: 4px solid #6366f1;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px;">
+                            <div class="card-header-flex" style="margin-bottom:1.25rem;">
                                 <div>
                                     <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
                                         🏦 Costi Fissi & Spese Bancarie Periodiche
@@ -17776,7 +17897,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <strong>💡 Nota contabile facoltativa:</strong> La gestione di queste registrazioni periodiche e dei costi bancari a consumo (es. scritture extra franchigia) è facoltativa. Se non desideri appesantire il lavoro di inserimento, puoi lasciare la registrazione e riconciliazione di queste voci al commercialista/consulente in sede di rendiconto annuale, prendendo come riferimento l'Estratto Conto ufficiale.
                             </div>
 
-                            <div style="overflow-x:auto;">
+                            <div class="table-container">
                                 <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
                                     <thead>
                                         <tr style="border-bottom: 2px solid var(--border-color); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">
@@ -17877,14 +17998,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
                         <!-- 4. Pacchetti Quote e Tesseramento -->
                         <div class="glass-card" style="grid-column: 1 / -1;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <div class="card-header-flex" style="margin-bottom:1rem;">
                                 <h3 style="margin:0;">💶 Pacchetti Quote e Tesseramento</h3>
                                 <button class="btn btn-primary" style="font-size:0.8rem;" onclick="app.openAddPresetModal()" data-guide="Crea nuovo pacchetto quote. Effetto: Aggiunge una tariffa preimpostata (mensile, trimestrale, iscrizione) selezionabile nelle ricevute.">+ Nuovo Pacchetto</button>
                             </div>
                             <div class="pacchetti-presets-grid">
                                 ${presets.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem; grid-column: 1 / -1;">Nessun pacchetto quote o tesseramento.</p>' :
                                 presets.map((p, idx) => `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; gap:10px; border:1px solid rgba(255,255,255,0.06);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:10px 14px; border-radius:8px; gap:10px; border:1px solid rgba(255,255,255,0.06); flex-wrap:wrap;">
                                         <div style="flex:1; min-width:0;">
                                             <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p.nome}">${p.nome}</div>
                                             <div style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">€ ${parseFloat(p.importo).toFixed(2)}${p.note ? ' - ' + p.note : ''}</div>
@@ -17904,7 +18025,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <!-- 5. Sale e Spazi -->
                         <div class="glass-card" style="grid-column: 1 / -1;">
                             <h3 style="margin-bottom:1rem;">🏟️ Sale & Spazi</h3>
-                            <form id="add-sala-form" onsubmit="app.handleAddSala(event)" style="display:flex; gap:8px; margin-bottom:1rem;">
+                            <form id="add-sala-form" onsubmit="app.handleAddSala(event)" style="display:flex; gap:8px; margin-bottom:1rem; flex-wrap:wrap;">
                                 <input type="text" id="new-sala-input" class="form-control" placeholder="Es: Sala Yoga, Area Esterna..." required style="flex:1;" data-guide="Nome della sala o impianto sportivo. Effetto: Specifica lo spazio utilizzabile per le attività e corsi.">
                                 <button type="submit" class="btn btn-primary" style="white-space:nowrap;" data-guide="Aggiungi sala al planning. Effetto: Crea un nuovo spazio prenotabile nel calendario e nei corsi.">+ Aggiungi</button>
                             </form>
