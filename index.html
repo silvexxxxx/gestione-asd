@@ -3747,9 +3747,12 @@
                 sessionStorage.removeItem('asd_restore_page');
                 this.showPage(restorePage);
 
-                // Close modal on click outside
+                // Close modal on click outside (se non esplicitamente bloccato per modali critiche)
                 document.getElementById('modal-overlay').addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-overlay') this.closeModal();
+                    if (e.target.id === 'modal-overlay') {
+                        if (this._preventBackdropClose) return;
+                        this.closeModal();
+                    }
                 });
 
                 // Inizializza Modalità Guida
@@ -5124,10 +5127,16 @@
             },
 
             toggleOnlineOffline() {
+                if (this.isSyncing) {
+                    app.toast('Sincronizzazione in corso, attendi qualche istante...', 'info');
+                    return;
+                }
                 if (this.syncEnabled && this.accessToken) {
-                    this.logout(false);
-                    if (app.state && app.state.currentPage === 'database') {
-                        app.renderDatabase();
+                    if (confirm("Sei attualmente collegato a Google Drive (Online).\n\nVuoi disconnetterti e passare alla Modalità Offline (solo locale)?")) {
+                        this.logout(false);
+                        if (app.state && app.state.currentPage === 'database') {
+                            app.renderDatabase();
+                        }
                     }
                 } else {
                     this.login();
@@ -5220,8 +5229,8 @@
 
             async logout(silent = false) {
                 if (this.syncEnabled && this.accessToken && !silent) {
-                    app.toast('Sincronizzazione finale in corso...', 'info');
-                    await this.uploadBackup();
+                    app.toast('Salvataggio dati prima della disconnessione...', 'info');
+                    await this.uploadBackup(false, true);
                 }
                 this.accessToken = null;
                 // NOTA: NON cancellare this.fileId e asd_gdrive_file_id!
@@ -5526,6 +5535,7 @@
                 }
 
                 app.sanitizeSettings();
+                app.syncSaldiInizialiWithPrimaNota();
                 app.sanitizePrimaNota();
                 app.migrateSoci();
                 app.migrateIstruttori();
@@ -5712,7 +5722,9 @@
                         </div>
                     `;
 
+                    app._preventBackdropClose = true;
                     app._onModalClose = () => {
+                        app._preventBackdropClose = false;
                         if (this._syncResolve) {
                             const r = this._syncResolve;
                             this._syncResolve = null;
@@ -5725,6 +5737,7 @@
             },
 
             resolveSyncChoice(choice) {
+                app._preventBackdropClose = false;
                 if (this._syncResolve) {
                     const r = this._syncResolve;
                     this._syncResolve = null;
@@ -5848,8 +5861,16 @@
                                     const localTime = getTimestamp(localItem);
                                     const cloudTime = getTimestamp(cloudItem);
                                     if (localTime >= cloudTime) {
+                                        // Se localItem non ha note ma cloudItem ce l'ha, preserva la nota
+                                        if (cloudItem && cloudItem.note && (!localItem.note || !String(localItem.note).trim())) {
+                                            localItem.note = cloudItem.note;
+                                        }
                                         map.set(key, localItem);
                                     } else {
+                                        // Se cloudItem non ha note ma localItem ce l'ha, preserva la nota
+                                        if (localItem && localItem.note && (!cloudItem.note || !String(cloudItem.note).trim())) {
+                                            cloudItem.note = localItem.note;
+                                        }
                                         map.set(key, cloudItem);
                                     }
                                 }
@@ -5917,12 +5938,48 @@
                         // Preserva ruolo dispositivo locale e preferenza splashscreen
                         const myDeviceRole = app.getDeviceRole();
                         const mySplashPref = localStorage.getItem('asd_show_splashscreen');
-                        app.state.settings = { ...(cloudData.settings || {}), ...app.state.settings };
+                        
+                        // FUSIONE INTELLIGENTE DEI SETTINGS:
+                        const mergedSettings = { ...(cloudData.settings || {}), ...(app.state.settings || {}) };
+                        
+                        // Saldi Iniziali: non devono mai essere cancellati da un client che non li aveva!
+                        const localSaldi = (app.state.settings && Array.isArray(app.state.settings.saldi_iniziali)) ? app.state.settings.saldi_iniziali : [];
+                        const cloudSaldi = (cloudData.settings && Array.isArray(cloudData.settings.saldi_iniziali)) ? cloudData.settings.saldi_iniziali : [];
+                        
+                        if (cloudSaldi.length > 0 && localSaldi.length === 0) {
+                            mergedSettings.saldi_iniziali = cloudSaldi;
+                        } else if (localSaldi.length > 0 && cloudSaldi.length === 0) {
+                            mergedSettings.saldi_iniziali = localSaldi;
+                        } else if (localSaldi.length > 0 && cloudSaldi.length > 0) {
+                            const saldiMap = new Map();
+                            cloudSaldi.forEach(s => { if (s && s.id) saldiMap.set(String(s.id), s); });
+                            localSaldi.forEach(s => { if (s && s.id) saldiMap.set(String(s.id), s); });
+                            mergedSettings.saldi_iniziali = Array.from(saldiMap.values());
+                        } else {
+                            mergedSettings.saldi_iniziali = [];
+                        }
+
+                        // Dati organizzazione (denominazione, cf, iban, ecc.): se vuoti in locale, prendi da cloud
+                        if (cloudData.settings) {
+                            for (const k of ['denominazione', 'cf_piva', 'iban', 'indirizzo', 'citta', 'cap', 'presidente', 'anno_fiscale', 'cassa_iniziale', 'banca_iniziale']) {
+                                if (!mergedSettings[k] && cloudData.settings[k]) {
+                                    mergedSettings[k] = cloudData.settings[k];
+                                }
+                            }
+                        }
+
+                        app.state.settings = mergedSettings;
                         app.state.settings.device_role = myDeviceRole;
                         if (mySplashPref !== null) {
                             app.state.settings.show_splashscreen = (mySplashPref !== 'false');
                         }
+
                         app.sanitizeSettings();
+                        app.syncSaldiInizialiWithPrimaNota();
+                        app.sanitizePrimaNota();
+                        app.migrateSoci();
+                        app.migrateIstruttori();
+                        app.migrateCorsiNames();
                         
                         await app.idbSet('main_state', app.state);
                         
@@ -5967,6 +6024,7 @@
                             app.state.settings.show_splashscreen = (mySplash !== 'false');
                         }
                         app.sanitizeSettings();
+                        app.syncSaldiInizialiWithPrimaNota();
                         app.sanitizePrimaNota();
                         app.migrateSoci();
                         app.migrateIstruttori();
