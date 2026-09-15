@@ -5120,11 +5120,11 @@
             toggleOnlineOffline() {
                 if (this.syncEnabled && this.accessToken) {
                     this.logout(false);
+                    if (app.state && app.state.currentPage === 'database') {
+                        app.renderDatabase();
+                    }
                 } else {
                     this.login();
-                }
-                if (app.state && app.state.currentPage === 'database') {
-                    app.renderDatabase();
                 }
             },
 
@@ -5139,7 +5139,16 @@
                     scope: 'https://www.googleapis.com/auth/drive.file',
                     callback: (tokenResponse) => {
                         if (tokenResponse.error !== undefined) {
-                            app.toast('Errore di collegamento a Google Drive.', 'warning');
+                            console.warn('Google OAuth error:', tokenResponse.error);
+                            let errMsg = 'Errore di collegamento a Google Drive: ' + tokenResponse.error;
+                            if (tokenResponse.error === 'popup_closed_by_user') {
+                                errMsg = 'Accesso Google annullato: finestra chiusa prima del completamento.';
+                            } else if (tokenResponse.error === 'popup_failed_to_open' || tokenResponse.error === 'popup_blocked_by_browser') {
+                                errMsg = 'Finestra popup bloccata dal browser! Clicca sull\'icona del popup o lucchetto nella barra degli indirizzi per autorizzarla.';
+                            } else if (tokenResponse.error === 'access_denied') {
+                                errMsg = 'Accesso non consentito: per sincronizzare è necessario autorizzare l\'accesso a Google Drive.';
+                            }
+                            app.toast(errMsg, 'warning');
                             this.updateUIStatus();
                             return;
                         }
@@ -5173,9 +5182,23 @@
                     app.toast('Devi prima inserire il tuo Google Client ID nel codice!', 'warning');
                     return;
                 }
-                if (!this.tokenClient) return;
+                if (!this.tokenClient) {
+                    if (typeof google === 'undefined' || !google.accounts) {
+                        app.toast('Libreria Google non disponibile. Verifica la connessione a Internet o eventuali adblocker/estensioni del browser.', 'warning');
+                    } else {
+                        app.toast('Inizializzazione Google in corso, riprova tra un istante...', 'info');
+                        this.init();
+                    }
+                    return;
+                }
                 this.isExplicitLogin = true;
-                this.tokenClient.requestAccessToken({prompt: 'consent'});
+                app.toast('Apertura accesso Google Drive... Se non compare la finestra, controlla i popup bloccati nella barra degli indirizzi.', 'info');
+                try {
+                    this.tokenClient.requestAccessToken({prompt: 'consent'});
+                } catch(err) {
+                    console.error('Errore richiesta token Google:', err);
+                    app.toast('Impossibile aprire la finestra Google: ' + (err.message || err), 'danger');
+                }
             },
 
             async logout(silent = false) {
@@ -5322,9 +5345,24 @@
                     }
                     return;
                 }
-                const fId = targetFileId || this.fileId;
+                let fId = targetFileId || this.fileId;
                 if (!fId) {
-                    app.toast("Nessun file di backup trovato su Google Drive.", "warning");
+                    try {
+                        const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name="${targetFileName}" and trashed=false&spaces=drive`, {
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        });
+                        const searchData = await searchRes.json();
+                        if (searchData.files && searchData.files.length > 0) {
+                            fId = searchData.files[0].id;
+                            this.fileId = fId;
+                            localStorage.setItem('asd_gdrive_file_id', fId);
+                        }
+                    } catch(e) {
+                        console.error('Errore ricerca file cloud:', e);
+                    }
+                }
+                if (!fId) {
+                    app.toast("Nessun file di backup '" + targetFileName + "' trovato su Google Drive.", "warning");
                     return;
                 }
 
@@ -17794,7 +17832,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         </button>
                                         <button class="btn btn-sm ${(this.cloudSync.syncEnabled && this.cloudSync.accessToken) ? 'btn-primary' : 'btn-outline'}" 
                                                 style="${(this.cloudSync.syncEnabled && this.cloudSync.accessToken) ? 'font-weight: bold; background: #00ff88; border-color: #00ff88; color: #0f172a; box-shadow: 0 0 10px rgba(0,255,136,0.3);' : ''}"
-                                                onclick="app.cloudSync.login(); app.renderDatabase();"
+                                                onclick="app.cloudSync.login();"
                                                 data-guide="Connetti il gestionale a Google Drive. Effetto: Avvia l'autenticazione Google OAuth per salvare e sincronizzare automaticamente i dati su cloud."
                                                 title="Connettiti a Google Drive">
                                             ☁️ Avvia con connessione Cloud
@@ -17807,6 +17845,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <button class="btn btn-outline" style="border-color: #3b82f6; color: #93c5fd; font-weight: 600;" onclick="app.cloudSync.login()" data-guide="Ricollega o cambia l'account Google Drive collegato. Effetto: Permette di eseguire una migrazione o associare una diversa casella Google al gestionale.">
                                         🔄 Cambia Account Google
                                     </button>
+                                </div>
+
+                                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08);">
+                                    <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di questo computer con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare questo PC. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer, conservando la copia precedente di riserva" data-guide="Carica l'intero database di questo PC su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
+                                    <button class="btn btn-outline" style="border-color:#6366f1; color:#818cf8; font-weight:600;" onclick="app.cloudSync.openCloudVersionsModal()" title="Visualizza le copie di backup e le versioni storiche presenti su Google Drive" data-guide="Consulta lo storico dei backup salvati su Google Drive (Copia Attuale e Copia di Riserva Precedente) e ripristina con un click quella desiderata.">📂 Versioni & Copie sul Cloud</button>
+                                    <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione" data-guide="Apre la finestra di scelta per unire i dati, sovrascrivere il cloud o ereditare dal cloud.">🔄 Sincronizza Ora (Opzioni)</button>
                                 </div>
                             </div>
 
