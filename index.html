@@ -5163,12 +5163,23 @@
                         }
                         app.toast('Cloud Google Drive collegato con successo!', 'success');
                         
-                        if (this.isExplicitLogin) {
+                        if (this._pendingAction) {
+                            const act = this._pendingAction;
+                            this._pendingAction = null;
+                            if (act.type === 'inherit') {
+                                this.promptInheritFromCloudModal(act.fileId, act.fileName);
+                            } else if (act.type === 'forceUpload') {
+                                this.forceUploadToCloud();
+                            } else if (act.type === 'openVersions') {
+                                this.openCloudVersionsModal();
+                            }
+                        } else if (this.isExplicitLogin) {
                             this.performInitialSync();
                         }
                     },
                 });
 
+                this._pendingAction = null;
                 // All'avvio l'applicazione parte SEMPRE in Modalità Offline (Locale)
                 this.syncEnabled = false;
                 this.accessToken = null;
@@ -5285,9 +5296,34 @@
                 if (typeof syncMobileActionBar === 'function') syncMobileActionBar();
             },
 
+            async searchDriveFiles(q, orderBy = 'modifiedTime desc') {
+                if (!this.accessToken) return [];
+                try {
+                    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&spaces=drive&fields=files(id,name,modifiedTime,size)&orderBy=${encodeURIComponent(orderBy)}`;
+                    const res = await fetch(url, {
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                    });
+                    if (!res.ok) {
+                        console.error('Google Drive search failed HTTP', res.status);
+                        return [];
+                    }
+                    const data = await res.json();
+                    return data.files || [];
+                } catch(e) {
+                    console.error('Drive search exception:', e);
+                    return [];
+                }
+            },
+
+            async findFileByName(fileName) {
+                const files = await this.searchDriveFiles(`name = '${fileName}' and trashed = false`);
+                return files.length > 0 ? files[0] : null;
+            },
+
             async forceUploadToCloud() {
                 if (!this.accessToken) {
                     if (confirm("Per caricare i dati su Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
+                        this._pendingAction = { type: 'forceUpload' };
                         this.login();
                     }
                     return;
@@ -5303,13 +5339,9 @@
             async saveCloudNamedFile(fileName, contentStr) {
                 if (!this.accessToken) return null;
                 try {
-                    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name="${fileName}" and trashed=false&spaces=drive`, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                    });
-                    const searchData = await searchRes.json();
-                    let targetId = null;
-                    if (searchData.files && searchData.files.length > 0) {
-                        targetId = searchData.files[0].id;
+                    const existing = await this.findFileByName(fileName);
+                    let targetId = existing ? existing.id : null;
+                    if (targetId) {
                         await fetch(`https://www.googleapis.com/upload/drive/v3/files/${targetId}?uploadType=media`, {
                             method: 'PATCH',
                             headers: {
@@ -5341,24 +5373,18 @@
             async promptInheritFromCloudModal(targetFileId = null, targetFileName = 'GestioneASD_CloudSync.json') {
                 if (!this.accessToken) {
                     if (confirm("Per scaricare ed ereditare i dati da Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
+                        this._pendingAction = { type: 'inherit', fileId: targetFileId, fileName: targetFileName };
                         this.login();
                     }
                     return;
                 }
                 let fId = targetFileId || this.fileId;
                 if (!fId) {
-                    try {
-                        const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=name="${targetFileName}" and trashed=false&spaces=drive`, {
-                            headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                        });
-                        const searchData = await searchRes.json();
-                        if (searchData.files && searchData.files.length > 0) {
-                            fId = searchData.files[0].id;
-                            this.fileId = fId;
-                            localStorage.setItem('asd_gdrive_file_id', fId);
-                        }
-                    } catch(e) {
-                        console.error('Errore ricerca file cloud:', e);
+                    const found = await this.findFileByName(targetFileName);
+                    if (found) {
+                        fId = found.id;
+                        this.fileId = fId;
+                        localStorage.setItem('asd_gdrive_file_id', fId);
                     }
                 }
                 if (!fId) {
@@ -5376,6 +5402,7 @@
                     const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?alt=media`, {
                         headers: { 'Authorization': `Bearer ${this.accessToken}` }
                     });
+                    if (!fileRes.ok) throw new Error("Impossibile scaricare il file dal Cloud (HTTP " + fileRes.status + ")");
                     const cloudData = await fileRes.json();
                     if (!cloudData) throw new Error("Contenuto file non valido");
 
@@ -5443,6 +5470,12 @@
                                 </div>
                             </div>
 
+                            <div style="text-align: center; margin-top: -2px;">
+                                <a href="javascript:void(0)" onclick="app.closeModal(); setTimeout(() => app.cloudSync.openCloudVersionsModal(), 120);" style="font-size: 0.8rem; color: #818cf8; text-decoration: underline; font-weight: 600;">
+                                    📂 Consulta lo storico versioni e la Copia di Riserva Precedente su Drive
+                                </a>
+                            </div>
+
                             <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #fbbf24; line-height: 1.4;">
                                 🛡️ <strong>Paracadute di Sicurezza Attivo:</strong><br>
                                 Prima di procedere alla sostituzione, il sistema creerà in automatico uno <strong>Snapshot di emergenza locale denominato "PRE-DOWNLOAD-CLOUD"</strong>. Se ti accorgerai di aver sbagliato PC, potrai annullare e ripristinare tutto da <em>Impostazioni ➔ Backup & Snapshot</em>.
@@ -5474,12 +5507,18 @@
                 const myRole = app.getDeviceRole();
                 const mySplash = localStorage.getItem('asd_show_splashscreen');
 
-                app.state = cloudData;
+                app.state = { ...app.state, ...cloudData };
                 if (!app.state.settings) app.state.settings = {};
                 app.state.settings.device_role = myRole;
                 if (mySplash !== null) {
                     app.state.settings.show_splashscreen = (mySplash !== 'false');
                 }
+
+                app.sanitizeSettings();
+                app.sanitizePrimaNota();
+                app.migrateSoci();
+                app.migrateIstruttori();
+                app.migrateCorsiNames();
 
                 try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci || [])); } catch(e) {}
                 app.syncAthletesIframe();
@@ -5496,13 +5535,16 @@
                 }
 
                 app.closeModal();
-                app.toast('✅ Dati ereditati da Google Drive! Creato snapshot di emergenza PRE-DOWNLOAD-CLOUD.', 'success');
-                app.showPage(app.state.currentPage || 'dashboard');
+                const sociNum = (app.state.soci || []).length;
+                const ricNum = (app.state.ricevute || []).length;
+                app.toast(`✅ Database aggiornato dal Cloud con successo! (${sociNum} soci, ${ricNum} ricevute)`, 'success');
+                app.showPage('dashboard');
             },
 
             async openCloudVersionsModal() {
                 if (!this.accessToken) {
                     if (confirm("Per consultare le versioni su Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
+                        this._pendingAction = { type: 'openVersions' };
                         this.login();
                     }
                     return;
@@ -5510,11 +5552,7 @@
 
                 app.toast("Ricerca versioni su Google Drive in corso...", "info");
                 try {
-                    const searchRes = await fetch('https://www.googleapis.com/drive/v3/files?q=name contains "GestioneASD_" and trashed=false&spaces=drive&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc', {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                    });
-                    const data = await searchRes.json();
-                    const files = data.files || [];
+                    const files = await this.searchDriveFiles("name contains 'GestioneASD_' and trashed = false");
 
                     let filesListHtml = '';
                     if (files.length === 0) {
@@ -5700,13 +5738,10 @@
             async performInitialSync() {
                 app.toast('Sincronizzazione Cloud in corso...', 'info');
                 try {
-                    const searchRes = await fetch('https://www.googleapis.com/drive/v3/files?q=name="GestioneASD_CloudSync.json" and trashed=false&spaces=drive', {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                    });
-                    const searchData = await searchRes.json();
+                    const mainFile = await this.findFileByName('GestioneASD_CloudSync.json');
                     
-                    if (searchData.files && searchData.files.length > 0) {
-                        this.fileId = searchData.files[0].id;
+                    if (mainFile) {
+                        this.fileId = mainFile.id;
                         localStorage.setItem('asd_gdrive_file_id', this.fileId);
                         
                         const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
@@ -5728,11 +5763,21 @@
                             await this.downloadBackup();
                         }
                     } else {
-                        await this.uploadBackup(true, true);
+                        const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
+                        if (hasLocalData) {
+                            if (confirm("Nessun archivio Cloud trovato su questo account Google Drive.\n\nVuoi creare ora il primo archivio Cloud caricando i dati di questo dispositivo?")) {
+                                await this.uploadBackup(true, true);
+                                app.toast('✅ Primo archivio caricato su Google Drive con successo!', 'success');
+                            } else {
+                                app.toast('Caricamento Cloud annullato. I dati locali sono rimasti invariati.', 'info');
+                            }
+                        } else {
+                            app.toast("Nessun archivio 'GestioneASD_CloudSync.json' trovato su Google Drive.", 'warning');
+                        }
                     }
                 } catch (e) {
                     console.error('Cloud Sync Error', e);
-                    app.toast('Errore di sincronizzazione Cloud', 'danger');
+                    app.toast('Errore di sincronizzazione Cloud: ' + (e.message || e), 'danger');
                 }
             },
 
@@ -5890,17 +5935,23 @@
                     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
                         headers: { 'Authorization': `Bearer ${this.accessToken}` }
                     });
+                    if (!res.ok) throw new Error("Errore HTTP " + res.status);
                     const data = await res.json();
                     
                     if (data) {
                         const myRole = app.getDeviceRole();
                         const mySplash = localStorage.getItem('asd_show_splashscreen');
-                        app.state = data;
+                        app.state = { ...app.state, ...data };
                         if (!app.state.settings) app.state.settings = {};
                         app.state.settings.device_role = myRole;
                         if (mySplash !== null) {
                             app.state.settings.show_splashscreen = (mySplash !== 'false');
                         }
+                        app.sanitizeSettings();
+                        app.sanitizePrimaNota();
+                        app.migrateSoci();
+                        app.migrateIstruttori();
+                        app.migrateCorsiNames();
                         try { localStorage.setItem('asd_soci', JSON.stringify(app.state.soci || [])); } catch(e) {}
                         app.syncAthletesIframe();
                         if (data._localStorageBackup) {
@@ -5914,12 +5965,14 @@
                             setTimeout(() => app.autoGenerateMissingPDFs(), 600);
                         }
 
-                        app.toast('Cloud: Dati scaricati con successo.', 'success');
-                        app.showPage(app.state.currentPage || 'dashboard');
+                        const sociNum = (app.state.soci || []).length;
+                        const ricNum = (app.state.ricevute || []).length;
+                        app.toast(`✅ Cloud: Dati scaricati con successo! (${sociNum} soci, ${ricNum} ricevute)`, 'success');
+                        app.showPage('dashboard');
                     }
                 } catch (e) {
                     console.error('Download error', e);
-                    app.toast('Errore nel download dal Cloud', 'danger');
+                    app.toast('Errore nel download dal Cloud: ' + (e.message || e), 'danger');
                 } finally {
                     this.isSyncing = false;
                 }
@@ -5936,12 +5989,9 @@
                 // Se non abbiamo ancora il fileId e non siamo in creazione, cerchiamo il file su Drive
                 if (!isCreate && !this.fileId) {
                     try {
-                        const searchRes = await fetch('https://www.googleapis.com/drive/v3/files?q=name="GestioneASD_CloudSync.json" and trashed=false&spaces=drive', {
-                            headers: { 'Authorization': `Bearer ${this.accessToken}` }
-                        });
-                        const searchData = await searchRes.json();
-                        if (searchData.files && searchData.files.length > 0) {
-                            this.fileId = searchData.files[0].id;
+                        const existing = await this.findFileByName('GestioneASD_CloudSync.json');
+                        if (existing) {
+                            this.fileId = existing.id;
                             localStorage.setItem('asd_gdrive_file_id', this.fileId);
                         } else {
                             isCreate = true;
@@ -17856,6 +17906,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer, conservando la copia precedente di riserva" data-guide="Carica l'intero database di questo PC su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
                                     <button class="btn btn-outline" style="border-color:#6366f1; color:#818cf8; font-weight:600;" onclick="app.cloudSync.openCloudVersionsModal()" title="Visualizza le copie di backup e le versioni storiche presenti su Google Drive" data-guide="Consulta lo storico dei backup salvati su Google Drive (Copia Attuale e Copia di Riserva Precedente) e ripristina con un click quella desiderata.">📂 Versioni & Copie sul Cloud</button>
                                     <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione" data-guide="Apre la finestra di scelta per unire i dati, sovrascrivere il cloud o ereditare dal cloud.">🔄 Sincronizza Ora (Opzioni)</button>
+                                </div>
+
+                                <div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+                                    💡 <strong>Come allineare più dispositivi (PC Principale ➔ Palestra ➔ Smartphone):</strong><br>
+                                    <strong>1. Sul PC dove hai inserito i dati:</strong> clicca su <span style="color:#10b981; font-weight:600;">⬆️ Sovrascrivi Cloud con Dati Locali</span> per aggiornare Google Drive.<br>
+                                    <strong>2. Sul PC secondario o Smartphone:</strong> clicca su <span style="color:#fbbf24; font-weight:600;">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</span> per ricevere l'archivio aggiornato.<br>
+                                    <strong>3. Per controllare le copie storiche:</strong> clicca su <span style="color:#818cf8; font-weight:600;">📂 Versioni & Copie sul Cloud</span> per verificare data/ora o ripristinare la Copia di Riserva Precedente.
                                 </div>
                             </div>
 
