@@ -12319,6 +12319,42 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
         },
 
+        getCurrentSportsYear() {
+            const now = new Date();
+            return now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+        },
+
+        getRecordSportsYear(recordOrDate) {
+            if (!recordOrDate) return this.getCurrentSportsYear();
+            let d = null;
+            let val = recordOrDate;
+            if (typeof recordOrDate === 'object') {
+                val = recordOrDate.data || recordOrDate.anno;
+            }
+            if (typeof val === 'number') {
+                if (val > 1900 && val < 2100) return val;
+            } else if (typeof val === 'string') {
+                const trimmed = val.trim();
+                if (/^\d{4}$/.test(trimmed)) {
+                    return parseInt(trimmed, 10);
+                }
+                if (trimmed.includes('/')) {
+                    const parts = trimmed.split('/');
+                    if (parts.length === 3) {
+                        d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+                    }
+                } else if (trimmed.includes('-')) {
+                    d = new Date(trimmed);
+                }
+            } else if (val instanceof Date) {
+                d = val;
+            }
+            if (d && !isNaN(d.getTime())) {
+                return d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1;
+            }
+            return this.getCurrentSportsYear();
+        },
+
         getSportsYear(ref) {
             const now = new Date();
             if (ref === null || ref === undefined) ref = now;
@@ -21784,26 +21820,26 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const prevCompStart = startInput ? startInput.value : '';
             const prevCompEnd = endInput ? endInput.value : '';
 
-            const currentYear = new Date().getFullYear();
+            const currentSportsYear = this.getCurrentSportsYear();
             const compAvailableYears = [...new Set(
                 compensi
-                    .map(r => parseInt(r.anno))
+                    .map(r => this.getRecordSportsYear(r))
                     .filter(y => !isNaN(y) && y > 0)
             )].sort((a, b) => b - a);
 
-            if (!compAvailableYears.includes(currentYear)) {
-                compAvailableYears.unshift(currentYear);
+            if (!compAvailableYears.includes(currentSportsYear)) {
+                compAvailableYears.unshift(currentSportsYear);
             }
             compAvailableYears.sort((a, b) => b - a);
 
             if (!this.selectedCompensiAnno) {
-                this.selectedCompensiAnno = String(currentYear);
+                this.selectedCompensiAnno = String(currentSportsYear);
             }
-            const prevCompAnno = annoInput ? annoInput.value : (this.selectedCompensiAnno || String(currentYear));
+            const prevCompAnno = annoInput ? annoInput.value : (this.selectedCompensiAnno || String(currentSportsYear));
 
-            // Calcolo KPI per l'anno selezionato (o totale)
+            // Calcolo KPI per la stagione sportiva selezionata (o totale)
             const targetAnno = prevCompAnno !== 'all' ? parseInt(prevCompAnno) : null;
-            const validCompensiYear = compensi.filter(r => !r.annullata && (!targetAnno || parseInt(r.anno) === targetAnno));
+            const validCompensiYear = compensi.filter(r => !r.annullata && (!targetAnno || this.getRecordSportsYear(r) === targetAnno));
             const totaleErogatoAnno = validCompensiYear.reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
             const distinctCollaboratori = new Set(validCompensiYear.map(r => r.istruttore_id)).size;
 
@@ -21831,16 +21867,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <div class="glass-card" style="margin-bottom:1.5rem; flex-shrink:0;">
                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
                                 <div style="background:rgba(16,185,129,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
-                                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">TOTALE COMPENSI EROGATI ${targetAnno ? '(' + targetAnno + ')' : ''}</div>
-                                    <div style="font-size:1.5rem; font-weight:700; color:var(--success);">€ ${totaleErogatoAnno.toFixed(2)}</div>
+                                    <div id="compensi-kpi-totale-label" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">TOTALE COMPENSI EROGATI ${targetAnno ? `(Stagione ${targetAnno}/${targetAnno+1})` : '(Tutte le Stagioni)'}</div>
+                                    <div id="compensi-kpi-totale" style="font-size:1.5rem; font-weight:700; color:var(--success);">€ ${totaleErogatoAnno.toFixed(2)}</div>
                                 </div>
                                 <div style="background:rgba(59,130,246,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">RICEVUTE REGISTRATE</div>
-                                    <div style="font-size:1.5rem; font-weight:700; color:var(--primary);">${validCompensiYear.length} <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted);">emesse</span></div>
+                                    <div id="compensi-kpi-num" style="font-size:1.5rem; font-weight:700; color:var(--primary);">${validCompensiYear.length} <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted);">emesse</span></div>
                                 </div>
                                 <div style="background:rgba(245,158,11,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(245,158,11,0.2);">
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">COLLABORATORI PERCIPIENTI</div>
-                                    <div style="font-size:1.5rem; font-weight:700; color:var(--warning);">${distinctCollaboratori}</div>
+                                    <div id="compensi-kpi-collab" style="font-size:1.5rem; font-weight:700; color:var(--warning);">${distinctCollaboratori}</div>
                                 </div>
                             </div>
                         </div>
@@ -21848,16 +21884,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <!-- Tabella Registro Ricevute -->
                         <div class="glass-card member-card" style="flex:1; display:flex; flex-direction:column; min-height:0;">
                             <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom: 1px solid var(--border); margin-bottom: 0.5rem;">
-                                <input type="text" id="compensi-search" class="form-control search-input" style="min-width: 180px; flex: 1;" placeholder="Cerca collaboratore, causale o N. C..." value="${prevCompSearch}" oninput="app.filterCompensi()" data-guide="Cerca ricevute compensi per testo. Effetto: Filtra istantaneamente la tabella per nome collaboratore, causale o numero ricevuta.">
+                                <input type="text" id="compensi-search" class="form-control search-input" style="min-width: 180px; flex: 1;" placeholder="Cerca collaboratore, causale o N. Ricevuta..." value="${prevCompSearch}" oninput="app.filterCompensi()" data-guide="Cerca ricevute compensi per testo. Effetto: Filtra istantaneamente la tabella per nome collaboratore, causale o numero ricevuta.">
                                 
                                 <select id="compensi-filter-istruttore" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterCompensi()" title="Filtra per Collaboratore / Istruttore" data-guide="Filtra le ricevute per collaboratore. Effetto: Mostra solo i compensi erogati all'istruttore selezionato.">
                                     <option value="all" ${prevCompInstr === 'all' ? 'selected' : ''}>👨‍🏫 Tutti i Collaboratori</option>
                                     ${istruttori.map(i => `<option value="${i.id}" ${String(i.id) === String(prevCompInstr) ? 'selected' : ''}>${i.nome}</option>`).join('')}
                                 </select>
 
-                                <select id="compensi-filter-anno" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.onCompensiAnnoFilterChange(this.value)" title="Filtra per Anno" data-guide="Filtra le ricevute per anno solare. Effetto: Aggiorna l'elenco compensi e i totali KPI per l'anno scelto.">
-                                    ${compAvailableYears.map(y => `<option value="${y}" ${String(y) === String(prevCompAnno) ? 'selected' : ''}>📅 Anno ${y}${y === currentYear ? ' (In corso)' : ''}</option>`).join('')}
-                                    <option value="all" ${prevCompAnno === 'all' ? 'selected' : ''}>🌐 Tutti gli Anni</option>
+                                <select id="compensi-filter-anno" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.onCompensiAnnoFilterChange(this.value)" title="Filtra ricevute per Anno / Stagione Sportiva" data-guide="Filtro per stagione sportiva. Effetto: Aggiorna l'elenco compensi e i totali KPI per la stagione sportiva scelta.">
+                                    ${compAvailableYears.map(y => `<option value="${y}" ${String(y) === String(prevCompAnno) ? 'selected' : ''}>🏆 Stagione ${y}/${y+1} (${app.formatAnno(y)})${y === currentSportsYear ? ' (In corso)' : ''}</option>`).join('')}
+                                    <option value="all" ${prevCompAnno === 'all' ? 'selected' : ''}>🌐 Tutte le Stagioni</option>
                                 </select>
 
                                 <div class="date-filter-group" style="display:inline-flex; align-items:center; gap:8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px;" title="Isola le ricevute per data di pagamento (Da - A)">
@@ -22607,6 +22643,10 @@ ${r.annullata ? `
 
         onCompensiAnnoFilterChange(val) {
             this.selectedCompensiAnno = val;
+            const annoLabelEl = document.getElementById('compensi-kpi-totale-label');
+            if (annoLabelEl) {
+                annoLabelEl.textContent = (val !== 'all') ? `TOTALE COMPENSI EROGATI (Stagione ${val}/${parseInt(val)+1})` : 'TOTALE COMPENSI EROGATI (Tutte le Stagioni)';
+            }
             this.filterCompensi();
         },
 
@@ -22655,12 +22695,15 @@ ${r.annullata ? `
                 const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
                 const instrNome = (instr ? instr.nome : (r.socio_nome || '')).replace('ISTRUTTORE: ', '');
                 const instrCF = instr ? (instr.cf || '') : '';
-                const numStr = `C${String(r.numero).padStart(3, '0')}/${r.anno}`.toLowerCase();
+                const sYear = this.getRecordSportsYear(r);
+                const numStr = `C${String(r.numero).padStart(3, '0')}/${sYear}`.toLowerCase();
+                const numFormatStr = `C${String(r.numero).padStart(3, '0')}/${this.formatAnno(sYear)}`.toLowerCase();
 
                 const matchSearch = !search ||
                     instrNome.toLowerCase().includes(search) ||
                     instrCF.toLowerCase().includes(search) ||
                     numStr.includes(search) ||
+                    numFormatStr.includes(search) ||
                     (r.prestazione || '').toLowerCase().includes(search) ||
                     (r.periodo || '').toLowerCase().includes(search) ||
                     String(r.numero).includes(search);
@@ -22675,7 +22718,7 @@ ${r.annullata ? `
                     matchDateOrAnno = matchStart && matchEnd;
                 } else {
                     if (annoFilter !== 'all') {
-                        matchDateOrAnno = (parseInt(r.anno) === parseInt(annoFilter));
+                        matchDateOrAnno = (this.getRecordSportsYear(r) === parseInt(annoFilter));
                     }
                 }
 
@@ -22699,6 +22742,19 @@ ${r.annullata ? `
 
             const filtered = this.getFilteredCompensi();
             tbody.innerHTML = this.renderCompensiRows(filtered);
+
+            // Aggiorna KPI cards con i dati filtrati
+            const valid = filtered.filter(r => !r.annullata);
+            const tot = valid.reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
+            const distinct = new Set(valid.map(r => r.istruttore_id)).size;
+
+            const kpiTotEl = document.getElementById('compensi-kpi-totale');
+            const kpiNumEl = document.getElementById('compensi-kpi-num');
+            const kpiCollabEl = document.getElementById('compensi-kpi-collab');
+
+            if (kpiTotEl) kpiTotEl.textContent = '€ ' + tot.toFixed(2);
+            if (kpiNumEl) kpiNumEl.innerHTML = `${valid.length} <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted);">emesse</span>`;
+            if (kpiCollabEl) kpiCollabEl.textContent = distinct;
         },
 
         renderCompensiRows(compensi) {
@@ -22737,7 +22793,8 @@ ${r.annullata ? `
             return sorted.map(r => {
                 const instr = this.state.istruttori.find(i => i.id == r.istruttore_id);
                 const instrNome = (instr ? instr.nome : (r.socio_nome || '')).replace('ISTRUTTORE: ', '');
-                const numFormatted = `C${String(r.numero).padStart(3, '0')}/${r.anno}`;
+                const sYear = this.getRecordSportsYear(r);
+                const numFormatted = `C${String(r.numero).padStart(3, '0')}/${this.formatAnno(sYear)}`;
                 
                 let displayMetodo = r.pagamento || 'Bonifico';
                 let icon = '💳';
@@ -23561,135 +23618,422 @@ ${r.annullata ? `
 
         renderRimborsi() {
             const main = document.getElementById('main-content');
-            let html = `
+            const searchInput = document.getElementById('rimborsi-search');
+            const annoInput = document.getElementById('rimborsi-filter-anno');
+            const statoInput = document.getElementById('rimborsi-filter-stato');
+            const startInput = document.getElementById('rimborsi-date-start');
+            const endInput = document.getElementById('rimborsi-date-end');
+
+            const prevSearch = searchInput ? searchInput.value : '';
+            const prevStato = statoInput ? statoInput.value : 'all';
+            const prevStart = startInput ? startInput.value : '';
+            const prevEnd = endInput ? endInput.value : '';
+
+            const allRimborsi = this.state.rimborsi || [];
+            const currentSportsYear = this.getCurrentSportsYear();
+            const rimbAvailableYears = [...new Set(
+                allRimborsi
+                    .map(r => this.getRecordSportsYear(r))
+                    .filter(y => !isNaN(y) && y > 0)
+            )].sort((a, b) => b - a);
+
+            if (!rimbAvailableYears.includes(currentSportsYear)) {
+                rimbAvailableYears.unshift(currentSportsYear);
+            }
+            rimbAvailableYears.sort((a, b) => b - a);
+
+            if (!this.selectedRimborsiAnno) {
+                this.selectedRimborsiAnno = String(currentSportsYear);
+            }
+            const prevAnno = annoInput ? annoInput.value : (this.selectedRimborsiAnno || String(currentSportsYear));
+
+            const targetAnno = prevAnno !== 'all' ? parseInt(prevAnno) : null;
+            const validRimborsiYear = allRimborsi.filter(r => !r.annullato && (!targetAnno || this.getRecordSportsYear(r) === targetAnno));
+            const totaleLiquidatoAnno = validRimborsiYear.filter(r => r.pagato).reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
+            const totaleDaLiquidareAnno = validRimborsiYear.filter(r => !r.pagato).reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
+            const numRichieste = validRimborsiYear.length;
+
+            main.innerHTML = `
                 <div class="page-content" style="overflow-y:auto;">
                     <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <div>
                             <h1>💸 Rimborsi Spese</h1>
                             <p style="color:var(--text-muted); font-size:0.9rem;">Gestione note spese analitiche per collaboratori, volontari e dirigenti.</p>
                         </div>
-                        <button class="btn btn-primary" onclick="app.openRimborsoModal()" data-guide="Compila richiesta di rimborso spese. Effetto: Apre il modulo analitico per registrare scontrini, pedaggi e trasferte.">+ Nuova Richiesta Rimborso</button>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn btn-outline" onclick="app.exportRimborsiExcel()" data-guide="Esporta archivio rimborsi in foglio Excel. Effetto: Scarica il file .xlsx con il riepilogo delle note spese filtrate.">
+                                <span>📊</span> <span>Esporta Excel</span>
+                            </button>
+                            <button class="btn btn-primary" onclick="app.openRimborsoModal()" data-guide="Compila richiesta di rimborso spese. Effetto: Apre il modulo analitico per registrare scontrini, pedaggi e trasferte.">
+                                <span>➕</span> <span>Nuova Richiesta Rimborso</span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="glass-card" style="padding:0; overflow-x:auto; min-height:300px;">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th style="min-width:100px;">Data</th>
-                                    <th style="min-width:160px;">Richiedente</th>
-                                    <th style="min-width:280px;">Dettaglio Voci di Spesa</th>
-                                    <th style="min-width:110px;">Importo Totale</th>
-                                    <th style="min-width:105px; white-space:nowrap;">Documento</th>
-                                    <th style="min-width:110px; white-space:nowrap;">Liquidazione</th>
-                                    <th style="text-align:right; min-width:190px;">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+
+                    <!-- KPI Summary Cards -->
+                    <div class="glass-card" style="margin-bottom:1.5rem; flex-shrink:0;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                            <div style="background:rgba(16,185,129,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
+                                <div id="rimborsi-kpi-liquidato-label" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">TOTALE RIMBORSI LIQUIDATI ${targetAnno ? `(Stagione ${targetAnno}/${targetAnno+1})` : '(Tutte le Stagioni)'}</div>
+                                <div id="rimborsi-kpi-liquidato" style="font-size:1.5rem; font-weight:700; color:var(--success);">€ ${totaleLiquidatoAnno.toFixed(2)}</div>
+                            </div>
+                            <div style="background:rgba(245,158,11,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(245,158,11,0.2);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">DA LIQUIDARE</div>
+                                <div id="rimborsi-kpi-daliquidare" style="font-size:1.5rem; font-weight:700; color:var(--warning);">€ ${totaleDaLiquidareAnno.toFixed(2)}</div>
+                            </div>
+                            <div style="background:rgba(59,130,246,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">RICHIESTE REGISTRATE</div>
+                                <div id="rimborsi-kpi-richieste" style="font-size:1.5rem; font-weight:700; color:var(--primary);">${numRichieste} <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted);">note spese</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabella Registro Rimborsi -->
+                    <div class="glass-card member-card" style="padding:0; overflow-x:auto; min-height:300px;">
+                        <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom: 1px solid var(--border);">
+                            <input type="text" id="rimborsi-search" class="form-control search-input" style="min-width: 180px; flex: 1;" placeholder="Cerca socio / richiedente, causale o spesa..." value="${prevSearch}" oninput="app.filterRimborsi()" data-guide="Cerca richieste rimborso per socio o testo. Effetto: Filtra istantaneamente la tabella per nome richiedente, voci o note.">
+
+                            <select id="rimborsi-filter-anno" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.onRimborsiAnnoFilterChange(this.value)" title="Filtra per Anno / Stagione Sportiva" data-guide="Filtro per stagione sportiva. Effetto: Mostra solo i rimborsi della stagione selezionata.">
+                                ${rimbAvailableYears.map(y => `<option value="${y}" ${String(y) === String(prevAnno) ? 'selected' : ''}>🏆 Stagione ${y}/${y+1} (${app.formatAnno(y)})${y === currentSportsYear ? ' (In corso)' : ''}</option>`).join('')}
+                                <option value="all" ${prevAnno === 'all' ? 'selected' : ''}>🌐 Tutte le Stagioni</option>
+                            </select>
+
+                            <select id="rimborsi-filter-stato" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterRimborsi()" title="Filtra per stato liquidazione">
+                                <option value="all" ${prevStato === 'all' ? 'selected' : ''}>📑 Tutti gli Stati</option>
+                                <option value="da_pagare" ${prevStato === 'da_pagare' ? 'selected' : ''}>🟡 Da Pagare</option>
+                                <option value="pagato" ${prevStato === 'pagato' ? 'selected' : ''}>🟢 Pagati</option>
+                                <option value="bozza" ${prevStato === 'bozza' ? 'selected' : ''}>🔴 In Bozza</option>
+                                <option value="annullato" ${prevStato === 'annullato' ? 'selected' : ''}>🚫 Annullati</option>
+                            </select>
+
+                            <div class="date-filter-group" style="display:inline-flex; align-items:center; gap:8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px;" title="Isola i rimborsi per data di spesa (Da - A)">
+                                <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap; display:flex; align-items:center; gap:5px;">
+                                    📅 <span>Da:</span>
+                                </span>
+                                <input type="date" id="rimborsi-date-start" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevStart}" oninput="app.filterRimborsi()" onchange="app.filterRimborsi()" title="Data iniziale periodo">
+                                <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap;">
+                                    A:
+                                </span>
+                                <input type="date" id="rimborsi-date-end" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevEnd}" oninput="app.filterRimborsi()" onchange="app.filterRimborsi()" title="Data finale periodo">
+                                <button type="button" id="rimborsi-date-clear-btn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: rgba(255,255,255,0.2); color: var(--text-muted); display: ${prevStart || prevEnd ? 'inline-flex' : 'none'}; align-items:center; gap:3px;" onclick="app.clearRimborsiDateFilter()" title="Azzera filtro date">✕ Azzera</button>
+                            </div>
+                        </div>
+
+                        <div class="table-container" style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:100px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('data')">Data <span id="sort-rimborsi-data">${(this.rimborsiSortKey || 'data') === 'data' ? (this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                        <th style="min-width:160px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('richiedente')">Richiedente <span id="sort-rimborsi-richiedente">${this.rimborsiSortKey === 'richiedente' ? (this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                        <th style="min-width:280px;">Dettaglio Voci di Spesa</th>
+                                        <th style="min-width:110px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('importo')">Importo Totale <span id="sort-rimborsi-importo">${this.rimborsiSortKey === 'importo' ? (this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                        <th style="min-width:105px; white-space:nowrap;">Documento</th>
+                                        <th style="min-width:110px; white-space:nowrap;">Liquidazione</th>
+                                        <th style="text-align:right; min-width:190px;">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rimborsi-tbody">
+                                    ${this.renderRimborsiRows(this.getFilteredRimborsi())}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             `;
-            if(!this.state.rimborsi || this.state.rimborsi.length === 0) {
-                html += `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Nessuna richiesta di rimborso registrata.</td></tr>`;
+
+            if (prevSearch || prevStart || prevEnd || prevStato !== 'all' || (prevAnno && prevAnno !== 'all')) {
+                this.filterRimborsi();
+            }
+        },
+
+        onRimborsiAnnoFilterChange(val) {
+            this.selectedRimborsiAnno = val;
+            const labelEl = document.getElementById('rimborsi-kpi-liquidato-label');
+            if (labelEl) {
+                labelEl.textContent = (val !== 'all') ? `TOTALE RIMBORSI LIQUIDATI (Stagione ${val}/${parseInt(val)+1})` : 'TOTALE RIMBORSI LIQUIDATI (Tutte le Stagioni)';
+            }
+            this.filterRimborsi();
+        },
+
+        clearRimborsiDateFilter() {
+            const startEl = document.getElementById('rimborsi-date-start');
+            const endEl = document.getElementById('rimborsi-date-end');
+            if (startEl) startEl.value = '';
+            if (endEl) endEl.value = '';
+            this.filterRimborsi();
+        },
+
+        sortRimborsi(key) {
+            if (this.rimborsiSortKey === key) {
+                this.rimborsiSortDir = this.rimborsiSortDir === 'asc' ? 'desc' : 'asc';
             } else {
-                [...this.state.rimborsi].sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(r => {
+                this.rimborsiSortKey = key;
+                this.rimborsiSortDir = (key === 'data') ? 'desc' : 'asc';
+            }
+            ['data', 'richiedente', 'importo'].forEach(k => {
+                const el = document.getElementById('sort-rimborsi-' + k);
+                if (el) el.innerHTML = '';
+            });
+            const el = document.getElementById('sort-rimborsi-' + key);
+            if (el) el.innerHTML = this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽';
+            this.filterRimborsi();
+        },
+
+        getFilteredRimborsi() {
+            const searchEl = document.getElementById('rimborsi-search');
+            const annoEl = document.getElementById('rimborsi-filter-anno');
+            const statoEl = document.getElementById('rimborsi-filter-stato');
+            const startEl = document.getElementById('rimborsi-date-start');
+            const endEl = document.getElementById('rimborsi-date-end');
+
+            const search = (searchEl ? searchEl.value : '').toLowerCase().trim();
+            const searchWords = search ? search.split(/\s+/).filter(Boolean) : [];
+            const anno = annoEl ? annoEl.value : (this.selectedRimborsiAnno || 'all');
+            const stato = statoEl ? statoEl.value : 'all';
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+
+            const hasDateRange = Boolean(start || end);
+
+            return (this.state.rimborsi || []).filter(r => {
+                let matchSearch = true;
+                if (searchWords.length > 0) {
+                    const richiedente = (r.richiedente || '').toLowerCase();
+                    const note = (r.note || '').toLowerCase();
+                    const vociText = (r.voci || []).map(v => `${v.tipo} ${v.desc} ${v.importo}`).join(' ').toLowerCase();
+                    const impStr = String(r.importo || '');
+                    const allText = `${richiedente} ${note} ${vociText} ${impStr}`;
+                    matchSearch = searchWords.every(w => allText.includes(w));
+                }
+
+                let matchStato = true;
+                if (stato !== 'all') {
                     const isAnnullato = !!r.annullato;
                     const isPagato = !!r.pagato && !isAnnullato;
                     const isBozza = (r.stato === 'bozza');
-                    const voci = (r.voci && r.voci.length > 0) 
-                        ? r.voci 
-                        : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
-                    
-                    let rowStyle = '';
-                    if (isAnnullato) {
-                        rowStyle = 'background: rgba(239, 68, 68, 0.05); opacity: 0.6;';
-                    } else if (isPagato) {
-                        rowStyle = 'opacity: 0.85;';
-                    } else {
-                        rowStyle = 'background: rgba(234, 179, 8, 0.04);';
+                    if (stato === 'da_pagare') matchStato = (!isPagato && !isAnnullato);
+                    else if (stato === 'pagato') matchStato = isPagato;
+                    else if (stato === 'bozza') matchStato = (isBozza && !isAnnullato);
+                    else if (stato === 'annullato') matchStato = isAnnullato;
+                }
+
+                const rDate = r.data ? String(r.data).substring(0, 10) : '';
+                let matchDateOrAnno = true;
+                if (hasDateRange) {
+                    const matchStart = !start || rDate >= start;
+                    const matchEnd = !end || rDate <= end;
+                    matchDateOrAnno = matchStart && matchEnd;
+                } else {
+                    if (anno !== 'all') {
+                        matchDateOrAnno = (this.getRecordSportsYear(r) === parseInt(anno));
                     }
+                }
 
-                    const vociBadgesHtml = voci.map(v => {
-                        const catLabel = this.getRimborsoCategoriaLabel(v.tipo);
-                        const cleanDesc = (v.desc || '').replace(/"/g, '&quot;');
-                        return `
-                            <div style="margin-bottom:4px; font-size:0.85rem; line-height:1.3; ${isAnnullato ? 'text-decoration:line-through;' : ''}">
-                                <span class="badge" style="background:rgba(59,130,246,0.15); color:var(--primary); font-size:0.75rem; padding:2px 6px; font-weight:600; margin-right:5px;">${catLabel}</span>
-                                <span>${cleanDesc}</span>
-                                <span style="font-weight:700; color:var(--text); margin-left:6px;">€${Number(v.importo || 0).toFixed(2)}</span>
-                            </div>
-                        `;
-                    }).join('');
+                return matchSearch && matchStato && matchDateOrAnno;
+            });
+        },
 
-                    html += `
-                        <tr style="${rowStyle}">
-                            <td style="${isAnnullato ? 'text-decoration:line-through;' : ''}">${this.formatDate(r.data)}</td>
-                            <td style="font-weight:bold; ${isAnnullato ? 'text-decoration:line-through;' : ''}">${r.richiedente || '-'}</td>
-                            <td>
-                                ${vociBadgesHtml}
-                                ${r.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">📝 <i>${r.note.replace(/"/g, '&quot;')}</i></div>` : ''}
-                            </td>
-                            <td style="font-weight:bold; font-size:1rem; ${isAnnullato ? 'text-decoration:line-through; color:var(--danger);' : 'color:var(--primary);'}">
-                                €${Number(r.importo || 0).toFixed(2)}
-                            </td>
-                            <td style="white-space: nowrap;">
-                                ${isAnnullato 
-                                    ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullato</span>` 
-                                    : `<button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
-                                            onclick="app.toggleRimborsoStato('${r.id}', event)" 
-                                            title="${isBozza ? 'Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Nota spesa Emessa (definitiva/sola lettura). Clicca per riportare in bozza.'}">
-                                        ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
-                                    </button>`}
-                            </td>
-                            <td style="white-space: nowrap;">
-                                ${isAnnullato 
-                                    ? '<span class="badge" style="background:var(--danger); color:white; white-space:nowrap;">STORMATO</span>' 
-                                    : (isPagato 
-                                        ? '<span class="badge badge-active" style="white-space:nowrap;">PAGATO</span>' 
-                                        : '<span class="badge" style="background:#ca8a04; color:white; white-space:nowrap;">DA PAGARE</span>')}
-                            </td>
-                            <td style="text-align:right; white-space:nowrap;">
-                                <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
-                                    ${(isBozza || this.state.debugMode) && !isAnnullato ? `
-                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')">✏️</button>
-                                    ` : (!isAnnullato ? `
-                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
-                                    ` : '')}
-                                    <div class="row-actions-dropdown">
-                                        <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
-                                        <div class="row-actions-menu">
-                                            <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza">
-                                                <span class="row-actions-icon">🖨️</span>
-                                                <span>Stampa Modulo</span>
+        filterRimborsi() {
+            const startEl = document.getElementById('rimborsi-date-start');
+            const endEl = document.getElementById('rimborsi-date-end');
+            const clearBtn = document.getElementById('rimborsi-date-clear-btn');
+            const tbody = document.getElementById('rimborsi-tbody');
+            if (!tbody) return;
+
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+            if (clearBtn) {
+                clearBtn.style.display = (start || end) ? 'inline-flex' : 'none';
+            }
+
+            const filtered = this.getFilteredRimborsi();
+            tbody.innerHTML = this.renderRimborsiRows(filtered);
+
+            // Aggiorna KPI cards con i dati filtrati
+            const valid = filtered.filter(r => !r.annullato);
+            const totLiq = valid.filter(r => r.pagato).reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
+            const totDaLiq = valid.filter(r => !r.pagato).reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0);
+
+            const kpiLiqEl = document.getElementById('rimborsi-kpi-liquidato');
+            const kpiDaLiqEl = document.getElementById('rimborsi-kpi-daliquidare');
+            const kpiRichEl = document.getElementById('rimborsi-kpi-richieste');
+
+            if (kpiLiqEl) kpiLiqEl.textContent = '€ ' + totLiq.toFixed(2);
+            if (kpiDaLiqEl) kpiDaLiqEl.textContent = '€ ' + totDaLiq.toFixed(2);
+            if (kpiRichEl) kpiRichEl.innerHTML = `${valid.length} <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted);">note spese</span>`;
+        },
+
+        renderRimborsiRows(rimborsi) {
+            if (!rimborsi || rimborsi.length === 0) {
+                return `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Nessuna richiesta di rimborso trovata per la stagione sportiva o i filtri selezionati.</td></tr>`;
+            }
+            let sorted = [...rimborsi];
+            const k = this.rimborsiSortKey || 'data';
+            const dir = (this.rimborsiSortDir || 'desc') === 'asc' ? 1 : -1;
+
+            sorted.sort((a, b) => {
+                if (k === 'data') {
+                    const dateA = new Date(a.data).getTime() || 0;
+                    const dateB = new Date(b.data).getTime() || 0;
+                    return (dateA - dateB) * dir;
+                } else if (k === 'richiedente') {
+                    return (a.richiedente || '').localeCompare(b.richiedente || '') * dir;
+                } else if (k === 'importo') {
+                    return ((parseFloat(a.importo) || 0) - (parseFloat(b.importo) || 0)) * dir;
+                }
+                return 0;
+            });
+
+            return sorted.map(r => {
+                const isAnnullato = !!r.annullato;
+                const isPagato = !!r.pagato && !isAnnullato;
+                const isBozza = (r.stato === 'bozza');
+                const voci = (r.voci && r.voci.length > 0) 
+                    ? r.voci 
+                    : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
+                
+                let rowStyle = '';
+                if (isAnnullato) {
+                    rowStyle = 'background: rgba(239, 68, 68, 0.05); opacity: 0.6;';
+                } else if (isPagato) {
+                    rowStyle = 'opacity: 0.85;';
+                } else {
+                    rowStyle = 'background: rgba(234, 179, 8, 0.04);';
+                }
+
+                const vociBadgesHtml = voci.map(v => {
+                    const catLabel = this.getRimborsoCategoriaLabel(v.tipo);
+                    const cleanDesc = (v.desc || '').replace(/"/g, '&quot;');
+                    return `
+                        <div style="margin-bottom:4px; font-size:0.85rem; line-height:1.3; ${isAnnullato ? 'text-decoration:line-through;' : ''}">
+                            <span class="badge" style="background:rgba(59,130,246,0.15); color:var(--primary); font-size:0.75rem; padding:2px 6px; font-weight:600; margin-right:5px;">${catLabel}</span>
+                            <span>${cleanDesc}</span>
+                            <span style="font-weight:700; color:var(--text); margin-left:6px;">€${Number(v.importo || 0).toFixed(2)}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <tr style="${rowStyle}">
+                        <td style="${isAnnullato ? 'text-decoration:line-through;' : ''}">${this.formatDate(r.data)}</td>
+                        <td style="font-weight:bold; ${isAnnullato ? 'text-decoration:line-through;' : ''}">${r.richiedente || '-'}</td>
+                        <td>
+                            ${vociBadgesHtml}
+                            ${r.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:3px;">📝 <i>${r.note.replace(/"/g, '&quot;')}</i></div>` : ''}
+                        </td>
+                        <td style="font-weight:bold; font-size:1rem; ${isAnnullato ? 'text-decoration:line-through; color:var(--danger);' : 'color:var(--primary);'}">
+                            €${Number(r.importo || 0).toFixed(2)}
+                        </td>
+                        <td style="white-space: nowrap;">
+                            ${isAnnullato 
+                                ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullato</span>` 
+                                : `<button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
+                                        onclick="app.toggleRimborsoStato('${r.id}', event)" 
+                                        title="${isBozza ? 'Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Nota spesa Emessa (definitiva/sola lettura). Clicca per riportare in bozza.'}">
+                                    ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
+                                </button>`}
+                        </td>
+                        <td style="white-space: nowrap;">
+                            ${isAnnullato 
+                                ? '<span class="badge" style="background:var(--danger); color:white; white-space:nowrap;">STORMATO</span>' 
+                                : (isPagato 
+                                    ? '<span class="badge badge-active" style="white-space:nowrap;">PAGATO</span>' 
+                                    : '<span class="badge" style="background:#ca8a04; color:white; white-space:nowrap;">DA PAGARE</span>')}
+                        </td>
+                        <td style="text-align:right; white-space:nowrap;">
+                            <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
+                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
+                                ${(isBozza || this.state.debugMode) && !isAnnullato ? `
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')">✏️</button>
+                                ` : (!isAnnullato ? `
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                ` : '')}
+                                <div class="row-actions-dropdown">
+                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
+                                    <div class="row-actions-menu">
+                                        <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza">
+                                            <span class="row-actions-icon">🖨️</span>
+                                            <span>Stampa Modulo</span>
+                                        </button>
+                                        ${!isAnnullato && !isPagato ? `
+                                            <button type="button" class="row-actions-item text-success" onclick="app.segnaRimborsoPagato('${r.id}')" title="Liquida e paga (riversa in Prima Nota)">
+                                                <span class="row-actions-icon">✅</span>
+                                                <span>Segna come Pagato</span>
                                             </button>
-                                            ${!isAnnullato && !isPagato ? `
-                                                <button type="button" class="row-actions-item text-success" onclick="app.segnaRimborsoPagato('${r.id}')" title="Liquida e paga (riversa in Prima Nota)">
-                                                    <span class="row-actions-icon">✅</span>
-                                                    <span>Segna come Pagato</span>
-                                                </button>
-                                            ` : ''}
-                                            ${!isAnnullato ? `
-                                                <div class="row-actions-divider"></div>
-                                                <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso">
-                                                    <span class="row-actions-icon">🚫</span>
-                                                    <span>Annulla Rimborso</span>
-                                                </button>
-                                            ` : ''}
-                                            ${this.state.debugMode ? `
-                                                <div class="row-actions-divider"></div>
-                                                <div class="row-actions-debug-header">🛠️ DEBUG MODE</div>
-                                                <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Debug Mode)">
-                                                    <span class="row-actions-icon">🗑️</span>
-                                                    <span>Elimina definitivamente</span>
-                                                </button>
-                                            ` : ''}
-                                        </div>
+                                        ` : ''}
+                                        ${!isAnnullato ? `
+                                            <div class="row-actions-divider"></div>
+                                            <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso">
+                                                <span class="row-actions-icon">🚫</span>
+                                                <span>Annulla Rimborso</span>
+                                            </button>
+                                        ` : ''}
+                                        ${this.state.debugMode ? `
+                                            <div class="row-actions-divider"></div>
+                                            <div class="row-actions-debug-header">🛠️ DEBUG MODE</div>
+                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Debug Mode)">
+                                                <span class="row-actions-icon">🗑️</span>
+                                                <span>Elimina definitivamente</span>
+                                            </button>
+                                        ` : ''}
                                     </div>
                                 </div>
-                            </td>
-                        </tr>
-                    `;
-                });
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        },
+
+        exportRimborsiExcel() {
+            const startEl = document.getElementById('rimborsi-date-start');
+            const endEl = document.getElementById('rimborsi-date-end');
+            const annoEl = document.getElementById('rimborsi-filter-anno');
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+            const anno = annoEl ? annoEl.value : (this.selectedRimborsiAnno || 'all');
+
+            const list = this.getFilteredRimborsi ? this.getFilteredRimborsi() : (this.state.rimborsi || []);
+            if (list.length === 0) {
+                this.toast('Nessun rimborso da esportare con i filtri attuali.', 'warning');
+                return;
             }
-            html += `</tbody></table></div></div>`;
-            main.innerHTML = html;
+
+            let periodStr = '';
+            if (start || end) {
+                periodStr = `Periodo: Dal ${start ? app.formatDate(start) : 'Inizio'} Al ${end ? app.formatDate(end) : 'Oggi'}`;
+            } else if (anno !== 'all') {
+                periodStr = `Stagione Sportiva: ${anno}/${parseInt(anno) + 1} (${app.formatAnno(anno)})`;
+            } else {
+                periodStr = `Tutte le Stagioni Sportive`;
+            }
+
+            const rows = list.map(r => {
+                const sYear = app.getRecordSportsYear(r);
+                const isAnnullato = !!r.annullato;
+                const isPagato = !!r.pagato && !isAnnullato;
+                const vociDesc = (r.voci && r.voci.length > 0)
+                    ? r.voci.map(v => `${v.tipo}: €${Number(v.importo || 0).toFixed(2)} (${v.desc || ''})`).join('; ')
+                    : (r.descrizione || '');
+                return {
+                    'Data': app.formatDate(r.data),
+                    'Stagione': `${sYear}/${sYear + 1}`,
+                    'Richiedente': r.richiedente || '',
+                    'Dettaglio Spese': vociDesc,
+                    'Importo Totale': Number(r.importo || 0),
+                    'Metodo Liquidazione': r.metodo || 'Bonifico',
+                    'Stato Documento': isAnnullato ? 'Annullato' : (r.stato === 'bozza' ? 'Bozza' : 'Emessa'),
+                    'Stato Pagamento': isAnnullato ? 'Stormato' : (isPagato ? 'Pagato' : 'Da Pagare'),
+                    'Note': r.note || ''
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rimborsi Spese");
+            const fileName = `Rimborsi_Spese_${periodStr.replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            this.toast('Esportazione Excel rimborsi completata!', 'success');
         },
 
         openRimborsoModal() {
