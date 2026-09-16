@@ -562,6 +562,46 @@
             color: var(--text-muted);
         }
 
+        .badge-doc-status {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            padding: 3px 8px !important;
+            font-size: 0.74rem !important;
+            font-weight: 700 !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+            transition: all 0.2s ease !important;
+            user-select: none !important;
+            line-height: 1.2 !important;
+            border: 1px solid transparent !important;
+            font-family: inherit !important;
+            outline: none !important;
+            flex-shrink: 0 !important;
+        }
+        .badge-doc-status.bozza {
+            background: rgba(239, 68, 68, 0.16) !important;
+            color: #ef4444 !important;
+            border-color: rgba(239, 68, 68, 0.5) !important;
+        }
+        .badge-doc-status.bozza:hover {
+            background: rgba(239, 68, 68, 0.28) !important;
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.3) !important;
+        }
+        .badge-doc-status.emessa {
+            background: rgba(16, 185, 129, 0.16) !important;
+            color: #10b981 !important;
+            border-color: rgba(16, 185, 129, 0.5) !important;
+        }
+        .badge-doc-status.emessa:hover {
+            background: rgba(16, 185, 129, 0.28) !important;
+            border-color: #10b981 !important;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.3) !important;
+        }
+
         /* Forms */
         .form-group {
             margin-bottom: 1.25rem;
@@ -3389,7 +3429,41 @@
             return s === 'contanti' || s === 'non specificato' || s === 'cassa' || s.includes('contant') || s.includes('cassa');
         },
 
+        sanitizeStatiDocumenti() {
+            let changed = false;
+            if (this.state.ricevute && Array.isArray(this.state.ricevute)) {
+                this.state.ricevute.forEach(r => {
+                    if (!r.stato || (r.stato !== 'bozza' && r.stato !== 'emessa')) {
+                        r.stato = 'emessa';
+                        changed = true;
+                    }
+                });
+            }
+            if (this.state.rimborsi && Array.isArray(this.state.rimborsi)) {
+                this.state.rimborsi.forEach(r => {
+                    if (!r.stato || (r.stato !== 'bozza' && r.stato !== 'emessa')) {
+                        r.stato = 'emessa';
+                        changed = true;
+                    }
+                });
+            }
+            if (changed && typeof this.saveAll === 'function') {
+                this.saveAll();
+            }
+        },
+
+        canEditDocument(record) {
+            if (!record) return false;
+            if (this.state && this.state.debugMode) return true;
+            return record.stato === 'bozza' && !record.annullata && !record.annullato;
+        },
+
+        warnReceiptReadOnly(id) {
+            this.toast("Questo documento è in stato 'Emessa' (definitivo / sola lettura). Clicca sul badge '🟢 Emessa' per riportarlo in bozza se desideri modificarlo.", "warning");
+        },
+
         sanitizePrimaNota() {
+            this.sanitizeStatiDocumenti();
             if (!this.state.primanota || !Array.isArray(this.state.primanota)) {
                 this.state.primanota = [];
                 return;
@@ -8414,6 +8488,7 @@
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('importo')" data-guide="Ordina per importo in Euro. Effetto: Ordina per valore incassato crescente o decrescente.">Importo <span id="sort-ricevute-importo">${this.ricevuteSortKey === 'importo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('metodo')" data-guide="Ordina per modalità di incasso. Effetto: Raggruppa per contanti, bonifico bancario o POS.">Metodo <span id="sort-ricevute-metodo">${this.ricevuteSortKey === 'metodo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('cartacea')" data-guide="Ordina per registro Cartaceo/Digitale. Effetto: Raggruppa prima il registro cartaceo e poi quello digitale.">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === 'cartacea' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('stato')" data-guide="Ordina per stato documento: Bozza (modificabile) o Emessa (definitiva).">Stato <span id="sort-ricevute-stato">${this.ricevuteSortKey === 'stato' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="text-align: right; white-space: nowrap;" data-guide="Pulsanti azione ricevuta. Effetto: Permette di scaricare il PDF, stampare la quietanza, inviarla via email o WhatsApp e annullare la ricevuta.">Azioni</th>
                                         </tr>
                                     </thead>
@@ -8448,7 +8523,7 @@
                 }
                 
                 // Update headers UI
-                ['numero', 'socio_nome', 'data', 'tipo', 'importo', 'metodo', 'cartacea'].forEach(k => {
+                ['numero', 'socio_nome', 'data', 'tipo', 'importo', 'metodo', 'cartacea', 'stato'].forEach(k => {
                     const el = document.getElementById('sort-ricevute-' + k);
                     if (el) el.innerHTML = '';
                 });
@@ -8460,7 +8535,7 @@
             },
 
             renderRicevuteRows(receipts) {
-                if (receipts.length === 0) return `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
+                if (receipts.length === 0) return `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
 
                 let sorted = [...receipts];
                 
@@ -8533,6 +8608,10 @@
                         const valA = a.cartacea ? 1 : 0;
                         const valB = b.cartacea ? 1 : 0;
                         diff = (valA - valB) * dir;
+                    } else if (k === 'stato') {
+                        const valA = (a.stato || 'emessa').toLowerCase();
+                        const valB = (b.stato || 'emessa').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
                     }
                     
                     // Spareggio a cascata se c'è parità sulla colonna primaria
@@ -8585,6 +8664,7 @@
                     }
                     
                     const isRateale = this.isReceiptRateale(r);
+                    const isBozza = (r.stato === 'bozza');
                     return `
                     <tr id="receipt-row-${r.id}" data-id="${r.id}">
                         <td style="white-space: nowrap;">${r.numero}/${app.formatAnno(r.anno)}</td>
@@ -8599,16 +8679,31 @@
                         <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; white-space: nowrap; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
                         <td style="white-space: nowrap;">${displayMetodo}</td>
                         <td style="white-space: nowrap;"><span style="color: ${isCartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em; white-space: nowrap;">${isCartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
+                        <td style="white-space: nowrap;">
+                            ${r.annullata ? `
+                                <span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullata</span>
+                            ` : `
+                                <button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
+                                        onclick="app.toggleRicevutaStato('${r.id}', event)" 
+                                        title="${isBozza ? 'Documento in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Documento Emesso (bloccato in sola lettura). Clicca per riportare in bozza.'}">
+                                    ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
+                                </button>
+                            `}
+                        </td>
                         <td style="text-align: right; white-space: nowrap;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}" data-guide="Scarica o archivia PDF ricevuta. Effetto: Genera il documento PDF della quietanza e lo archivia nella cartella documenti cartacei.">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
                                 <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}" data-guide="Stampa ricevuta. Effetto: Apre l'anteprima di stampa per stampare la ricevuta su carta A4 o formato ricevuta.">🖨️</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasEmail ? 'color: var(--primary); border-color: rgba(59,130,246,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptEmail('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasEmail ? 'Invia dettaglio ricevuta via Email a ' + socioEmail : 'Indirizzo Email socio non presente'}" data-guide="Invia ricevuta per Email. Effetto: Apre la composizione email con i dettagli completi del pagamento per il socio.">📧</button>
                                 <button class="btn btn-outline" style="padding: 5px 8px; ${hasTel ? 'color: #25D366; border-color: rgba(37,211,102,0.45);' : 'opacity:0.45;'}" onclick="app.sendReceiptWhatsApp('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Numero di telefono socio non presente'}" data-guide="Invia ricevuta su WhatsApp. Effetto: Apre WhatsApp con un messaggio precompilato contenente i dettagli della ricevuta.">${app.getWhatsAppIcon(15)}</button>
+                                ${(isBozza || this.state.debugMode) && !r.annullata ? `
+                                    <button class="btn btn-outline" style="padding: 5px;" title="${this.state.debugMode ? 'Modifica dati strutturali ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" data-guide="Modifica ricevuta." onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
+                                ` : (!r.annullata ? `
+                                    <button class="btn btn-outline" style="padding: 5px; opacity:0.5; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                ` : '')}
                                 ${this.state.debugMode ? `
                                     <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" data-guide="Inserisci nuova ricevuta intermedia. Effetto: Inserisce una nuova ricevuta al posto di questo numero, slittando di +1 tutte le successive." onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
                                     <button class="btn btn-outline" style="padding: 5px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" title="Sposta questa e tutte le successive di N posizioni (+1 / -1)" data-guide="Sposta numerazione ricevuta. Effetto: Trasla la numerazione di questa ricevuta e delle successive avanti o indietro di N numeri." onclick="app.openShiftRicevuteModal('${r.id}')">⏩</button>
-                                    <button class="btn btn-outline" style="padding: 5px;" title="Modifica dati strutturali ricevuta" data-guide="Modifica diretta parametri ricevuta. Effetto: Consente di correggere manualmente i dati fiscali o anagrafici della ricevuta." onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
                                     <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" data-guide="Elimina ricevuta definitivamente. Effetto: Cancella la voce dal database e ricompatta automaticamente la sequenza numerica (-1)." onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
                                 ` : ''}
                                 ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" data-guide="Annulla ricevuta non fiscale. Effetto: Marca la ricevuta come ANNULLATA, storna l'incasso dalla Prima Nota e aggiorna i saldi di cassa/banca." onclick="app.annullaRicevuta('${r.id}')">🚫</button>` : ''}
@@ -10478,6 +10573,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     rateale: isRateale ? true : undefined,
                     inizio_validita: data.inizio_validita || undefined,
                     durata: data.durata || undefined,
+                    stato: 'bozza',
                 };
                 this.touchEntity(receipt);
                 this.state.ricevute.push(receipt);
@@ -10676,10 +10772,55 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
         },
 
+        async toggleRicevutaStato(id, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const r = this.state.ricevute.find(x => x.id == id || String(x.id) === String(id));
+            if (!r) return;
+            if (r.annullata) {
+                this.toast("Non puoi modificare lo stato di una ricevuta annullata.", "warning");
+                return;
+            }
+
+            const nuovoStato = (r.stato === 'bozza') ? 'emessa' : 'bozza';
+
+            if (nuovoStato === 'bozza') {
+                if (!confirm(`Vuoi riportare la Ricevuta n. ${r.numero}/${app.formatAnno(r.anno)} in stato BOZZA?\nTornerà ad essere modificabile.`)) {
+                    return;
+                }
+            }
+
+            r.stato = nuovoStato;
+            this.touchEntity(r);
+            this.saveAll();
+
+            // Rigenera PDF per aggiornare indicazione bozza/emessa se server o handle
+            if (!r.cartacea && (this.getDeviceRole() === 'server' || this.directoryHandle)) {
+                try {
+                    await this.generatePDF(r.id);
+                } catch(ePdf) {
+                    console.error("Errore rigenerazione PDF dopo cambio stato:", ePdf);
+                }
+            }
+
+            this.toast(nuovoStato === 'bozza' ? `Ricevuta n. ${r.numero} impostata in BOZZA (modificabile)` : `Ricevuta n. ${r.numero} contrassegnata come EMESSA`, nuovoStato === 'bozza' ? 'warning' : 'success');
+
+            if (typeof this.filterRicevute === 'function') {
+                this.filterRicevute();
+            }
+        },
+
         openEditRicevutaModal(id) {
             const r = this.state.ricevute.find(x => x.id == id || String(x.id) === String(id));
             if (!r) {
                 console.error("Ricevuta non trovata da modificare con ID:", id);
+                return;
+            }
+
+            if (!this.canEditDocument(r)) {
+                this.warnReceiptReadOnly(id);
                 return;
             }
 
@@ -11620,7 +11761,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text(`RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}${r.annullata ? ' (ANNULLATA)' : ''}`, 20, 60);
+            const isBozza = (r.stato === 'bozza');
+            const statoTag = r.annullata ? ' (ANNULLATA)' : (isBozza ? ' (BOZZA)' : '');
+            doc.text(`RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}${statoTag}`, 20, 60);
             doc.setFontSize(12);
             doc.text(`Data: ${this.formatDate(r.data)}`, 150, 60);
 
@@ -11629,6 +11772,11 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 doc.setTextColor(220, 38, 38);
                 doc.setFont("helvetica", "bold");
                 doc.text("DOCUMENTO ANNULLATO", 30, 110, { angle: 15 });
+            } else if (isBozza) {
+                doc.setFontSize(28);
+                doc.setTextColor(239, 68, 68);
+                doc.setFont("helvetica", "bold");
+                doc.text("BOZZA NON DEFINITIVA", 30, 110, { angle: 15 });
             }
 
             doc.setFillColor(245, 245, 245);
@@ -11669,8 +11817,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             doc.text("Firma per ricevuta", 130, 225);
 
             doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.text("Documento non fiscale emesso in conformità alle norme vigenti per le ASD.", 20, 280);
+            if (isBozza) {
+                doc.setTextColor(220, 38, 38);
+                doc.text("DOCUMENTO IN BOZZA - NON DEFINITIVO. Documento non fiscale per le ASD.", 20, 280);
+            } else {
+                doc.setTextColor(150, 150, 150);
+                doc.text("Documento non fiscale emesso in conformità alle norme vigenti per le ASD.", 20, 280);
+            }
 
             const sportsYear = this.getSportsYear(r.anno || r.data);
             const dateStr = r.data ? r.data.split('-').reverse().join('-') : 'data';
@@ -11993,10 +12146,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const s = this.state.soci.find(x => x.id == r?.socio_id);
             if (!r) return;
             const sportsYear = this.getSportsYear(r.anno);
-            const annullataBanner = r.annullata ? `<div style="background:#fee2e2; border:2px solid #ef4444; color:#b91c1c; padding:12px 18px; border-radius:8px; font-weight:bold; font-size:16pt; margin-bottom:20px; text-align:center;">⚠️ RICEVUTA ANNULLATA IN DATA CONTABILE</div>` : '';
+            const isBozza = (r.stato === 'bozza');
+            const statoTag = r.annullata ? ' (ANNULLATA)' : (isBozza ? ' (BOZZA)' : '');
+            const annullataBanner = r.annullata 
+                ? `<div style="background:#fee2e2; border:2px solid #ef4444; color:#b91c1c; padding:12px 18px; border-radius:8px; font-weight:bold; font-size:16pt; margin-bottom:20px; text-align:center;">⚠️ RICEVUTA ANNULLATA IN DATA CONTABILE</div>` 
+                : (isBozza ? `<div style="background:#fef2f2; border:2px dashed #ef4444; color:#b91c1c; padding:10px 16px; border-radius:8px; font-weight:bold; font-size:13pt; margin-bottom:15px; text-align:center;">🔴 DOCUMENTO IN BOZZA (NON DEFINITIVO)</div>` : '');
             const pw = window.open('', '_blank', 'width=800,height=700');
             pw.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-<title>Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)}${r.annullata ? ' (ANNULLATA)' : ''}</title><style>
+<title>Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)}${statoTag}</title><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Helvetica Neue',Arial,sans-serif;padding:40px;color:#111;font-size:12pt;}
 .header{border-bottom:3px solid #2563eb;padding-bottom:12px;margin-bottom:20px;}
@@ -12025,7 +12182,7 @@ ${annullataBanner}
 </div>
 <div>
   <div class="date-right">Data: ${this.formatDate(r.data)}</div>
-  <div class="title">RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}</div>
+  <div class="title">RICEVUTA N. ${r.numero}/${app.formatAnno(r.anno)}${statoTag}</div>
 </div>
 <div class="info-box">
   <div class="info-label">Ricevuto da:</div>
@@ -21511,7 +21668,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                             <th>Prestazione / Periodo</th>
                                             <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('importo')" data-guide="Ordina per importo compenso. Effetto: Ordina le ricevute dall'importo più alto o più basso.">Importo <span id="sort-compensi-importo">${this.compensiSortKey === 'importo' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th>Metodo</th>
-                                            <th>Stato</th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortCompensi('stato')" data-guide="Ordina per stato quietanza (Bozza/Emessa).">Stato <span id="sort-compensi-stato">${this.compensiSortKey === 'stato' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="text-align: right;">Azioni</th>
                                         </tr>
                                     </thead>
@@ -21834,11 +21991,40 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 `);
         },
 
-        handleCompensoSportivo(e, instrId) {
+        handleCompensoSportivo(e, instrId, editId = null) {
             e.preventDefault();
             const data = Object.fromEntries(new FormData(e.target).entries());
+            this.sanitizeFormData(data);
             const instr = this.state.istruttori.find(i => i.id === instrId);
             if (!instr) return;
+
+            if (editId) {
+                const r = this.state.ricevute.find(x => String(x.id) === String(editId) || x.id == editId);
+                if (!r) return;
+                r.istruttore_id = instrId;
+                r.socio_nome = 'ISTRUTTORE: ' + instr.nome;
+                r.importo = parseFloat(data.importo);
+                r.data = data.data;
+                r.pagamento = data.pagamento;
+                r.metodo_pagamento = data.pagamento;
+                r.note = `Periodo: ${data.periodo} | Prestazione: ${data.prestazione}`;
+                r.periodo = data.periodo;
+                r.prestazione = data.prestazione;
+                r.altri_compensi = parseFloat(data.altri_compensi) || 0;
+                this.touchEntity(r);
+                this.syncPrimaNotaFromRicevuta(r);
+                this.saveAll();
+                this.toast('Ricevuta compenso aggiornata!');
+                this.closeModal();
+                const shouldArchive = (this.getDeviceRole() === 'server');
+                this.generateCompensoPDF(r.id, instrId, shouldArchive);
+                if (this.currentTab === 'collaboratori') {
+                    this.filterCompensi();
+                } else {
+                    this.renderIstruttori();
+                }
+                return;
+            }
 
             // Save record in ricevute (tipo speciale compenso)
             const currentYear = new Date().getFullYear();
@@ -21855,21 +22041,119 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 data: data.data,
                 tipo: 'Compenso Sportivo',
                 pagamento: data.pagamento,
+                metodo_pagamento: data.pagamento,
                 numero: lastNumC + 1,
                 anno: currentYear,
                 note: `Periodo: ${data.periodo} | Prestazione: ${data.prestazione}`,
                 periodo: data.periodo,
                 prestazione: data.prestazione,
-                altri_compensi: parseFloat(data.altri_compensi) || 0
+                altri_compensi: parseFloat(data.altri_compensi) || 0,
+                stato: 'bozza'
             };
             this.touchEntity(receipt);
             this.state.ricevute.push(receipt);
             this.saveAll();
-            this.toast('Ricevuta compenso generata e archiviata!');
+            this.toast('Ricevuta compenso generata in bozza e archiviata!');
             this.closeModal();
             const shouldArchive = (this.getDeviceRole() === 'server');
             this.generateCompensoPDF(receipt.id, instrId, shouldArchive);
-            this.renderIstruttori();
+            if (this.currentTab === 'collaboratori') {
+                this.filterCompensi();
+            } else {
+                this.renderIstruttori();
+            }
+        },
+
+        openEditCompensoModal(receiptId) {
+            const r = this.state.ricevute.find(x => String(x.id) === String(receiptId) || x.id == receiptId);
+            if (!r) {
+                this.toast('Ricevuta compenso non trovata.', 'danger');
+                return;
+            }
+
+            if (!this.canEditDocument(r)) {
+                this.warnReceiptReadOnly(receiptId);
+                return;
+            }
+
+            const instr = this.state.istruttori.find(i => i.id == r.istruttore_id) || { id: r.istruttore_id, nome: (r.socio_nome || '').replace('ISTRUTTORE: ', '') };
+
+            this.openModal(`✏️ Modifica Ricevuta Compenso N. C${String(r.numero).padStart(3, '0')}/${r.anno}`, `
+                    <div style="background:rgba(59,130,246,0.07); padding:12px; border-radius:10px; border:1px solid rgba(59,130,246,0.2); margin-bottom:1.5rem; font-size:0.82rem; color:var(--text-muted);">
+                        <strong>Modifica Ricevuta Compenso (Stato: ${r.stato === 'bozza' ? '🔴 Bozza' : '🟢 Emessa - Debug Mode'})</strong> – Le modifiche salveranno i nuovi importi e rigenereranno la quietanza.
+                    </div>
+                    <form id="compenso-form" onsubmit="app.handleCompensoSportivo(event, parseInt(document.getElementById('compenso-select-instr').value), '${r.id}')">
+                        <div style="margin-bottom:12px;">
+                            <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Collaboratore / Istruttore Percipiente *</label>
+                            <select id="compenso-select-instr" class="form-control" style="font-weight:600;" onchange="app.onCompensoSelectInstrChange(this.value)" data-guide="Seleziona il collaboratore percipiente.">
+                                ${(this.state.istruttori || []).map(i => `<option value="${i.id}" ${i.id == r.istruttore_id ? 'selected' : ''}>${i.nome} (${i.ruolo || 'Collaboratore'}) - CF: ${i.cf || 'Non specificato'}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div class="form-group">
+                                <label>Importo Compenso (€) *</label>
+                                <input type="number" name="importo" class="form-control" step="0.01" required placeholder="0.00" value="${parseFloat(r.importo).toFixed(2)}">
+                            </div>
+                            <div class="form-group">
+                                <label>Data Pagamento *</label>
+                                <div style="display:flex; gap:6px; align-items:center; position:relative;">
+                                    <input type="text" name="data" id="compenso-data" class="form-control it-date-input" value="${this.formatItDate(r.data)}" required placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('compenso-data')" title="Scegli data da calendario">📅</button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label>Periodo di Riferimento</label>
+                                <input type="text" name="periodo" class="form-control" value="${(r.periodo || '').replace(/"/g, '&quot;')}" placeholder="Es: 01/07/2026 - 31/07/2026">
+                            </div>
+                            <div class="form-group" style="grid-column:1/-1;">
+                                <label>Prestazione Svolta</label>
+                                <input type="text" name="prestazione" class="form-control" value="${(r.prestazione || '').replace(/"/g, '&quot;')}" placeholder="Descrizione attività">
+                            </div>
+                            <div class="form-group">
+                                <label>Metodo di Pagamento</label>
+                                <select name="pagamento" class="form-control">
+                                    ${this.getMetodiPagamento().map(m => `<option value="${m}" ${(r.pagamento === m || r.metodo_pagamento === m) ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Altri compensi sportivi anno (€) *</label>
+                                <input type="number" name="altri_compensi" class="form-control" step="0.01" value="${r.altri_compensi || 0}" placeholder="Compensi da altri enti">
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1rem;">
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                            <button type="submit" class="btn btn-success">💾 Aggiorna Ricevuta Compenso</button>
+                        </div>
+                    </form>
+            `);
+        },
+
+        toggleCompensoStato(receiptId, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const r = this.state.ricevute.find(x => String(x.id) === String(receiptId) || x.id == receiptId);
+            if (!r) return;
+            if (r.annullata) {
+                this.toast("Non puoi modificare lo stato di un compenso annullato.", "warning");
+                return;
+            }
+
+            const nuovoStato = (r.stato === 'bozza') ? 'emessa' : 'bozza';
+            if (nuovoStato === 'bozza') {
+                if (!confirm(`Vuoi riportare la Ricevuta Compenso N. C${String(r.numero).padStart(3, '0')}/${r.anno} in stato BOZZA?\nTornerà ad essere modificabile.`)) {
+                    return;
+                }
+            }
+
+            r.stato = nuovoStato;
+            this.touchEntity(r);
+            this.saveAll();
+
+            this.toast(nuovoStato === 'bozza' ? `Compenso N. C${String(r.numero).padStart(3, '0')} impostato in BOZZA` : `Compenso N. C${String(r.numero).padStart(3, '0')} contrassegnato come EMESSO`, nuovoStato === 'bozza' ? 'warning' : 'success');
+
+            this.filterCompensi();
         },
 
         generateCompensoPDF(receiptId, instrId, shouldArchive = false) {
@@ -21884,9 +22168,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const exYear = new Date(r.data).getFullYear();
             const sportsYear = this.getSportsYear(r.data ? new Date(r.data) : (r.anno || new Date()));
             const nascita = instr.data_nascita ? this.formatDate(instr.data_nascita) : '___/___/_____';
+            const isBozza = (r.stato === 'bozza');
+            const statoTag = r.annullata ? ' (ANNULLATA)' : (isBozza ? ' (BOZZA)' : '');
 
             const htmlDoc = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
-<title>Ricevuta Compenso Sportivo N. C${String(r.numero).padStart(3, '0')}/${r.anno}</title>
+<title>Ricevuta Compenso Sportivo N. C${String(r.numero).padStart(3, '0')}/${r.anno}${statoTag}</title>
 <style>
 @page {
     size: A4 portrait;
@@ -22013,10 +22299,14 @@ ${r.annullata ? `
 <div style="background:#fee2e2; border:2px solid #ef4444; color:#b91c1c; padding:8px 14px; border-radius:6px; margin:8px 0; font-weight:800; font-size:10.5pt; text-align:center; text-transform:uppercase; letter-spacing:0.04em;">
     ⚠️ RICEVUTA ANNULLATA - DOCUMENTO PRIVO DI EFFETTI CONTABILI E FISCALI
 </div>
-` : ''}
+` : (isBozza ? `
+<div style="background:#fef2f2; border:2px dashed #ef4444; color:#b91c1c; padding:8px 14px; border-radius:6px; margin:8px 0; font-weight:800; font-size:10.5pt; text-align:center; text-transform:uppercase; letter-spacing:0.04em;">
+    🔴 DOCUMENTO IN BOZZA - NON DEFINITIVO
+</div>
+` : '')}
 
-<div class="doc-title">RICEVUTA DI COMPENSO SPORTIVO ${r.annullata ? '<span style="color:#ef4444;">(ANNULLATA)</span>' : ''}</div>
-<div class="ref">N. C${String(r.numero).padStart(3, '0')}/${r.anno} &nbsp;|&nbsp; Anno sportivo ${exYear}-${exYear + 1}</div>
+<div class="doc-title">RICEVUTA DI COMPENSO SPORTIVO ${r.annullata ? '<span style="color:#ef4444;">(ANNULLATA)</span>' : (isBozza ? '<span style="color:#ef4444;">(BOZZA)</span>' : '')}</div>
+<div class="ref">N. C${String(r.numero).padStart(3, '0')}/${r.anno}${statoTag} &nbsp;|&nbsp; Anno sportivo ${exYear}-${exYear + 1}</div>
 
 <div class="grid-2col">
   <div class="section" style="border-left-color:#2563eb;">
@@ -22120,7 +22410,7 @@ ${r.annullata ? `
                 this.compensiSortKey = key;
                 this.compensiSortDir = (key === 'data' || key === 'numero') ? 'desc' : 'asc';
             }
-            ['numero', 'data', 'nome', 'importo'].forEach(k => {
+            ['numero', 'data', 'nome', 'importo', 'stato'].forEach(k => {
                 const el = document.getElementById('sort-compensi-' + k);
                 if (el) el.innerHTML = '';
             });
@@ -22221,6 +22511,10 @@ ${r.annullata ? `
                     return nameA.localeCompare(nameB) * dir;
                 } else if (k === 'importo') {
                     return ((parseFloat(a.importo) || 0) - (parseFloat(b.importo) || 0)) * dir;
+                } else if (k === 'stato') {
+                    const valA = a.annullata ? 'annullata' : (a.stato || 'emessa');
+                    const valB = b.annullata ? 'annullata' : (b.stato || 'emessa');
+                    return valA.localeCompare(valB) * dir;
                 }
                 return 0;
             });
@@ -22255,13 +22549,22 @@ ${r.annullata ? `
                             € ${parseFloat(r.importo).toFixed(2)}
                         </td>
                         <td>${metodoHtml}</td>
-                        <td>
+                        <td style="white-space: nowrap;">
                             ${isAnnullata 
-                                ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">🚫 Annullata</span>` 
-                                : `<span style="background:rgba(16,185,129,0.15); color:var(--success); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">✅ Emessa</span>`}
+                                ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullata</span>` 
+                                : `<button type="button" class="badge-doc-status ${r.stato === 'bozza' ? 'bozza' : 'emessa'}" 
+                                        onclick="app.toggleCompensoStato('${r.id}', event)" 
+                                        title="${r.stato === 'bozza' ? 'Compenso in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Compenso Emesso (definitivo). Clicca per riportare in bozza.'}">
+                                    ${r.stato === 'bozza' ? '🔴 Bozza' : '🟢 Emessa'}
+                                </button>`}
                         </td>
-                        <td style="text-align: right;">
+                        <td style="text-align: right; white-space: nowrap;">
                             <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
+                                ${(r.stato === 'bozza' || this.state.debugMode) && !isAnnullata ? `
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem;" title="${this.state.debugMode ? 'Modifica compenso (Debug Mode)' : 'Modifica compenso in bozza'}" onclick="app.openEditCompensoModal('${r.id}')">✏️</button>
+                                ` : (!isAnnullata ? `
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.5; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                ` : '')}
                                 <button class="btn btn-outline" style="padding: 5px 10px; font-size:0.8rem;" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa Ricevuta (senza re-archiviare)" data-guide="Stampa ricevuta compenso. Effetto: Apre l'anteprima di stampa o salvataggio PDF della quietanza sportiva.">🖨️ Stampa</button>
                                 ${!isAnnullata ? `
                                     <button class="btn btn-outline text-warning" style="padding: 5px 10px; font-size:0.8rem; border-color: rgba(245, 158, 11, 0.3);" title="Annulla Ricevuta" onclick="app.annullaCompensoReceipt('${r.id}')" data-guide="Annulla la ricevuta compenso. Effetto: Contrassegna la ricevuta come annullata e storna l'uscita in Prima Nota.">🚫 Annulla</button>
@@ -23042,18 +23345,20 @@ ${r.annullata ? `
                                     <th style="min-width:160px;">Richiedente</th>
                                     <th style="min-width:280px;">Dettaglio Voci di Spesa</th>
                                     <th style="min-width:110px;">Importo Totale</th>
-                                    <th style="min-width:110px;">Stato</th>
-                                    <th style="text-align:right; min-width:170px;">Azioni</th>
+                                    <th style="min-width:105px; white-space:nowrap;">Documento</th>
+                                    <th style="min-width:110px; white-space:nowrap;">Liquidazione</th>
+                                    <th style="text-align:right; min-width:190px;">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody>
             `;
             if(!this.state.rimborsi || this.state.rimborsi.length === 0) {
-                html += `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Nessuna richiesta di rimborso registrata.</td></tr>`;
+                html += `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Nessuna richiesta di rimborso registrata.</td></tr>`;
             } else {
                 [...this.state.rimborsi].sort((a,b) => new Date(b.data) - new Date(a.data)).forEach(r => {
                     const isAnnullato = !!r.annullato;
                     const isPagato = !!r.pagato && !isAnnullato;
+                    const isBozza = (r.stato === 'bozza');
                     const voci = (r.voci && r.voci.length > 0) 
                         ? r.voci 
                         : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
@@ -23090,25 +23395,41 @@ ${r.annullata ? `
                             <td style="font-weight:bold; font-size:1rem; ${isAnnullato ? 'text-decoration:line-through; color:var(--danger);' : 'color:var(--primary);'}">
                                 €${Number(r.importo || 0).toFixed(2)}
                             </td>
-                            <td>
+                            <td style="white-space: nowrap;">
                                 ${isAnnullato 
-                                    ? '<span class="badge" style="background:var(--danger); color:white;">ANNULLATO</span>' 
+                                    ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullato</span>` 
+                                    : `<button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
+                                            onclick="app.toggleRimborsoStato('${r.id}', event)" 
+                                            title="${isBozza ? 'Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Nota spesa Emessa (definitiva/sola lettura). Clicca per riportare in bozza.'}">
+                                        ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
+                                    </button>`}
+                            </td>
+                            <td style="white-space: nowrap;">
+                                ${isAnnullato 
+                                    ? '<span class="badge" style="background:var(--danger); color:white; white-space:nowrap;">STORMATO</span>' 
                                     : (isPagato 
-                                        ? '<span class="badge badge-active">PAGATO</span>' 
-                                        : '<span class="badge" style="background:#ca8a04; color:white;">DA PAGARE</span>')}
+                                        ? '<span class="badge badge-active" style="white-space:nowrap;">PAGATO</span>' 
+                                        : '<span class="badge" style="background:#ca8a04; color:white; white-space:nowrap;">DA PAGARE</span>')}
                             </td>
                             <td style="text-align:right; white-space:nowrap;">
-                                ${!isAnnullato && !isPagato ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.segnaRimborsoPagato(${r.id})" title="Segna come pagato (Riversa l'uscita in Prima Nota)" data-guide="Liquida e paga il rimborso. Effetto: Contrassegna la nota come pagata e crea la scrittura di uscita in Prima Nota.">✅ Pagato</button>
-                                ` : ''}
-                                ${!isAnnullato ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:#f59e0b; border-color:#f59e0b;" onclick="app.annullaRimborso(${r.id})" title="Annulla rimborso (Storna da Prima Nota se pagato)" data-guide="Annulla la richiesta di rimborso. Effetto: Marca il record come annullato e cancella il relativo movimento di Prima Nota se presente.">🚫 Annulla</button>
-                                ` : ''}
-                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id}, false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
-                                <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso(${r.id}, true)" title="Stampa Modulo Spese (salva nella cartella e apre l'anteprima)" data-guide="Stampa nota spese con quietanza. Effetto: Genera il documento PDF stampabile pronto per la firma del percipiente.">🖨️ Stampa</button>
-                                ${this.state.debugMode ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; color:var(--danger); border-color:var(--danger);" onclick="app.permanentlyDeleteRimborso(${r.id})" title="Elimina definitivamente (Solo Debug Mode)" data-guide="Elimina definitivamente questo rimborso spese dal database (Solo Debug Mode).">🗑️</button>
-                                ` : ''}
+                                <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
+                                    ${!isAnnullato && !isPagato ? `
+                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.segnaRimborsoPagato('${r.id}')" title="Segna come pagato (Riversa l'uscita in Prima Nota)" data-guide="Liquida e paga il rimborso. Effetto: Contrassegna la nota come pagata e crea la scrittura di uscita in Prima Nota.">✅ Pagato</button>
+                                    ` : ''}
+                                    ${(isBozza || this.state.debugMode) && !isAnnullato ? `
+                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')">✏️</button>
+                                    ` : (!isAnnullato ? `
+                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.5; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                    ` : '')}
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese (salva nella cartella e apre l'anteprima)" data-guide="Stampa nota spese con quietanza. Effetto: Genera il documento PDF stampabile pronto per la firma del percipiente.">🖨️ Stampa</button>
+                                    ${!isAnnullato ? `
+                                        <button class="btn btn-outline text-warning" style="padding:4px 8px; font-size:0.75rem; border-color: rgba(245, 158, 11, 0.3);" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso (Storna da Prima Nota se pagato)" data-guide="Annulla la richiesta di rimborso. Effetto: Marca il record come annullato e cancella il relativo movimento di Prima Nota se presente.">🚫 Annulla</button>
+                                    ` : ''}
+                                    ${this.state.debugMode ? `
+                                        <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Solo Debug Mode)" data-guide="Elimina definitivamente questo rimborso spese dal database (Solo Debug Mode).">🗑️</button>
+                                    ` : ''}
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -23173,6 +23494,72 @@ ${r.annullata ? `
             this.addRimborsoVoceRow();
         },
 
+        openEditRimborsoModal(id) {
+            const r = (this.state.rimborsi || []).find(x => String(x.id) === String(id) || x.id == id);
+            if (!r) {
+                this.toast("Nota spesa non trovata", "danger");
+                return;
+            }
+            if (!this.canEditDocument(r)) {
+                this.warnReceiptReadOnly(id);
+                return;
+            }
+
+            const html = `
+                <form id="rimborso-form" data-edit-id="${r.id}" onsubmit="app.saveRimborso(event)">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div>
+                            <label style="font-weight:600; font-size:0.85rem;">Data Spesa / Richiesta</label>
+                            <input type="date" id="rim-data" class="form-control" required value="${r.data || ''}" data-guide="Data di presentazione della nota spese. Effetto: Fissa il giorno contabile del rimborso.">
+                        </div>
+                        <div>
+                            <label style="font-weight:600; font-size:0.85rem;">Metodo di Pagamento Rimborso</label>
+                            <select id="rim-metodo" class="form-control" data-guide="Modalità di erogazione del rimborso. Effetto: Determina il conto (Banca, Cassa o Assegno) di accredito.">
+                                <option value="Bonifico" ${r.metodo === 'Bonifico' ? 'selected' : ''}>Bonifico Bancario</option>
+                                <option value="Contanti" ${r.metodo === 'Contanti' ? 'selected' : ''}>Contanti</option>
+                                <option value="Assegno" ${r.metodo === 'Assegno' ? 'selected' : ''}>Assegno</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="font-weight:600; font-size:0.85rem;">Nome Richiedente (Collaboratore / Socio / Volontario)</label>
+                        <input type="text" id="rim-nome" class="form-control" required value="${(r.richiedente || '').replace(/"/g, '&quot;')}" placeholder="Es. Mario Rossi" data-guide="Nome e cognome del beneficiario.">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="font-weight:600; font-size:0.85rem;">Note / Motivo Generale Trasferta (Opzionale)</label>
+                        <input type="text" id="rim-note" class="form-control" value="${(r.note || '').replace(/"/g, '&quot;')}" placeholder="Es. Trasferta gara regionale a Milano / Acquisto cancelleria" data-guide="Causale generale o missione.">
+                    </div>
+
+                    <div style="margin-top:20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <label style="font-weight:700; font-size:0.95rem; margin:0;">📋 Voci di Spesa da Rimborsare</label>
+                        <button type="button" class="btn btn-outline" style="font-size:0.8rem; padding:4px 10px;" onclick="app.addRimborsoVoceRow()" data-guide="Aggiungi riga di spesa.">+ Aggiungi Voce</button>
+                    </div>
+
+                    <div id="rim-voci-container" style="display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; padding-right:5px;">
+                        <!-- Le righe verranno inserite dinamicamente -->
+                    </div>
+
+                    <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:12px 16px; margin-top:15px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:600; font-size:0.95rem;">Totale Rimborso Complessivo:</span>
+                        <span id="rim-totale-display" style="font-size:1.35rem; font-weight:800; color:var(--primary);">€ ${Number(r.importo || 0).toFixed(2)}</span>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="min-width:140px;">Salva Modifiche</button>
+                    </div>
+                </form>
+            `;
+            this.openModal('Modifica Richiesta Rimborso Spese', html);
+
+            const container = document.getElementById('rim-voci-container');
+            if (container) container.innerHTML = '';
+            const voci = (r.voci && r.voci.length > 0) 
+                ? r.voci 
+                : [{ tipo: 'Altro', desc: r.descrizione || 'Spesa sostenuta', importo: r.importo || 0 }];
+            voci.forEach(v => this.addRimborsoVoceRow(v));
+        },
+
         addRimborsoVoceRow(voce = null) {
             const container = document.getElementById('rim-voci-container');
             if(!container) return;
@@ -23235,6 +23622,9 @@ ${r.annullata ? `
 
         saveRimborso(e) {
             e.preventDefault();
+            const form = document.getElementById('rimborso-form');
+            const editId = form ? form.dataset.editId : null;
+
             const dataVal = document.getElementById('rim-data').value;
             const nomeVal = document.getElementById('rim-nome').value.trim();
             const noteVal = (document.getElementById('rim-note').value || '').trim();
@@ -23265,12 +23655,56 @@ ${r.annullata ? `
             }
 
             total = Math.round(total * 100) / 100;
-
-            // Descrizione sintetica aggregata per Prima Nota e visualizzazioni veloci
             const syntheticDesc = voci.map(v => `${v.tipo}: €${v.importo.toFixed(2)}${v.desc ? ' (' + v.desc + ')' : ''}`).join('; ');
 
             if(!this.state.rimborsi) this.state.rimborsi = [];
-            
+
+            if (editId) {
+                const existing = this.state.rimborsi.find(x => String(x.id) === String(editId) || x.id == editId);
+                if (!existing) {
+                    this.toast('Rimborso da modificare non trovato', 'danger');
+                    return;
+                }
+                existing.data = dataVal;
+                existing.richiedente = nomeVal;
+                existing.note = noteVal;
+                existing.metodo = metodoVal;
+                existing.voci = voci;
+                existing.descrizione = syntheticDesc;
+                existing.importo = total;
+                if (!existing.stato) existing.stato = 'bozza';
+
+                this.touchEntity(existing);
+
+                // Se era già pagato, aggiorna anche la registrazione in Prima Nota
+                if (existing.pagato && this.state.primanota) {
+                    const pn = this.state.primanota.find(t => t.riferimento === 'RIMBORSO_' + existing.id || (t.descrizione && t.descrizione.includes(`RIMBORSO_${existing.id}`)));
+                    if (pn) {
+                        pn.importo = total;
+                        pn.data = dataVal;
+                        pn.descrizione = `Rimborso Spese a ${existing.richiedente}: ${existing.descrizione}`;
+                        pn.metodo = existing.metodo || 'Bonifico';
+                        this.touchEntity(pn);
+                        localStorage.setItem('asd_primanota', JSON.stringify(this.state.primanota));
+                    }
+                }
+
+                localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+                this.saveAll();
+                this.closeModal();
+                this.renderRimborsi();
+                this.toast('Richiesta di rimborso aggiornata con successo');
+
+                // Rigenera PDF in background per mantenere allineati i documenti
+                try {
+                    this.stampaModuloRimborso(existing.id, false);
+                } catch(err) {
+                    console.warn('Errore rigenerazione PDF rimborso:', err);
+                }
+                return;
+            }
+
+            // Nuovo inserimento: nasce in stato 'bozza'
             const rimborso = {
                 id: Date.now(),
                 data: dataVal,
@@ -23280,6 +23714,7 @@ ${r.annullata ? `
                 voci: voci,
                 descrizione: syntheticDesc,
                 importo: total,
+                stato: 'bozza',
                 pagato: false,
                 annullato: false
             };
@@ -23290,11 +23725,61 @@ ${r.annullata ? `
             this.saveAll();
             this.closeModal();
             this.renderRimborsi();
-            this.toast('Richiesta di rimborso salvata con successo');
+            this.toast('Richiesta di rimborso salvata con successo (in Bozza)');
+
+            // Genera PDF iniziale per archiviazione
+            try {
+                this.stampaModuloRimborso(rimborso.id, false);
+            } catch(err) {
+                console.warn('Errore generazione PDF rimborso:', err);
+            }
+        },
+
+        toggleRimborsoStato(id, event) {
+            if (event) event.stopPropagation();
+            const r = (this.state.rimborsi || []).find(x => String(x.id) === String(id) || x.id == id);
+            if (!r) {
+                this.toast("Nota spesa non trovata", "danger");
+                return;
+            }
+            if (r.annullato) {
+                this.toast("Impossibile modificare lo stato di una nota spesa annullata.", "warning");
+                return;
+            }
+
+            const isBozza = (r.stato === 'bozza');
+            const nuovoStato = isBozza ? 'emessa' : 'bozza';
+
+            if (nuovoStato === 'bozza' && !this.state.debugMode) {
+                const proceed = confirm(
+                    `Attenzione: la nota spesa di ${r.richiedente} è attualmente EMESSA (definitiva).\n\nRiportarla in 'Bozza' consentirà nuovamente la modifica dei dati di spesa e del PDF.\n\nVuoi procedere?`
+                );
+                if (!proceed) return;
+            }
+
+            r.stato = nuovoStato;
+            this.touchEntity(r);
+            localStorage.setItem('asd_rimborsi', JSON.stringify(this.state.rimborsi));
+            this.saveAll();
+
+            try {
+                this.stampaModuloRimborso(r.id, false);
+            } catch (err) {
+                console.warn("Errore aggiornamento PDF rimborso:", err);
+            }
+
+            this.toast(
+                nuovoStato === 'bozza'
+                    ? "Nota spesa riportata in 'Bozza' (modificabile)"
+                    : "Nota spesa contrassegnata come 'Emessa' (definitiva)",
+                nuovoStato === 'bozza' ? 'warning' : 'success'
+            );
+
+            this.renderRimborsi();
         },
 
         segnaRimborsoPagato(id) {
-            const r = this.state.rimborsi.find(x => x.id === id);
+            const r = this.state.rimborsi.find(x => String(x.id) === String(id) || x.id == id);
             if(!r || r.annullato || r.pagato) return;
 
             if(confirm(`Vuoi segnare il rimborso di €${r.importo.toFixed(2)} a ${r.richiedente} come PAGATO e registrare l'uscita in Prima Nota?`)) {
@@ -23345,7 +23830,7 @@ ${r.annullata ? `
         },
 
         annullaRimborso(id) {
-            const r = this.state.rimborsi.find(x => x.id === id);
+            const r = this.state.rimborsi.find(x => String(x.id) === String(id) || x.id == id);
             if(!r || r.annullato) return;
 
             let msg = `Sei sicuro di voler ANNULLARE questa richiesta di rimborso di €${r.importo.toFixed(2)} (${r.richiedente})?\n\nRimarrà registrata in archivio contrassegnata come annullata per la conformità contabile.`;
@@ -23371,7 +23856,7 @@ ${r.annullata ? `
                 alert("Azione consentita esclusivamente in Modalità Debug.");
                 return;
             }
-            const r = this.state.rimborsi.find(x => x.id === id);
+            const r = this.state.rimborsi.find(x => String(x.id) === String(id) || x.id == id);
             if(!r) return;
 
             if(confirm(`ATTENZIONE [MODALITÀ DEBUG]:\nStai per eliminare DEFINITIVAMENTE la richiesta di rimborso di ${r.richiedente} (€${r.importo.toFixed(2)}).\n\nQuesta operazione rimuove fisicamente il record dal database. Procedere?`)) {
@@ -23396,10 +23881,11 @@ ${r.annullata ? `
         },
 
         stampaModuloRimborso(id, andPrint = true) {
-            const r = this.state.rimborsi.find(x => x.id === id);
+            const r = this.state.rimborsi.find(x => String(x.id) === String(id) || x.id == id);
             if(!r) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
+            const isBozza = (r.stato === 'bozza');
 
             const cleanCat = (tipo) => {
                 const t = (tipo || 'Altro').trim();
@@ -23451,12 +23937,12 @@ ${r.annullata ? `
 
             doc.setFont("helvetica", "bold");
             doc.setFontSize(7.5);
-            doc.setTextColor(71, 85, 105);
-            doc.text("NOTA SPESE E RIMBORSO", 166.5, 17.5, null, null, "center");
+            doc.setTextColor(isBozza ? 220 : 71, isBozza ? 38 : 85, isBozza ? 38 : 105);
+            doc.text(isBozza ? "NOTA SPESE (BOZZA)" : "NOTA SPESE E RIMBORSO", 166.5, 17.5, null, null, "center");
 
             doc.setFontSize(10);
-            doc.setTextColor(30, 58, 138);
-            doc.text("ID: #" + (r.id ? String(r.id).slice(-6) : "RIMB"), 166.5, 23.5, null, null, "center");
+            doc.setTextColor(isBozza ? 220 : 30, isBozza ? 38 : 58, isBozza ? 38 : 138);
+            doc.text("ID: #" + (r.id ? String(r.id).slice(-6) : "RIMB") + (isBozza ? " (BOZZA)" : ""), 166.5, 23.5, null, null, "center");
 
             doc.setFont("helvetica", "normal");
             doc.setFontSize(8);
@@ -23472,7 +23958,7 @@ ${r.annullata ? `
             doc.setFont("helvetica", "bold");
             doc.setFontSize(13);
             doc.setTextColor(15, 23, 42);
-            doc.text("PROSPETTO LIQUIDAZIONE PIÈ DI LISTA", 105, y, null, null, "center");
+            doc.text(isBozza ? "PROSPETTO LIQUIDAZIONE PIÈ DI LISTA (BOZZA)" : "PROSPETTO LIQUIDAZIONE PIÈ DI LISTA", 105, y, null, null, "center");
 
             doc.setFont("helvetica", "normal");
             doc.setFontSize(8.5);
@@ -23489,6 +23975,15 @@ ${r.annullata ? `
                 doc.setFontSize(8.5);
                 doc.setTextColor(220, 38, 38);
                 doc.text("*** DOCUMENTO ANNULLATO E STORMATO ***", 105, y + 4.8, null, null, "center");
+                y += 11;
+            } else if (isBozza) {
+                doc.setFillColor(254, 242, 242);
+                doc.setDrawColor(239, 68, 68);
+                doc.roundedRect(40, y, 130, 7, 1.5, 1.5, 'FD');
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(220, 38, 38);
+                doc.text("🔴 DOCUMENTO IN BOZZA - NON DEFINITIVO", 105, y + 4.8, null, null, "center");
                 y += 11;
             }
 
@@ -23730,6 +24225,21 @@ ${r.annullata ? `
             doc.setTextColor(51, 65, 85);
             doc.text(nomePresidente, col2X + signColW / 2, y + 26.5, null, null, "center");
 
+            // Watermark se in bozza
+            if (isBozza && !r.annullato) {
+                try {
+                    doc.saveGraphicsState();
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(45);
+                    doc.setTextColor(239, 68, 68);
+                    if (typeof doc.setGState === 'function' && doc.GState) {
+                        doc.setGState(new doc.GState({ opacity: 0.12 }));
+                    }
+                    doc.text("BOZZA NON DEFINITIVA", 105, 145, { align: "center", angle: 35 });
+                    doc.restoreGraphicsState();
+                } catch(eWatermark) {}
+            }
+
             // Footer a fondo pagina
             doc.setDrawColor(226, 232, 240);
             doc.setLineWidth(0.3);
@@ -23738,7 +24248,7 @@ ${r.annullata ? `
             doc.setFontSize(7.5);
             doc.setFont("helvetica", "normal");
             doc.setTextColor(148, 163, 184);
-            const asdFooter = (this.state.settings.asdName || "Associazione Sportiva Dilettantistica") + "  •  Documento Amministrativo Interno";
+            const asdFooter = (this.state.settings.asdName || "Associazione Sportiva Dilettantistica") + (isBozza ? "  •  DOCUMENTO IN BOZZA (NON DEFINITIVO)" : "  •  Documento Amministrativo Interno");
             doc.text(asdFooter, 15, 289);
             doc.text("Pagina 1 di 1", 195, 289, null, null, "right");
 
