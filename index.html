@@ -602,6 +602,110 @@
             box-shadow: 0 0 8px rgba(16, 185, 129, 0.3) !important;
         }
 
+        /* Dropdown Azioni Riga Tabella (Zero-Overflow e Menu a Cascata) */
+        .row-actions-dropdown {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .row-actions-btn {
+            padding: 4px 9px !important;
+            font-size: 1.1rem !important;
+            line-height: 1 !important;
+            font-weight: 700 !important;
+            border-radius: 6px !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            color: var(--text-main) !important;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 28px;
+            box-sizing: border-box;
+        }
+        .row-actions-btn:hover,
+        .row-actions-dropdown.active .row-actions-btn {
+            background: rgba(255, 255, 255, 0.12) !important;
+            border-color: var(--primary) !important;
+            color: var(--primary) !important;
+        }
+        .row-actions-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            min-width: 195px;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            z-index: 1050;
+            padding: 5px 0;
+            text-align: left;
+        }
+        .row-actions-dropdown:hover .row-actions-menu,
+        .row-actions-dropdown.active .row-actions-menu {
+            display: block;
+        }
+        /* Apri verso l'alto se la riga è tra le ultime 3 della tabella per evitare scrolling */
+        tbody tr:nth-last-child(-n+3) .row-actions-menu {
+            top: auto;
+            bottom: calc(100% + 4px);
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .row-actions-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 7px 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 0.82rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+        .row-actions-item:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+        .row-actions-item.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .row-actions-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+        .row-actions-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 4px 0;
+        }
+        .row-actions-debug-header {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #ef4444;
+            padding: 4px 12px;
+            letter-spacing: 0.05em;
+            background: rgba(239, 68, 68, 0.1);
+            margin-bottom: 2px;
+        }
+
         /* Forms */
         .form-group {
             margin-bottom: 1.25rem;
@@ -3460,6 +3564,21 @@
 
         warnReceiptReadOnly(id) {
             this.toast("Questo documento è in stato 'Emessa' (definitivo / sola lettura). Clicca sul badge '🟢 Emessa' per riportarlo in bozza se desideri modificarlo.", "warning");
+        },
+
+        toggleRowActionsMenu(btn, event) {
+            if (event) event.stopPropagation();
+            const dropdown = btn.closest('.row-actions-dropdown');
+            if (!dropdown) return;
+            const wasActive = dropdown.classList.contains('active');
+            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
+            if (!wasActive) {
+                dropdown.classList.add('active');
+            }
+        },
+
+        closeAllRowActionsMenus() {
+            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
         },
 
         sanitizePrimaNota() {
@@ -8487,9 +8606,9 @@
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('tipo')" data-guide="Ordina per tipologia incasso. Effetto: Raggruppa le ricevute per tipologia di quota (iscrizione, abbonamento, carnet).">Tipo <span id="sort-ricevute-tipo">${this.ricevuteSortKey === 'tipo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('importo')" data-guide="Ordina per importo in Euro. Effetto: Ordina per valore incassato crescente o decrescente.">Importo <span id="sort-ricevute-importo">${this.ricevuteSortKey === 'importo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('metodo')" data-guide="Ordina per modalità di incasso. Effetto: Raggruppa per contanti, bonifico bancario o POS.">Metodo <span id="sort-ricevute-metodo">${this.ricevuteSortKey === 'metodo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('cartacea')" data-guide="Ordina per registro Cartaceo/Digitale. Effetto: Raggruppa prima il registro cartaceo e poi quello digitale.">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === 'cartacea' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap; text-align: center;" onclick="app.sortRicevute('cartacea')" data-guide="Ordina per registro Cartaceo/Digitale. Effetto: Raggruppa prima il registro cartaceo e poi quello digitale.">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === 'cartacea' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
                                             <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('stato')" data-guide="Ordina per stato documento: Bozza (modificabile) o Emessa (definitiva).">Stato <span id="sort-ricevute-stato">${this.ricevuteSortKey === 'stato' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="text-align: right; white-space: nowrap;" data-guide="Pulsanti azione ricevuta. Effetto: Permette di scaricare il PDF, stampare la quietanza, inviarla via email o WhatsApp e annullare la ricevuta.">Azioni</th>
+                                            <th style="text-align: right; white-space: nowrap; min-width: 105px;" data-guide="Pulsanti azione ricevuta. Effetto: Permette di scaricare il PDF, stampare la quietanza, inviarla via email o WhatsApp e annullare la ricevuta.">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="receipts-tbody">
@@ -8672,13 +8791,13 @@
                         <td style="white-space: nowrap;">${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
                         <td style="white-space: nowrap;">
                             <div style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
-                                <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent); white-space: nowrap;">${r.tipo}</span>
+                                <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle;" title="${(r.tipo || '').replace(/"/g, '&quot;')}">${r.tipo}</span>
                                 ${isRateale ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.35); white-space: nowrap;" title="Quota Rateale / Pagamento Rata (Accordo Interno)">💳 RATA</span>` : ''}
                             </div>
                         </td>
                         <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; white-space: nowrap; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
                         <td style="white-space: nowrap;">${displayMetodo}</td>
-                        <td style="white-space: nowrap;"><span style="color: ${isCartacea ? 'var(--warning)' : 'var(--success)'}; font-size: 0.9em; white-space: nowrap;">${isCartacea ? '📋 Cartaceo' : '💻 Digitale'}</span></td>
+                        <td style="white-space: nowrap; text-align: center;"><span style="font-size: 1.05rem; cursor: help;" title="${isCartacea ? 'Registro: Blocco Cartaceo' : 'Registro: Gestionale Digitale'}">${isCartacea ? '📋' : '💻'}</span></td>
                         <td style="white-space: nowrap;">
                             ${r.annullata ? `
                                 <span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullata</span>
@@ -8691,22 +8810,53 @@
                             `}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
+                            <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}" data-guide="Scarica o archivia PDF ricevuta. Effetto: Genera il documento PDF della quietanza e lo archivia nella cartella documenti cartacei.">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
-                                <button class="btn btn-outline" style="padding: 5px 10px;" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}" data-guide="Stampa ricevuta. Effetto: Apre l'anteprima di stampa per stampare la ricevuta su carta A4 o formato ricevuta.">🖨️</button>
-                                <button class="btn btn-outline" style="padding: 5px 8px; ${hasEmail ? 'color: var(--primary); border-color: rgba(59,130,246,0.4);' : 'opacity:0.45;'}" onclick="app.sendReceiptEmail('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasEmail ? 'Invia dettaglio ricevuta via Email a ' + socioEmail : 'Indirizzo Email socio non presente'}" data-guide="Invia ricevuta per Email. Effetto: Apre la composizione email con i dettagli completi del pagamento per il socio.">📧</button>
-                                <button class="btn btn-outline" style="padding: 5px 8px; ${hasTel ? 'color: #25D366; border-color: rgba(37,211,102,0.45);' : 'opacity:0.45;'}" onclick="app.sendReceiptWhatsApp('${r.id}')" ${r.annullata ? 'disabled' : ''} title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Numero di telefono socio non presente'}" data-guide="Invia ricevuta su WhatsApp. Effetto: Apre WhatsApp con un messaggio precompilato contenente i dettagli della ricevuta.">${app.getWhatsAppIcon(15)}</button>
                                 ${(isBozza || this.state.debugMode) && !r.annullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px;" title="${this.state.debugMode ? 'Modifica dati strutturali ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" data-guide="Modifica ricevuta." onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px;" title="${this.state.debugMode ? 'Modifica dati ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
                                 ` : (!r.annullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px; opacity:0.5; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                 ` : '')}
-                                ${this.state.debugMode ? `
-                                    <button class="btn btn-outline text-primary" style="padding: 5px;" title="Inserisci nuova ricevuta al posto del N. ${r.numero} (slitta questa e successive di +1)" data-guide="Inserisci nuova ricevuta intermedia. Effetto: Inserisce una nuova ricevuta al posto di questo numero, slittando di +1 tutte le successive." onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')">➕</button>
-                                    <button class="btn btn-outline" style="padding: 5px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" title="Sposta questa e tutte le successive di N posizioni (+1 / -1)" data-guide="Sposta numerazione ricevuta. Effetto: Trasla la numerazione di questa ricevuta e delle successive avanti o indietro di N numeri." onclick="app.openShiftRicevuteModal('${r.id}')">⏩</button>
-                                    <button class="btn btn-outline text-danger" style="padding: 5px;" title="Elimina Definitivamente (scala le successive di -1)" data-guide="Elimina ricevuta definitivamente. Effetto: Cancella la voce dal database e ricompatta automaticamente la sequenza numerica (-1)." onclick="app.permanentlyDeleteRicevuta('${r.id}')">🗑️</button>
-                                ` : ''}
-                                ${!r.annullata ? `<button class="btn btn-outline text-warning" style="padding: 5px 10px; border-color: rgba(245, 158, 11, 0.2);" title="Annulla Ricevuta" data-guide="Annulla ricevuta non fiscale. Effetto: Marca la ricevuta come ANNULLATA, storna l'incasso dalla Prima Nota e aggiorna i saldi di cassa/banca." onclick="app.annullaRicevuta('${r.id}')">🚫</button>` : ''}
+                                <div class="row-actions-dropdown">
+                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni (Stampa, Email, WhatsApp, Annulla, Debug)...">⋮</button>
+                                    <div class="row-actions-menu">
+                                        <button type="button" class="row-actions-item" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}">
+                                            <span class="row-actions-icon">🖨️</span>
+                                            <span>Stampa Ricevuta</span>
+                                        </button>
+                                        <button type="button" class="row-actions-item ${!hasEmail || r.annullata ? 'disabled' : ''}" onclick="${hasEmail && !r.annullata ? `app.sendReceiptEmail('${r.id}')` : ''}" title="${hasEmail ? 'Invia dettaglio ricevuta a ' + socioEmail : 'Email socio non registrata'}">
+                                            <span class="row-actions-icon">📧</span>
+                                            <span>Invia per Email</span>
+                                        </button>
+                                        <button type="button" class="row-actions-item ${!hasTel || r.annullata ? 'disabled' : ''}" onclick="${hasTel && !r.annullata ? `app.sendReceiptWhatsApp('${r.id}')` : ''}" title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Telefono socio non registrato'}">
+                                            <span class="row-actions-icon" style="color:#25D366;">${app.getWhatsAppIcon(15)}</span>
+                                            <span>Invia su WhatsApp</span>
+                                        </button>
+                                        ${!r.annullata ? `
+                                            <div class="row-actions-divider"></div>
+                                            <button type="button" class="row-actions-item" style="color:#f59e0b;" onclick="app.annullaRicevuta('${r.id}')" title="Annulla Ricevuta">
+                                                <span class="row-actions-icon">🚫</span>
+                                                <span>Annulla Ricevuta</span>
+                                            </button>
+                                        ` : ''}
+                                        ${this.state.debugMode ? `
+                                            <div class="row-actions-divider"></div>
+                                            <div class="row-actions-debug-header">🛠️ STRUMENTI DEBUG</div>
+                                            <button type="button" class="row-actions-item text-primary" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')" title="Inserisci nuova ricevuta al posto del N. ${r.numero}">
+                                                <span class="row-actions-icon">➕</span>
+                                                <span>Inserisci intermedia</span>
+                                            </button>
+                                            <button type="button" class="row-actions-item" style="color:#3b82f6;" onclick="app.openShiftRicevuteModal('${r.id}')" title="Sposta numerazione">
+                                                <span class="row-actions-icon">⏩</span>
+                                                <span>Sposta numerazione</span>
+                                            </button>
+                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRicevuta('${r.id}')" title="Elimina definitivamente">
+                                                <span class="row-actions-icon">🗑️</span>
+                                                <span>Elimina definitivamente</span>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -22559,19 +22709,37 @@ ${r.annullata ? `
                                 </button>`}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
+                            <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
+                                <button class="btn btn-outline" style="padding: 5px 10px; font-size:0.8rem;" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa Ricevuta Compenso" data-guide="Stampa ricevuta compenso. Effetto: Apre l'anteprima di stampa o salvataggio PDF della quietanza sportiva.">🖨️ Stampa</button>
                                 ${(r.stato === 'bozza' || this.state.debugMode) && !isAnnullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem;" title="${this.state.debugMode ? 'Modifica compenso (Debug Mode)' : 'Modifica compenso in bozza'}" onclick="app.openEditCompensoModal('${r.id}')">✏️</button>
                                 ` : (!isAnnullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.5; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                 ` : '')}
-                                <button class="btn btn-outline" style="padding: 5px 10px; font-size:0.8rem;" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa Ricevuta (senza re-archiviare)" data-guide="Stampa ricevuta compenso. Effetto: Apre l'anteprima di stampa o salvataggio PDF della quietanza sportiva.">🖨️ Stampa</button>
-                                ${!isAnnullata ? `
-                                    <button class="btn btn-outline text-warning" style="padding: 5px 10px; font-size:0.8rem; border-color: rgba(245, 158, 11, 0.3);" title="Annulla Ricevuta" onclick="app.annullaCompensoReceipt('${r.id}')" data-guide="Annulla la ricevuta compenso. Effetto: Contrassegna la ricevuta come annullata e storna l'uscita in Prima Nota.">🚫 Annulla</button>
-                                ` : ''}
-                                ${this.state.debugMode ? `
-                                    <button class="btn btn-outline text-danger" style="padding: 5px 8px; font-size:0.8rem;" title="Elimina Definitivamente (Debug Mode)" data-guide="Elimina definitivamente la ricevuta compenso. Effetto: Rimuove il record dal database e ricalcola i progressivi (Debug Mode)." onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')">🗑️</button>
-                                ` : ''}
+                                <div class="row-actions-dropdown">
+                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
+                                    <div class="row-actions-menu">
+                                        <button type="button" class="row-actions-item" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa o Salva PDF">
+                                            <span class="row-actions-icon">💾</span>
+                                            <span>Salva PDF / Stampa</span>
+                                        </button>
+                                        ${!isAnnullata ? `
+                                            <div class="row-actions-divider"></div>
+                                            <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaCompensoReceipt('${r.id}')" title="Annulla Ricevuta">
+                                                <span class="row-actions-icon">🚫</span>
+                                                <span>Annulla Ricevuta</span>
+                                            </button>
+                                        ` : ''}
+                                        ${this.state.debugMode ? `
+                                            <div class="row-actions-divider"></div>
+                                            <div class="row-actions-debug-header">🛠️ DEBUG MODE</div>
+                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')" title="Elimina Definitivamente (Debug Mode)">
+                                                <span class="row-actions-icon">🗑️</span>
+                                                <span>Elimina definitivamente</span>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -23412,23 +23580,43 @@ ${r.annullata ? `
                                         : '<span class="badge" style="background:#ca8a04; color:white; white-space:nowrap;">DA PAGARE</span>')}
                             </td>
                             <td style="text-align:right; white-space:nowrap;">
-                                <div style="display: flex; gap: 4px; justify-content: flex-end;" onclick="event.stopPropagation()">
-                                    ${!isAnnullato && !isPagato ? `
-                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.segnaRimborsoPagato('${r.id}')" title="Segna come pagato (Riversa l'uscita in Prima Nota)" data-guide="Liquida e paga il rimborso. Effetto: Contrassegna la nota come pagata e crea la scrittura di uscita in Prima Nota.">✅ Pagato</button>
-                                    ` : ''}
+                                <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
                                     ${(isBozza || this.state.debugMode) && !isAnnullato ? `
                                         <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')">✏️</button>
                                     ` : (!isAnnullato ? `
-                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.5; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                        <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                     ` : '')}
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese (salva nella cartella e apre l'anteprima)" data-guide="Stampa nota spese con quietanza. Effetto: Genera il documento PDF stampabile pronto per la firma del percipiente.">🖨️ Stampa</button>
-                                    ${!isAnnullato ? `
-                                        <button class="btn btn-outline text-warning" style="padding:4px 8px; font-size:0.75rem; border-color: rgba(245, 158, 11, 0.3);" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso (Storna da Prima Nota se pagato)" data-guide="Annulla la richiesta di rimborso. Effetto: Marca il record come annullato e cancella il relativo movimento di Prima Nota se presente.">🚫 Annulla</button>
-                                    ` : ''}
-                                    ${this.state.debugMode ? `
-                                        <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Solo Debug Mode)" data-guide="Elimina definitivamente questo rimborso spese dal database (Solo Debug Mode).">🗑️</button>
-                                    ` : ''}
+                                    <div class="row-actions-dropdown">
+                                        <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
+                                        <div class="row-actions-menu">
+                                            <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza">
+                                                <span class="row-actions-icon">🖨️</span>
+                                                <span>Stampa Modulo</span>
+                                            </button>
+                                            ${!isAnnullato && !isPagato ? `
+                                                <button type="button" class="row-actions-item text-success" onclick="app.segnaRimborsoPagato('${r.id}')" title="Liquida e paga (riversa in Prima Nota)">
+                                                    <span class="row-actions-icon">✅</span>
+                                                    <span>Segna come Pagato</span>
+                                                </button>
+                                            ` : ''}
+                                            ${!isAnnullato ? `
+                                                <div class="row-actions-divider"></div>
+                                                <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso">
+                                                    <span class="row-actions-icon">🚫</span>
+                                                    <span>Annulla Rimborso</span>
+                                                </button>
+                                            ` : ''}
+                                            ${this.state.debugMode ? `
+                                                <div class="row-actions-divider"></div>
+                                                <div class="row-actions-debug-header">🛠️ DEBUG MODE</div>
+                                                <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Debug Mode)">
+                                                    <span class="row-actions-icon">🗑️</span>
+                                                    <span>Elimina definitivamente</span>
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -28403,6 +28591,14 @@ document.addEventListener('click', (e) => {
     // 2. Se si clicca in qualsiasi punto fuori dal menu
     if (!e.target.closest('.nav-dropdown')) {
         closeAllNavDropdowns();
+    }
+    // 3. Chiudi i menu a cascata delle righe delle tabelle se si clicca fuori o su una voce
+    if (!e.target.closest('.row-actions-dropdown') || e.target.closest('.row-actions-item')) {
+        if (window.app && typeof window.app.closeAllRowActionsMenus === 'function') {
+            window.app.closeAllRowActionsMenus();
+        } else {
+            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
+        }
     }
 });
 </script>
