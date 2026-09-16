@@ -327,10 +327,19 @@
             flex-wrap: wrap;
             gap: 12px;
         }
-        .glass-card .table-container {
+        .glass-card:not(.member-card) .table-container {
             overflow-x: auto;
             overflow-y: visible;
             flex: none;
+        }
+        .member-card .table-container {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            overflow: auto !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            position: relative !important;
+            min-height: 0 !important;
         }
 
         .page-content {
@@ -632,9 +641,7 @@
         }
         .row-actions-menu {
             display: none;
-            position: absolute;
-            right: 0;
-            top: calc(100% + 4px);
+            position: fixed;
             min-width: 195px;
             background: rgba(15, 23, 42, 0.98);
             backdrop-filter: blur(18px);
@@ -642,19 +649,12 @@
             border: 1px solid rgba(255, 255, 255, 0.16);
             border-radius: 8px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
-            z-index: 1050;
+            z-index: 99999;
             padding: 5px 0;
             text-align: left;
         }
-        .row-actions-dropdown:hover .row-actions-menu,
         .row-actions-dropdown.active .row-actions-menu {
             display: block;
-        }
-        /* Apri verso l'alto se la riga è tra le ultime 3 della tabella per evitare scrolling */
-        tbody tr:nth-last-child(-n+3) .row-actions-menu {
-            top: auto;
-            bottom: calc(100% + 4px);
-            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
         }
         .row-actions-item {
             display: flex;
@@ -3567,18 +3567,92 @@
         },
 
         toggleRowActionsMenu(btn, event) {
-            if (event) event.stopPropagation();
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
             const dropdown = btn.closest('.row-actions-dropdown');
             if (!dropdown) return;
             const wasActive = dropdown.classList.contains('active');
-            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
+            this.closeAllRowActionsMenus();
             if (!wasActive) {
-                dropdown.classList.add('active');
+                this.openRowActionsDropdown(dropdown);
             }
         },
 
+        openRowActionsDropdown(dropdown) {
+            if (!dropdown) return;
+            if (this._rowActionsCloseTimer) {
+                clearTimeout(this._rowActionsCloseTimer);
+                this._rowActionsCloseTimer = null;
+            }
+            // Chiudi altri dropdown attivi
+            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => {
+                if (d !== dropdown) {
+                    d.classList.remove('active');
+                    const m = d.querySelector('.row-actions-menu');
+                    if (m) m.style.display = 'none';
+                }
+            });
+
+            const btn = dropdown.querySelector('.row-actions-btn');
+            const menu = dropdown.querySelector('.row-actions-menu');
+            if (!btn || !menu) return;
+
+            dropdown.classList.add('active');
+            menu.style.display = 'block';
+
+            // Calcolo coordinate viewport (position: fixed anti-clipping)
+            const rect = btn.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            menu.style.position = 'fixed';
+            menu.style.right = Math.max(10, window.innerWidth - rect.right) + 'px';
+            menu.style.left = 'auto';
+            menu.style.zIndex = '99999';
+
+            // Apri verso l'alto SOLO se sotto c'è meno di 220px e sopra c'è più spazio
+            if (spaceBelow < 220 && spaceAbove > spaceBelow) {
+                menu.style.bottom = Math.max(10, window.innerHeight - rect.top + 4) + 'px';
+                menu.style.top = 'auto';
+            } else {
+                menu.style.top = (rect.bottom + 4) + 'px';
+                menu.style.bottom = 'auto';
+            }
+        },
+
+        onRowActionsMouseEnter(dropdown) {
+            if (this._rowActionsCloseTimer) {
+                clearTimeout(this._rowActionsCloseTimer);
+                this._rowActionsCloseTimer = null;
+            }
+            this.openRowActionsDropdown(dropdown);
+        },
+
+        onRowActionsMouseLeave(dropdown) {
+            if (this._rowActionsCloseTimer) {
+                clearTimeout(this._rowActionsCloseTimer);
+            }
+            this._rowActionsCloseTimer = setTimeout(() => {
+                if (dropdown) {
+                    dropdown.classList.remove('active');
+                    const menu = dropdown.querySelector('.row-actions-menu');
+                    if (menu) menu.style.display = 'none';
+                }
+            }, 180);
+        },
+
         closeAllRowActionsMenus() {
-            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
+            if (this._rowActionsCloseTimer) {
+                clearTimeout(this._rowActionsCloseTimer);
+                this._rowActionsCloseTimer = null;
+            }
+            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => {
+                d.classList.remove('active');
+                const menu = d.querySelector('.row-actions-menu');
+                if (menu) menu.style.display = 'none';
+            });
         },
 
         sanitizePrimaNota() {
@@ -8817,7 +8891,7 @@
                                 ` : (!r.annullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                 ` : '')}
-                                <div class="row-actions-dropdown">
+                                <div class="row-actions-dropdown" onmouseenter="app.onRowActionsMouseEnter(this)" onmouseleave="app.onRowActionsMouseLeave(this)">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni (Stampa, Email, WhatsApp, Annulla, Debug)...">⋮</button>
                                     <div class="row-actions-menu">
                                         <button type="button" class="row-actions-item" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}">
@@ -22716,7 +22790,7 @@ ${r.annullata ? `
                                 ` : (!isAnnullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                 ` : '')}
-                                <div class="row-actions-dropdown">
+                                <div class="row-actions-dropdown" onmouseenter="app.onRowActionsMouseEnter(this)" onmouseleave="app.onRowActionsMouseLeave(this)">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
                                     <div class="row-actions-menu">
                                         <button type="button" class="row-actions-item" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa o Salva PDF">
@@ -23587,7 +23661,7 @@ ${r.annullata ? `
                                     ` : (!isAnnullato ? `
                                         <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                     ` : '')}
-                                    <div class="row-actions-dropdown">
+                                    <div class="row-actions-dropdown" onmouseenter="app.onRowActionsMouseEnter(this)" onmouseleave="app.onRowActionsMouseLeave(this)">
                                         <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
                                         <div class="row-actions-menu">
                                             <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza">
@@ -28599,6 +28673,18 @@ document.addEventListener('click', (e) => {
         } else {
             document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
         }
+    }
+});
+
+// Chiudi i menu a cascata delle righe se l'utente scorre la pagina/tabella o ridimensiona la finestra
+window.addEventListener('scroll', () => {
+    if (window.app && typeof window.app.closeAllRowActionsMenus === 'function') {
+        window.app.closeAllRowActionsMenus();
+    }
+}, true);
+window.addEventListener('resize', () => {
+    if (window.app && typeof window.app.closeAllRowActionsMenus === 'function') {
+        window.app.closeAllRowActionsMenus();
     }
 });
 </script>
