@@ -635,6 +635,7 @@
         }
         .row-actions-btn:hover,
         .row-actions-dropdown:hover .row-actions-btn,
+        .row-actions-dropdown.open .row-actions-btn,
         .row-actions-dropdown.active .row-actions-btn {
             background: rgba(255, 255, 255, 0.12) !important;
             border-color: var(--primary) !important;
@@ -660,12 +661,13 @@
         .row-actions-menu::before {
             content: '';
             position: absolute;
-            left: 0;
+            left: -20px;
             right: 0;
-            top: -8px;
-            height: 8px;
+            top: -12px;
+            height: 12px;
         }
         .row-actions-dropdown:hover > .row-actions-menu,
+        .row-actions-dropdown.open > .row-actions-menu,
         .row-actions-dropdown.active > .row-actions-menu {
             display: block;
         }
@@ -677,8 +679,8 @@
         }
         tbody tr:nth-child(n+5):nth-last-child(-n+2) .row-actions-menu::before {
             top: auto;
-            bottom: -8px;
-            height: 8px;
+            bottom: -12px;
+            height: 12px;
         }
         .row-actions-item {
             display: flex;
@@ -3600,12 +3602,47 @@
             this.closeAllRowActionsMenus();
             if (!wasActive) {
                 dropdown.classList.add('active');
+                dropdown.classList.add('open');
             }
         },
 
+        onRowActionsHoverEnter(dropdown) {
+            if (!dropdown) return;
+            if (this._rowActionsLeaveTimer) {
+                clearTimeout(this._rowActionsLeaveTimer);
+                this._rowActionsLeaveTimer = null;
+            }
+            document.querySelectorAll('.row-actions-dropdown.open, .row-actions-dropdown.active').forEach(d => {
+                if (d !== dropdown) {
+                    d.classList.remove('open');
+                    d.classList.remove('active');
+                }
+            });
+            dropdown.classList.add('open');
+        },
+
+        onRowActionsHoverLeave(dropdown) {
+            if (!dropdown) return;
+            if (this._rowActionsLeaveTimer) {
+                clearTimeout(this._rowActionsLeaveTimer);
+            }
+            this._rowActionsLeaveTimer = setTimeout(() => {
+                if (dropdown) {
+                    dropdown.classList.remove('open');
+                    dropdown.classList.remove('active');
+                }
+                this._rowActionsLeaveTimer = null;
+            }, 1000); // 1 secondo di permanenza per scivolare comodamente col mouse
+        },
+
         closeAllRowActionsMenus() {
-            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => {
+            if (this._rowActionsLeaveTimer) {
+                clearTimeout(this._rowActionsLeaveTimer);
+                this._rowActionsLeaveTimer = null;
+            }
+            document.querySelectorAll('.row-actions-dropdown.active, .row-actions-dropdown.open').forEach(d => {
                 d.classList.remove('active');
+                d.classList.remove('open');
             });
         },
 
@@ -28625,7 +28662,28 @@ document.addEventListener('click', (e) => {
         if (window.app && typeof window.app.closeAllRowActionsMenus === 'function') {
             window.app.closeAllRowActionsMenus();
         } else {
-            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.row-actions-dropdown.active, .row-actions-dropdown.open').forEach(d => {
+                d.classList.remove('active');
+                d.classList.remove('open');
+            });
+        }
+    }
+});
+
+// Gestione permanenza hover di 1 secondo per menu azioni riga tabelle
+document.addEventListener('mouseover', (e) => {
+    const dropdown = e.target.closest ? e.target.closest('.row-actions-dropdown') : null;
+    if (dropdown && window.app && typeof window.app.onRowActionsHoverEnter === 'function') {
+        window.app.onRowActionsHoverEnter(dropdown);
+    }
+});
+
+document.addEventListener('mouseout', (e) => {
+    const dropdown = e.target.closest ? e.target.closest('.row-actions-dropdown') : null;
+    if (dropdown && window.app && typeof window.app.onRowActionsHoverLeave === 'function') {
+        const related = e.relatedTarget;
+        if (!related || !dropdown.contains(related)) {
+            window.app.onRowActionsHoverLeave(dropdown);
         }
     }
 });
