@@ -5551,7 +5551,8 @@
                         <div onclick="app.closeModal(); app.cloudSync.promptInheritFromCloudModal()" 
                              style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(245, 158, 11, 0.18)'; this.style.borderColor='var(--warning)';" 
-                             onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';">
+                             onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';"
+                             data-guide="Eredita dati dal Cloud Google Drive. Effetto: Scarica l'archivio cloud e sostituisce i dati di questo dispositivo dopo una verifica di sicurezza a specchio, salvando automaticamente uno snapshot preventivo PRE-DOWNLOAD-CLOUD.">
                             <span style="font-size: 1.6rem; flex-shrink: 0;">📥</span>
                             <div style="flex-grow: 1;">
                                 <div style="font-weight: 700; font-size: 0.98rem; color: #fbbf24;">Eredita dal Cloud (Scarica sul PC)</div>
@@ -5566,7 +5567,8 @@
                         <div onclick="app.closeModal(); app.cloudSync.forceUploadToCloud()" 
                              style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(16, 185, 129, 0.18)'; this.style.borderColor='#10b981';" 
-                             onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';">
+                             onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';"
+                             data-guide="Sovrascrivi copia Cloud con i dati di questo PC. Effetto: Carica immediatamente l'archivio attuale su Google Drive, archiviando la versione precedente in GestioneASD_Backup_Precedente.json e allineando le altre postazioni.">
                             <span style="font-size: 1.6rem; flex-shrink: 0;">⬆️</span>
                             <div style="flex-grow: 1;">
                                 <div style="font-weight: 700; font-size: 0.98rem; color: #34d399;">Sovrascrivi Cloud con Dati Locali</div>
@@ -5581,7 +5583,8 @@
                         <div onclick="app.closeModal(); app.cloudSync.syncNow()" 
                              style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(59, 130, 246, 0.18)'; this.style.borderColor='var(--primary)';" 
-                             onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';">
+                             onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';"
+                             data-guide="Sincronizza e unisci i dati con Google Drive (Merge). Effetto: Combina i record di questo computer con quelli del Cloud senza cancellare elementi su entrambi i lati, applicando la regola del timestamp più recente.">
                             <span style="font-size: 1.6rem; flex-shrink: 0;">🔄</span>
                             <div style="flex-grow: 1;">
                                 <div style="font-weight: 700; font-size: 0.98rem; color: #60a5fa;">Sincronizza / Unisci i Dati (Merge)</div>
@@ -5596,7 +5599,8 @@
                         <div onclick="app.closeModal(); app.cloudSync.openCloudVersionsModal()" 
                              style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.35); padding: 10px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(99, 102, 241, 0.18)';" 
-                             onmouseout="this.style.background='rgba(99, 102, 241, 0.08)';">
+                             onmouseout="this.style.background='rgba(99, 102, 241, 0.08)';"
+                             data-guide="Esplora versioni e copie sul Cloud. Effetto: Mostra la copia corrente e il file di riserva precedente su Google Drive con data, ora e dimensione per eventuali ripristini puntuali.">
                             <span style="font-size: 1.3rem; flex-shrink: 0;">📂</span>
                             <div style="flex-grow: 1;">
                                 <div style="font-weight: 600; font-size: 0.9rem; color: #818cf8;">Versioni & Copie di Riserva sul Cloud</div>
@@ -5606,7 +5610,8 @@
                         <!-- TASTO 5: DISCONNETTI -->
                         <div style="display:flex; justify-content:flex-end; margin-top: 6px;">
                             <button class="btn btn-outline text-danger" style="font-size: 0.8rem; padding: 6px 12px;" 
-                                    onclick="app.closeModal(); app.cloudSync.logout(false);">
+                                    onclick="app.closeModal(); app.cloudSync.logout(false);"
+                                    data-guide="Disconnetti da Google Drive. Effetto: Chiude la sessione cloud e riporta il gestionale in modalità Offline Locale pura senza alterare i dati memorizzati sul dispositivo.">
                                 🔒 Disconnetti da Google Drive (Passa a Offline)
                             </button>
                         </div>
@@ -7141,17 +7146,17 @@
                             <div class="glass-card" style="width: 270px; flex-shrink: 0; overflow-y: auto; padding: 1rem;">
                                 <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--primary);">Indice Argomenti</h3>
                                 <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem;" id="guide-index">
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Introduzione & Privacy. Effetto: Mostra le linee guida generali del gestionale e la sicurezza dei dati." onclick="app.showGuideSection('intro')">1. Introduzione & Privacy</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Anagrafica Soci. Effetto: Mostra le istruzioni dettagliate su soci, atleti, quote e certificati medici." onclick="app.showGuideSection('soci')">2. Anagrafica Soci & Atleti</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Ricevute & Quote. Effetto: Mostra le istruzioni su emissione, numerazione, detrazioni e invio ricevute." onclick="app.showGuideSection('ricevute')">3. Ricevute & Quote Associative</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Introduzione & Privacy. Effetto: Mostra le linee guida generali del gestionale, l'architettura offline-first e la sicurezza dei dati." onclick="app.showGuideSection('intro')">1. Introduzione & Privacy</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Anagrafica Soci. Effetto: Mostra le istruzioni dettagliate su soci, atleti, quote, note riservate, WhatsApp e certificati medici." onclick="app.showGuideSection('soci')">2. Anagrafica Soci & Atleti</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Ricevute & Quote. Effetto: Mostra le istruzioni su emissione, numerazione sequenziale, flusso Bozza/Emessa e menu azioni compatto." onclick="app.showGuideSection('ricevute')">3. Ricevute & Quote Associative</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Prima Nota & Cassa. Effetto: Mostra le istruzioni su registrazioni entrate/uscite, riconciliazione e rendiconto." onclick="app.showGuideSection('primanota')">4. Prima Nota & Chiusura Esercizio</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Istruttori & Compensi. Effetto: Mostra le istruzioni su Registro RASD, contratti sportivi e rimborsi." onclick="app.showGuideSection('istruttori')">5. Istruttori & Compensi Sportivi</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Istruttori & Compensi. Effetto: Mostra le istruzioni su compensi sportivi, filtri per stagione, ricerca collaboratori e flusso bozza/emessa." onclick="app.showGuideSection('istruttori')">5. Istruttori & Compensi Sportivi</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Corsi & Calendario. Effetto: Mostra le istruzioni su orari, planning settimanale, sale e presenze." onclick="app.showGuideSection('corsi')">6. Corsi & Calendario Settimanale</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Segreteria & Magazzino. Effetto: Mostra le istruzioni su gestione scorte, abbigliamento ed eventi sociali." onclick="app.showGuideSection('segreteria')">7. Segreteria, Magazzino & Eventi</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Segreteria & Note Spesa. Effetto: Mostra le istruzioni su magazzino, note spesa a piè di lista, filtri stagione e liquidazione rimborsi." onclick="app.showGuideSection('segreteria')">7. Segreteria, Magazzino & Note Spesa</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Governance & Verbali. Effetto: Mostra le istruzioni sulla redazione guidata dei verbali direttivo e assemblea." onclick="app.showGuideSection('verbali')">8. Governance, Verbali & Direttivo</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Impostazioni, Dati ASD & Licenza. Effetto: Mostra come configurare anagrafica associazione, organi sociali, licenza fino a 5 postazioni e preferenze." onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Licenza</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Backup & Salvataggio. Effetto: Mostra come gestire snapshot di sicurezza locali, salvataggi e archivi Excel." onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Excel</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Multi-Dispositivo. Effetto: Mostra come utilizzare più postazioni o tablet collegati in rete locale o Cloud." onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo (Server & Client)</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Impostazioni, Dati ASD & Licenza. Effetto: Mostra come configurare la griglia modulare, organi sociali, licenza fino a 5 postazioni e cartelle." onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Licenza</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Backup, Snapshot & Ripopolamento. Effetto: Mostra come gestire snapshot di sicurezza, modello Excel e il wizard di ripopolamento archivio su nuovo server." onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Ripopolamento</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Multi-Dispositivo & Menu Cloud. Effetto: Mostra come utilizzare più postazioni, il menu rapido cloud in navbar e la sincronizzazione con Google Drive." onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo & Menu Cloud</button></li>
                                     ${this.state.debugMode ? `
                                         <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: 1px solid rgba(196, 181, 253, 0.4); background: rgba(139, 92, 246, 0.1); justify-content: flex-start; font-size: 0.85rem; color: #c4b5fd; font-weight: 600;" data-guide="Capitolo Debug & Diagnostica. Effetto: Mostra gli strumenti tecnici per la diagnostica avanzata e il controllo integrità." onclick="app.showGuideSection('debug')">🛠️ 12. Modalità Debug (Attiva)</button></li>
                                     ` : ''}
@@ -7180,34 +7185,65 @@
                                 <h3>Punti di Forza Architetturali & Modello di Licenza:</h3>
                                 <ul>
                                     <li><strong>Avvio Istantaneo 100% Offline & Toggle Rapido Navbar:</strong> L'applicazione si avvia sempre e immediatamente in modalità Offline Locale pura, garantendo reattività fulminea senza schermate o popup bloccanti all'avvio. Tramite l'apposito pulsante Toggle rapido presente nella barra di navigazione in alto a destra, è possibile passare in qualsiasi momento dalla modalità Offline alla sincronizzazione Cloud con Google Drive e viceversa, con riscontro visivo a colori e balloon di stato.</li>
-                                    <li><strong>Sincronizzazione Sicura Google Drive & Uso Multi-Dispositivo:</strong> I dati risiedono sul tuo computer e si sincronizzano in modo trasparente tramite la cartella <em>Google Drive</em> del tuo account societario, permettendo l'utilizzo su più postazioni di segreteria senza server terzi o intermediari sconosciuti. Operativo anche 100% offline.</li>
+                                    <li><strong>Menu Rapido Sincronizzazione Cloud in Navbar (Novità):</strong> Cliccando sul pulsante di stato cloud nella barra superiore si apre un hub operativo istantaneo con 5 azioni dirette: <em>Eredita dal Cloud</em> (scarica con verifica a specchio), <em>Sovrascrivi Cloud</em> (carica i dati locali), <em>Sincronizza / Unisci</em> (fusione intelligente bidirezionale), <em>Versioni & Copie di Riserva</em> (storico su Drive) e <em>Disconnetti</em>, senza dover aprire le impostazioni.</li>
+                                    <li><strong>Flusso Operativo Bozza / Emessa Completo (Novità):</strong> Gestione evoluta a doppio binario per Ricevute Soci, Compensi Tecnici e Note Spesa: lo stato <em>Bozza</em> consente la preparazione provvisoria con totale modificabilità e filigrana protettiva sui documenti, mentre lo stato <em>Emessa</em> formalizza la registrazione a fini fiscali e ne blocca le modifiche accidentali.</li>
+                                    <li><strong>Layout Compatto Ibrido con Menu a Cascata "⋮ Azioni" (Novità):</strong> Nelle tabelle di Ricevute, Compensi e Note Spesa i pulsanti d'azione sono unificati in un layout salvaspazio: azione primaria a vista (PDF immediato) e menu a comparsa raggruppato con ritardo di disimpegno mouse di 1 secondo per una navigazione stabile e confortevole.</li>
+                                    <li><strong>Wizard "Ripopola Archivio su Nuovo Server" (Novità):</strong> Procedura guidata automatica in <em>Impostazioni</em> per migrare su un nuovo computer o server di segreteria: ricrea l'alberatura delle cartelle per ogni Anno Sportivo e rigenera simultaneamente tutti i PDF di ricevute, compensi, note spesa, verbali e backup JSON.</li>
                                     <li><strong>Licenza Annuale Multi-Dispositivo (Fino a 5 Postazioni):</strong> Licenza annuale proposta ad un costo oltre 5 volte inferiore rispetto ai software concorrenti (meno di 1/5 del prezzo di mercato), utilizzabile simultaneamente su un massimo di 5 postazioni/dispositivi per associazione, con gestione flessibile degli slot per sostituire o liberare postazioni mantenendo i giorni residui di validità.</li>
-                                    <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando la cartella locale o Google Drive nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, prima nota, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
+                                    <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando la cartella locale o Google Drive nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, compensi, rimborsi, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
                                     <li><strong>Integrazione Riforma dello Sport (D.Lgs. 36/2021 & RASD):</strong> Conforme alle nuove normative in materia di tesseramento, compensi lavoro sportivo, esenzioni INPS/IRPEF e rendicontazione per il Registro Nazionale delle Attività Sportive Dilettantistiche (RASD).</li>
                                 </ul>
-                                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Tutor Interattivo & Guida Contestuale (Copertura 100%):</strong> Attivando la <em>Modalità Guida</em> dalla barra superiore, ogni pulsante, selettore e campo dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse.</div>`;
+                                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Tutor Interattivo & Guida Contestuale (Copertura 100%):</strong> Attivando la <em>Modalità Guida</em> dalla barra superiore, ogni pulsante, selettore e campo dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse con spiegazione di azione ed effetto concreto.</div>`;
                         break;
                     case 'soci':
                         html = `<h2>2. Anagrafica Soci & Atleti</h2>
-                                <p>Gestisci l'elenco completo degli iscritti, i tesseramenti EPS/FSN, i certificati medici e le discipline praticate.</p>
+                                <p>Gestisci l'elenco completo degli iscritti, i tesseramenti EPS/FSN, i certificati medici, le quote e le discipline praticate.</p>
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
                                     <li><strong>Calcolo Automatico Codice Fiscale:</strong> Inserendo Cognome, Nome, Data, Sesso e Comune di nascita, il gestionale calcola istantaneamente il Codice Fiscale dell'atleta.</li>
-                                    <li><strong>Monitoraggio Certificati Medici:</strong> Sistema integrato di alert che evidenzia i certificati in scadenza o già scaduti, impedendo l'accesso ad atleti non idonei.</li>
+                                    <li><strong>Monitoraggio Certificati Medici:</strong> Sistema integrato di alert visivi che evidenzia i certificati in scadenza o già scaduti, impedendo l'accesso ad atleti non idonei.</li>
                                     <li><strong>Filtri Dinamici Intelligenti:</strong> Filtra i soci con un click per <em>Quote Scadute</em>, <em>Tesseramenti Scaduti</em>, <em>Certificati Medici Scaduti</em>, <em>Morosi</em>, <em>Attivi</em> o <em>Cessati</em>.</li>
-                                    <li><strong>Taglie & Discipline:</strong> Tracciamento taglie abbigliamento per divise societarie e assegnazione corsi.</li>
-                                    <li><strong>Importazione Massiva da Excel:</strong> Se disponi di un elenco corposo di soci in un foglio di calcolo, puoi importarli in blocco tramite il nostro <em>Modello Excel collaudato</em> disponibile in <em>Impostazioni</em> (per la procedura completa vedi il Capitolo 10 della guida).</li>
+                                    <li><strong>Note Soci Riservate con Bloc-Notes (Novità):</strong> Ogni socio include uno spazio appunti privato accessibile tramite l'icona a forma di bloc-notes, per memorizzare accordi interni, recapiti alternativi o preferenze orarie, con salvataggio protetto e sincronizzazione cloud senza conflitti.</li>
+                                    <li><strong>Comunicazioni WhatsApp Ufficiali (Novità):</strong> Icona ufficiale WhatsApp con logo verde per aprire istantaneamente la chat con il socio e inviare promemoria scadenze, quote associative o ricevute con testi formali precompilati.</li>
+                                    <li><strong>Taglie & Discipline:</strong> Tracciamento taglie abbigliamento per kit e divise societarie e assegnazione ai corsi della struttura.</li>
+                                    <li><strong>Importazione Massiva da Modello Excel Collaudato:</strong> Se possiedi un archivio corposo di soci in un foglio di calcolo, puoi scaricare il <em>Modello Excel ufficiale (.xlsx)</em> da <em>Impostazioni</em> e importare tutti gli iscritti in pochi istanti senza rischi di disallineamento (vedi Capitolo 10 per la guida passo-passo).</li>
                                 </ul>`;
                         break;
                     case 'ricevute':
                         html = `<h2>3. Ricevute & Quote Associative</h2>
-                                <p>Gestisci in modo professionale l'emissione e il registro di tutte le entrate istituzionali ed commerciali.</p>
-                                <h3>Funzionalità Chiave:</h3>
+                                <p>Gestisci in modo professionale l'emissione, la numerazione e il registro di tutte le entrate istituzionali e commerciali dell'associazione.</p>
+                                
+                                <h3>🔴 Flusso Operativo Bozza vs 🟢 Emessa (Nuova Funzionalità):</h3>
+                                <p>Il gestionale offre un sistema evoluto di gestione a doppio stato per conciliare flessibilità operativa e rigore fiscale:</p>
                                 <ul>
-                                    <li><strong>Emissione Singola e Multipla:</strong> Emetti ricevute per quote associative, iscrizioni corsi e tesseramenti dalla scheda socio o dal registro globale.</li>
-                                    <li><strong>Numerazione Sequenziale Fiscale Cronologica:</strong> Registrazione sequenziale a garanzia di conformità contabile per ricevute digitali e bollettini cartacei.</li>
-                                    <li><strong>Commissioni Pagamenti Digitali (SumUp, Stripe, POS):</strong> Scorpora ed evidenzia automaticamente le commissioni bancarie trattenute dai terminali POS digitali mantenendo il lordo per la ricevuta socio.</li>
-                                    <li><strong>Annullamento & Storno Contabile:</strong> Gestione degli annullamenti con tracciamento formale dell'operazione nel registro contabile.</li>
+                                    <li><strong>🔴 Stato Bozza (Badge Rosso):</strong> Pensato per predisporre le ricevute in anticipo o in attesa di conferma del pagamento. 
+                                        <ul>
+                                            <li>Sul documento PDF generato viene impressa in diagonale la filigrana e la testata <strong>"BOZZA NON DEFINITIVA"</strong>.</li>
+                                            <li>Tutti i dati della ricevuta (socio, importo, date, quote e note) possono essere liberamente modificati cliccando sull'icona della matita ✏️.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>🟢 Stato Emessa (Badge Verde):</strong> Certifica la quietanza fiscale come definitiva a tutti gli effetti di legge.
+                                        <ul>
+                                            <li>La filigrana scompare e il documento PDF ufficiale conforme viene archiviato automaticamente nella cartella <em>anno [stagione]/ricevute</em>.</li>
+                                            <li>Per tutelare la progressività contabile ed evitare sanzioni in sede di verifica fiscale, le modifiche sono bloccate (icona del lucchetto 🔒).</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Toggle Rapido dello Stato & Protezione Contabile:</strong> Facendo clic sul badge di stato è possibile commutare la ricevuta da Bozza a Emessa e viceversa. Per riportare una ricevuta già emessa in bozza, il sistema richiede una conferma esplicita di sicurezza per evitare alterazioni contabili accidentali (bypassata istantaneamente quando la <em>Modalità Debug</em> è attiva).</li>
+                                </ul>
+
+                                <h3>⋮ Layout Compatto Ibrido & Menu Azioni a Cascata (Nuova Funzionalità):</h3>
+                                <p>Per una tabella sempre ordinata anche su schermi compatti o portatili:</p>
+                                <ul>
+                                    <li><strong>Azione Primaria Immediata:</strong> Il pulsante <code>💾 PDF</code> resta sempre a portata di clic per scaricare o archiviare la quietanza.</li>
+                                    <li><strong>Menu a Tendina "⋮ Azioni":</strong> Raggruppa in modo salvaspazio tutte le operazioni secondarie: <em>🖨️ Stampa Ricevuta</em>, <em>📧 Invia per Email</em>, <em>💬 Invia su WhatsApp</em> (con logo ufficiale verde), <em>🚫 Annulla Ricevuta & Storna</em>, oltre agli strumenti tecnici in Modalità Debug (<em>➕ Inserisci intermedia</em>, <em>⏩ Sposta numerazione</em>, <em>🗑️ Elimina definitivamente</em>).</li>
+                                    <li><strong>Timer di Permanenza (1 Secondo):</strong> Il menu a cascata è dotato di un ritardo di chiusura programmato di 1 secondo su mouseleave, impedendo che il menu si chiuda accidentalmente durante il movimento del mouse tra le varie voci.</li>
+                                </ul>
+
+                                <h3>Altre Funzionalità Chiave:</h3>
+                                <ul>
+                                    <li><strong>Numerazione Sequenziale Fiscale Cronologica:</strong> Registrazione progressiva a garanzia di conformità per ricevute digitali e blocco cartaceo.</li>
+                                    <li><strong>Commissioni Pagamenti Digitali (SumUp, Stripe, POS):</strong> Scorporo e tracciamento automatico delle commissioni trattenute mantenendo l'importo lordo corretto per la quietanza socio.</li>
+                                    <li><strong>Annullamento & Storno Contabile:</strong> Gestione formale degli annullamenti con registrazione a specchio in Prima Nota cassa/banca.</li>
                                 </ul>`;
                         break;
                     case 'primanota':
@@ -7216,6 +7252,7 @@
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
                                     <li><strong>Doppio Registro Cassa & Banca:</strong> Tracciamento separato e in tempo reale tra la <em>Cassa Reale (Contanti)</em> e la <em>Banca / Conti Digitali</em> con supporto ai Giroconti spesa/versamento.</li>
+                                    <li><strong>Integrazione Diretta con Ricevute, Compensi e Rimborsi:</strong> I movimenti in entrata delle ricevute e le uscite per compensi tecnici e rimborsi spese confluiscono in automatico nella Prima Nota non appena emessi o liquidati, preservando la quadratura finanziaria.</li>
                                     <li><strong>Riconciliazione Estratto Conto Bancario:</strong> Confronta in qualsiasi momento il saldo contabile a sistema con l'estratto conto reale, registrando eventuali rettifiche per arrotondamenti o spese bancarie.</li>
                                     <li><strong>Procedura Guidata 🔒 Chiusura Esercizio Annuale:</strong> Al 31 agosto (chiusura bilancio), il wizard guida la quadratura contabile e genera in automatico i saldi iniziali di partenza al 1° settembre per il nuovo anno sportivo.</li>
                                     <li><strong>Esportazione Excel & PDF Prima Nota:</strong> Report completi scaricabili o stampabili per il commercialista o per il Consiglio Direttivo.</li>
@@ -7224,11 +7261,27 @@
                     case 'istruttori':
                         html = `<h2>5. Istruttori, Collaboratori & Compensi Sportivi</h2>
                                 <p>Gestisci l'anagrafica dei tecnici, i compensi per lavoro sportivo dilettantistico e i relativi adempimenti della Riforma dello Sport.</p>
-                                <h3>Funzionalità Chiave:</h3>
+
+                                <h3>🏆 Filtro Stagione Sportiva & 🔍 Ricerca Rapida Collaboratore (Nuova Funzionalità):</h3>
+                                <ul>
+                                    <li><strong>Filtro Stagione Sportiva:</strong> Permette di isolare con un solo clic i compensi corrisposti nella stagione sociale selezionata (es. <em>2025/2026</em>) oppure visualizzare l'archivio complessivo (<em>Tutte le Stagioni</em>).</li>
+                                    <li><strong>Ricerca Dinamica Live per Collaboratore:</strong> Digitando cognome o nome dell'istruttore, la tabella e i riquadri di riepilogo finanziario (<em>Totale Compensi Corrisposti</em> e <em>Ricevute Emesse</em>) si ricalcolano istantaneamente in tempo reale.</li>
+                                </ul>
+
+                                <h3>🔴 Flusso Bozza / 🟢 Emessa per Compensi (Nuova Funzionalità):</h3>
+                                <ul>
+                                    <li><strong>Bozza:</strong> Permette al segretario di preparare i compensi mensili in anticipo. Il prospetto generato riporta la filigrana e l'intestazione <em>"BOZZA"</em> e consente di riaprire e modificare l'importo, il periodo o la prestazione.</li>
+                                    <li><strong>Emessa:</strong> Converte il compenso in quietanza definitiva a saldo avvenuto, bloccandone i dati contabili a tutela della conformità.</li>
+                                </ul>
+
+                                <h3>⋮ Menu Azioni Compatto Riga:</h3>
+                                <p>Accesso immediato con pulsante <code>🖨️ Stampa</code> e menu a tendina <code>⋮</code> con <em>Salva PDF / Stampa</em>, <em>Annulla Ricevuta</em> ed <em>Elimina Definitivamente (Debug)</em>.</p>
+
+                                <h3>Funzionalità di Base:</h3>
                                 <ul>
                                     <li><strong>Gestione Fascia di Esenzione (Fino a € 5.000/anno):</strong> Modulo progettato per i compensi sportivi dilettantistici rientranti nella soglia di esenzione totale previdenziale e fiscale.</li>
-                                    <li><strong>Generazione Ricevute Compensi PDF:</strong> Stampa automatica delle ricevute compenso con la clausola di esenzione e ritenuta d'acconto ove applicabile.</li>
-                                    <li><strong>Rimborsi Spese & Liberatorie:</strong> Modulistica integrata per rimborsi chilometrici, trasferte e liberatorie per uso immagini o diritti televisivi.</li>
+                                    <li><strong>Generazione Ricevute Compensi:</strong> Quietanza automatica con clausola di esenzione e ritenuta d'acconto ove applicabile.</li>
+                                    <li><strong>Rimborsi Spese & Liberatorie:</strong> Modulistica integrata per rimborsi chilometrici, trasferte e liberatorie per uso immagini.</li>
                                 </ul>
                                 <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px 14px; margin-top: 15px; font-size: 0.85rem; line-height: 1.45;">
                                     ⚠️ <strong>Note Importanti & Limiti Operativi (D.Lgs. 36/2021):</strong><br>
@@ -7248,12 +7301,35 @@
                                 </ul>`;
                         break;
                     case 'segreteria':
-                        html = `<h2>7. Segreteria, Magazzino & Eventi</h2>
-                                <p>Gestione operativa delle forniture associative e degli eventi straordinari organizzati dall'ASD.</p>
-                                <h3>Funzionalità Chiave:</h3>
+                        html = `<h2>7. Segreteria, Magazzino, Eventi & Note Spesa (Rimborsi a Piè di Lista)</h2>
+                                <p>Gestione operativa delle forniture associative, inventario, eventi straordinari e note spese analitiche per dirigenti, volontari, atleti e collaboratori.</p>
+
+                                <h3>💸 Modulo Rimborsi Spese & Note a Piè di Lista:</h3>
+                                <p>Consente a dirigenti, volontari, atleti e tecnici di presentare note spese per trasferte, carburante, pedaggi, materiale sportivo urgente o ristorazione, allegando i relativi giustificativi.</p>
+
+                                <h3>🏆 Filtro Stagione Sportiva & 🔍 Ricerca Rapida Richiedente (Nuova Funzionalità):</h3>
                                 <ul>
-                                    <li><strong>Inventario & Magazzino:</strong> Monitoraggio scorte di abbigliamento, divise, attrezzatura sportiva e gadget con registro carico/scarico.</li>
-                                    <li><strong>Organizzazione Eventi & Stage:</strong> Gestione iscrizioni a stage, gare o manifestazioni con produzione liberatorie per minori.</li>
+                                    <li><strong>Filtro Stagione Sportiva:</strong> Con un solo clic isoli le note spese appartenenti alla stagione sociale attiva (es. <em>2025/2026</em>) o consulti l'intero storico (<em>Tutte le Stagioni</em>).</li>
+                                    <li><strong>Ricerca Dinamica Live:</strong> Digitando il nome del socio richiedente, la causale o la singola voce di spesa, la tabella e i riquadri KPI si aggiornano istantaneamente in tempo reale.</li>
+                                    <li><strong>Filtri per Stato & Range Temporale:</strong> Puoi filtrare le richieste per stato (<em>Tutte</em>, <em>Bozza</em>, <em>Emessa / Liquidata</em>, <em>Annullata</em>) e impostare un intervallo di date personalizzato (<em>Da Data</em> / <em>A Data</em> con pulsante di reset rapido <em>✖</em>).</li>
+                                    <li><strong>KPI Finanziari Dinamici:</strong> I box riassuntivi in testa alla pagina (<em>Totale Rimborsi Liquidati</em>, <em>Da Liquidare</em> e <em>Richieste Registrate</em>) si ricalcolano in tempo reale in base alla stagione e ai filtri impostati.</li>
+                                </ul>
+
+                                <h3>🔴 Flusso Bozza / 🟢 Emessa (Liquidata) per Rimborsi Spese (Nuova Funzionalità):</h3>
+                                <ul>
+                                    <li><strong>Bozza:</strong> Permette di registrare la nota spese mentre il richiedente sta ancora raccogliendo scontrini e giustificativi o in attesa di approvazione da parte del Consiglio Direttivo. Il documento PDF generato in questo stato riporta la filigrana <em>"BOZZA NON DEFINITIVA"</em> e consente la piena modifica di causale, date, importi e voci analitiche.</li>
+                                    <li><strong>Emessa (Liquidata):</strong> Converte la nota spese in quietanza ufficiale al momento del pagamento effettivo (cassa o bonifico), bloccandone i valori per la rendicontazione fiscale e registrando l'uscita in Prima Nota.</li>
+                                    <li><strong>Badge di Stato Interattivo:</strong> È possibile cliccare direttamente sul badge <em>Bozza</em> o <em>Emessa</em> nella riga della tabella per aggiornare lo stato con conferma immediata di sicurezza.</li>
+                                </ul>
+
+                                <h3>⋮ Menu Azioni Compatto Riga:</h3>
+                                <p>Accesso immediato con pulsante primario <code>🖨️ Stampa</code> (genera la distinta analitica PDF del rimborso) e menu a tendina <code>⋮</code> con <em>Modifica Rimborso</em>, <em>Segna come Liquidato / Bozza</em>, <em>Annulla Rimborso</em> ed <em>Elimina Definitivamente (Debug)</em>.</p>
+
+                                <h3>Esportazione Excel & Altre Funzionalità:</h3>
+                                <ul>
+                                    <li><strong>📊 Esporta Excel:</strong> Scarica istantaneamente il foglio di calcolo <code>.xlsx</code> contenente l'elenco filtrato delle note spese con importi, richiedenti e date per la revisione contabile.</li>
+                                    <li><strong>📦 Inventario & Magazzino:</strong> Monitoraggio scorte di abbigliamento, divise di gara, attrezzatura tecnica e gadget con registro di carico/scarico.</li>
+                                    <li><strong>🎟️ Organizzazione Eventi & Stage:</strong> Gestione delle iscrizioni a manifestazioni o stage agonistici con produzione delle liberatorie per minori.</li>
                                 </ul>`;
                         break;
                     case 'verbali':
@@ -7267,20 +7343,42 @@
                                 </ul>`;
                         break;
                     case 'impostazioni':
-                        html = `<h2>9. Dati ASD, Registro RASD, Licenza & Postazioni</h2>
+                        html = `<h2>9. Dati ASD, Registro RASD, Griglia Modulare, Licenza & Postazioni</h2>
                                 <p>Configura l'anagrafica istituzionale dell'associazione che alimenterà l'intestazione di tutti i documenti e ricevute emessi, gestisci la licenza e le preferenze operative.</p>
+                                
+                                <h3>📐 Griglia Modulare Compatta & Layout Ottimizzato (Nuova Impostazione):</h3>
+                                <p>Il pannello Impostazioni è suddiviso in schede tematiche chiare e razionali a schede compatte (Dati ASD, Consiglio Direttivo, Licenza & Postazioni, Cartelle & Storage, Backup & Snapshot, Azioni di Sistema), consentendo una configurazione intuitiva e veloce senza scorrimenti prolungati.</p>
+
                                 <h3>Funzionalità Chiave:</h3>
                                 <ul>
-                                    <li><strong>Dati Fiscali & Registri:</strong> Codice Fiscale / P.IVA, Indirizzo Sede Legale, Codici di Affiliazione EPS/FSN e numero di iscrizione al Registro RASD (ex CONI).</li>
+                                    <li><strong>Dati Fiscali & Registri:</strong> Codice Fiscale / P.IVA, Indirizzo Sede Legale, Codici di Affiliazione EPS/FSN e numero di iscrizione al Registro Nazionale delle Attività Sportive Dilettantistiche (RASD, ex CONI).</li>
                                     <li><strong>Consiglio Direttivo in Carica:</strong> Registrazione del Presidente, Vicepresidente, Segretario e Consiglieri attualmente operativi, con conservazione dello storico dei mandati passati.</li>
-                                    <li><strong>Gestione Licenza & Postazioni (Fino a 5 Dispositivi):</strong> Visualizza lo stato della licenza annuale Lemon Squeezy, i giorni rimanenti e le postazioni collegate. Da questo pannello puoi visualizzare l'ID del dispositivo attuale e revocare/disattivare una postazione dismessa o sostituita per liberare immediatamente lo slot a favore di un nuovo PC o tablet, senza alterare la scadenza naturale e i giorni residui della licenza.</li>
-                                    <li><strong>Preferenze di Salvataggio & File System:</strong> Configurazione della frequenza degli snapshot automatici e collegamento della cartella locale o Google Drive per l'archiviazione ordinata dei PDF per Anno Sportivo.</li>
+                                    <li><strong>Gestione Licenza & Postazioni (Fino a 5 Dispositivi Simultanei):</strong> Visualizza lo stato della licenza annuale Lemon Squeezy, i giorni rimanenti e le postazioni collegate. Da questo pannello puoi visualizzare l'ID del dispositivo attuale e revocare/disattivare una postazione dismessa o sostituita per liberare immediatamente lo slot a favore di un nuovo PC o tablet, senza alterare la scadenza naturale e i giorni residui della licenza.</li>
+                                    <li><strong>Preferenze di Salvataggio & File System:</strong> Configurazione della frequenza degli snapshot automatici (2h, 6h, 12h, 24h) e collegamento della cartella locale o Google Drive per l'archiviazione ordinata dei PDF per Anno Sportivo.</li>
                                 </ul>`;
                         break;
                     case 'backup':
-                        html = `<h2>10. Archiviazione File System Local-First, Backup, Snapshot & Excel</h2>
-                                <p>Protezione totale dei dati societari, time-machine locale a snapshot ed esportazione verso sistemi contabili esterni.</p>
+                        html = `<h2>10. Salvataggio Locale, Backup, Time-Machine Snapshot, Excel & Ripopolamento</h2>
+                                <p>Protezione totale dei dati societari, time-machine locale a snapshot, importazione/esportazione massiva Excel e ripristino automatico dell'archivio su nuove postazioni server.</p>
                                 
+                                <h3>🪄 Wizard "Ripopola Archivio su Nuovo Server" (Nuova Funzionalità Chiave):</h3>
+                                <p>Quando si formatta il computer della segreteria, si sostituisce l'hard disk o si allestisce una nuova postazione server principale, il database contabile può essere ripristinato in pochi secondi da file di Backup <code>.json</code> o dal Cloud Google Drive. Tuttavia, i singoli file PDF delle ricevute, delle note spese e dei verbali non sono ancora presenti nella nuova cartella disco fisso. Il nuovo <strong>Wizard di Ripopolamento</strong> risolve questa esigenza in modo automatico:</p>
+                                <ul>
+                                    <li><strong>Accesso Diretto dal Modulo di Selezione Cartella:</strong> Dopo aver selezionato la nuova cartella locale in <em>Impostazioni ➔ Salvataggio Locale</em>, è possibile avviare con un clic il wizard di ripopolamento.</li>
+                                    <li><strong>Dashboard di Sintesi Preventiva:</strong> Prima della generazione, il sistema calcola ed elenca in un riquadro sinottico tutti gli elementi pronti alla scrittura:
+                                        <ul>
+                                            <li><em>Ricevute Soci (PDF con timbro e numerazione originale)</em></li>
+                                            <li><em>Compensi Collaboratori (quietanze HTML / PDF)</em></li>
+                                            <li><em>Note Spesa / Rimborsi a piè di lista (PDF con elenco giustificativi)</em></li>
+                                            <li><em>Verbali Assemblee e Verbali Direttivo</em></li>
+                                            <li><em>Backup JSON Omnicomprensivo di emergenza</em></li>
+                                            <li><em>Cartelle di sistema per ogni singola Stagione Sportiva e per il Logo</em></li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Barra di Avanzamento Live & Log Dettagliato:</strong> Una progress bar dinamica con percentuale e contatore in tempo reale (es. <em>48 / 215 file generati</em>) accompagna la scrittura dei documenti sul disco.</li>
+                                    <li><strong>Avviso Trasparente Ricevute Cartacee:</strong> Un box informativo giallo/arancione evidenzia quante ricevute storiche erano state emesse da blocchetto cartaceo manuale, ricordando che tali registrazioni contabili non dispongono di PDF originale autogenerato a meno di scansione manuale.</li>
+                                </ul>
+
                                 <h3>🛡️ Time-Machine Locale: Gli Snapshot di Sicurezza:</h3>
                                 <p>Il gestionale è dotato di un sistema di snapshot automatici che memorizza interi stati contabili nella memoria protetta del browser, consentendo di annullare qualsiasi operazione errata:</p>
                                 <ul>
@@ -7295,7 +7393,7 @@
                                 <ul>
                                     <li><strong>File System Access API & Google Drive:</strong> Seleziona una cartella del tuo PC o del tuo Google Drive per consentire al gestionale di archiviare automaticamente ogni documento generato senza finestre di download.</li>
                                     <li><strong>Backup Completo (.JSON):</strong> Esportazione ed importazione con un click dell'intero database dell'associazione (soci, movimenti, verbali, configurazioni).</li>
-                                    <li><strong>Esportazione Excel Universale:</strong> Esportazione di anagrafica soci, prima nota e libro soci in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
+                                    <li><strong>Esportazione Excel Universale:</strong> Esportazione di anagrafica soci, prima nota, ricevute, compensi e rimborsi in formato Excel compatibile con qualsiasi software di contabilità o commercialista.</li>
                                 </ul>
 
                                 <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 18px 20px; margin-top: 25px;">
@@ -7327,13 +7425,21 @@
                                 </div>`;
                         break;
                     case 'multidevice':
-                        html = `<h2>11. Architettura Multi-Dispositivo & Sincronizzazione Google Drive</h2>
-                                <p>Il gestionale supporta un'architettura collaborativa a prova di errore per consentire l'utilizzo contemporaneo o alternato su più postazioni (PC banco reception, PC da casa, smartphone/tablet) senza rischio di perdere dati o generare duplicati.</p>
+                        html = `<h2>11. Architettura Multi-Dispositivo & Menu Rapido Cloud Topbar</h2>
+                                <p>Il gestionale supporta un'architettura collaborativa a prova di errore per consentire l'utilizzo contemporaneo o alternato su più postazioni (PC banco reception, PC da casa, smartphone/tablet degli istruttori) senza rischio di perdere dati o generare duplicati.</p>
                                 
-                                <h3>⚡ Avvio Diretto 100% Offline & Toggle Rapido Navbar:</h3>
+                                <h3>⚡ Avvio Diretto 100% Offline & Menu Rapido Cloud in Navbar (Nuova Funzionalità):</h3>
                                 <ul>
-                                    <li><strong>Avvio Istantaneo Senza Attese:</strong> All'apertura dell'applicazione non vengono mostrati popup o richieste bloccanti di rete: il gestionale si apre direttamente e al 100% in modalità Offline Locale pura.</li>
-                                    <li><strong>Toggle Rapido nella Barra di Navigazione:</strong> In alto a destra è presente il selettore rapido con badge cromatico fluorescente e balloon descrittivo. Con un solo clic puoi passare dalla modalità Offline pura alla connessione Cloud con Google Drive (e viceversa), sincronizzando i dati quando lo desideri.</li>
+                                    <li><strong>Avvio Istantaneo Senza Attese:</strong> All'apertura dell'applicazione non vengono mostrati popup o richieste bloccanti di rete: il gestionale si apre sempre direttamente e al 100% in modalità Offline Locale pura.</li>
+                                    <li><strong>Menu Rapido Topbar Cloud:</strong> In alto a destra è presente il badge interattivo con balloon informativo. Cliccandovi sopra si apre il menu rapido che raggruppa le 5 operazioni essenziali di collaborazione:
+                                        <ul>
+                                            <li><strong>📥 Eredita dal Cloud (Scarica sul PC):</strong> Sostituisce i dati locali di questo dispositivo con la copia online di Google Drive. Include la <em>Verifica a Specchio di Sicurezza</em> e genera automaticamente lo snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>.</li>
+                                            <li><strong>⬆️ Sovrascrivi Cloud con Dati Locali (Invia):</strong> Invia i dati attuali di questo PC su Google Drive, archiviando contestualmente la versione precedente in <code>GestioneASD_Backup_Precedente.json</code> e aggiornando la copia online per le altre postazioni.</li>
+                                            <li><strong>🔄 Sincronizza / Unisci i Dati (Merge):</strong> Combina i dati di questo computer con quelli su Drive senza cancellare record su entrambi i lati, applicando la regola del timestamp più recente (<code>updated_at</code>).</li>
+                                            <li><strong>📂 Versioni & Copie di Riserva sul Cloud:</strong> Esamina la Copia Attuale e la Copia di Riserva Precedente su Drive con data, ora e dimensione, consentendo il ripristino istantaneo con un clic.</li>
+                                            <li><strong>🔒 Disconnetti da Google Drive (Passa a Offline):</strong> Chiude la sessione Cloud e riporta il dispositivo in modalità Offline pura senza intaccare i dati salvati localmente.</li>
+                                        </ul>
+                                    </li>
                                 </ul>
 
                                 <h3>🔑 Licenza Multi-Dispositivo & Limite 5 Postazioni:</h3>
@@ -7347,9 +7453,9 @@
                                     <li><strong>🖥️ Dispositivo Server (PC Banco Palestra / Principale):</strong>
                                         <p>È la postazione centrale della palestra, collegata alla cartella documenti locale su disco fisso.</p>
                                         <ul>
-                                            <li>Conserva fisicamente tutti i file PDF ufficiali generati (ricevute soci, verbali assemblee, compensi, esportazioni Excel).</li>
+                                            <li>Conserva fisicamente tutti i file PDF ufficiali generati (ricevute soci, verbali assemblee, compensi, note spesa, esportazioni Excel).</li>
                                             <li><strong>Auto-Generatore Intelligente di Ricevute PDF:</strong> quando un collaboratore da smartphone registra una ricevuta per un socio, l'operazione si sincronizza sul Cloud Google Drive. Non appena il PC Server sincronizza o si avvia, genera e archivia da solo i PDF nella cartella locale, pronti per la stampa cartacea!</li>
-                                            <li>Gestisce i backup di sicurezza fisici in formato <code>.json</code> e la chiusura dell'esercizio contabile.</li>
+                                            <li>Gestisce i backup di sicurezza fisici in formato <code>.json</code> e il Wizard di Ripopolamento Archivio.</li>
                                         </ul>
                                     </li>
                                     <li><strong>📱 Dispositivo Client (Istruttori / Smartphone / Portatili):</strong>
@@ -7361,19 +7467,19 @@
                                     </li>
                                 </ul>
 
-                                <h3>📥 Eredita dal Cloud (Allineamento Rapido senza Fusione):</h3>
-                                <p>Se lavori su un PC secondario (es. portatile o PC della palestra) dopo aver effettuato importanti modifiche o riordini dal PC principale, puoi utilizzare la funzione <strong>"📥 Eredita dal Cloud (Sovrascrivi questo PC)"</strong> (disponibile sia al primo accesso, sia in <em>Impostazioni ➔ Salvataggio Cloud</em>):</p>
+                                <h3>📥 Eredita dal Cloud & Verifica a Specchio di Sicurezza:</h3>
+                                <p>Se lavori su un PC secondario (es. portatile o PC della palestra) dopo aver effettuato importanti modifiche o riordini dal PC principale, puoi utilizzare la funzione <strong>"📥 Eredita dal Cloud (Sovrascrivi questo PC)"</strong>:</p>
                                 <ul>
                                     <li><strong>Confronto a Specchio di Sicurezza:</strong> Prima di procedere, una finestra mette a confronto i dati del PC attuale con quelli salvati su Google Drive (numero soci, ricevute, prima nota e data ultimo salvataggio).</li>
                                     <li><strong>Alert Intelligente di Disallineamento:</strong> Se la copia su Google Drive risulta più vecchia o con meno record rispetto al computer attuale, il sistema ti avvisa visivamente in arancione/rosso prima di consentire la conferma.</li>
-                                    <li><strong>Snapshot di Emergenza Automatico:</strong> Prima di applicare i dati del cloud, il software scatta automaticamente uno snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>. In caso di errore umano, puoi tornare indietro con un clic.</li>
+                                    <li><strong>Snapshot di Emergenza Automatico:</strong> Prima di applicare i dati del cloud, il software scatta automaticamente uno snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>. In caso di errore umano, puoi tornare indietro con un clic su <em>🔄 Undo</em>.</li>
                                 </ul>
 
                                 <h3>☁️ Copia di Riserva su Google Drive & Storico Versioni:</h3>
                                 <p>Per azzerare il rischio di perdere dati sul Cloud:</p>
                                 <ul>
                                     <li><strong>Rotazione Automatica:</strong> Ad ogni salvataggio o sovrascrittura su Google Drive, il gestionale archivia preventivamente lo stato online precedente nel file <code>GestioneASD_Backup_Precedente.json</code>. In questo modo sul tuo account Google Drive sono sempre conservate sia la versione corrente che quella precedente di riserva.</li>
-                                    <li><strong>📂 Esploratore Versioni Cloud:</strong> Dal pulsante <em>"Versioni & Copie sul Cloud"</em> in Impostazioni puoi esaminare la Copia Attuale e la Copia di Riserva Precedente con data, ora e dimensione, e ripristinare qualsiasi versione direttamente sul tuo PC con un click.</li>
+                                    <li><strong>📂 Esploratore Versioni Cloud:</strong> Dal pulsante <em>"Versioni & Copie sul Cloud"</em> puoi esaminare la Copia Attuale e la Copia di Riserva Precedente con data, ora e dimensione, e ripristinare qualsiasi versione direttamente sul tuo PC con un click.</li>
                                 </ul>
 
                                 <h3>Regola del Timestamp (Ultima Modifica Vince):</h3>
@@ -7397,11 +7503,17 @@
                                 <p>La <strong>Modalità Debug</strong> è un modulo avanzato protetto da crittografia (MasterKey) riservato all'amministratore e per interventi di riallineamento straordinario del database.</p>
                                 
                                 <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
-                                    <strong>🔒 Protezione Attiva:</strong> Nelle normali operazioni quotidiane, la numerazione fiscale progressiva delle ricevute e la cancellazione irreversibile dei record sono bloccate per evitare errori di battitura, buchi di numerazione o anomalie contabili da parte degli operatori di segreteria.
+                                    <strong>🔒 Protezione Attiva:</strong> Nelle normali operazioni quotidiane, la numerazione fiscale progressiva delle ricevute, il blocco delle registrazioni emesse e la cancellazione irreversibile dei record sono vincolati per evitare errori di battitura, buchi di numerazione o anomalie contabili da parte degli operatori di segreteria.
                                 </div>
 
                                 <h3>Strumenti e Funzioni di Debug:</h3>
                                 <ul>
+                                    <li><strong>🗑️ Eliminazione Definitiva (Hard Delete) dal Menu Azioni Compatto:</strong>
+                                        <p>Nel menu contestuale a comparsa <code>⋮ Azioni</code> di ricevute, compensi e note spese compare la voce <em>Elimina Definitivamente (Debug)</em> in colore rosso. Permette la rimozione fisica e irreversibile del record dal database locale e cloud, come alternativa straordinaria all'ordinario Annullamento Contabile previsto dalla normativa fiscale.</p>
+                                    </li>
+                                    <li><strong>🔓 Override Vincoli Bozza / Emessa:</strong>
+                                        <p>Consente di riaprire in modifica o forzare lo stato di ricevute, compensi e note spese già contrassegnati come emessi/liquidati, consentendo correzioni strutturali in caso di errata registrazione.</p>
+                                    </li>
                                     <li><strong>🪄 Ripara Ricevute (Opzione 1 - Cartaceo & Digitale da 1 a N):</strong>
                                         <p>Risolve disallineamenti complessi nei registri ricevute. Mantiene intatte le ricevute cartacee con il loro numero originale, mentre riordina cronologicamente le ricevute digitali assegnando la numerazione continua da 1 a N. Sincronizza contestualmente la Prima Nota Cassa/Banca e genera in automatico uno snapshot di sicurezza <code>pre-opzione1</code>.</p>
                                     </li>
@@ -7417,14 +7529,12 @@
                                     <li><strong>📁 Allinea ed Archivia PDF Cartella:</strong>
                                         <p>Disponibile nella pagina Ricevute: scansiona la cartella documenti locale, elimina file PDF obsoleti o con vecchie numerazioni errate e rigenera le copie PDF allineate allo stato attuale.</p>
                                     </li>
-                                    <li><strong>🗑️ Eliminazione Definitiva (Hard Delete) Ricevute e Compensi:</strong>
-                                        <p>Sblocca la cancellazione fisica irreversibile della singola registrazione, alternativa all'ordinario Annullamento Contabile previsto per legge.</p>
-                                    </li>
                                 </ul>
 
                                 <h3>Come Accedere alla Modalità Debug:</h3>
                                 <p>Accedi a <strong>Impostazioni ➔ 🔒 Modalità Debug</strong> in fondo alla schermata, digita la password amministrativa e premi <strong>Sblocca</strong>. Terminata la manutenzione, clicca su <strong>Disattiva Debug</strong> per riattivare tutte le protezioni del gestionale.</p>`;
                         break;
+
                 }
                 contentDiv.innerHTML = html;
             },
@@ -8869,7 +8979,8 @@
                             ` : `
                                 <button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
                                         onclick="app.toggleRicevutaStato('${r.id}', event)" 
-                                        title="${isBozza ? 'Documento in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Documento Emesso (bloccato in sola lettura). Clicca per riportare in bozza.'}">
+                                        title="${isBozza ? 'Documento in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Documento Emesso (bloccato in sola lettura). Clicca per riportare in bozza.'}"
+                                        data-guide="${isBozza ? 'Emetti ricevuta in via definitiva. Effetto: Rende la quietanza fiscale definitiva, rimuove la filigrana di bozza e ne blocca le modifiche contabili accidentali.' : 'Riporta ricevuta in Bozza. Effetto: Sblocca la modifica dei campi di questa ricevuta con conferma di sicurezza per preservare la correttezza contabile.'}">
                                     ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
                                 </button>
                             `}
@@ -8878,28 +8989,28 @@
                             <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}" data-guide="Scarica o archivia PDF ricevuta. Effetto: Genera il documento PDF della quietanza e lo archivia nella cartella documenti cartacei.">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
                                 ${(isBozza || this.state.debugMode) && !r.annullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px;" title="${this.state.debugMode ? 'Modifica dati ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" onclick="app.openEditRicevutaModal('${r.id}')">✏️</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px;" title="${this.state.debugMode ? 'Modifica dati ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" onclick="app.openEditRicevutaModal('${r.id}')" data-guide="Modifica ricevuta. Effetto: Apre la finestra di modifica per aggiornare intestatario, importo, date o note di questa bozza.">✏️</button>
                                 ` : (!r.annullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Ricevuta emessa bloccata. Effetto: Documento definitivo in sola lettura. Clicca sul badge '🟢 Emessa' per riportarlo in bozza se devi correggerlo.">🔒</button>
                                 ` : '')}
                                 <div class="row-actions-dropdown">
-                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni (Stampa, Email, WhatsApp, Annulla, Debug)...">⋮</button>
+                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni (Stampa, Email, WhatsApp, Annulla, Debug)..." data-guide="Menu altre azioni riga. Effetto: Apre il menu a tendina compatto con opzioni di stampa, invio promemoria email o WhatsApp, annullamento fiscale e strumenti debug.">⋮</button>
                                     <div class="row-actions-menu">
-                                        <button type="button" class="row-actions-item" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}">
+                                        <button type="button" class="row-actions-item" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}" data-guide="Stampa ricevuta. Effetto: Apre l'anteprima di stampa del browser per stampare su carta fisica o esportare in PDF.">
                                             <span class="row-actions-icon">🖨️</span>
                                             <span>Stampa Ricevuta</span>
                                         </button>
-                                        <button type="button" class="row-actions-item ${!hasEmail || r.annullata ? 'disabled' : ''}" onclick="${hasEmail && !r.annullata ? `app.sendReceiptEmail('${r.id}')` : ''}" title="${hasEmail ? 'Invia dettaglio ricevuta a ' + socioEmail : 'Email socio non registrata'}">
+                                        <button type="button" class="row-actions-item ${!hasEmail || r.annullata ? 'disabled' : ''}" onclick="${hasEmail && !r.annullata ? `app.sendReceiptEmail('${r.id}')` : ''}" title="${hasEmail ? 'Invia dettaglio ricevuta a ' + socioEmail : 'Email socio non registrata'}" data-guide="Invia quietanza via Email. Effetto: Apre il client di posta predefinito con il riepilogo della quota versata precompilato per il socio.">
                                             <span class="row-actions-icon">📧</span>
                                             <span>Invia per Email</span>
                                         </button>
-                                        <button type="button" class="row-actions-item ${!hasTel || r.annullata ? 'disabled' : ''}" onclick="${hasTel && !r.annullata ? `app.sendReceiptWhatsApp('${r.id}')` : ''}" title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Telefono socio non registrato'}">
+                                        <button type="button" class="row-actions-item ${!hasTel || r.annullata ? 'disabled' : ''}" onclick="${hasTel && !r.annullata ? `app.sendReceiptWhatsApp('${r.id}')` : ''}" title="${hasTel ? 'Invia dettaglio ricevuta via WhatsApp a ' + socioTel : 'Telefono socio non registrato'}" data-guide="Invia quietanza su WhatsApp. Effetto: Apre la chat WhatsApp ufficiale con il socio inviando il testo formale con gli estremi della ricevuta.">
                                             <span class="row-actions-icon" style="color:#25D366;">${app.getWhatsAppIcon(15)}</span>
                                             <span>Invia su WhatsApp</span>
                                         </button>
                                         ${!r.annullata ? `
                                             <div class="row-actions-divider"></div>
-                                            <button type="button" class="row-actions-item" style="color:#f59e0b;" onclick="app.annullaRicevuta('${r.id}')" title="Annulla Ricevuta">
+                                            <button type="button" class="row-actions-item" style="color:#f59e0b;" onclick="app.annullaRicevuta('${r.id}')" title="Annulla Ricevuta" data-guide="Annulla ricevuta e storna contabilità. Effetto: Segna la ricevuta come annullata a fini fiscali e rimuove contestualmente l'incasso dalla Prima Nota cassa/banca.">
                                                 <span class="row-actions-icon">🚫</span>
                                                 <span>Annulla Ricevuta</span>
                                             </button>
@@ -8907,15 +9018,15 @@
                                         ${this.state.debugMode ? `
                                             <div class="row-actions-divider"></div>
                                             <div class="row-actions-debug-header">🛠️ STRUMENTI DEBUG</div>
-                                            <button type="button" class="row-actions-item text-primary" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')" title="Inserisci nuova ricevuta al posto del N. ${r.numero}">
+                                            <button type="button" class="row-actions-item text-primary" onclick="app.openInsertRicevutaModal(${parseInt(r.numero)}, ${parseInt(r.anno)}, '${r.data}')" title="Inserisci nuova ricevuta al posto del N. ${r.numero}" data-guide="[DEBUG] Inserisci ricevuta intermedia. Effetto: Crea una nuova ricevuta al numero corrente facendo scalare in avanti (+1) la numerazione di quelle successive.">
                                                 <span class="row-actions-icon">➕</span>
                                                 <span>Inserisci intermedia</span>
                                             </button>
-                                            <button type="button" class="row-actions-item" style="color:#3b82f6;" onclick="app.openShiftRicevuteModal('${r.id}')" title="Sposta numerazione">
+                                            <button type="button" class="row-actions-item" style="color:#3b82f6;" onclick="app.openShiftRicevuteModal('${r.id}')" title="Sposta numerazione" data-guide="[DEBUG] Sposta sequenza numerica. Effetto: Fa slittare in avanti o indietro la numerazione delle ricevute a partire da questa riga.">
                                                 <span class="row-actions-icon">⏩</span>
                                                 <span>Sposta numerazione</span>
                                             </button>
-                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRicevuta('${r.id}')" title="Elimina definitivamente">
+                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRicevuta('${r.id}')" title="Elimina definitivamente" data-guide="[DEBUG] Elimina definitivamente dal database. Effetto: Cancella fisicamente il record dal database in modo irreversibile (sconsigliato durante l'ordinaria gestione).">
                                                 <span class="row-actions-icon">🗑️</span>
                                                 <span>Elimina definitivamente</span>
                                             </button>
@@ -16149,8 +16260,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     </div>
 
                     <div id="ripopola-action-area" style="display: flex; justify-content: flex-end; gap: 10px;">
-                        <button class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                        <button class="btn btn-primary" style="background: #10b981; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;" onclick="app.eseguiRipopolamentoArchivio()">
+                        <button class="btn btn-outline" onclick="app.closeModal()" data-guide="Annulla procedura di ripopolamento. Effetto: Chiude la modale senza apportare alcuna modifica all'archivio.">Annulla</button>
+                        <button class="btn btn-primary" style="background: #10b981; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;" onclick="app.eseguiRipopolamentoArchivio()" data-guide="Avvia ripopolamento archivio sul nuovo server. Effetto: Scansiona il database, crea le cartelle per ogni Anno Sportivo e rigenera tutti i PDF (ricevute, compensi, note spesa, verbali e backup JSON).">
                             🚀 Avvia Ripopolamento Completo (${totalDocs} file)
                         </button>
                     </div>
@@ -16291,8 +16402,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     completionBox.style.justifyContent = 'flex-end';
                     completionBox.style.gap = '10px';
                     completionBox.innerHTML = `
-                        <button class="btn btn-outline" onclick="app.closeModal()">Chiudi</button>
-                        <button class="btn btn-primary" onclick="app.closeModal(); app.openArchivioDocumentiModal();" style="display:inline-flex; align-items:center; gap:6px;">
+                        <button class="btn btn-outline" onclick="app.closeModal()" data-guide="Chiudi procedura completata. Effetto: Chiude il popup tornando al pannello impostazioni.">Chiudi</button>
+                        <button class="btn btn-primary" onclick="app.closeModal(); app.openArchivioDocumentiModal();" style="display:inline-flex; align-items:center; gap:6px;" data-guide="Apri ed esplora archivio documenti. Effetto: Apre il visualizzatore interno per sfogliare tutte le cartelle e i documenti appena rigenerati.">
                             📁 Apri e Visualizza Archivio Documenti
                         </button>
                     `;
@@ -22640,37 +22751,37 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                             <div class="form-group">
                                 <label>Importo Compenso (€) *</label>
-                                <input type="number" name="importo" class="form-control" step="0.01" required placeholder="0.00" value="${parseFloat(r.importo).toFixed(2)}">
+                                <input type="number" name="importo" class="form-control" step="0.01" required placeholder="0.00" value="${parseFloat(r.importo).toFixed(2)}" data-guide="Importo compenso sportivo. Effetto: Imposta l'ammontare netto corrisposto al tecnico per la prestazione dilettantistica.">
                             </div>
                             <div class="form-group">
                                 <label>Data Pagamento *</label>
                                 <div style="display:flex; gap:6px; align-items:center; position:relative;">
-                                    <input type="text" name="data" id="compenso-data" class="form-control it-date-input" value="${this.formatItDate(r.data)}" required placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off">
-                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('compenso-data')" title="Scegli data da calendario">📅</button>
+                                    <input type="text" name="data" id="compenso-data" class="form-control it-date-input" value="${this.formatItDate(r.data)}" required placeholder="gg/mm/aaaa" onblur="app.normalizeDateInput(this)" autocomplete="off" data-guide="Data di corresponsione compenso. Effetto: Data ufficiale registrata sulla quietanza fiscale e nel registro di cassa/banca.">
+                                    <button type="button" class="btn btn-outline" style="padding:7px 10px; cursor:pointer; flex-shrink:0; border:1px solid #cbd5e1; background:var(--bg-card, #fff); font-size:1.05rem; line-height:1;" onclick="app.openCalendarFor('compenso-data')" title="Scegli data da calendario" data-guide="Apri calendario data. Effetto: Seleziona rapidamente il giorno di liquidazione del compenso.">📅</button>
                                 </div>
                             </div>
                             <div class="form-group" style="grid-column:1/-1;">
                                 <label>Periodo di Riferimento</label>
-                                <input type="text" name="periodo" class="form-control" value="${(r.periodo || '').replace(/"/g, '&quot;')}" placeholder="Es: 01/07/2026 - 31/07/2026">
+                                <input type="text" name="periodo" class="form-control" value="${(r.periodo || '').replace(/"/g, '&quot;')}" placeholder="Es: 01/07/2026 - 31/07/2026" data-guide="Periodo di svolgimento attività. Effetto: Specifica l'intervallo temporale delle lezioni o degli allenamenti retribuiti.">
                             </div>
                             <div class="form-group" style="grid-column:1/-1;">
                                 <label>Prestazione Svolta</label>
-                                <input type="text" name="prestazione" class="form-control" value="${(r.prestazione || '').replace(/"/g, '&quot;')}" placeholder="Descrizione attività">
+                                <input type="text" name="prestazione" class="form-control" value="${(r.prestazione || '').replace(/"/g, '&quot;')}" placeholder="Descrizione attività" data-guide="Descrizione prestazione sportiva. Effetto: Dettaglia l'attività svolta (es. corsi, lezioni, preparazione atletica) stampata sul prospetto.">
                             </div>
                             <div class="form-group">
                                 <label>Metodo di Pagamento</label>
-                                <select name="pagamento" class="form-control">
+                                <select name="pagamento" class="form-control" data-guide="Metodo di corresponsione. Effetto: Assegna la movimentazione a Cassa Contanti o Banca/Conto Digitale nella Prima Nota.">
                                     ${this.getMetodiPagamento().map(m => `<option value="${m}" ${(r.pagamento === m || r.metodo_pagamento === m) ? 'selected' : ''}>${this.getMetodoDisplayLabel(m)}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Altri compensi sportivi anno (€) *</label>
-                                <input type="number" name="altri_compensi" class="form-control" step="0.01" value="${r.altri_compensi || 0}" placeholder="Compensi da altri enti">
+                                <input type="number" name="altri_compensi" class="form-control" step="0.01" value="${r.altri_compensi || 0}" placeholder="Compensi da altri enti" data-guide="Compensi percepiti da altri enti nell'anno. Effetto: Utile per verificare il rispetto della soglia annuale di esenzione di 5.000 € ex D.Lgs. 36/2021.">
                             </div>
                         </div>
                         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:1rem;">
-                            <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                            <button type="submit" class="btn btn-success">💾 Aggiorna Ricevuta Compenso</button>
+                            <button type="button" class="btn btn-outline" onclick="app.closeModal()" data-guide="Annulla modifiche. Effetto: Chiude la modale senza salvare alcuna variazione al compenso.">Annulla</button>
+                            <button type="submit" class="btn btn-success" data-guide="Salva modifiche compenso. Effetto: Aggiorna i dati del compenso e rigenera la quietanza riallineando la contabilità.">💾 Aggiorna Ricevuta Compenso</button>
                         </div>
                     </form>
             `);
@@ -23125,7 +23236,8 @@ ${r.annullata ? `
                                 ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullata</span>` 
                                 : `<button type="button" class="badge-doc-status ${r.stato === 'bozza' ? 'bozza' : 'emessa'}" 
                                         onclick="app.toggleCompensoStato('${r.id}', event)" 
-                                        title="${r.stato === 'bozza' ? 'Compenso in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Compenso Emesso (definitivo). Clicca per riportare in bozza.'}">
+                                        title="${r.stato === 'bozza' ? 'Compenso in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Compenso Emesso (definitivo). Clicca per riportare in bozza.'}"
+                                        data-guide="${r.stato === 'bozza' ? 'Emetti compenso in via definitiva. Effetto: Rende definitivo il compenso sportivo, rimuove la filigrana di bozza e ne blocca le modifiche contabili.' : 'Riporta compenso in Bozza. Effetto: Sblocca la modifica dei dati di questo compenso con richiesta di conferma.'}">
                                     ${r.stato === 'bozza' ? '🔴 Bozza' : '🟢 Emessa'}
                                 </button>`}
                         </td>
@@ -23133,20 +23245,20 @@ ${r.annullata ? `
                             <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="padding: 5px 10px; font-size:0.8rem;" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa Ricevuta Compenso" data-guide="Stampa ricevuta compenso. Effetto: Apre l'anteprima di stampa o salvataggio PDF della quietanza sportiva.">🖨️ Stampa</button>
                                 ${(r.stato === 'bozza' || this.state.debugMode) && !isAnnullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem;" title="${this.state.debugMode ? 'Modifica compenso (Debug Mode)' : 'Modifica compenso in bozza'}" onclick="app.openEditCompensoModal('${r.id}')">✏️</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem;" title="${this.state.debugMode ? 'Modifica compenso (Debug Mode)' : 'Modifica compenso in bozza'}" onclick="app.openEditCompensoModal('${r.id}')" data-guide="Modifica compenso sportivo. Effetto: Apre la maschera per aggiornare importo, data, prestazione o periodo del compenso.">✏️</button>
                                 ` : (!isAnnullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Compenso emesso bloccato. Effetto: Documento definitivo in sola lettura. Clicca sul badge '🟢 Emessa' per riportarlo in bozza se devi modificarlo.">🔒</button>
                                 ` : '')}
                                 <div class="row-actions-dropdown">
-                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
+                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni..." data-guide="Menu altre azioni compenso. Effetto: Apre il menu a tendina compatto con opzioni di stampa/PDF, annullamento ed eliminazione debug.">⋮</button>
                                     <div class="row-actions-menu">
-                                        <button type="button" class="row-actions-item" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa o Salva PDF">
+                                        <button type="button" class="row-actions-item" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa o Salva PDF" data-guide="Salva o stampa prospetto compenso. Effetto: Apre la quietanza ufficiale del compenso sportivo per la stampa cartacea o il salvataggio.">
                                             <span class="row-actions-icon">💾</span>
                                             <span>Salva PDF / Stampa</span>
                                         </button>
                                         ${!isAnnullata ? `
                                             <div class="row-actions-divider"></div>
-                                            <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaCompensoReceipt('${r.id}')" title="Annulla Ricevuta">
+                                            <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaCompensoReceipt('${r.id}')" title="Annulla Ricevuta" data-guide="Annulla quietanza compenso. Effetto: Segna il compenso come annullato e rimuove contestualmente l'uscita dalla Prima Nota cassa/banca.">
                                                 <span class="row-actions-icon">🚫</span>
                                                 <span>Annulla Ricevuta</span>
                                             </button>
@@ -23154,7 +23266,7 @@ ${r.annullata ? `
                                         ${this.state.debugMode ? `
                                             <div class="row-actions-divider"></div>
                                             <div class="row-actions-debug-header">🛠️ DEBUG MODE</div>
-                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')" title="Elimina Definitivamente (Debug Mode)">
+                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteCompensoReceipt('${r.id}')" title="Elimina Definitivamente (Debug Mode)" data-guide="[DEBUG] Elimina compenso definitivamente. Effetto: Cancella fisicamente il record dal database in modo permanente e irreversibile.">
                                                 <span class="row-actions-icon">🗑️</span>
                                                 <span>Elimina definitivamente</span>
                                             </button>
@@ -23997,7 +24109,7 @@ ${r.annullata ? `
                                 <option value="all" ${prevAnno === 'all' ? 'selected' : ''}>🌐 Tutte le Stagioni</option>
                             </select>
 
-                            <select id="rimborsi-filter-stato" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterRimborsi()" title="Filtra per stato liquidazione">
+                            <select id="rimborsi-filter-stato" class="form-control" style="width: auto; font-weight:600; cursor:pointer;" onchange="app.filterRimborsi()" title="Filtra per stato liquidazione" data-guide="Filtra note spesa per stato. Effetto: Isola le richieste da pagare, già saldate, in bozza o annullate.">
                                 <option value="all" ${prevStato === 'all' ? 'selected' : ''}>📑 Tutti gli Stati</option>
                                 <option value="da_pagare" ${prevStato === 'da_pagare' ? 'selected' : ''}>🟡 Da Pagare</option>
                                 <option value="pagato" ${prevStato === 'pagato' ? 'selected' : ''}>🟢 Pagati</option>
@@ -24009,12 +24121,12 @@ ${r.annullata ? `
                                 <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap; display:flex; align-items:center; gap:5px;">
                                     📅 <span>Da:</span>
                                 </span>
-                                <input type="date" id="rimborsi-date-start" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevStart}" oninput="app.filterRimborsi()" onchange="app.filterRimborsi()" title="Data iniziale periodo">
+                                <input type="date" id="rimborsi-date-start" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevStart}" oninput="app.filterRimborsi()" onchange="app.filterRimborsi()" title="Data iniziale periodo" data-guide="Data inizio intervallo note spesa. Effetto: Mostra solo le spese sostenute a partire da questa data.">
                                 <span style="font-size:0.85rem; font-weight:600; color:var(--text-main); white-space:nowrap;">
                                     A:
                                 </span>
-                                <input type="date" id="rimborsi-date-end" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevEnd}" oninput="app.filterRimborsi()" onchange="app.filterRimborsi()" title="Data finale periodo">
-                                <button type="button" id="rimborsi-date-clear-btn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: rgba(255,255,255,0.2); color: var(--text-muted); display: ${prevStart || prevEnd ? 'inline-flex' : 'none'}; align-items:center; gap:3px;" onclick="app.clearRimborsiDateFilter()" title="Azzera filtro date">✕ Azzera</button>
+                                <input type="date" id="rimborsi-date-end" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 0.85rem;" value="${prevEnd}" oninput="app.filterRimborsi()" onchange="app.filterRimborsi()" title="Data finale periodo" data-guide="Data fine intervallo note spesa. Effetto: Mostra solo le spese sostenute entro questa data.">
+                                <button type="button" id="rimborsi-date-clear-btn" class="btn btn-outline" style="padding: 3px 8px; font-size: 0.75rem; border-color: rgba(255,255,255,0.2); color: var(--text-muted); display: ${prevStart || prevEnd ? 'inline-flex' : 'none'}; align-items:center; gap:3px;" onclick="app.clearRimborsiDateFilter()" title="Azzera filtro date" data-guide="Azzera filtro date rimborsi. Effetto: Rimuove i vincoli di calendario e mostra tutte le note spesa della stagione.">✕ Azzera</button>
                             </div>
                         </div>
 
@@ -24228,7 +24340,8 @@ ${r.annullata ? `
                                 ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullato</span>` 
                                 : `<button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
                                         onclick="app.toggleRimborsoStato('${r.id}', event)" 
-                                        title="${isBozza ? 'Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Nota spesa Emessa (definitiva/sola lettura). Clicca per riportare in bozza.'}">
+                                        title="${isBozza ? 'Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Nota spesa Emessa (definitiva/sola lettura). Clicca per riportare in bozza.'}"
+                                        data-guide="${isBozza ? 'Emetti nota spesa in via definitiva. Effetto: Rende definitivo il prospetto spese e ne blocca le modifiche contabili accidentali.' : 'Riporta nota spesa in Bozza. Effetto: Sblocca la modifica dei campi della nota spesa con richiesta di conferma di sicurezza.'}">
                                     ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
                                 </button>`}
                         </td>
@@ -24243,26 +24356,26 @@ ${r.annullata ? `
                             <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.stampaModuloRimborso('${r.id}', false)" title="Salva Modulo PDF nella cartella Documenti" data-guide="Salva nota spese in PDF. Effetto: Archivia il prospetto dettagliato delle spese nella cartella Documenti.">💾 PDF</button>
                                 ${(isBozza || this.state.debugMode) && !isAnnullato ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')">✏️</button>
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')" data-guide="Modifica nota spesa. Effetto: Apre la schermata per modificare importi, voci di costo o giustificativi della spesa.">✏️</button>
                                 ` : (!isAnnullato ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Nota spesa emessa bloccata. Effetto: Indica che il documento è definitivo e in sola lettura. Clicca sul badge '🟢 Emessa' per riportare in bozza.">🔒</button>
                                 ` : '')}
                                 <div class="row-actions-dropdown">
-                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
+                                    <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni..." data-guide="Menu altre azioni nota spesa. Effetto: Apre il menu a tendina con stampa, liquidazione pagamento, annullamento ed eliminazione debug.">⋮</button>
                                     <div class="row-actions-menu">
-                                        <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza">
+                                        <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza" data-guide="Stampa modulo spesa. Effetto: Apre l'anteprima di stampa del modello di rimborso spese a piè di lista per la firma.">
                                             <span class="row-actions-icon">🖨️</span>
                                             <span>Stampa Modulo</span>
                                         </button>
                                         ${!isAnnullato && !isPagato ? `
-                                            <button type="button" class="row-actions-item text-success" onclick="app.segnaRimborsoPagato('${r.id}')" title="Liquida e paga (riversa in Prima Nota)">
+                                            <button type="button" class="row-actions-item text-success" onclick="app.segnaRimborsoPagato('${r.id}')" title="Liquida e paga (riversa in Prima Nota)" data-guide="Liquida rimborso spese. Effetto: Registra l'avvenuto pagamento del rimborso e inserisce la relativa spesa nella Prima Nota.">
                                                 <span class="row-actions-icon">✅</span>
                                                 <span>Segna come Pagato</span>
                                             </button>
                                         ` : ''}
                                         ${!isAnnullato ? `
                                             <div class="row-actions-divider"></div>
-                                            <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso">
+                                            <button type="button" class="row-actions-item" style="color: #f59e0b;" onclick="app.annullaRimborso('${r.id}')" title="Annulla rimborso" data-guide="Annulla richiesta rimborso. Effetto: Contrassegna la richiesta come annullata e storna l'eventuale uscita in contabilità.">
                                                 <span class="row-actions-icon">🚫</span>
                                                 <span>Annulla Rimborso</span>
                                             </button>
@@ -24270,7 +24383,7 @@ ${r.annullata ? `
                                         ${this.state.debugMode ? `
                                             <div class="row-actions-divider"></div>
                                             <div class="row-actions-debug-header">🛠️ DEBUG MODE</div>
-                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Debug Mode)">
+                                            <button type="button" class="row-actions-item text-danger" onclick="app.permanentlyDeleteRimborso('${r.id}')" title="Elimina definitivamente (Debug Mode)" data-guide="[DEBUG] Elimina definitivamente nota spesa. Effetto: Cancella fisicamente il record dal database in modo permanente e irreversibile.">
                                                 <span class="row-actions-icon">🗑️</span>
                                                 <span>Elimina definitivamente</span>
                                             </button>
@@ -24441,8 +24554,8 @@ ${r.annullata ? `
                     </div>
 
                     <div style="display:flex; justify-content:flex-end; gap:10px;">
-                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary" style="min-width:140px;">Salva Modifiche</button>
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()" data-guide="Annulla modifiche nota spesa. Effetto: Chiude la finestra senza salvare alcuna variazione al rimborso.">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="min-width:140px;" data-guide="Salva modifiche nota spesa. Effetto: Salva i giustificativi aggiornati e ricalcola il totale del rimborso.">Salva Modifiche</button>
                     </div>
                 </form>
             `;
