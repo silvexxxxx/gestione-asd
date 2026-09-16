@@ -634,6 +634,7 @@
             box-sizing: border-box;
         }
         .row-actions-btn:hover,
+        .row-actions-dropdown:hover .row-actions-btn,
         .row-actions-dropdown.active .row-actions-btn {
             background: rgba(255, 255, 255, 0.12) !important;
             border-color: var(--primary) !important;
@@ -641,7 +642,9 @@
         }
         .row-actions-menu {
             display: none;
-            position: fixed;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
             min-width: 195px;
             background: rgba(15, 23, 42, 0.98);
             backdrop-filter: blur(18px);
@@ -649,12 +652,33 @@
             border: 1px solid rgba(255, 255, 255, 0.16);
             border-radius: 8px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
-            z-index: 99999;
+            z-index: 1050;
             padding: 5px 0;
             text-align: left;
         }
-        .row-actions-dropdown.active .row-actions-menu {
+        /* Ponte invisibile per garantire continuita tra mouse, pulsante e menu a cascata */
+        .row-actions-menu::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -8px;
+            height: 8px;
+        }
+        .row-actions-dropdown:hover > .row-actions-menu,
+        .row-actions-dropdown.active > .row-actions-menu {
             display: block;
+        }
+        /* Apri verso l'alto SOLO se la tabella ha almeno 5 righe e siamo nelle ultime 2 */
+        tbody tr:nth-child(n+5):nth-last-child(-n+2) .row-actions-menu {
+            top: auto;
+            bottom: calc(100% + 4px);
+            box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        tbody tr:nth-child(n+5):nth-last-child(-n+2) .row-actions-menu::before {
+            top: auto;
+            bottom: -8px;
+            height: 8px;
         }
         .row-actions-item {
             display: flex;
@@ -3569,89 +3593,19 @@
         toggleRowActionsMenu(btn, event) {
             if (event) {
                 event.stopPropagation();
-                event.preventDefault();
             }
             const dropdown = btn.closest('.row-actions-dropdown');
             if (!dropdown) return;
             const wasActive = dropdown.classList.contains('active');
             this.closeAllRowActionsMenus();
             if (!wasActive) {
-                this.openRowActionsDropdown(dropdown);
+                dropdown.classList.add('active');
             }
-        },
-
-        openRowActionsDropdown(dropdown) {
-            if (!dropdown) return;
-            if (this._rowActionsCloseTimer) {
-                clearTimeout(this._rowActionsCloseTimer);
-                this._rowActionsCloseTimer = null;
-            }
-            // Chiudi altri dropdown attivi
-            document.querySelectorAll('.row-actions-dropdown.active').forEach(d => {
-                if (d !== dropdown) {
-                    d.classList.remove('active');
-                    const m = d.querySelector('.row-actions-menu');
-                    if (m) m.style.display = 'none';
-                }
-            });
-
-            const btn = dropdown.querySelector('.row-actions-btn');
-            const menu = dropdown.querySelector('.row-actions-menu');
-            if (!btn || !menu) return;
-
-            dropdown.classList.add('active');
-            menu.style.display = 'block';
-
-            // Calcolo coordinate viewport (position: fixed anti-clipping)
-            const rect = btn.getBoundingClientRect();
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const spaceAbove = rect.top;
-
-            menu.style.position = 'fixed';
-            menu.style.right = Math.max(10, window.innerWidth - rect.right) + 'px';
-            menu.style.left = 'auto';
-            menu.style.zIndex = '99999';
-
-            // Apri verso l'alto SOLO se sotto c'è meno di 220px e sopra c'è più spazio
-            if (spaceBelow < 220 && spaceAbove > spaceBelow) {
-                menu.style.bottom = Math.max(10, window.innerHeight - rect.top + 4) + 'px';
-                menu.style.top = 'auto';
-            } else {
-                menu.style.top = (rect.bottom + 4) + 'px';
-                menu.style.bottom = 'auto';
-            }
-        },
-
-        onRowActionsMouseEnter(dropdown) {
-            if (this._rowActionsCloseTimer) {
-                clearTimeout(this._rowActionsCloseTimer);
-                this._rowActionsCloseTimer = null;
-            }
-            this.openRowActionsDropdown(dropdown);
-        },
-
-        onRowActionsMouseLeave(dropdown) {
-            if (this._rowActionsCloseTimer) {
-                clearTimeout(this._rowActionsCloseTimer);
-            }
-            this._rowActionsCloseTimer = setTimeout(() => {
-                if (dropdown) {
-                    dropdown.classList.remove('active');
-                    const menu = dropdown.querySelector('.row-actions-menu');
-                    if (menu) menu.style.display = 'none';
-                }
-            }, 180);
         },
 
         closeAllRowActionsMenus() {
-            if (this._rowActionsCloseTimer) {
-                clearTimeout(this._rowActionsCloseTimer);
-                this._rowActionsCloseTimer = null;
-            }
             document.querySelectorAll('.row-actions-dropdown.active').forEach(d => {
                 d.classList.remove('active');
-                const menu = d.querySelector('.row-actions-menu');
-                if (menu) menu.style.display = 'none';
             });
         },
 
@@ -8891,7 +8845,7 @@
                                 ` : (!r.annullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                 ` : '')}
-                                <div class="row-actions-dropdown" onmouseenter="app.onRowActionsMouseEnter(this)" onmouseleave="app.onRowActionsMouseLeave(this)">
+                                <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni (Stampa, Email, WhatsApp, Annulla, Debug)...">⋮</button>
                                     <div class="row-actions-menu">
                                         <button type="button" class="row-actions-item" onclick="app.printReceipt('${r.id}')" title="${printBtnTitle}">
@@ -22790,7 +22744,7 @@ ${r.annullata ? `
                                 ` : (!isAnnullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                 ` : '')}
-                                <div class="row-actions-dropdown" onmouseenter="app.onRowActionsMouseEnter(this)" onmouseleave="app.onRowActionsMouseLeave(this)">
+                                <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
                                     <div class="row-actions-menu">
                                         <button type="button" class="row-actions-item" onclick="app.printCompensoReceipt('${r.id}')" title="Stampa o Salva PDF">
@@ -23579,7 +23533,7 @@ ${r.annullata ? `
                         </div>
                         <button class="btn btn-primary" onclick="app.openRimborsoModal()" data-guide="Compila richiesta di rimborso spese. Effetto: Apre il modulo analitico per registrare scontrini, pedaggi e trasferte.">+ Nuova Richiesta Rimborso</button>
                     </div>
-                    <div class="glass-card" style="padding:0; overflow-x:auto;">
+                    <div class="glass-card" style="padding:0; overflow-x:auto; min-height:300px;">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -23661,7 +23615,7 @@ ${r.annullata ? `
                                     ` : (!isAnnullato ? `
                                         <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')">🔒</button>
                                     ` : '')}
-                                    <div class="row-actions-dropdown" onmouseenter="app.onRowActionsMouseEnter(this)" onmouseleave="app.onRowActionsMouseLeave(this)">
+                                    <div class="row-actions-dropdown">
                                         <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni...">⋮</button>
                                         <div class="row-actions-menu">
                                             <button type="button" class="row-actions-item" onclick="app.stampaModuloRimborso('${r.id}', true)" title="Stampa Modulo Spese con quietanza">
