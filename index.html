@@ -2749,6 +2749,7 @@
                 },
                 guideMode: true,
                 sent_reminders: {}, // Structure: { "YYYY-MM-DD": ["socioId_type", ...] }
+                cronologia_messaggi: [], // Array di messaggi inviati: [{ id, timestamp, data_ora, socio_id, socio_nome, canale, tipo, stato_quota, destinatario, anteprima }]
                 dismissed_quotes: [], // Array of socio IDs whose expired quote alert was dismissed
                 sortConfig: { key: 'cognome', direction: 'asc' },
                 lastSociScroll: 0,
@@ -4820,6 +4821,7 @@
                     if (idbState) {
                         this.state = { ...this.state, ...idbState };
                         if (!Array.isArray(this.state.calendario_note)) this.state.calendario_note = [];
+                        if (!Array.isArray(this.state.cronologia_messaggi)) this.state.cronologia_messaggi = [];
                         // Ripristino stato transitorio verbali: all'avvio mostra sempre l'Hub pulito e azzera bozze orfane
                         this.state.verbali_current_view = 'hub';
                         this.state.verbale_wizard_data = null;
@@ -4854,6 +4856,7 @@
                 const storedSettings = localStorage.getItem('asd_settings');
                 const storedPresets = localStorage.getItem('asd_quote_presets');
                 const storedSent = localStorage.getItem('asd_sent_reminders');
+                const storedCronologia = localStorage.getItem('asd_cronologia_messaggi');
                 const storedDismissed = localStorage.getItem('asd_dismissed_quotes');
                 const storedScroll = localStorage.getItem('asd_last_soci_scroll');
                 const storedSort = localStorage.getItem('asd_sort_config');
@@ -4939,6 +4942,13 @@
                     this.state.dismissed_quotes = JSON.parse(storedDismissed);
                 } else {
                     this.state.dismissed_quotes = [];
+                }
+
+                if (storedCronologia) {
+                    try { this.state.cronologia_messaggi = JSON.parse(storedCronologia); } catch(e) {}
+                }
+                if (!Array.isArray(this.state.cronologia_messaggi)) {
+                    this.state.cronologia_messaggi = [];
                 }
 
                 // Cleanup old sent reminders (keep only last 7 days)
@@ -5974,6 +5984,9 @@
                 if(this.state.lastPrimaNotaScroll !== undefined) localStorage.setItem('asd_last_primanota_scroll', this.state.lastPrimaNotaScroll.toString());
                 if(this.state.postit) localStorage.setItem('asd_postit', JSON.stringify(this.state.postit));
                 if(this.state.calendario_note) localStorage.setItem('asd_calendario_note', JSON.stringify(this.state.calendario_note));
+                if(this.state.cronologia_messaggi) {
+                    try { localStorage.setItem('asd_cronologia_messaggi', JSON.stringify(this.state.cronologia_messaggi.slice(0, 500))); } catch(e) {}
+                }
             },
             
             async exitApp() {
@@ -6962,6 +6975,10 @@
                         }
                         if (cloudData.verbali_archive || app.state.verbali_archive) {
                             app.state.verbali_archive = mergeArrays(app.state.verbali_archive || [], cloudData.verbali_archive || []);
+                        }
+                        if (cloudData.cronologia_messaggi || app.state.cronologia_messaggi) {
+                            app.state.cronologia_messaggi = mergeArrays(app.state.cronologia_messaggi || [], cloudData.cronologia_messaggi || []);
+                            try { localStorage.setItem('asd_cronologia_messaggi', JSON.stringify(app.state.cronologia_messaggi.slice(0, 500))); } catch(e) {}
                         }
                         
                         // Merge delle immagini localStorage (il locale vince se presente)
@@ -8174,12 +8191,19 @@
                             <!-- Colonna Destra -->
                             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                                 <div class="glass-card" style="border-left: 4px solid var(--warning);">
-                                    <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
-                                        <span>⚠️ Quote in Scadenza</span>
-                                        <span class="badge" style="background: var(--warning); color: white;">RIASSUNTO</span>
-                                    </h3>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;">
+                                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                            <span>⚠️ Quote in Scadenza</span>
+                                            <span class="badge" style="background: var(--warning); color: white;">RIASSUNTO</span>
+                                        </h3>
+                                        <button class="btn btn-outline" style="font-size: 0.72rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(99, 102, 241, 0.45); color: #818cf8;" onclick="app.openCronologiaMessaggiModal()" title="Visualizza il registro cronologico di tutti i solleciti inviati via WhatsApp ed Email">
+                                            <span>📨 Cronologia Messaggi</span>
+                                            <span class="badge" style="background: rgba(99, 102, 241, 0.25); color: #c7d2fe; font-size: 0.65rem; padding: 1px 5px;">${(this.state.cronologia_messaggi || []).length}</span>
+                                        </button>
+                                    </div>
                                     ${this.renderQuoteAlertsTable()}
-                                    <div style="margin-top: 1rem; text-align: right;">
+                                    <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <button class="btn btn-outline" style="font-size: 0.75rem;" onclick="app.openCronologiaMessaggiModal()" title="Visualizza registro invii">📨 Registro Invii (${(this.state.cronologia_messaggi || []).length})</button>
                                         <button class="btn btn-outline" style="font-size: 0.75rem;" data-guide="Vai all'Anagrafica Soci. Effetto: Mostra l'elenco completo dei soci per verificare le scadenze." onclick="app.showPage('soci')">Vedi tutti &rarr;</button>
                                     </div>
                                 </div>
@@ -8779,6 +8803,9 @@
                         }
                     }
                 });
+
+                // Inietta cronologia messaggi e solleciti inviati al socio
+                this.injectSocioCronologiaMessaggi(form, id);
             },
 
             openQuickNoteModal(id) {
@@ -12297,6 +12324,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     const sentList = this.state.sent_reminders[today] || [];
                     const isEmailSent = sentList.includes(`${s.id}_email`);
                     const isWASent = sentList.includes(`${s.id}_whatsapp`);
+                    const lastEmail = this.getLastMessageInfo(s.id, 'email');
+                    const lastWA = this.getLastMessageInfo(s.id, 'whatsapp');
+                    const emailTitle = isEmailSent 
+                        ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : 'Email inviata oggi')
+                        : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia email di rinnovo');
+                    const waTitle = isWASent 
+                        ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
+                        : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp');
                     return `<tr>
                         <td style="font-weight:600;">${s.cognome || ''} ${s.nome || ''}</td>
                         <td style="font-size:0.8rem;">${s.tel || '-'}</td>
@@ -12305,8 +12340,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         <td>${certLabel}</td>
                         <td><span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem;">${s.tesserato || 'NO'}</span> ${tessLabel}</td>
                         <td><div style="display:flex;gap:4px;">
-                            <button class="btn ${isEmailSent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem;" data-guide="Invia sollecito email per rinnovo certificato medico. Effetto: Apre il client di posta predefinito con testo precompilato e registra l'invio odierno." title="${isEmailSent ? 'Email inviata oggi' : 'Invia email di rinnovo'}" onclick="app.sendReminder('${s.email}','${s.nome}','Certificato Medico',${s.id});app.openCertAlertsModal()">${isEmailSent ? '✅' : '📧'}</button>
-                            <button class="btn ${isWASent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem; ${!isWASent ? 'border-color: rgba(37,211,102,0.45); color: #25D366;' : ''} display: inline-flex; align-items: center; justify-content: center;" data-guide="Invia sollecito WhatsApp per rinnovo certificato. Effetto: Apre WhatsApp Web / App con messaggio precompilato per il socio." title="${isWASent ? 'WhatsApp inviato oggi' : 'Invia WhatsApp'}" onclick="app.sendWhatsAppReminder('${s.tel}','${s.nome}','Certificato Medico',${s.id});app.openCertAlertsModal()">${isWASent ? '✅' : app.getWhatsAppIcon(13)}</button>
+                            <button class="btn ${isEmailSent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem; position:relative; ${!isEmailSent && lastEmail ? 'border-color: rgba(59, 130, 246, 0.7); color: #3b82f6;' : ''}" data-guide="Invia sollecito email per rinnovo certificato medico. Effetto: Apre il client di posta predefinito con testo precompilato e registra l'invio odierno." title="${emailTitle}" onclick="app.sendReminder('${s.email}','${(s.nome || '').replace(/'/g, "\\'")}','Certificato Medico',${s.id});app.openCertAlertsModal()">${isEmailSent ? '✅' : '📧'}${!isEmailSent && lastEmail ? '<span style="font-size:0.55rem; position:absolute; top:-3px; right:-3px; background:#3b82f6; color:#fff; border-radius:50%; width:9px; height:9px; display:flex; align-items:center; justify-content:center; line-height:1;">•</span>' : ''}</button>
+                            <button class="btn ${isWASent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem; position:relative; ${!isWASent ? (lastWA ? 'border-color: #25D366; color: #25D366;' : 'border-color: rgba(37,211,102,0.45); color: #25D366;') : ''} display: inline-flex; align-items: center; justify-content: center;" data-guide="Invia sollecito WhatsApp per rinnovo certificato. Effetto: Apre WhatsApp Web / App con messaggio precompilato per il socio." title="${waTitle}" onclick="app.sendWhatsAppReminder('${s.tel}','${(s.nome || '').replace(/'/g, "\\'")}','Certificato Medico',${s.id});app.openCertAlertsModal()">${isWASent ? '✅' : app.getWhatsAppIcon(13)}${!isWASent && lastWA ? '<span style="font-size:0.55rem; position:absolute; top:-3px; right:-3px; background:#25D366; color:#fff; border-radius:50%; width:9px; height:9px; display:flex; align-items:center; justify-content:center; line-height:1;">•</span>' : ''}</button>
                         </div></td>
                     </tr>`;
                 }).join('');
@@ -12319,7 +12354,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const modalHtml = `
                 <div style="margin-bottom:1rem; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <span style="color:var(--text-muted); font-size:0.85rem;">${alerts.length} socio/i con certificato in scadenza entro 90 giorni</span>
-                    ${withEmail.length > 0 ? `<a href="mailto:${bulkMailHref}?subject=${bulkEmailTitle}&body=${bulkEmailBody}" class="btn btn-outline" style="font-size:0.75rem; padding:5px 10px; margin-left:auto;" data-guide="Invia email a tutti i soci in scadenza. Effetto: Apre il client di posta per inviare un promemoria cumulativo a tutti i soci con certificato medico in scadenza.">📧 Email a tutti (${withEmail.length})</a>` : ''}
+                    <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px; margin-left:auto;" onclick="app.openCronologiaMessaggiModal()" title="Visualizza registro cronologico messaggi">📨 Cronologia Invii (${(this.state.cronologia_messaggi || []).length})</button>
+                    ${withEmail.length > 0 ? `<a href="mailto:${bulkMailHref}?subject=${bulkEmailTitle}&body=${bulkEmailBody}" class="btn btn-outline" style="font-size:0.75rem; padding:5px 10px;" data-guide="Invia email a tutti i soci in scadenza. Effetto: Apre il client di posta per inviare un promemoria cumulativo a tutti i soci con certificato medico in scadenza.">📧 Email a tutti (${withEmail.length})</a>` : ''}
                 </div>
                 <div class="table-container" style="max-height:60vh; overflow-y:auto;">
                 <table style="font-size:0.8rem;">
@@ -12358,6 +12394,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     const sentList = this.state.sent_reminders[today] || [];
                     const isEmailSent = sentList.includes(`${s.id}_email`);
                     const isWASent = sentList.includes(`${s.id}_whatsapp`);
+                    const lastEmail = this.getLastMessageInfo(s.id, 'email');
+                    const lastWA = this.getLastMessageInfo(s.id, 'whatsapp');
+                    const emailTitle = isEmailSent 
+                        ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : 'Email inviata oggi')
+                        : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia email di rinnovo quota');
+                    const waTitle = isWASent 
+                        ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
+                        : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp rinnovo');
                     return `<tr>
                         <td style="font-weight:600;">${s.cognome || ''} ${s.nome || ''}</td>
                         <td style="font-size:0.8rem;">${s.tel || '-'}</td>
@@ -12365,8 +12409,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         <td>${this.formatDate(s.quota_scadenza)}</td>
                         <td style="color:${color}; font-weight:700;">${statusText}</td>
                         <td><div style="display:flex;gap:4px;">
-                            <button class="btn ${isEmailSent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem;" data-guide="Invia sollecito email per rinnovo quota. Effetto: Apre il client di posta predefinito con promemoria di rinnovo quota associativa." title="${isEmailSent ? 'Email inviata oggi' : 'Invia email di rinnovo quota'}" onclick="app.sendReminder('${s.email}','${s.nome}','Quota Associativa',${s.id});app.openQuoteAlertsModal()">${isEmailSent ? '✅' : '📧'}</button>
-                            <button class="btn ${isWASent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem; ${!isWASent ? 'border-color: rgba(37,211,102,0.45); color: #25D366;' : ''} display: inline-flex; align-items: center; justify-content: center;" data-guide="Invia sollecito WhatsApp per rinnovo quota. Effetto: Apre WhatsApp Web / App con promemoria di rinnovo quota associativa." title="${isWASent ? 'WhatsApp inviato oggi' : 'Invia WhatsApp rinnovo'}" onclick="app.sendWhatsAppReminder('${s.tel}','${s.nome}','Quota Associativa',${s.id});app.openQuoteAlertsModal()">${isWASent ? '✅' : app.getWhatsAppIcon(13)}</button>
+                            <button class="btn ${isEmailSent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem; position:relative; ${!isEmailSent && lastEmail ? 'border-color: rgba(59, 130, 246, 0.7); color: #3b82f6;' : ''}" data-guide="Invia sollecito email per rinnovo quota. Effetto: Apre il client di posta predefinito con promemoria di rinnovo quota associativa." title="${emailTitle}" onclick="app.sendReminder('${s.email}','${(s.nome || '').replace(/'/g, "\\'")}','Quota Associativa',${s.id});app.openQuoteAlertsModal()">${isEmailSent ? '✅' : '📧'}${!isEmailSent && lastEmail ? '<span style="font-size:0.55rem; position:absolute; top:-3px; right:-3px; background:#3b82f6; color:#fff; border-radius:50%; width:9px; height:9px; display:flex; align-items:center; justify-content:center; line-height:1;">•</span>' : ''}</button>
+                            <button class="btn ${isWASent ? 'btn-success' : 'btn-outline'}" style="padding:4px 8px;font-size:0.7rem; position:relative; ${!isWASent ? (lastWA ? 'border-color: #25D366; color: #25D366;' : 'border-color: rgba(37,211,102,0.45); color: #25D366;') : ''} display: inline-flex; align-items: center; justify-content: center;" data-guide="Invia sollecito WhatsApp per rinnovo quota. Effetto: Apre WhatsApp Web / App con promemoria di rinnovo quota associativa." title="${waTitle}" onclick="app.sendWhatsAppReminder('${s.tel}','${(s.nome || '').replace(/'/g, "\\'")}','Quota Associativa',${s.id});app.openQuoteAlertsModal()">${isWASent ? '✅' : app.getWhatsAppIcon(13)}${!isWASent && lastWA ? '<span style="font-size:0.55rem; position:absolute; top:-3px; right:-3px; background:#25D366; color:#fff; border-radius:50%; width:9px; height:9px; display:flex; align-items:center; justify-content:center; line-height:1;">•</span>' : ''}</button>
                         </div></td>
                     </tr>`;
                 }).join('');
@@ -12379,7 +12423,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const modalHtml = `
                 <div style="margin-bottom:1rem; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <span style="color:var(--text-muted); font-size:0.85rem;">${alerts.length} socio/i con quota scaduta o in scadenza entro 30 giorni</span>
-                    ${withEmail.length > 0 ? `<a href="mailto:${bulkMailHref}?subject=${bulkEmailTitle}&body=${bulkEmailBody}" class="btn btn-outline" style="font-size:0.75rem; padding:5px 10px; margin-left:auto;" data-guide="Invia email di rinnovo a tutti. Effetto: Apre il client di posta per inviare un promemoria cumulativo a tutti i soci con quota associativa in scadenza.">📧 Email a tutti (${withEmail.length})</a>` : ''}
+                    <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px; margin-left:auto;" onclick="app.openCronologiaMessaggiModal()" title="Visualizza registro cronologico messaggi">📨 Cronologia Invii (${(this.state.cronologia_messaggi || []).length})</button>
+                    ${withEmail.length > 0 ? `<a href="mailto:${bulkMailHref}?subject=${bulkEmailTitle}&body=${bulkEmailBody}" class="btn btn-outline" style="font-size:0.75rem; padding:5px 10px;" data-guide="Invia email di rinnovo a tutti. Effetto: Apre il client di posta per inviare un promemoria cumulativo a tutti i soci con quota associativa in scadenza.">📧 Email a tutti (${withEmail.length})</a>` : ''}
                 </div>
                 <div class="table-container" style="max-height:60vh; overflow-y:auto;">
                 <table style="font-size:0.8rem;">
@@ -18012,6 +18057,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             return date.toLocaleDateString('it-IT');
         },
 
+        formatDateTime(d) {
+            if (!d) return "-";
+            const date = new Date(d);
+            if (isNaN(date.getTime())) return "-";
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        },
+
         sendReminder(email, nome, tipo = "Socio", socioId = null) {
             if (!email || email.trim() === "") {
                 this.toast("Indirizzo email non presente per questo socio!", "warning");
@@ -18023,6 +18076,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             let subject = '';
             let body = '';
+            let statoQuota = '';
 
             if (isQuota) {
                 let isExpired = false;
@@ -18043,21 +18097,31 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 }
 
                 if (isExpired) {
-                    subject = encodeURIComponent(`Avviso: Quota associativa scaduta - ${this.state.settings.asdName}`);
-                    body = encodeURIComponent(`Gentile ${nome},\n\nti informiamo che la tua quota associativa presso la nostra associazione risulta scaduta${dataStr}.\n\nTi invitiamo a passare in segreteria al più presto per rinnovarla e proseguire regolarmente le tue attività.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`);
+                    statoQuota = 'Scaduta' + dataStr;
+                    subject = `Avviso: Quota associativa scaduta - ${this.state.settings.asdName}`;
+                    body = `Gentile ${nome},\n\nti informiamo che la tua quota associativa presso la nostra associazione risulta scaduta${dataStr}.\n\nTi invitiamo a passare in segreteria al più presto per rinnovarla e proseguire regolarmente le tue attività.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
                 } else {
-                    subject = encodeURIComponent(`Promemoria: Quota associativa in scadenza - ${this.state.settings.asdName}`);
-                    body = encodeURIComponent(`Gentile ${nome},\n\nti ricordiamo che la tua quota associativa presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a recarti in segreteria per provvedere al rinnovo.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`);
+                    statoQuota = 'In scadenza' + dataStr;
+                    subject = `Promemoria: Quota associativa in scadenza - ${this.state.settings.asdName}`;
+                    body = `Gentile ${nome},\n\nti ricordiamo che la tua quota associativa presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a recarti in segreteria per provvedere al rinnovo.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
                 }
             } else {
-                subject = encodeURIComponent(`Scadenza ${tipo} - ${this.state.settings.asdName}`);
-                body = encodeURIComponent(`Gentile ${nome},\n\nti ricordiamo che la tua ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzare la tua posizione in segreteria.\n\nCordiali saluti,\nLa Direzione`);
+                statoQuota = tipo;
+                subject = `Scadenza ${tipo} - ${this.state.settings.asdName}`;
+                body = `Gentile ${nome},\n\nti ricordiamo che la tua ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzare la tua posizione in segreteria.\n\nCordiali saluti,\nLa Direzione`;
             }
 
-            window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
+            window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
             this.toast("Apertura client mail...");
 
-            if (socioId) this.markAsSent(socioId, 'email');
+            if (socioId) {
+                this.markAsSent(socioId, 'email', {
+                    tipo: isQuota ? 'Quota Associativa' : tipo,
+                    stato_quota: statoQuota,
+                    destinatario: email,
+                    anteprima: subject
+                });
+            }
         },
 
         getWhatsAppIcon(size = 14) {
@@ -18074,6 +18138,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const isQuota = tipo && tipo.toLowerCase().includes('quota');
 
             let text = '';
+            let statoQuota = '';
 
             if (isQuota) {
                 let isExpired = false;
@@ -18094,55 +18159,427 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 }
 
                 if (isExpired) {
-                    text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota risulta scaduta${dataStr}. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.`);
+                    statoQuota = 'Scaduta' + dataStr;
+                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota risulta scaduta${dataStr}. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.`;
                 } else {
-                    text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota è in scadenza${dataStr}. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.`);
+                    statoQuota = 'In scadenza' + dataStr;
+                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota è in scadenza${dataStr}. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.`;
                 }
             } else {
-                text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`);
+                statoQuota = tipo;
+                text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`;
             }
 
             const cleanTel = tel.replace(/\D/g, '');
             const prefix = cleanTel.indexOf('39') === 0 ? '' : '39';
-            window.open(`https://wa.me/${prefix}${cleanTel}?text=${text}`, '_blank');
+            window.open(`https://wa.me/${prefix}${cleanTel}?text=${encodeURIComponent(text)}`, '_blank');
 
-            if (socioId) this.markAsSent(socioId, 'whatsapp');
+            if (socioId) {
+                this.markAsSent(socioId, 'whatsapp', {
+                    tipo: isQuota ? 'Quota Associativa' : tipo,
+                    stato_quota: statoQuota,
+                    destinatario: tel,
+                    anteprima: text.slice(0, 100)
+                });
+            }
         },
 
-        markAsSent(socioId, channel) {
-            const today = new Date().toISOString().split('T')[0];
+        markAsSent(socioId, channel, extra = {}) {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            if (!this.state.sent_reminders) this.state.sent_reminders = {};
             if (!this.state.sent_reminders[today]) this.state.sent_reminders[today] = [];
             const key = `${socioId}_${channel}`;
             if (!this.state.sent_reminders[today].includes(key)) {
                 this.state.sent_reminders[today].push(key);
-                this.saveAll();
-                // Optional: re-render the alerts table to show feedback
-                this.renderDashboard();
+            }
+
+            if (!Array.isArray(this.state.cronologia_messaggi)) {
+                this.state.cronologia_messaggi = [];
+            }
+
+            const socio = socioId ? this.state.soci.find(s => s.id == socioId) : null;
+            const socioNome = socio ? `${socio.cognome || ''} ${socio.nome || ''}`.trim() : (extra.socio_nome || 'Socio sconosciuto');
+
+            const entry = {
+                id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                timestamp: now.toISOString(),
+                data_ora: this.formatDateTime(now),
+                socio_id: socioId ? Number(socioId) : null,
+                socio_nome: socioNome,
+                canale: channel,
+                tipo: extra.tipo || 'Sollecito',
+                stato_quota: extra.stato_quota || '',
+                destinatario: extra.destinatario || (channel === 'whatsapp' ? (socio ? socio.tel : '') : (socio ? socio.email : '')),
+                anteprima: extra.anteprima || ''
+            };
+
+            this.state.cronologia_messaggi.unshift(entry);
+            if (this.state.cronologia_messaggi.length > 1000) {
+                this.state.cronologia_messaggi = this.state.cronologia_messaggi.slice(0, 1000);
+            }
+
+            this.saveAll();
+            this.renderDashboard();
+        },
+
+        getLastMessageInfo(socioId, channel = null) {
+            if (!socioId || !Array.isArray(this.state.cronologia_messaggi)) return null;
+            const list = this.state.cronologia_messaggi.filter(m => {
+                if (m.socio_id != socioId) return false;
+                if (channel && m.canale !== channel) return false;
+                return true;
+            });
+            if (list.length === 0) return null;
+
+            let newest = list[0];
+            for (const item of list) {
+                if (new Date(item.timestamp || item.data_ora) > new Date(newest.timestamp || newest.data_ora)) {
+                    newest = item;
+                }
+            }
+
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const msgDate = new Date(newest.timestamp || newest.data_ora);
+            const msgDateZero = new Date(msgDate);
+            msgDateZero.setHours(0, 0, 0, 0);
+
+            const diffDays = Math.round((now - msgDateZero) / (1000 * 60 * 60 * 24));
+            const pad = n => String(n).padStart(2, '0');
+            const timeStr = !isNaN(msgDate.getTime()) ? `${pad(msgDate.getHours())}:${pad(msgDate.getMinutes())}` : '';
+            const dateStr = !isNaN(msgDate.getTime()) ? `${pad(msgDate.getDate())}/${pad(msgDate.getMonth() + 1)}/${msgDate.getFullYear()}` : '';
+
+            return {
+                message: newest,
+                isToday: diffDays === 0,
+                daysAgo: diffDays,
+                timeStr,
+                dateStr
+            };
+        },
+
+        renderReminderButtons(s, tipo = 'Quota') {
+            const today = new Date().toISOString().split('T')[0];
+            const sentList = this.state.sent_reminders[today] || [];
+            const isEmailSentToday = sentList.includes(`${s.id}_email`);
+            const isWASentToday = sentList.includes(`${s.id}_whatsapp`);
+
+            const lastEmail = this.getLastMessageInfo(s.id, 'email');
+            const lastWA = this.getLastMessageInfo(s.id, 'whatsapp');
+
+            const emailTooltip = isEmailSentToday 
+                ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : 'Email inviata oggi')
+                : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia Email');
+
+            const waTooltip = isWASentToday 
+                ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
+                : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp');
+
+            const hasPastEmail = !isEmailSentToday && lastEmail;
+            const hasPastWA = !isWASentToday && lastWA;
+
+            return `
+                    <button class="btn ${isEmailSentToday ? 'btn-success' : 'btn-outline'}" 
+                            style="padding: 4px; font-size: 0.7rem; opacity: ${isEmailSentToday ? '0.7' : '1'}; position: relative; ${hasPastEmail ? 'border-color: rgba(59, 130, 246, 0.7); color: #3b82f6;' : ''}" 
+                            data-guide="Effetto: Apre il client email per inviare un promemoria di scadenza al socio."
+                            title="${emailTooltip}" 
+                            onclick="app.sendReminder('${s.email || ''}', '${(s.nome || '').replace(/'/g, "\\'")}', '${tipo}', ${s.id})">
+                        ${isEmailSentToday ? '✅' : '📧'}${hasPastEmail ? '<span style="font-size:0.55rem; position:absolute; top:-4px; right:-4px; background:#3b82f6; color:#fff; border-radius:50%; width:10px; height:10px; display:flex; align-items:center; justify-content:center; line-height:1;" title="' + emailTooltip + '">•</span>' : ''}
+                    </button>
+                    <button class="btn ${isWASentToday ? 'btn-success' : 'btn-outline'}" 
+                            style="padding: 4px; font-size: 0.7rem; ${!isWASentToday ? (hasPastWA ? 'border-color: #25D366; color: #25D366;' : 'border-color: rgba(37, 211, 102, 0.45); color: #25D366;') : 'background: rgba(16, 185, 129, 0.4);'} opacity: ${isWASentToday ? '0.7' : '1'}; display: inline-flex; align-items: center; justify-content: center; position: relative;" 
+                            data-guide="Effetto: Apre WhatsApp Web/Desktop con un messaggio precompilato di sollecito."
+                            title="${waTooltip}" 
+                            onclick="app.sendWhatsAppReminder('${s.tel || ''}', '${(s.nome || '').replace(/'/g, "\\'")}', '${tipo}', ${s.id})">
+                        ${isWASentToday ? '✅' : this.getWhatsAppIcon(14)}${hasPastWA ? '<span style="font-size:0.55rem; position:absolute; top:-4px; right:-4px; background:#25D366; color:#fff; border-radius:50%; width:10px; height:10px; display:flex; align-items:center; justify-content:center; line-height:1;" title="' + waTooltip + '">•</span>' : ''}
+                    </button>
+                `;
+        },
+
+        openCronologiaMessaggiModal(socioId = null) {
+            socioId = socioId ? Number(socioId) : null;
+            const socio = socioId ? this.state.soci.find(s => s.id === socioId) : null;
+            const socioNome = socio ? `${socio.cognome || ''} ${socio.nome || ''}`.trim() : '';
+
+            const title = socioId 
+                ? `📨 Cronologia Messaggi: ${socioNome}` 
+                : `📨 Registro Cronologia Messaggi & Solleciti Inviati`;
+
+            const html = `
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Barra filtri e azioni -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); padding: 0.75rem 1rem; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+                            <div style="position: relative; min-width: 220px; flex: 1;">
+                                <input type="text" id="cronologia-search" class="form-control" placeholder="Cerca per socio, telefono o testo..." style="padding-left: 2rem; font-size: 0.85rem;" oninput="app.filterCronologiaTable(${socioId ? socioId : 'null'})">
+                                <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                            </div>
+                            <select id="cronologia-channel-filter" class="form-control" style="width: auto; font-size: 0.85rem;" onchange="app.filterCronologiaTable(${socioId ? socioId : 'null'})">
+                                <option value="">Tutti i Canali (Tutti)</option>
+                                <option value="whatsapp">Solo WhatsApp</option>
+                                <option value="email">Solo Email</option>
+                            </select>
+                            ${socioId ? `<button class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="app.openCronologiaMessaggiModal(null)" title="Mostra tutti i messaggi di tutti i soci">Tutti i Soci</button>` : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn btn-outline" style="font-size: 0.8rem; padding: 5px 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="app.exportCronologiaCSV()" title="Scarica la cronologia messaggi in formato CSV compatibile Excel">
+                                <span>📥 Esporta CSV</span>
+                            </button>
+                            <button class="btn btn-outline" style="font-size: 0.8rem; padding: 5px 10px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" onclick="app.clearCronologiaMessaggi()" title="Cancella la cronologia messaggi">
+                                <span>🗑️ Pulisci</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Conteggi di riepilogo -->
+                    <div id="cronologia-stats-bar" style="display: flex; gap: 12px; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
+                    </div>
+
+                    <!-- Tabella Cronologia -->
+                    <div class="table-container" style="max-height: 55vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <table style="font-size: 0.8rem; width: 100%;">
+                            <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                <tr>
+                                    <th style="width: 130px;">Data & Ora</th>
+                                    <th>Socio</th>
+                                    <th style="width: 110px;">Canale</th>
+                                    <th style="width: 130px;">Tipo</th>
+                                    <th>Recapito & Anteprima</th>
+                                    <th style="width: 80px; text-align: center;">Scheda</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cronologia-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            this.openModal(title, html);
+            const mc = document.getElementById('modal-content');
+            if (mc) mc.classList.add('modal-wide');
+            this.filterCronologiaTable(socioId);
+        },
+
+        filterCronologiaTable(socioId = null) {
+            const tbody = document.getElementById('cronologia-table-body');
+            const statsBar = document.getElementById('cronologia-stats-bar');
+            if (!tbody) return;
+
+            const queryInput = document.getElementById('cronologia-search');
+            const channelInput = document.getElementById('cronologia-channel-filter');
+            const q = queryInput ? queryInput.value.trim().toLowerCase() : '';
+            const ch = channelInput ? channelInput.value : '';
+
+            const list = (this.state.cronologia_messaggi || []).filter(m => {
+                if (socioId && m.socio_id != socioId) return false;
+                if (ch && m.canale !== ch) return false;
+                if (q) {
+                    const matchSocio = (m.socio_nome || '').toLowerCase().includes(q);
+                    const matchDest = (m.destinatario || '').toLowerCase().includes(q);
+                    const matchTipo = (m.tipo || '').toLowerCase().includes(q);
+                    const matchAnteprima = (m.anteprima || '').toLowerCase().includes(q);
+                    const matchData = (m.data_ora || '').toLowerCase().includes(q);
+                    if (!matchSocio && !matchDest && !matchTipo && !matchAnteprima && !matchData) return false;
+                }
+                return true;
+            });
+
+            const totalWA = list.filter(m => m.canale === 'whatsapp').length;
+            const totalEmail = list.filter(m => m.canale === 'email').length;
+
+            if (statsBar) {
+                statsBar.innerHTML = `
+                    <span>Totale messaggi: <strong style="color: var(--primary);">${list.length}</strong></span>
+                    <span>•</span>
+                    <span style="color: #10b981;">WhatsApp: <strong>${totalWA}</strong></span>
+                    <span>•</span>
+                    <span style="color: #3b82f6;">Email: <strong>${totalEmail}</strong></span>
+                    ${socioId ? `<span>• Filtrato per singolo socio</span>` : ''}
+                `;
+            }
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
+                            <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📭</div>
+                            <div>Nessun messaggio trovato nella cronologia.</div>
+                            <div style="font-size: 0.75rem; margin-top: 4px; opacity: 0.8;">I messaggi inviati tramite i pulsanti WhatsApp o Email verranno salvati e sincronizzati automaticamente qui.</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(m => {
+                const isWA = m.canale === 'whatsapp';
+                const channelBadge = isWA
+                    ? `<span class="badge" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;">${this.getWhatsAppIcon(12)} WhatsApp</span>`
+                    : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;">📧 Email</span>`;
+
+                return `
+                    <tr>
+                        <td style="white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
+                        <td>
+                            <div style="font-weight: 600; cursor: ${m.socio_id ? 'pointer' : 'default'}; color: ${m.socio_id ? 'var(--primary)' : 'inherit'};" onclick="${m.socio_id ? `app.openEditSocioModal(${m.socio_id})` : ''}" title="${m.socio_id ? 'Clicca per aprire la Scheda Socio' : ''}">
+                                ${m.socio_nome || '-'} ${m.socio_id ? '<span style="font-size:0.65rem; opacity:0.7;">↗</span>' : ''}
+                            </div>
+                            ${m.stato_quota ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${m.stato_quota}</div>` : ''}
+                        </td>
+                        <td>${channelBadge}</td>
+                        <td>
+                            <span style="font-weight: 600; font-size: 0.75rem;">${m.tipo || 'Sollecito'}</span>
+                        </td>
+                        <td style="max-width: 320px;">
+                            <div style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">${m.destinatario || '-'}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${(m.anteprima || '').replace(/"/g, '&quot;')}">
+                                ${m.anteprima || '-'}
+                            </div>
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            ${m.socio_id ? `
+                                <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.7rem;" onclick="app.openEditSocioModal(${m.socio_id})" title="Apri scheda socio">
+                                    👤 Scheda
+                                </button>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        },
+
+        injectSocioCronologiaMessaggi(form, socioId) {
+            if (!form || !socioId) return;
+            socioId = Number(socioId);
+            
+            const existing = form.querySelector('#socio-cronologia-section');
+            if (existing) existing.remove();
+
+            const messages = (this.state.cronologia_messaggi || []).filter(m => m.socio_id == socioId);
+            const lastMsg = this.getLastMessageInfo(socioId);
+
+            const section = document.createElement('div');
+            section.id = 'socio-cronologia-section';
+            section.style.cssText = "margin-top: 1.25rem; margin-bottom: 1rem; padding: 0.85rem; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.25); background: rgba(99, 102, 241, 0.03);";
+
+            let lastSentText = "Nessun messaggio inviato finora";
+            if (lastMsg) {
+                lastSentText = lastMsg.isToday 
+                    ? `Ultimo invio: Oggi alle ${lastMsg.timeStr}` 
+                    : `Ultimo invio: ${lastMsg.daysAgo === 1 ? 'ieri' : lastMsg.daysAgo + ' gg fa'} (${lastMsg.dateStr})`;
+            }
+
+            const messagesListHtml = messages.length === 0
+                ? `<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; padding: 4px 0;">Nessun messaggio inviato registrato finora. I promemoria inviati via WhatsApp ed Email compariranno qui e rimarranno sincronizzati su tutti i tuoi PC.</div>`
+                : `
+                    <div style="max-height: 160px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card, #fff);">
+                        <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: rgba(0,0,0,0.03); border-bottom: 1px solid var(--border-color); text-align: left;">
+                                    <th style="padding: 4px 8px; font-weight: 600;">Data/Ora</th>
+                                    <th style="padding: 4px 8px; font-weight: 600;">Canale</th>
+                                    <th style="padding: 4px 8px; font-weight: 600;">Tipo</th>
+                                    <th style="padding: 4px 8px; font-weight: 600;">Anteprima</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${messages.slice(0, 20).map(m => `
+                                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.04);">
+                                        <td style="padding: 4px 8px; white-space: nowrap; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
+                                        <td style="padding: 4px 8px; white-space: nowrap;">
+                                            ${m.canale === 'whatsapp' 
+                                                ? '<span style="color: #25D366; font-weight: 600;">💬 WhatsApp</span>' 
+                                                : '<span style="color: #3b82f6; font-weight: 600;">📧 Email</span>'}
+                                        </td>
+                                        <td style="padding: 4px 8px; white-space: nowrap;">${m.tipo || 'Sollecito'}</td>
+                                        <td style="padding: 4px 8px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(m.anteprima || '').replace(/"/g, '&quot;')}">
+                                            ${m.anteprima || '-'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+            section.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-weight: 700; font-size: 0.85rem; color: var(--primary);">📨 Cronologia Solleciti & Messaggi</span>
+                        <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8; font-size: 0.65rem; padding: 1px 5px;">${messages.length}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">${lastSentText}</span>
+                        <button type="button" class="btn btn-outline" style="font-size: 0.68rem; padding: 2px 6px;" onclick="app.openCronologiaMessaggiModal(${socioId})" title="Apri cronologia dettagliata a schermo intero">Espandi Registro ↗</button>
+                    </div>
+                </div>
+                ${messagesListHtml}
+            `;
+
+            const btnContainer = form.querySelector('div[style*="justify-content: flex-end"]');
+            if (btnContainer) {
+                form.insertBefore(section, btnContainer);
+            } else {
+                form.appendChild(section);
             }
         },
 
-        renderReminderButtons(s) {
-            const today = new Date().toISOString().split('T')[0];
-            const sentList = this.state.sent_reminders[today] || [];
-            const isEmailSent = sentList.includes(`${s.id}_email`);
-            const isWASent = sentList.includes(`${s.id}_whatsapp`);
+        exportCronologiaCSV() {
+            const list = this.state.cronologia_messaggi || [];
+            if (list.length === 0) {
+                this.toast("Nessun messaggio nella cronologia da esportare.", "warning");
+                return;
+            }
 
-            return `
-                    <button class="btn ${isEmailSent ? 'btn-success' : 'btn-outline'}" 
-                            style="padding: 4px; font-size: 0.7rem; opacity: ${isEmailSent ? '0.7' : '1'};" 
-                            data-guide="Effetto: Apre il client email per inviare un promemoria di scadenza quota al socio."
-                            title="${isEmailSent ? 'Email inviata oggi' : 'Invia Mail'}" 
-                            onclick="app.sendReminder('${s.email}', '${s.nome}', 'Quota', ${s.id})">
-                        ${isEmailSent ? '✅' : '📧'}
-                    </button>
-                    <button class="btn ${isWASent ? 'btn-success' : 'btn-outline'}" 
-                            style="padding: 4px; font-size: 0.7rem; ${!isWASent ? 'border-color: rgba(37, 211, 102, 0.45); color: #25D366;' : 'background: rgba(16, 185, 129, 0.4);'} opacity: ${isWASent ? '0.7' : '1'}; display: inline-flex; align-items: center; justify-content: center;" 
-                            data-guide="Effetto: Apre WhatsApp Web/Desktop con un messaggio precompilato di sollecito quota."
-                            title="${isWASent ? 'WhatsApp inviato oggi' : 'WhatsApp'}" 
-                            onclick="app.sendWhatsAppReminder('${s.tel}', '${s.nome}', 'Quota', ${s.id})">
-                        ${isWASent ? '✅' : this.getWhatsAppIcon(14)}
-                    </button>
-                `;
+            const headers = ["ID", "Data_Ora", "Timestamp", "Socio_ID", "Socio_Nome", "Canale", "Tipo", "Stato_Quota", "Destinatario", "Anteprima"];
+            const escapeCsv = (val) => {
+                if (val === null || val === undefined) return '""';
+                const str = String(val).replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            let csvContent = "\uFEFF" + headers.join(";") + "\n";
+            list.forEach(m => {
+                const row = [
+                    escapeCsv(m.id || ''),
+                    escapeCsv(m.data_ora || ''),
+                    escapeCsv(m.timestamp || ''),
+                    escapeCsv(m.socio_id || ''),
+                    escapeCsv(m.socio_nome || ''),
+                    escapeCsv(m.canale || ''),
+                    escapeCsv(m.tipo || ''),
+                    escapeCsv(m.stato_quota || ''),
+                    escapeCsv(m.destinatario || ''),
+                    escapeCsv(m.anteprima || '')
+                ];
+                csvContent += row.join(";") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `cronologia_messaggi_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            this.toast("Esportazione CSV completata!");
+        },
+
+        clearCronologiaMessaggi() {
+            if (!this.state.cronologia_messaggi || this.state.cronologia_messaggi.length === 0) {
+                this.toast("La cronologia è già vuota.", "info");
+                return;
+            }
+            if (confirm("Sei sicuro di voler svuotare l'intera cronologia dei messaggi inviati? Questa operazione non è reversibile.")) {
+                this.state.cronologia_messaggi = [];
+                this.saveAll();
+                this.filterCronologiaTable();
+                this.toast("Cronologia messaggi svuotata.");
+            }
         },
 
         // --- DEBUG & AUTO-COMPILE TOOLS ---
@@ -21078,6 +21515,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 settings: this.state.settings || {},
                 corsi_colori: this.state.corsi_colori || {},
                 sent_reminders: this.state.sent_reminders || {},
+                cronologia_messaggi: this.state.cronologia_messaggi || [],
                 dismissed_quotes: this.state.dismissed_quotes || [],
                 deletedIds: this.state.deletedIds || [],
                 verbali_archive: this.state.verbali_archive || [],
@@ -21167,6 +21605,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         }
                         if (data.sent_reminders && typeof data.sent_reminders === 'object') {
                             this.state.sent_reminders = data.sent_reminders;
+                        }
+                        if (Array.isArray(data.cronologia_messaggi)) {
+                            this.state.cronologia_messaggi = data.cronologia_messaggi;
                         }
                         if (Array.isArray(data.dismissed_quotes)) {
                             this.state.dismissed_quotes = data.dismissed_quotes;
