@@ -17830,19 +17830,30 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 valide.push({ s, diffDays, date: scad.getTime() });
             });
 
-            // Prossime 5 in scadenza (diffDays >= 0):
-            // Si prendono le 5 più imminenti a oggi (a.date - b.date),
-            // poi si ordinano dal più lontano a scendere verso oggi (b.date - a.date) -> Opzione 2
-            const inScadenza = valide.filter(x => x.diffDays >= 0)
-                .sort((a, b) => a.date - b.date)
-                .slice(0, 5)
+            // Quota totale desiderata nel box riassunto (allineato con le ~7 righe della tabella certificati a fianco)
+            const TARGET_TOTAL = 7;
+
+            // Ultime già scadute (diffDays < 0):
+            // Dalla più recente (più vicina a oggi) alla più vecchia nel passato
+            const allScadute = valide.filter(x => x.diffDays < 0)
                 .sort((a, b) => b.date - a.date);
 
-            // Ultime 5 già scadute (diffDays < 0):
-            // Dalla più recente (più vicina a oggi) alla più vecchia nel passato
-            const scadute = valide.filter(x => x.diffDays < 0)
-                .sort((a, b) => b.date - a.date)
-                .slice(0, 5);
+            // Mostriamo al massimo 4 scadute per lasciare sempre spazio alle prossime in scadenza
+            const maxScadute = Math.min(allScadute.length, 4);
+            const scadute = allScadute.slice(0, maxScadute);
+
+            // Numero dinamico di quote in scadenza (diffDays >= 0):
+            // Riempie i posti lasciati liberi dalle scadute fino a TARGET_TOTAL (almeno 4 quote se ci sono molte scadute)
+            // Quando l'utente rimuove un socio scaduto, si libera un posto e viene automaticamente incluso il prossimo socio in scadenza!
+            const numInScadenza = Math.max(4, TARGET_TOTAL - scadute.length);
+
+            // Si prendono le più imminenti a oggi (a.date - b.date),
+            // poi si ordinano dal più lontano a scendere verso oggi (b.date - a.date) -> Opzione 2
+            // In questo modo, il prossimo socio a scadere che subentra appare in cima alla lista sopra gli altri
+            const inScadenza = valide.filter(x => x.diffDays >= 0)
+                .sort((a, b) => a.date - b.date)
+                .slice(0, numInScadenza)
+                .sort((a, b) => b.date - a.date);
 
             return [...inScadenza.map(x => x.s), ...scadute.map(x => x.s)];
         },
