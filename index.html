@@ -5989,7 +5989,8 @@
                 }
             },
             
-            async exitApp() {
+            async exitApp(saveToCloud = false) {
+                this._isExiting = true;
                 // Crea snapshot di sicurezza prima di uscire
                 this.createSnapshot('exit');
                 
@@ -5997,11 +5998,22 @@
                 this.toast('💾 Salvataggio dati in corso...', 'info');
                 this.saveAll();
                 
-                if (this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
-                    this.toast('☁️ Sincronizzazione Cloud in corso prima della chiusura...', 'info');
-                    const uploadOk = await this.cloudSync.uploadBackup(false, true);
-                    if (!uploadOk) {
-                        this.toast('⚠️ Salvataggio Cloud non riuscito, ma i dati locali sono al sicuro.', 'warning');
+                if (saveToCloud) {
+                    if (this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
+                        this.toast('☁️ Salvataggio su Google Drive in corso prima della chiusura...', 'info');
+                        const uploadOk = await this.cloudSync.uploadBackup(false, true);
+                        if (!uploadOk) {
+                            this.toast('⚠️ Salvataggio su Google Drive non riuscito, ma i dati locali sono al sicuro.', 'warning');
+                        } else {
+                            this.toast('✅ Salvataggio su Google Drive completato!', 'success');
+                        }
+                    } else {
+                        const proceed = confirm("Attualmente il gestionale è in modalità Offline (Google Drive non connesso).\n\nVuoi accedere al tuo account Google per salvare e sincronizzare sul Cloud prima di chiudere?");
+                        if (proceed) {
+                            this._pendingAction = { type: 'exitAfterUpload' };
+                            this.cloudSync.login();
+                            return;
+                        }
                     }
                 }
                 
@@ -6016,7 +6028,7 @@
                             this.openModal('✅ Dati Salvati', `
                                 <div style="text-align:center; padding:1.5rem 0;">
                                     <div style="font-size:3rem; margin-bottom:1rem;">💾</div>
-                                    <p style="font-size:1.1rem; margin-bottom:0.5rem; font-weight:600;">Tutti i dati sono stati sincronizzati e salvati.</p>
+                                    <p style="font-size:1.1rem; margin-bottom:0.5rem; font-weight:600;">Tutti i dati sono stati salvati${saveToCloud ? ' anche su Google Drive' : ' in locale'}.</p>
                                     <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">Puoi chiudere questa scheda del browser in modo sicuro.</p>
                                     <button class="btn btn-outline" onclick="window.close()" style="margin-right:8px;" data-guide="Chiudi finestra del browser. Effetto: Chiude la scheda corrente del gestionale.">Chiudi finestra</button>
                                     <button class="btn btn-primary" onclick="app.closeModal()" data-guide="Rimani nell'applicazione. Effetto: Chiude il popup e mantiene aperto il programma.">Rimani</button>
@@ -6208,6 +6220,8 @@
                                 this.openCloudQuickMenu();
                             } else if (act.type === 'syncNow') {
                                 this.syncNow();
+                            } else if (act.type === 'exitAfterUpload') {
+                                app.exitApp(true);
                             }
                         } else if (this.isExplicitLogin) {
                             this.openCloudQuickMenu();
@@ -21396,22 +21410,24 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const modal = document.createElement('div');
             modal.style.position = 'fixed';
             modal.style.top = '0'; modal.style.left = '0'; modal.style.width = '100%'; modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0,0,0,0.5)'; modal.style.zIndex = '9999';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.65)'; modal.style.zIndex = '9999';
             modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
             modal.innerHTML = `
-                <div style="background: #0f172a; padding: 20px; border-radius: 8px; max-width: 400px; text-align: center; color: white; border: 1px solid #1e293b;">
-                    <h3 style="margin-top:0;">Vuoi salvare prima di uscire?</h3>
-                    <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">Puoi creare un punto di ripristino per sicurezza prima di chiudere il gestionale.</p>
+                <div style="background: #0f172a; padding: 24px; border-radius: 12px; max-width: 420px; width: 90%; text-align: center; color: white; border: 1px solid #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+                    <h3 style="margin-top:0; font-size: 1.25rem;">Vuoi salvare prima di uscire?</h3>
+                    <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">Scegli la modalità di salvataggio prima di chiudere il gestionale.</p>
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <button id="btn-save-exit" class="btn" style="background:#2563eb; color:white; justify-content:center;" data-guide="Effetto: Crea un backup di sicurezza ed esce dall'applicazione.">Salva ed Esci</button>
-                        <button id="btn-exit" class="btn" style="background:#dc2626; color:white; justify-content:center;" data-guide="Effetto: Chiude la schermata dell'applicazione senza effettuare un salvataggio preventivo.">Esci senza salvare</button>
-                        <button id="btn-cancel" class="btn btn-outline" style="justify-content:center;" data-guide="Effetto: Annulla la richiesta di chiusura e torna al gestionale.">Annulla</button>
+                        <button id="btn-save-exit" class="btn" style="background:#2563eb; color:white; justify-content:center; padding: 10px 14px; font-weight: 600;" data-guide="Effetto: Salva i dati nella memoria locale di questo PC ed esce.">💾 Salva ed Esci (in locale)</button>
+                        <button id="btn-save-cloud-exit" class="btn" style="background: linear-gradient(135deg, #059669, #0d9488); color:white; justify-content:center; padding: 10px 14px; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.4);" data-guide="Effetto: Salva in locale e carica l'archivio aggiornato su Google Drive per sincronizzare tutti i tuoi dispositivi.">☁️ Salva anche su Google Drive ed Esci</button>
+                        <button id="btn-exit" class="btn" style="background:#dc2626; color:white; justify-content:center; padding: 9px 14px;" data-guide="Effetto: Chiude l'applicazione senza effettuare un salvataggio preventivo.">🚪 Esci senza salvare</button>
+                        <button id="btn-cancel" class="btn btn-outline" style="justify-content:center; padding: 8px 14px;" data-guide="Effetto: Annulla la richiesta di chiusura e torna al gestionale.">Annulla</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
             
             const performExit = () => {
+                this._isExiting = true;
                 window.close();
                 // Se window.close() è bloccato dal browser (comune nelle normali schede)
                 setTimeout(() => {
@@ -21427,7 +21443,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             document.getElementById('btn-save-exit').onclick = async () => {
                 modal.remove();
-                await app.exitApp();
+                await app.exitApp(false);
+            };
+            document.getElementById('btn-save-cloud-exit').onclick = async () => {
+                modal.remove();
+                await app.exitApp(true);
             };
             document.getElementById('btn-exit').onclick = () => {
                 this.state.isDirty = false; // Prevents auto-exit snapshot
@@ -30265,7 +30285,16 @@ ${r.annullata ? `
                 sessionStorage.setItem('asd_restore_page', app.state.currentPage || 'dashboard');
                 sessionStorage.setItem('asd_restore_scroll', String(window.scrollY || 0));
             }
-            if (app.state.isDirty) {
+
+            // Se l'uscita è guidata dai pulsanti interni della modale "Esci", non bloccare
+            if (window.app && app._isExiting) return;
+
+            // Salva lo stato locale istantaneo di sicurezza
+            if (window.app && app.saveAll) {
+                try { app.saveAll(); } catch(err) {}
+            }
+
+            if (app.state && app.state.isDirty) {
                 app.createSnapshot('auto-exit');
                 // Sincronizzazione di emergenza in chiusura tramite keepalive
                 if (app.cloudSync && app.cloudSync.syncEnabled && app.cloudSync.accessToken && app.cloudSync.fileId) {
@@ -30285,6 +30314,11 @@ ${r.annullata ? `
                     }).catch(() => {});
                 }
             }
+
+            // Blocco di conferma alla pressione della "X" della finestra Windows
+            e.preventDefault();
+            e.returnValue = "Vuoi uscire dall'applicazione? Chiudendo da qui, le modifiche non salvate potrebbero andare perse. Utilizza il pulsante Esci.";
+            return e.returnValue;
         });
     </script>
     <script>
