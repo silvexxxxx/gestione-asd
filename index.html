@@ -4401,10 +4401,12 @@
                 // --- APP LOCK (PIN) ---
                 const savedPin = localStorage.getItem('asd_app_lock');
                 if (savedPin) {
-                    this.showAppLockScreen(savedPin);
+                    this._isInitialized = false;
+                    this.showAppLockScreen(savedPin, false);
                     return; // Interrompe l'init, verrà ripreso dopo l'inserimento corretto
                 }
 
+                this._isInitialized = true;
                 this.resumeInit();
             },
 
@@ -4481,12 +4483,20 @@
                     window.moveTo(0, 0);
                     window.resizeTo(screen.availWidth, screen.availHeight);
                 } catch(e) {}
+
+                // Avvia monitoraggio inattività se il PIN è configurato
+                this.startAppLockTimer();
             },
 
-            showAppLockScreen(savedPin) {
+            showAppLockScreen(savedPin, isDueToInactivity = false) {
                 // Rimuove eventuali lock esistenti
                 const existing = document.getElementById('app-lock-overlay');
                 if (existing) existing.remove();
+
+                const timeoutMin = parseInt(localStorage.getItem('asd_app_lock_timeout') || '5', 10) || 5;
+                const subtitle = isDueToInactivity 
+                    ? `Sessione bloccata automaticamente dopo ${timeoutMin} minuti di inattività.` 
+                    : 'Inserisci il PIN o la Password di accesso per continuare.';
 
                 const lockOverlay = document.createElement('div');
                 lockOverlay.id = 'app-lock-overlay';
@@ -4495,45 +4505,198 @@
                     <div style="background:var(--sidebar-bg); padding:30px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); max-width: 400px; width: 90%;">
                         <div style="font-size:3rem; margin-bottom:15px;">🔒</div>
                         <h2 style="margin-bottom:10px;">Gestionale Bloccato</h2>
-                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">Inserisci il PIN o la Password di accesso per continuare.</p>
+                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">${subtitle}</p>
                         <form id="app-lock-form" style="display:flex; flex-direction:column; gap:15px;">
                             <input type="password" id="app-lock-input" class="form-control" placeholder="Inserisci Password..." style="text-align:center; font-size:1.2rem; padding:10px;" required autofocus data-guide="Inserisci la password o PIN di sicurezza. Effetto: Verifica le credenziali per sbloccare l'applicazione.">
-                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:1.1rem; width:100%;" data-guide="Sblocca il gestionale. Effetto: Rimuove la schermata di blocco se la password è corretta.">Sblocca</button>
+                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:1.1rem; width:100%; background:#ca8a04; border:none;" data-guide="Sblocca il gestionale. Effetto: Rimuove la schermata di blocco se la password è corretta.">Sblocca</button>
                         </form>
                         <div id="app-lock-error" style="color:var(--danger); margin-top:15px; font-weight:bold; display:none;">Password Errata!</div>
                     </div>
                 `;
                 document.body.appendChild(lockOverlay);
 
+                setTimeout(() => {
+                    const inputEl = document.getElementById('app-lock-input');
+                    if (inputEl) inputEl.focus();
+                }, 100);
+
                 document.getElementById('app-lock-form').addEventListener('submit', (e) => {
                     e.preventDefault();
                     const input = document.getElementById('app-lock-input').value;
                     if (input === savedPin) {
                         lockOverlay.remove();
-                        this.resumeInit();
+                        this._appLockLastActivity = Date.now();
+                        if (!this._isInitialized) {
+                            this._isInitialized = true;
+                            this.resumeInit();
+                        } else {
+                            this.startAppLockTimer();
+                            this.toast("Gestionale sbloccato!", "success");
+                        }
                     } else {
                         document.getElementById('app-lock-error').style.display = 'block';
-                        setTimeout(() => { document.getElementById('app-lock-error').style.display = 'none'; }, 3000);
-                        document.getElementById('app-lock-input').value = '';
-                        document.getElementById('app-lock-input').focus();
+                        setTimeout(() => { 
+                            const err = document.getElementById('app-lock-error');
+                            if (err) err.style.display = 'none'; 
+                        }, 3000);
+                        const inp = document.getElementById('app-lock-input');
+                        if (inp) {
+                            inp.value = '';
+                            inp.focus();
+                        }
                     }
                 });
             },
 
-            configureAppLock() {
-                const newPin = prompt("Inserisci il nuovo PIN o Password per bloccare il gestionale all'avvio:\n(Lascia vuoto per annullare)");
-                if (newPin && newPin.trim() !== '') {
-                    localStorage.setItem('asd_app_lock', newPin.trim());
-                    this.toast("Blocco App configurato con successo! Verrà richiesto al prossimo riavvio.", "success");
-                    this.renderDatabase(); // refresh UI
+            startAppLockTimer() {
+                const savedPin = localStorage.getItem('asd_app_lock');
+                if (!savedPin) return;
+
+                this._appLockLastActivity = Date.now();
+
+                if (!this._appLockListenersBound) {
+                    this._appLockListenersBound = true;
+                    const onUserActivity = () => {
+                        // Non aggiornare l'attività se il blocco è attualmente visibile
+                        if (document.getElementById('app-lock-overlay')) return;
+                        const now = Date.now();
+                        // Throttle di 2 secondi
+                        if (now - (this._appLockLastActivity || 0) > 2000) {
+                            this._appLockLastActivity = now;
+                        }
+                    };
+
+                    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+                        window.addEventListener(evt, onUserActivity, { passive: true });
+                    });
+
+                    window.addEventListener('focus', () => this.checkAppLockTimeout());
+                    document.addEventListener('visibilitychange', () => {
+                        if (!document.hidden) {
+                            this.checkAppLockTimeout();
+                        }
+                    });
+                }
+
+                if (this._appLockInterval) {
+                    clearInterval(this._appLockInterval);
+                }
+                this._appLockInterval = setInterval(() => {
+                    this.checkAppLockTimeout();
+                }, 5000);
+            },
+
+            stopAppLockTimer() {
+                if (this._appLockInterval) {
+                    clearInterval(this._appLockInterval);
+                    this._appLockInterval = null;
                 }
             },
 
+            checkAppLockTimeout() {
+                const pin = localStorage.getItem('asd_app_lock');
+                if (!pin) return;
+
+                // Se la schermata di blocco è già attiva, ignora
+                if (document.getElementById('app-lock-overlay')) return;
+
+                const timeoutMin = parseInt(localStorage.getItem('asd_app_lock_timeout') || '5', 10) || 5;
+                const timeoutMs = timeoutMin * 60 * 1000;
+                const elapsed = Date.now() - (this._appLockLastActivity || Date.now());
+
+                if (elapsed >= timeoutMs) {
+                    this.showAppLockScreen(pin, true);
+                }
+            },
+
+            configureAppLock() {
+                const existingPin = localStorage.getItem('asd_app_lock');
+                const existingTimeout = localStorage.getItem('asd_app_lock_timeout') || '5';
+                const isConfigured = !!existingPin;
+
+                const modalHtml = `
+                    <div style="padding: 0.25rem 0;">
+                        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem; line-height: 1.45;">
+                            ${isConfigured 
+                                ? 'La protezione è attualmente <strong>attiva</strong> su questo dispositivo. Puoi modificare il PIN, aggiornare i minuti prima del blocco automatico o rimuoverlo.' 
+                                : 'Proteggi l\'applicazione con un codice PIN o Password personale e imposta il tempo di inattività dopo il quale bloccare lo schermo.'}
+                        </p>
+
+                        <form id="cfg-app-lock-form" onsubmit="event.preventDefault(); app.saveAppLockSettings();">
+                            <div class="form-group" style="margin-bottom: 1.2rem;">
+                                <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.88rem;">
+                                    ${isConfigured ? 'Nuovo PIN o Password (lascia vuoto per non modificare):' : 'PIN o Password di Accesso:'}
+                                </label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="password" id="cfg-app-lock-pin" class="form-control" placeholder="${isConfigured ? '••••••••' : 'Inserisci PIN o Password...'}" style="font-size: 1rem; padding: 8px 12px; flex: 1;" ${isConfigured ? '' : 'required'}>
+                                    <button type="button" class="btn btn-outline" style="padding: 8px 12px;" onclick="const el = document.getElementById('cfg-app-lock-pin'); el.type = el.type === 'password' ? 'text' : 'password'; this.textContent = el.type === 'password' ? '👁️' : '🔒';" title="Mostra/Nascondi codice">👁️</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.88rem;">
+                                    ⏱️ Entra in funzione dopo (inattività):
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="number" id="cfg-app-lock-timeout" class="form-control" min="1" max="480" step="1" value="${existingTimeout}" required style="max-width: 105px; text-align: center; font-size: 1.15rem; font-weight: 700; padding: 8px 10px; border-color: #ca8a04;">
+                                    <span style="font-size: 0.92rem; color: var(--text-main); font-weight: 500;">minuti</span>
+                                </div>
+                                <small style="display: block; margin-top: 6px; color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">
+                                    Se il programma non rileva attività (mouse, tastiera, tocco) per questo intervallo di tempo, il gestionale si bloccherà automaticamente richiedendo il PIN.
+                                </small>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                ${isConfigured ? '<button type="button" class="btn btn-outline text-danger" onclick="app.removeAppLock(); app.closeModal();" style="padding: 7px 14px; font-size: 0.85rem;">Rimuovi Blocco</button>' : '<div></div>'}
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn btn-outline" onclick="app.closeModal()" style="padding: 7px 14px; font-size: 0.85rem;">Annulla</button>
+                                    <button type="submit" class="btn btn-primary" style="background: #ca8a04; border: none; padding: 7px 18px; font-size: 0.85rem; font-weight: 600;">Salva Configurazione</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                `;
+
+                this.openModal('🔒 Configura Blocco di Sicurezza (PIN)', modalHtml);
+            },
+
+            saveAppLockSettings() {
+                const pinEl = document.getElementById('cfg-app-lock-pin');
+                const timeoutEl = document.getElementById('cfg-app-lock-timeout');
+                const existingPin = localStorage.getItem('asd_app_lock');
+
+                let pin = pinEl ? pinEl.value.trim() : '';
+                if (!pin && existingPin) {
+                    pin = existingPin;
+                }
+
+                if (!pin) {
+                    this.toast("Inserisci un PIN o Password valido.", "danger");
+                    if (pinEl) pinEl.focus();
+                    return;
+                }
+
+                let timeoutMin = timeoutEl ? parseInt(timeoutEl.value, 10) : 5;
+                if (isNaN(timeoutMin) || timeoutMin < 1) {
+                    timeoutMin = 5;
+                }
+
+                localStorage.setItem('asd_app_lock', pin);
+                localStorage.setItem('asd_app_lock_timeout', String(timeoutMin));
+
+                this.startAppLockTimer();
+                this.closeModal();
+                this.toast(`Blocco App attivo: entrerà in funzione dopo ${timeoutMin} min di inattività.`, "success");
+                this.renderDatabase();
+            },
+
             removeAppLock() {
-                if (confirm("Sei sicuro di voler rimuovere la richiesta della password all'avvio?")) {
+                if (confirm("Sei sicuro di voler rimuovere la richiesta del PIN e il blocco automatico?")) {
                     localStorage.removeItem('asd_app_lock');
+                    localStorage.removeItem('asd_app_lock_timeout');
+                    this.stopAppLockTimer();
                     this.toast("Blocco App rimosso.", "success");
-                    this.renderDatabase(); // refresh UI
+                    this.renderDatabase();
                 }
             },
 
@@ -19401,16 +19564,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <!-- App Lock / Sicurezza -->
                                 <div class="glass-card" style="border-left: 4px solid #ca8a04; margin-bottom: 0; padding: 1.1rem 1.25rem; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;">
                                     <div>
-                                        <h3 style="margin-bottom: 0.35rem; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                        <h3 style="margin-bottom: 0.35rem; font-size: 1.05rem; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                                             <span>🔒 Sicurezza (Blocco App)</span>
+                                            ${localStorage.getItem('asd_app_lock') ? `<span style="background: rgba(202, 138, 4, 0.2); color: #facc15; border: 1px solid #ca8a04; font-size: 0.75rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600;">⏱️ ${localStorage.getItem('asd_app_lock_timeout') || '5'} min</span>` : ''}
                                         </h3>
                                         <p style="font-size: 0.84rem; color: var(--text-muted); margin: 0; line-height: 1.35;">
-                                            PIN o password richiesta all'apertura per proteggere i dati su questo dispositivo locale.
+                                            ${localStorage.getItem('asd_app_lock') 
+                                                ? `PIN attivo: blocco di sicurezza all'avvio e automatico dopo <strong>${localStorage.getItem('asd_app_lock_timeout') || '5'} minuti</strong> di inattività.` 
+                                                : 'PIN o password richiesta all\'apertura e dopo un tempo personalizzato di inattività per proteggere i dati locali.'}
                                         </p>
                                     </div>
                                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                        <button class="btn btn-primary" style="background: #ca8a04; border: none; padding: 6px 14px; font-size: 0.85rem;" onclick="app.configureAppLock()" data-guide="Imposta o modifica il PIN di protezione all'avvio. Effetto: Blocca l'accesso al gestionale con una schermata di sicurezza finché non viene digitato il codice corretto.">Imposta/Modifica PIN</button>
-                                        ${localStorage.getItem('asd_app_lock') ? '<button class="btn btn-outline text-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="app.removeAppLock()" data-guide="Rimuovi il PIN di blocco all\'avvio. Effetto: Disattiva la schermata di sblocco e avvia l\'applicazione direttamente senza password.">Rimuovi Blocco</button>' : ''}
+                                        <button class="btn btn-primary" style="background: #ca8a04; border: none; padding: 6px 14px; font-size: 0.85rem;" onclick="app.configureAppLock()" data-guide="Imposta o modifica il PIN e i minuti di inattività prima del blocco automatico. Effetto: Apre la schermata per configurare password e timeout.">${localStorage.getItem('asd_app_lock') ? 'Modifica PIN / Minuti' : 'Imposta/Modifica PIN'}</button>
+                                        ${localStorage.getItem('asd_app_lock') ? '<button class="btn btn-outline text-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="app.removeAppLock()" data-guide="Rimuovi il PIN di blocco all\'avvio e il timer di inattività. Effetto: Disattiva la protezione e avvia l\'applicazione direttamente senza password.">Rimuovi Blocco</button>' : ''}
                                     </div>
                                 </div>
 
