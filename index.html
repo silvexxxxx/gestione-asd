@@ -9304,14 +9304,14 @@
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('numero')" data-guide="Ordina per numero progressivo. Effetto: Ordina le ricevute dal numero più basso al più alto o viceversa.">Numero <span id="sort-ricevute-numero">${this.ricevuteSortKey === 'numero' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('socio_nome')" data-guide="Ordina per nome socio. Effetto: Ordina alfabeticamente l'archivio per nome dell'iscritto.">Socio <span id="sort-ricevute-socio_nome">${this.ricevuteSortKey === 'socio_nome' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('data')" data-guide="Ordina per data di emissione. Effetto: Ordina cronologicamente le ricevute in base a giorno e orario.">Data <span id="sort-ricevute-data">${this.ricevuteSortKey === 'data' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('tipo')" data-guide="Ordina per tipologia incasso. Effetto: Raggruppa le ricevute per tipologia di quota (iscrizione, abbonamento, carnet).">Tipo <span id="sort-ricevute-tipo">${this.ricevuteSortKey === 'tipo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('importo')" data-guide="Ordina per importo in Euro. Effetto: Ordina per valore incassato crescente o decrescente.">Importo <span id="sort-ricevute-importo">${this.ricevuteSortKey === 'importo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('metodo')" data-guide="Ordina per modalità di incasso. Effetto: Raggruppa per contanti, bonifico bancario o POS.">Metodo <span id="sort-ricevute-metodo">${this.ricevuteSortKey === 'metodo' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap; text-align: center;" onclick="app.sortRicevute('cartacea')" data-guide="Ordina per registro Cartaceo/Digitale. Effetto: Raggruppa prima il registro cartaceo e poi quello digitale.">Origine <span id="sort-ricevute-cartacea">${this.ricevuteSortKey === 'cartacea' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('stato')" data-guide="Ordina per stato documento: Bozza (modificabile) o Emessa (definitiva).">Stato <span id="sort-ricevute-stato">${this.ricevuteSortKey === 'stato' ? (this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('numero')" data-guide="Ordina per numero progressivo. Effetto: Ordina le ricevute dal numero più basso al più alto o viceversa.">Numero <span id="sort-ricevute-numero">${this.getRicevuteSortIcon('numero')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('socio_nome')" data-guide="Ordina per nome socio. Effetto: Ordina alfabeticamente l'archivio per nome dell'iscritto.">Socio <span id="sort-ricevute-socio_nome">${this.getRicevuteSortIcon('socio_nome')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('data')" data-guide="Ordina per data di emissione. Effetto: Ordina cronologicamente le ricevute in base a giorno e orario.">Data <span id="sort-ricevute-data">${this.getRicevuteSortIcon('data')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('tipo')" data-guide="Ordina per tipologia incasso. Effetto: Raggruppa le ricevute per tipologia di quota (iscrizione, abbonamento, carnet).">Tipo <span id="sort-ricevute-tipo">${this.getRicevuteSortIcon('tipo')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('importo')" data-guide="Ordina per importo in Euro. Effetto: Ordina per valore incassato crescente o decrescente.">Importo <span id="sort-ricevute-importo">${this.getRicevuteSortIcon('importo')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('metodo')" data-guide="Ordina per modalità di incasso. Effetto: Raggruppa per contanti, bonifico bancario o POS.">Metodo <span id="sort-ricevute-metodo">${this.getRicevuteSortIcon('metodo')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap; text-align: center;" onclick="app.sortRicevute('cartacea')" data-guide="Ordina per registro Cartaceo/Digitale. Effetto: Raggruppa prima il registro cartaceo e poi quello digitale.">Origine <span id="sort-ricevute-cartacea">${this.getRicevuteSortIcon('cartacea')}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortRicevute('stato')" data-guide="Ordina per stato documento: Bozza (modificabile) o Emessa (definitiva).">Stato <span id="sort-ricevute-stato">${this.getRicevuteSortIcon('stato')}</span></th>
                                             <th style="text-align: right; white-space: nowrap; min-width: 105px;" data-guide="Pulsanti azione ricevuta. Effetto: Permette di scaricare il PDF, stampare la quietanza, inviarla via email o WhatsApp e annullare la ricevuta.">Azioni</th>
                                         </tr>
                                     </thead>
@@ -9337,6 +9337,13 @@
                 }
             },
 
+            getRicevuteSortIcon(key) {
+                const k = this.ricevuteSortKey || 'numero';
+                const dir = this.ricevuteSortDir || 'asc';
+                if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+                return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
+            },
+
             sortRicevute(key) {
                 if (this.ricevuteSortKey === key) {
                     this.ricevuteSortDir = this.ricevuteSortDir === 'asc' ? 'desc' : 'asc';
@@ -9348,11 +9355,8 @@
                 // Update headers UI
                 ['numero', 'socio_nome', 'data', 'tipo', 'importo', 'metodo', 'cartacea', 'stato'].forEach(k => {
                     const el = document.getElementById('sort-ricevute-' + k);
-                    if (el) el.innerHTML = '';
+                    if (el) el.innerHTML = this.getRicevuteSortIcon(k);
                 });
-                
-                const el = document.getElementById('sort-ricevute-' + key);
-                if (el) el.innerHTML = this.ricevuteSortDir === 'asc' ? ' 🔼' : ' 🔽';
                 
                 this.filterRicevute();
             },
@@ -22609,9 +22613,116 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         // ISTRUTTORI - Pagina dedicata
         // =========================================================
 
+        getIstruttoriSortIcon(key) {
+            const k = this.istruttoriSortKey || 'nome';
+            const dir = this.istruttoriSortDir || 'asc';
+            if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+            return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
+        },
+
+        getSortedIstruttori() {
+            let list = [...(this.state.istruttori || [])];
+            const k = this.istruttoriSortKey || 'nome';
+            const dir = (this.istruttoriSortDir || 'asc') === 'asc' ? 1 : -1;
+            list.sort((a, b) => {
+                if (k === 'nome') {
+                    return (a.nome || '').localeCompare(b.nome || '') * dir;
+                } else if (k === 'ruolo') {
+                    return (a.ruolo || '').localeCompare(b.ruolo || '') * dir;
+                } else if (k === 'ore_settimanali') {
+                    return ((parseFloat(a.ore_settimanali) || 0) - (parseFloat(b.ore_settimanali) || 0)) * dir;
+                } else if (k === 'compenso_mensile') {
+                    return ((parseFloat(a.compenso_mensile) || 0) - (parseFloat(b.compenso_mensile) || 0)) * dir;
+                }
+                return 0;
+            });
+            return list;
+        },
+
+        sortIstruttori(key) {
+            if (!this.istruttoriSortKey) this.istruttoriSortKey = 'nome';
+            if (!this.istruttoriSortDir) this.istruttoriSortDir = 'asc';
+
+            if (this.istruttoriSortKey === key) {
+                this.istruttoriSortDir = this.istruttoriSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.istruttoriSortKey = key;
+                this.istruttoriSortDir = (key === 'ore_settimanali' || key === 'compenso_mensile') ? 'desc' : 'asc';
+            }
+            ['nome', 'ruolo', 'ore_settimanali', 'compenso_mensile'].forEach(k => {
+                const el = document.getElementById('sort-istruttori-' + k);
+                if (el) el.innerHTML = this.getIstruttoriSortIcon(k);
+            });
+            const tbody = document.getElementById('istruttori-tbody');
+            if (tbody) {
+                tbody.innerHTML = this.renderIstruttoriRows(this.getSortedIstruttori());
+            }
+        },
+
+        renderIstruttoriRows(istruttori) {
+            if (!istruttori || istruttori.length === 0) {
+                return `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">Nessun istruttore registrato. Clicca "+ Aggiungi Istruttore" per iniziare.</td></tr>`;
+            }
+            return istruttori.map(i => {
+                const corsiAssegnati = this.state.corsi.filter(c => c.istruttore_id == i.id);
+                const ruoloBadge = {
+                    'volontario': { color: 'rgba(16,185,129,0.2)', text: 'var(--success)', label: 'Socio Volontario' },
+                    'collaboratore': { color: 'rgba(59,130,246,0.2)', text: 'var(--primary)', label: 'Collaboratore' },
+                    'dipendente': { color: 'rgba(139,92,246,0.2)', text: 'var(--accent)', label: 'Dipendente' }
+                }[i.ruolo] || { color: 'rgba(148,163,184,0.2)', text: 'var(--text-muted)', label: i.ruolo || 'Non definito' };
+                return `
+                        <tr>
+                            <td style="font-weight:600;">${i.nome}</td>
+                            <td><span style="background:${ruoloBadge.color}; color:${ruoloBadge.text}; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">${ruoloBadge.label}</span></td>
+                            <td><div style="font-size:0.82rem;">${i.email || '-'}</div><div style="font-size:0.78rem; color:var(--text-muted);">${i.tel || '-'}</div></td>
+                            <td style="font-weight:600;">${i.ore_settimanali ? i.ore_settimanali + 'h' : '-'}</td>
+                            <td style="font-weight:700; color:var(--success);">${i.compenso_mensile ? '€ ' + parseFloat(i.compenso_mensile).toFixed(2) : '-'}</td>
+                            <td><span style="font-size:0.82rem; font-weight:600; color:var(--primary);">${(i.discipline || []).join(', ') || '<span style="color:var(--text-muted);">Nessuna</span>'}</span></td>
+                            <td>
+                                <div style="font-size:0.82rem; line-height:1.4;">
+                                    ${(() => {
+                                        if (corsiAssegnati.length === 0) return '<span style="color:var(--text-muted);">Nessuno</span>';
+                                        const groups = {};
+                                        const GIORNI_ABBR = {1:'Lun', 2:'Mar', 3:'Mer', 4:'Gio', 5:'Ven', 6:'Sab', 7:'Dom'};
+                                        
+                                        corsiAssegnati.forEach(c => {
+                                            if (!groups[c.nome]) groups[c.nome] = {};
+                                            if (!groups[c.nome][c.dayOfWeek]) groups[c.nome][c.dayOfWeek] = [];
+                                            groups[c.nome][c.dayOfWeek].push(`${c.startTime || ''}-${c.endTime || ''}`);
+                                        });
+                                        
+                                        return Object.entries(groups).map(([nome, days]) => {
+                                            const sortedDays = Object.keys(days).sort((a,b) => Number(a) - Number(b));
+                                            const dayStrings = sortedDays.map(d => {
+                                                const times = days[d].sort((a,b) => a.localeCompare(b)).join(', ');
+                                                return `${GIORNI_ABBR[d]} ${times}`;
+                                            });
+                                            return `
+                                            <div style="margin-bottom:4px;">
+                                                <strong>${nome}:</strong> 
+                                                <span style="color:var(--text-muted);">${dayStrings.join(' | ')}</span>
+                                            </div>
+                                            `;
+                                        }).join('');
+                                    })()}
+                                </div>
+                            </td>
+                            <td style="text-align:right;">
+                                <div style="display:flex; gap:4px; justify-content:flex-end;">
+                                    <button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="app.openAssegnaOrariModal(${i.id})" title="Assegna a orari in calendario" data-guide="Assegna orari nel calendario. Effetto: Collega l'istruttore ai corsi e fasce orarie settimanali.">📅 Assegna Orari</button>
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.openEditIstruttoreModal(${i.id})" title="Modifica" data-guide="Modifica anagrafica istruttore. Effetto: Aggiorna contatti, tariffe e discipline.">✏️</button>
+                                    <button class="btn btn-success" style="padding:4px 8px; font-size:0.75rem;" onclick="app.openCompensoIstruttoreModal(${i.id})" title="Emetti Ricevuta Compenso" data-guide="Emetti ricevuta compenso sportivo. Effetto: Genera la quietanza ex D.Lgs. 36/2021 e registra l'uscita in Prima Nota.">📄 Ricevuta</button>
+                                    <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="app.deleteIstruttore(${i.id})" title="Elimina" data-guide="Elimina istruttore dallo staff. Effetto: Rimuove l'anagrafica del collaboratore (richiede conferma).">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>`;
+            }).join('');
+        },
+
         renderIstruttori() {
             const main = document.getElementById('main-content');
-            const istruttori = this.state.istruttori || [];
+            const rawIstruttori = this.state.istruttori || [];
+            const istruttori = this.getSortedIstruttori();
 
             main.innerHTML = `
                     <div class="page-content">
@@ -22640,80 +22751,25 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <table id="istruttori-table">
                                     <thead>
                                         <tr>
-                                            <th data-guide="Nome del tecnico. Effetto: Identifica l'istruttore o collaboratore.">Nome</th>
-                                            <th data-guide="Ruolo inquadramento. Effetto: Mostra se volontario, collaboratore coordinato o dipendente.">Ruolo / Tipologia</th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortIstruttori('nome')" data-guide="Nome del tecnico. Effetto: Identifica l'istruttore o collaboratore.">Nome <span id="sort-istruttori-nome">${this.getIstruttoriSortIcon('nome')}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortIstruttori('ruolo')" data-guide="Ruolo inquadramento. Effetto: Mostra se volontario, collaboratore coordinato o dipendente.">Ruolo / Tipologia <span id="sort-istruttori-ruolo">${this.getIstruttoriSortIcon('ruolo')}</span></th>
                                             <th data-guide="Recapiti. Effetto: Visualizza telefono ed email per contatti diretti.">Contatti</th>
-                                            <th data-guide="Monte ore. Effetto: Totale ore settimanali di lezione programmate.">Ore/Sett.</th>
-                                            <th data-guide="Compenso pattuito. Effetto: Importo mensile o tariffa oraria concordata.">Compenso Mensile</th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortIstruttori('ore_settimanali')" data-guide="Monte ore. Effetto: Totale ore settimanali di lezione programmate.">Ore/Sett. <span id="sort-istruttori-ore_settimanali">${this.getIstruttoriSortIcon('ore_settimanali')}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortIstruttori('compenso_mensile')" data-guide="Compenso pattuito. Effetto: Importo mensile o tariffa oraria concordata.">Compenso Mensile <span id="sort-istruttori-compenso_mensile">${this.getIstruttoriSortIcon('compenso_mensile')}</span></th>
                                             <th data-guide="Discipline insegnate. Effetto: Corsi e specialità sportive assegnate all'istruttore.">Discipline</th>
                                             <th data-guide="Orari assegnati nel planning. Effetto: Fasce orarie e giorni in cui l'istruttore tiene le lezioni.">Orari Assegnati</th>
                                             <th style="text-align:right;" data-guide="Azioni istruttore. Effetto: Permette di assegnare orari, modificare anagrafica, emettere ricevuta compenso o eliminare.">Azioni</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        ${istruttori.length === 0 ? `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">Nessun istruttore registrato. Clicca "+ Aggiungi Istruttore" per iniziare.</td></tr>` :
-                    istruttori.map(i => {
-                        const corsiAssegnati = this.state.corsi.filter(c => c.istruttore_id == i.id);
-                        const ruoloBadge = {
-                            'volontario': { color: 'rgba(16,185,129,0.2)', text: 'var(--success)', label: 'Socio Volontario' },
-                            'collaboratore': { color: 'rgba(59,130,246,0.2)', text: 'var(--primary)', label: 'Collaboratore' },
-                            'dipendente': { color: 'rgba(139,92,246,0.2)', text: 'var(--accent)', label: 'Dipendente' }
-                        }[i.ruolo] || { color: 'rgba(148,163,184,0.2)', text: 'var(--text-muted)', label: i.ruolo || 'Non definito' };
-                        return `
-                                                <tr>
-                                                    <td style="font-weight:600;">${i.nome}</td>
-                                                    <td><span style="background:${ruoloBadge.color}; color:${ruoloBadge.text}; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600;">${ruoloBadge.label}</span></td>
-                                                    <td><div style="font-size:0.82rem;">${i.email || '-'}</div><div style="font-size:0.78rem; color:var(--text-muted);">${i.tel || '-'}</div></td>
-                                                    <td style="font-weight:600;">${i.ore_settimanali ? i.ore_settimanali + 'h' : '-'}</td>
-                                                    <td style="font-weight:700; color:var(--success);">${i.compenso_mensile ? '€ ' + parseFloat(i.compenso_mensile).toFixed(2) : '-'}</td>
-                                                    <td><span style="font-size:0.82rem; font-weight:600; color:var(--primary);">${(i.discipline || []).join(', ') || '<span style="color:var(--text-muted);">Nessuna</span>'}</span></td>
-                                                    <td>
-                                                        <div style="font-size:0.82rem; line-height:1.4;">
-                                                            ${(() => {
-                                                                if (corsiAssegnati.length === 0) return '<span style="color:var(--text-muted);">Nessuno</span>';
-                                                                const groups = {};
-                                                                const GIORNI_ABBR = {1:'Lun', 2:'Mar', 3:'Mer', 4:'Gio', 5:'Ven', 6:'Sab', 7:'Dom'};
-                                                                
-                                                                corsiAssegnati.forEach(c => {
-                                                                    if (!groups[c.nome]) groups[c.nome] = {};
-                                                                    if (!groups[c.nome][c.dayOfWeek]) groups[c.nome][c.dayOfWeek] = [];
-                                                                    groups[c.nome][c.dayOfWeek].push(`${c.startTime || ''}-${c.endTime || ''}`);
-                                                                });
-                                                                
-                                                                return Object.entries(groups).map(([nome, days]) => {
-                                                                    const sortedDays = Object.keys(days).sort((a,b) => Number(a) - Number(b));
-                                                                    const dayStrings = sortedDays.map(d => {
-                                                                        const times = days[d].sort((a,b) => a.localeCompare(b)).join(', ');
-                                                                        return `${GIORNI_ABBR[d]} ${times}`;
-                                                                    });
-                                                                    return `
-                                                                    <div style="margin-bottom:4px;">
-                                                                        <strong>${nome}:</strong> 
-                                                                        <span style="color:var(--text-muted);">${dayStrings.join(' | ')}</span>
-                                                                    </div>
-                                                                    `;
-                                                                }).join('');
-                                                            })()}
-                                                        </div>
-                                                    </td>
-                                                    <td style="text-align:right;">
-                                                        <div style="display:flex; gap:4px; justify-content:flex-end;">
-                                                            <button class="btn btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick="app.openAssegnaOrariModal(${i.id})" title="Assegna a orari in calendario" data-guide="Assegna orari nel calendario. Effetto: Collega l'istruttore ai corsi e fasce orarie settimanali.">📅 Assegna Orari</button>
-                                                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="app.openEditIstruttoreModal(${i.id})" title="Modifica" data-guide="Modifica anagrafica istruttore. Effetto: Aggiorna contatti, tariffe e discipline.">✏️</button>
-                                                            <button class="btn btn-success" style="padding:4px 8px; font-size:0.75rem;" onclick="app.openCompensoIstruttoreModal(${i.id})" title="Emetti Ricevuta Compenso" data-guide="Emetti ricevuta compenso sportivo. Effetto: Genera la quietanza ex D.Lgs. 36/2021 e registra l'uscita in Prima Nota.">📄 Ricevuta</button>
-                                                            <button class="btn btn-outline text-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="app.deleteIstruttore(${i.id})" title="Elimina" data-guide="Elimina istruttore dallo staff. Effetto: Rimuove l'anagrafica del collaboratore (richiede conferma).">🗑️</button>
-                                                        </div>
-                                                    </td>
-                                                </tr>`;
-                    }).join('')
-                }
+                                    <tbody id="istruttori-tbody">
+                                        ${this.renderIstruttoriRows(istruttori)}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
                         <!-- Riepilogo compensi mensili -->
-                        ${istruttori.length > 0 ? `
+                        ${rawIstruttori.length > 0 ? `
                         <div class="glass-card" style="margin-top:1.5rem; flex-shrink:0;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                                 <h3 style="margin:0;">💶 Riepilogo Compensi Mensili</h3>
@@ -22724,15 +22780,15 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem;">
                                 <div style="background:rgba(16,185,129,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(16,185,129,0.2);">
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">COSTO MENSILE TOTALE</div>
-                                    <div style="font-size:1.5rem; font-weight:700; color:var(--success);">€ ${istruttori.reduce((s, i) => s + (parseFloat(i.compenso_mensile) || 0), 0).toFixed(2)}</div>
+                                    <div style="font-size:1.5rem; font-weight:700; color:var(--success);">€ ${rawIstruttori.reduce((s, i) => s + (parseFloat(i.compenso_mensile) || 0), 0).toFixed(2)}</div>
                                 </div>
                                 <div style="background:rgba(59,130,246,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">ISTRUTTORI ATTIVI</div>
-                                    <div style="font-size:1.5rem; font-weight:700; color:var(--primary);">${istruttori.length}</div>
+                                    <div style="font-size:1.5rem; font-weight:700; color:var(--primary);">${rawIstruttori.length}</div>
                                 </div>
                                 <div style="background:rgba(245,158,11,0.1); padding:1rem; border-radius:10px; border:1px solid rgba(245,158,11,0.2);">
                                     <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">ORE SETT. TOTALI</div>
-                                    <div style="font-size:1.5rem; font-weight:700; color:var(--warning);">${istruttori.reduce((s, i) => s + (parseFloat(i.ore_settimanali) || 0), 0)}h</div>
+                                    <div style="font-size:1.5rem; font-weight:700; color:var(--warning);">${rawIstruttori.reduce((s, i) => s + (parseFloat(i.ore_settimanali) || 0), 0)}h</div>
                                 </div>
                             </div>
                         </div>` : ''}
@@ -22849,13 +22905,13 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('numero')" data-guide="Ordina per numero progressivo di ricevuta. Effetto: Inverte l'ordine crescente o decrescente.">N. Ricevuta <span id="sort-compensi-numero">${this.compensiSortKey === 'numero' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('data')" data-guide="Ordina per data di emissione. Effetto: Inverte l'ordine cronologico crescente o decrescente.">Data <span id="sort-compensi-data">${(this.compensiSortKey || 'data') === 'data' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('nome')" data-guide="Ordina per nome del collaboratore. Effetto: Inverte l'ordine alfabetico dei percipienti.">Collaboratore <span id="sort-compensi-nome">${this.compensiSortKey === 'nome' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('numero')" data-guide="Ordina per numero progressivo di ricevuta. Effetto: Inverte l'ordine crescente o decrescente.">N. Ricevuta <span id="sort-compensi-numero">${this.getCompensiSortIcon('numero')}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('data')" data-guide="Ordina per data di emissione. Effetto: Inverte l'ordine cronologico crescente o decrescente.">Data <span id="sort-compensi-data">${this.getCompensiSortIcon('data')}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('nome')" data-guide="Ordina per nome del collaboratore. Effetto: Inverte l'ordine alfabetico dei percipienti.">Collaboratore <span id="sort-compensi-nome">${this.getCompensiSortIcon('nome')}</span></th>
                                             <th>Prestazione / Periodo</th>
-                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('importo')" data-guide="Ordina per importo compenso. Effetto: Ordina le ricevute dall'importo più alto o più basso.">Importo <span id="sort-compensi-importo">${this.compensiSortKey === 'importo' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none;" onclick="app.sortCompensi('importo')" data-guide="Ordina per importo compenso. Effetto: Ordina le ricevute dall'importo più alto o più basso.">Importo <span id="sort-compensi-importo">${this.getCompensiSortIcon('importo')}</span></th>
                                             <th>Metodo</th>
-                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortCompensi('stato')" data-guide="Ordina per stato quietanza (Bozza/Emessa).">Stato <span id="sort-compensi-stato">${this.compensiSortKey === 'stato' ? (this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                            <th style="cursor:pointer; user-select:none; white-space: nowrap;" onclick="app.sortCompensi('stato')" data-guide="Ordina per stato quietanza (Bozza/Emessa).">Stato <span id="sort-compensi-stato">${this.getCompensiSortIcon('stato')}</span></th>
                                             <th style="text-align: right;">Azioni</th>
                                         </tr>
                                     </thead>
@@ -23596,6 +23652,13 @@ ${r.annullata ? `
             this.filterCompensi();
         },
 
+        getCompensiSortIcon(key) {
+            const k = this.compensiSortKey || 'data';
+            const dir = this.compensiSortDir || 'desc';
+            if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+            return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
+        },
+
         sortCompensi(key) {
             if (this.compensiSortKey === key) {
                 this.compensiSortDir = this.compensiSortDir === 'asc' ? 'desc' : 'asc';
@@ -23605,10 +23668,8 @@ ${r.annullata ? `
             }
             ['numero', 'data', 'nome', 'importo', 'stato'].forEach(k => {
                 const el = document.getElementById('sort-compensi-' + k);
-                if (el) el.innerHTML = '';
+                if (el) el.innerHTML = this.getCompensiSortIcon(k);
             });
-            const el = document.getElementById('sort-compensi-' + key);
-            if (el) el.innerHTML = this.compensiSortDir === 'asc' ? ' 🔼' : ' 🔽';
             this.filterCompensi();
         },
 
@@ -24662,10 +24723,10 @@ ${r.annullata ? `
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th style="min-width:100px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('data')">Data <span id="sort-rimborsi-data">${(this.rimborsiSortKey || 'data') === 'data' ? (this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
-                                        <th style="min-width:160px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('richiedente')">Richiedente <span id="sort-rimborsi-richiedente">${this.rimborsiSortKey === 'richiedente' ? (this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                        <th style="min-width:100px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('data')">Data <span id="sort-rimborsi-data">${this.getRimborsiSortIcon('data')}</span></th>
+                                        <th style="min-width:160px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('richiedente')">Richiedente <span id="sort-rimborsi-richiedente">${this.getRimborsiSortIcon('richiedente')}</span></th>
                                         <th style="min-width:280px;">Dettaglio Voci di Spesa</th>
-                                        <th style="min-width:110px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('importo')">Importo Totale <span id="sort-rimborsi-importo">${this.rimborsiSortKey === 'importo' ? (this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽') : ''}</span></th>
+                                        <th style="min-width:110px; cursor:pointer; user-select:none;" onclick="app.sortRimborsi('importo')">Importo Totale <span id="sort-rimborsi-importo">${this.getRimborsiSortIcon('importo')}</span></th>
                                         <th style="min-width:105px; white-space:nowrap;">Documento</th>
                                         <th style="min-width:110px; white-space:nowrap;">Liquidazione</th>
                                         <th style="text-align:right; min-width:190px;">Azioni</th>
@@ -24702,6 +24763,13 @@ ${r.annullata ? `
             this.filterRimborsi();
         },
 
+        getRimborsiSortIcon(key) {
+            const k = this.rimborsiSortKey || 'data';
+            const dir = this.rimborsiSortDir || 'desc';
+            if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
+            return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
+        },
+
         sortRimborsi(key) {
             if (this.rimborsiSortKey === key) {
                 this.rimborsiSortDir = this.rimborsiSortDir === 'asc' ? 'desc' : 'asc';
@@ -24711,10 +24779,8 @@ ${r.annullata ? `
             }
             ['data', 'richiedente', 'importo'].forEach(k => {
                 const el = document.getElementById('sort-rimborsi-' + k);
-                if (el) el.innerHTML = '';
+                if (el) el.innerHTML = this.getRimborsiSortIcon(k);
             });
-            const el = document.getElementById('sort-rimborsi-' + key);
-            if (el) el.innerHTML = this.rimborsiSortDir === 'asc' ? ' 🔼' : ' 🔽';
             this.filterRimborsi();
         },
 
