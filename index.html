@@ -2595,7 +2595,7 @@
 
                 <!-- Ruolo Dispositivo (Server / Client) -->
                 <button id="device-role-btn" class="btn btn-outline" title="Ruolo dispositivo (Server / Client) - Clicca per cambiare" onclick="app.showDeviceRoleModal()"
-                    data-guide="Configura il ruolo di questa postazione. Effetto: Imposta se questo computer opera come Server principale del database o come Client collegato in rete locale."
+                    data-guide="Configura il ruolo di questa postazione. Effetto: Imposta se questo dispositivo opera come Server principale del database o come Client collegato in rete locale."
                     style="padding: 5px 8px; font-size: 0.74rem; font-weight: 700; border-color: rgba(52, 211, 153, 0.5); color: #34d399; display: flex; align-items: center; gap: 4px; flex-shrink: 0; background: rgba(52, 211, 153, 0.08); border-radius: 8px;">
                     <span id="device-role-icon">🖥️</span>
                     <span id="device-role-label">Server</span>
@@ -2768,6 +2768,46 @@
                 entity.updated_at = new Date().toISOString();
             }
             return entity;
+        },
+
+        getDeviceType() {
+            const ua = (navigator.userAgent || '').toLowerCase();
+            const isIPad = /ipad/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+            if (isIPad || /(tablet|(android(?!.*mobile))|kindle|silk)/i.test(ua)) {
+                return 'tablet';
+            }
+            if (/mobile|iphone|ipod|android.*mobile|blackberry|phone|iemobile|opera mini/i.test(ua) || 
+                (window.innerWidth <= 768 && ('ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)))) {
+                return 'smartphone';
+            }
+            return 'pc';
+        },
+
+        getDeviceTypeName(capitalized = true) {
+            const t = this.getDeviceType();
+            if (t === 'smartphone') return capitalized ? 'Smartphone' : 'smartphone';
+            if (t === 'tablet') return capitalized ? 'Tablet' : 'tablet';
+            return capitalized ? 'PC' : 'PC';
+        },
+
+        getThisDeviceLabel() {
+            const t = this.getDeviceType();
+            if (t === 'smartphone') return 'questo smartphone';
+            if (t === 'tablet') return 'questo tablet';
+            return 'questo PC';
+        },
+
+        getThisDeviceNameWithPrep() {
+            const t = this.getDeviceType();
+            if (t === 'smartphone') return 'su Smartphone';
+            if (t === 'tablet') return 'su Tablet';
+            return 'sul PC';
+        },
+
+        getDeviceIcon() {
+            const t = this.getDeviceType();
+            if (t === 'smartphone' || t === 'tablet') return '📱';
+            return '🖥️';
         },
 
         getDeviceRole() {
@@ -3070,8 +3110,8 @@
                             <div style="color: #cbd5e1; margin-bottom: 4px;"><strong>Scadenza:</strong> ${expStr}</div>
                             <div style="color: #94a3b8; font-size: 0.78rem; word-break: break-all;"><strong>Questo Dispositivo:</strong> ${devName}</div>
                         </div>
-                        <button type="button" class="btn btn-outline" style="width: 100%; border-color: #ef4444; color: #ef4444; justify-content: center; padding: 9px; font-size: 0.85rem; margin-bottom: 15px;" onclick="app.deactivateLicense()" data-guide="Disattiva la licenza da questo PC. Effetto: Libera uno slot dispositivo su Lemon Squeezy permettendo l'attivazione su un altro computer.">
-                            🚫 Disattiva da questo PC (libera 1 slot Lemon Squeezy)
+                        <button type="button" class="btn btn-outline" style="width: 100%; border-color: #ef4444; color: #ef4444; justify-content: center; padding: 9px; font-size: 0.85rem; margin-bottom: 15px;" onclick="app.deactivateLicense()" data-guide="Disattiva la licenza da ${this.getThisDeviceLabel()}. Effetto: Libera uno slot dispositivo su Lemon Squeezy permettendo l'attivazione su un altro dispositivo.">
+                            🚫 Disattiva da ${this.getThisDeviceLabel()} (libera 1 slot Lemon Squeezy)
                         </button>
                     `;
                 }
@@ -6025,7 +6065,7 @@
                             <span>🔒</span> <span>Modalità Offline (Locale)</span>
                         </div>
                         <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
-                            L'applicazione sta lavorando solo sulla memoria di questo computer.
+                            L'applicazione sta lavorando solo sulla memoria locale di ${app.getThisDeviceLabel()}.
                         </div>
                     </div>`;
 
@@ -6038,12 +6078,12 @@
                              style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(245, 158, 11, 0.18)'; this.style.borderColor='var(--warning)';" 
                              onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';"
-                             data-guide="Eredita dati dal Cloud Google Drive. Effetto: Scarica l'archivio cloud e sostituisce i dati di questo dispositivo dopo una verifica di sicurezza a specchio, salvando automaticamente uno snapshot preventivo PRE-DOWNLOAD-CLOUD.">
+                             data-guide="Eredita dati dal Cloud Google Drive. Effetto: Scarica l'archivio cloud e sostituisce i dati di ${app.getThisDeviceLabel()} dopo una verifica di sicurezza a specchio, salvando automaticamente uno snapshot preventivo PRE-DOWNLOAD-CLOUD.">
                             <span style="font-size: 1.6rem; flex-shrink: 0;">📥</span>
                             <div style="flex-grow: 1;">
-                                <div style="font-weight: 700; font-size: 0.98rem; color: #fbbf24;">Eredita dal Cloud (Scarica sul PC)</div>
+                                <div style="font-weight: 700; font-size: 0.98rem; color: #fbbf24;">Eredita dal Cloud (Scarica ${app.getThisDeviceNameWithPrep()})</div>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                    Sostituisce i dati locali di questo dispositivo con la copia online di Google Drive (con verifica a specchio).
+                                    Sostituisce i dati locali di ${app.getThisDeviceLabel()} con la copia online di Google Drive (con verifica a specchio).
                                 </div>
                             </div>
                             <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.2); color: #fde68a; font-weight: 700; white-space: nowrap;">SCARICA</span>
@@ -6054,12 +6094,12 @@
                              style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(16, 185, 129, 0.18)'; this.style.borderColor='#10b981';" 
                              onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';"
-                             data-guide="Sovrascrivi copia Cloud con i dati di questo PC. Effetto: Carica immediatamente l'archivio attuale su Google Drive, archiviando la versione precedente in GestioneASD_Backup_Precedente.json e allineando le altre postazioni.">
+                             data-guide="Sovrascrivi copia Cloud con i dati di ${app.getThisDeviceLabel()}. Effetto: Carica immediatamente l'archivio attuale su Google Drive, archiviando la versione precedente in GestioneASD_Backup_Precedente.json e allineando gli altri dispositivi.">
                             <span style="font-size: 1.6rem; flex-shrink: 0;">⬆️</span>
                             <div style="flex-grow: 1;">
                                 <div style="font-weight: 700; font-size: 0.98rem; color: #34d399;">Sovrascrivi Cloud con Dati Locali</div>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                    Invia i dati attuali di questo PC su Google Drive, aggiornando la copia online per gli altri dispositivi.
+                                    Invia i dati attuali di ${app.getThisDeviceLabel()} su Google Drive, aggiornando la copia online per gli altri dispositivi.
                                 </div>
                             </div>
                             <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0; font-weight: 700; white-space: nowrap;">CARICA</span>
@@ -6070,12 +6110,12 @@
                              style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(59, 130, 246, 0.18)'; this.style.borderColor='var(--primary)';" 
                              onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';"
-                             data-guide="Sincronizza e unisci i dati con Google Drive (Merge). Effetto: Combina i record di questo computer con quelli del Cloud senza cancellare elementi su entrambi i lati, applicando la regola del timestamp più recente.">
+                             data-guide="Sincronizza e unisci i dati con Google Drive (Merge). Effetto: Combina i record di ${app.getThisDeviceLabel()} con quelli del Cloud senza cancellare elementi su entrambi i lati, applicando la regola del timestamp più recente.">
                             <span style="font-size: 1.6rem; flex-shrink: 0;">🔄</span>
                             <div style="flex-grow: 1;">
                                 <div style="font-weight: 700; font-size: 0.98rem; color: #60a5fa;">Sincronizza / Unisci i Dati (Merge)</div>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                    Combina i dati di questo computer con quelli su Drive senza cancellare nulla su entrambi i lati.
+                                    Combina i dati di ${app.getThisDeviceLabel()} con quelli su Drive senza cancellare nulla su entrambi i lati.
                                 </div>
                             </div>
                             <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-weight: 700; white-space: nowrap;">FUSIONE</span>
@@ -6210,7 +6250,7 @@
                 localStorage.removeItem('asd_gdrive_token');
                 localStorage.removeItem('asd_gdrive_token_expiry');
                 if (!silent) {
-                    app.toast('Modalità Offline attivata. I dati saranno salvati solo su questo computer.', 'info');
+                    app.toast(`Modalità Offline attivata. I dati saranno salvati solo su ${app.getThisDeviceLabel()}.`, 'info');
                 }
                 this.updateUIStatus();
             },
@@ -6312,7 +6352,7 @@
                     }
                     return;
                 }
-                if (!confirm("⚠️ Vuoi forzare la sovrascrittura di Google Drive con i dati attuali di questo computer?\n\nQuesta operazione aggiornerà il Cloud allo stato esatto attuale del PC, senza rischiare di riesumare vecchi dati o vecchi numeri di ricevuta.")) {
+                if (!confirm(`⚠️ Vuoi forzare la sovrascrittura di Google Drive con i dati attuali di ${app.getThisDeviceLabel()}?\n\nQuesta operazione aggiornerà il Cloud allo stato esatto attuale di ${app.getThisDeviceLabel()}, senza rischiare di riesumare vecchi dati o vecchi numeri di ricevuta.`)) {
                     return;
                 }
                 app.toast("Caricamento forzato su Google Drive in corso...", "info");
@@ -6416,13 +6456,13 @@
                     const warningBox = (isCloudOlder || hasFewerRecords) ? `
                         <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
                             <strong>⚠️ ATTENZIONE: Disallineamento Dati Rilevato!</strong><br>
-                            ${isCloudOlder ? `• La copia su Google Drive risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su questo PC.<br>` : ''}
-                            ${hasFewerRecords ? `• Il Cloud contiene meno ricevute o soci rispetto a questo computer locale.<br>` : ''}
-                            Assicurati di trovarti sul computer secondario che desideri aggiornare prima di confermare.
+                            ${isCloudOlder ? `• La copia su Google Drive risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su ${app.getThisDeviceLabel()}.<br>` : ''}
+                            ${hasFewerRecords ? `• Il Cloud contiene meno ricevute o soci rispetto a ${app.getThisDeviceLabel()} locale.<br>` : ''}
+                            Assicurati di trovarti sul dispositivo secondario che desideri aggiornare prima di confermare.
                         </div>
                     ` : `
                         <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 14px; color: #93c5fd; font-size: 0.85rem; line-height: 1.45;">
-                            ℹ️ Stai per allineare questo computer ai dati salvati su Google Drive. I dati locali attuali verranno sostituiti.
+                            ℹ️ Stai per allineare ${app.getThisDeviceLabel()} ai dati salvati su Google Drive. I dati locali attuali verranno sostituiti.
                         </div>
                     `;
 
@@ -6435,7 +6475,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                                 <div class="glass-card" style="padding: 14px; border-top: 3px solid #3b82f6;">
                                     <div style="font-weight: 700; color: #60a5fa; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
-                                        <span>🖥️</span> Questo PC (Attuale)
+                                        <span>${app.getDeviceIcon()}</span> Questo ${app.getDeviceTypeName()} (Attuale)
                                     </div>
                                     <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
                                         <div>Soci: <strong style="color:var(--text-main); font-size: 0.95rem;">${localSoci}</strong></div>
@@ -6466,13 +6506,13 @@
 
                             <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #fbbf24; line-height: 1.4;">
                                 🛡️ <strong>Paracadute di Sicurezza Attivo:</strong><br>
-                                Prima di procedere alla sostituzione, il sistema creerà in automatico uno <strong>Snapshot di emergenza locale denominato "PRE-DOWNLOAD-CLOUD"</strong>. Se ti accorgerai di aver sbagliato PC, potrai annullare e ripristinare tutto da <em>Impostazioni ➔ Backup & Snapshot</em>.
+                                Prima di procedere alla sostituzione, il sistema creerà in automatico uno <strong>Snapshot di emergenza locale denominato "PRE-DOWNLOAD-CLOUD"</strong>. Se ti accorgerai di aver sbagliato dispositivo, potrai annullare e ripristinare tutto da <em>Impostazioni ➔ Backup & Snapshot</em>.
                             </div>
 
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px;">
                                 <button type="button" class="btn btn-outline" data-guide="Annulla il download dal Cloud. Effetto: Chiude la modale senza modificare alcun dato locale." onclick="app.closeModal()">❌ Annulla (Non fare nulla)</button>
                                 <button type="button" id="btn-confirm-inherit-cloud" class="btn btn-primary" style="background: #ca8a04; border-color: #ca8a04; font-weight: 700;" data-guide="Conferma la sostituzione dei dati locali con quelli del Cloud. Effetto: Crea uno snapshot di sicurezza locale e carica l'intero archivio salvato su Google Drive." onclick="app.cloudSync.executeInheritData(this)">
-                                    🛡️ Conferma e Sostituisci Dati sul PC
+                                    🛡️ Conferma e Sostituisci Dati ${app.getThisDeviceNameWithPrep()}
                                 </button>
                             </div>
                         </div>
@@ -6648,7 +6688,7 @@
                                     <span>☁️</span> <span>È stato trovato un file di backup esistente su Google Drive</span>
                                 </div>
                                 <div style="font-size: 0.84rem; color: var(--text-muted); margin-top: 6px; line-height: 1.45;">
-                                    Sul computer locale sono attualmente presenti: <strong style="color:var(--text-main);">${sociCount} soci</strong>, <strong style="color:var(--text-main);">${ricevuteCount} ricevute</strong>${pnCount > 0 ? `, <strong style="color:var(--text-main);">${pnCount} movimenti prima nota</strong>` : ''}.
+                                    Su ${app.getThisDeviceLabel()} sono attualmente presenti: <strong style="color:var(--text-main);">${sociCount} soci</strong>, <strong style="color:var(--text-main);">${ricevuteCount} ricevute</strong>${pnCount > 0 ? `, <strong style="color:var(--text-main);">${pnCount} movimenti prima nota</strong>` : ''}.
                                     <br>Seleziona l'operazione che desideri effettuare:
                                 </div>
                             </div>
@@ -6657,7 +6697,8 @@
                             <div onclick="app.cloudSync.resolveSyncChoice('merge')" 
                                  style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.45); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;"
                                  onmouseover="this.style.background='rgba(59, 130, 246, 0.18)'; this.style.borderColor='var(--primary)';" 
-                                 onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';">
+                                 onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';"
+                                 data-guide="Sincronizza e unisci i dati con Google Drive (Merge). Effetto: Combina i record di ${app.getThisDeviceLabel()} con quelli del Cloud senza cancellare elementi su entrambi i lati, applicando la regola del timestamp più recente.">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                                     <div style="font-weight: 700; font-size: 1.05rem; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
                                         <span>🔄</span> Unisci i dati
@@ -6665,7 +6706,7 @@
                                     <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-weight: 700; border: 1px solid rgba(59, 130, 246, 0.3); white-space: nowrap;">FUSIONE (MERGE)</span>
                                 </div>
                                 <div style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
-                                    <strong>Cosa fa:</strong> Combina i dati di questo computer con quelli presenti su Google Drive. I dati nuovi o modificati su entrambi i lati (soci, ricevute, corsi, prima nota) vengono uniti assieme senza cancellare nulla.<br>
+                                    <strong>Cosa fa:</strong> Combina i dati di ${app.getThisDeviceLabel()} con quelli presenti su Google Drive. I dati nuovi o modificati su entrambi i lati (soci, ricevute, corsi, prima nota) vengono uniti assieme senza cancellare nulla.<br>
                                     <span style="color: #93c5fd;">👉 Consigliato se utilizzi il gestionale su più dispositivi e desideri unificare il lavoro svolto su ciascuno.</span>
                                 </div>
                             </div>
@@ -6674,7 +6715,8 @@
                             <div onclick="app.cloudSync.resolveSyncChoice('overwrite')" 
                                  style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.45); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;"
                                  onmouseover="this.style.background='rgba(245, 158, 11, 0.18)'; this.style.borderColor='var(--warning)';" 
-                                 onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';">
+                                 onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';"
+                                 data-guide="Sovrascrivi copia Cloud con i dati di ${app.getThisDeviceLabel()}. Effetto: Carica immediatamente l'archivio attuale su Google Drive, archiviando la versione precedente in GestioneASD_Backup_Precedente.json e allineando gli altri dispositivi.">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                                     <div style="font-weight: 700; font-size: 1.05rem; color: #fbbf24; display: flex; align-items: center; gap: 8px;">
                                         <span>☁️⬆️</span> Sovrascrivi i dati sul Drive online
@@ -6682,25 +6724,26 @@
                                     <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.2); color: #fde68a; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3); white-space: nowrap;">SOVRASCRITTURA CLOUD</span>
                                 </div>
                                 <div style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
-                                    <strong>Cosa fa:</strong> Carica lo stato esatto attuale di questo computer su Google Drive, rimpiazzando integralmente la copia online.<br>
+                                    <strong>Cosa fa:</strong> Carica lo stato esatto attuale di ${app.getThisDeviceLabel()} su Google Drive, rimpiazzando integralmente la copia online.<br>
                                     <span style="color: #fde68a;">👉 <strong>CONSIGLIATO</strong> se hai appena riordinato o corretto ricevute/dati in locale: evita categoricamente che il vecchio Cloud ripristini vecchi dati o numeri duplicati.</span>
                                 </div>
                             </div>
 
-                            <!-- TASTO 3: EREDITA DAL CLOUD (SOVRASCRIVI QUESTO PC) -->
+                            <!-- TASTO 3: EREDITA DAL CLOUD (SOVRASCRIVI QUESTO DISPOSITIVO) -->
                             <div onclick="app.cloudSync.resolveSyncChoice('inherit')" 
                                  style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.45); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;"
                                  onmouseover="this.style.background='rgba(16, 185, 129, 0.18)'; this.style.borderColor='#10b981';" 
-                                 onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';">
+                                 onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';"
+                                 data-guide="Eredita dati dal Cloud Google Drive. Effetto: Scarica l'archivio cloud e sostituisce i dati di ${app.getThisDeviceLabel()} dopo una verifica di sicurezza a specchio, salvando automaticamente uno snapshot preventivo PRE-DOWNLOAD-CLOUD.">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                                     <div style="font-weight: 700; font-size: 1.05rem; color: #34d399; display: flex; align-items: center; gap: 8px;">
-                                        <span>📥</span> Eredita dal Cloud (Sovrascrivi questo PC)
+                                        <span>📥</span> Eredita dal Cloud (Sovrascrivi ${app.getThisDeviceLabel()})
                                     </div>
-                                    <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3); white-space: nowrap;">ALLINEA QUESTO PC</span>
+                                    <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3); white-space: nowrap;">ALLINEA ${app.getDeviceTypeName().toUpperCase()}</span>
                                 </div>
                                 <div style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
-                                    <strong>Cosa fa:</strong> Sostituisce integralmente i dati di questo computer con la versione salvata su Google Drive, senza effettuare alcuna fusione.<br>
-                                    <span style="color: #6ee7b7;">👉 <strong>CONSIGLIATO</strong> se stai aprendo il gestionale su un secondo computer (es. in palestra o sul portatile) e vuoi scaricare fedelmente il lavoro svolto dal PC principale. Include confronto a specchio di sicurezza e salvataggio automatico di ripristino ("PRE-DOWNLOAD-CLOUD").</span>
+                                    <strong>Cosa fa:</strong> Sostituisce integralmente i dati di ${app.getThisDeviceLabel()} con la versione salvata su Google Drive, senza effettuare alcuna fusione.<br>
+                                    <span style="color: #6ee7b7;">👉 <strong>CONSIGLIATO</strong> se stai aprendo il gestionale su un secondo dispositivo (es. smartphone, tablet o portatile) e vuoi scaricare fedelmente il lavoro svolto dal PC principale. Include confronto a specchio di sicurezza e salvataggio automatico di ripristino ("PRE-DOWNLOAD-CLOUD").</span>
                                 </div>
                             </div>
 
@@ -6716,7 +6759,7 @@
                                     <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); color: var(--text-muted); font-weight: 600; border: 1px solid var(--border); white-space: nowrap;">IGNORA / SALTA</span>
                                 </div>
                                 <div style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
-                                    <strong>Cosa fa:</strong> Chiude questa finestra senza eseguire alcuna operazione o sincronizzazione. I dati locali su questo computer restano invariati e Google Drive non viene toccato. Potrai avviare la sincronizzazione in seguito dalle Impostazioni.
+                                    <strong>Cosa fa:</strong> Chiude questa finestra senza eseguire alcuna operazione o sincronizzazione. I dati locali su ${app.getThisDeviceLabel()} restano invariati e Google Drive non viene toccato. Potrai avviare la sincronizzazione in seguito dalle Impostazioni.
                                 </div>
                             </div>
                         </div>
@@ -7868,7 +7911,7 @@
                                 <h3>🛡️ Time-Machine Locale: Gli Snapshot di Sicurezza:</h3>
                                 <p>Il gestionale è dotato di un sistema di snapshot automatici che memorizza interi stati contabili nella memoria protetta del browser, consentendo di annullare qualsiasi operazione errata:</p>
                                 <ul>
-                                    <li><strong>🛡️ PRE-DOWNLOAD-CLOUD (Paracadute di Emergenza):</strong> Viene generato automaticamente una frazione di secondo prima di scaricare, allineare o sovrascrivere i dati del PC dal Cloud. Se per sbaglio avvii un'eredità dal cloud su un computer che conteneva dati più recenti, puoi fare clic su <em>Undo</em> per ripristinare all'istante l'esatto stato locale precedente!</li>
+                                    <li><strong>🛡️ PRE-DOWNLOAD-CLOUD (Paracadute di Emergenza):</strong> Viene generato automaticamente una frazione di secondo prima di scaricare, allineare o sovrascrivere i dati del dispositivo dal Cloud. Se per sbaglio avvii un'eredità dal cloud su un dispositivo che conteneva dati più recenti, puoi fare clic su <em>Undo</em> per ripristinare all'istante l'esatto stato locale precedente!</li>
                                     <li><strong>EXIT (Chiusura Sessione):</strong> Creato in automatico ogni volta che fai clic su <em>Esci</em>.</li>
                                     <li><strong>AUTO (Autosave Periodico):</strong> Creato ad intervalli regolari (es. ogni 2, 6, 12 o 24 ore a seconda delle preferenze impostate).</li>
                                     <li><strong>MANUAL (Salvataggio Volontario):</strong> Creato manualmente cliccando su <em>Crea Snapshot Ora</em> in Impostazioni.</li>
@@ -7919,9 +7962,9 @@
                                     <li><strong>Avvio Istantaneo Senza Attese:</strong> All'apertura dell'applicazione non vengono mostrati popup o richieste bloccanti di rete: il gestionale si apre sempre direttamente e al 100% in modalità Offline Locale pura.</li>
                                     <li><strong>Menu Rapido Topbar Cloud:</strong> In alto a destra è presente il badge interattivo con balloon informativo. Cliccandovi sopra si apre il menu rapido che raggruppa le 5 operazioni essenziali di collaborazione:
                                         <ul>
-                                            <li><strong>📥 Eredita dal Cloud (Scarica sul PC):</strong> Sostituisce i dati locali di questo dispositivo con la copia online di Google Drive. Include la <em>Verifica a Specchio di Sicurezza</em> e genera automaticamente lo snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>.</li>
-                                            <li><strong>⬆️ Sovrascrivi Cloud con Dati Locali (Invia):</strong> Invia i dati attuali di questo PC su Google Drive, archiviando contestualmente la versione precedente in <code>GestioneASD_Backup_Precedente.json</code> e aggiornando la copia online per le altre postazioni.</li>
-                                            <li><strong>🔄 Sincronizza / Unisci i Dati (Merge):</strong> Combina i dati di questo computer con quelli su Drive senza cancellare record su entrambi i lati, applicando la regola del timestamp più recente (<code>updated_at</code>).</li>
+                                            <li><strong>📥 Eredita dal Cloud:</strong> Sostituisce i dati locali del dispositivo con la copia online di Google Drive. Include la <em>Verifica a Specchio di Sicurezza</em> e genera automaticamente lo snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>.</li>
+                                            <li><strong>⬆️ Sovrascrivi Cloud con Dati Locali:</strong> Invia i dati attuali del dispositivo su Google Drive, archiviando contestualmente la versione precedente in <code>GestioneASD_Backup_Precedente.json</code> e allineando gli altri dispositivi.</li>
+                                            <li><strong>🔄 Sincronizza / Unisci i Dati (Merge):</strong> Combina i dati del dispositivo con quelli su Drive senza cancellare record su entrambi i lati, applicando la regola del timestamp più recente (<code>updated_at</code>).</li>
                                             <li><strong>📂 Versioni & Copie di Riserva sul Cloud:</strong> Esamina la Copia Attuale e la Copia di Riserva Precedente su Drive con data, ora e dimensione, consentendo il ripristino istantaneo con un clic.</li>
                                             <li><strong>🔒 Disconnetti da Google Drive (Passa a Offline):</strong> Chiude la sessione Cloud e riporta il dispositivo in modalità Offline pura senza intaccare i dati salvati localmente.</li>
                                         </ul>
@@ -7954,10 +7997,10 @@
                                 </ul>
 
                                 <h3>📥 Eredita dal Cloud & Verifica a Specchio di Sicurezza:</h3>
-                                <p>Se lavori su un PC secondario (es. portatile o PC della palestra) dopo aver effettuato importanti modifiche o riordini dal PC principale, puoi utilizzare la funzione <strong>"📥 Eredita dal Cloud (Sovrascrivi questo PC)"</strong>:</p>
+                                <p>Se lavori su un dispositivo secondario (es. smartphone, tablet o portatile) dopo aver effettuato importanti modifiche o riordini dalla postazione principale, puoi utilizzare la funzione <strong>"📥 Eredita dal Cloud"</strong>:</p>
                                 <ul>
-                                    <li><strong>Confronto a Specchio di Sicurezza:</strong> Prima di procedere, una finestra mette a confronto i dati del PC attuale con quelli salvati su Google Drive (numero soci, ricevute, prima nota e data ultimo salvataggio).</li>
-                                    <li><strong>Alert Intelligente di Disallineamento:</strong> Se la copia su Google Drive risulta più vecchia o con meno record rispetto al computer attuale, il sistema ti avvisa visivamente in arancione/rosso prima di consentire la conferma.</li>
+                                    <li><strong>Confronto a Specchio di Sicurezza:</strong> Prima di procedere, una finestra mette a confronto i dati del dispositivo attuale con quelli salvati su Google Drive (numero soci, ricevute, prima nota e data ultimo salvataggio).</li>
+                                    <li><strong>Alert Intelligente di Disallineamento:</strong> Se la copia su Google Drive risulta più vecchia o con meno record rispetto al dispositivo attuale, il sistema ti avvisa visivamente in arancione/rosso prima di consentire la conferma.</li>
                                     <li><strong>Snapshot di Emergenza Automatico:</strong> Prima di applicare i dati del cloud, il software scatta automaticamente uno snapshot <code>🛡️ PRE-DOWNLOAD-CLOUD</code>. In caso di errore umano, puoi tornare indietro con un clic su <em>🔄 Undo</em>.</li>
                                 </ul>
 
@@ -7965,7 +8008,7 @@
                                 <p>Per azzerare il rischio di perdere dati sul Cloud:</p>
                                 <ul>
                                     <li><strong>Rotazione Automatica:</strong> Ad ogni salvataggio o sovrascrittura su Google Drive, il gestionale archivia preventivamente lo stato online precedente nel file <code>GestioneASD_Backup_Precedente.json</code>. In questo modo sul tuo account Google Drive sono sempre conservate sia la versione corrente che quella precedente di riserva.</li>
-                                    <li><strong>📂 Esploratore Versioni Cloud:</strong> Dal pulsante <em>"Versioni & Copie sul Cloud"</em> puoi esaminare la Copia Attuale e la Copia di Riserva Precedente con data, ora e dimensione, e ripristinare qualsiasi versione direttamente sul tuo PC con un click.</li>
+                                    <li><strong>📂 Esploratore Versioni Cloud:</strong> Dal pulsante <em>"Versioni & Copie sul Cloud"</em> puoi esaminare la Copia Attuale e la Copia di Riserva Precedente con data, ora e dimensione, e ripristinare qualsiasi versione direttamente sul tuo dispositivo con un click.</li>
                                 </ul>
 
                                 <h3>Regola del Timestamp (Ultima Modifica Vince):</h3>
@@ -16647,7 +16690,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">
                         <button class="btn btn-primary" onclick="app.openArchivioDocumentiModal()" title="Apri l'archivio per visualizzare e gestire tutti i file salvati" data-guide="Apri archivio documenti. Effetto: Mostra l'esploratore file integrato per consultare e aprire i documenti salvati divisi per anno.">📁 Apri Archivio Documenti</button>
-                        <button class="btn btn-outline" onclick="app.setupOutputFolder()" title="Cambia cartella di salvataggio" data-guide="Cambia cartella salvataggio. Effetto: Permette di scegliere un'altra cartella del computer per i salvataggi automatici.">🔄 Cambia Cartella</button>
+                        <button class="btn btn-outline" onclick="app.setupOutputFolder()" title="Cambia cartella di salvataggio" data-guide="Cambia cartella salvataggio. Effetto: Permette di scegliere un'altra cartella del dispositivo per i salvataggi automatici.">🔄 Cambia Cartella</button>
                         <button class="btn btn-outline" onclick="app.testOutputFolder()" title="Invia un file di prova per verificare i permessi di scrittura" data-guide="Verifica permessi cartella. Effetto: Salva un file di prova nella cartella per confermare che i permessi di scrittura siano attivi.">🧪 Verifica e Salva File Test</button>
                         <button class="btn btn-outline text-danger" style="border-color:rgba(239,68,68,0.3);" onclick="app.removeOutputFolder()" title="Rimuovi cartella e torna al download classico nel browser" data-guide="Rimuovi cartella collegata. Effetto: Scollega la cartella locale tornando alla modalità di download normale del browser.">❌ Rimuovi Cartella</button>
                     </div>
@@ -19505,16 +19548,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </div>
 
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08);">
-                                    <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di questo computer con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare questo PC. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
-                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali del computer, conservando la copia precedente di riserva" data-guide="Carica l'intero database di questo PC su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
+                                    <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di ${this.getThisDeviceLabel()} con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare ${this.getThisDeviceLabel()}. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
+                                    <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; font-weight:600;" onclick="app.cloudSync.forceUploadToCloud()" title="Sovrascrive la copia su Google Drive con i dati attuali di ${this.getThisDeviceLabel()}, conservando la copia precedente di riserva" data-guide="Carica l'intero database di ${this.getThisDeviceLabel()} su Google Drive. Crea automaticamente la copia di sicurezza 'GestioneASD_Backup_Precedente.json' online prima di sovrascrivere.">⬆️ Sovrascrivi Cloud con Dati Locali</button>
                                     <button class="btn btn-outline" style="border-color:#6366f1; color:#818cf8; font-weight:600;" onclick="app.cloudSync.openCloudVersionsModal()" title="Visualizza le copie di backup e le versioni storiche presenti su Google Drive" data-guide="Consulta lo storico dei backup salvati su Google Drive (Copia Attuale e Copia di Riserva Precedente) e ripristina con un click quella desiderata.">📂 Versioni & Copie sul Cloud</button>
                                     <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary); font-weight:600;" onclick="app.cloudSync.syncNow()" title="Verifica lo stato e apri le opzioni di sincronizzazione" data-guide="Apre la finestra di scelta per unire i dati, sovrascrivere il cloud o ereditare dal cloud.">🔄 Sincronizza Ora (Opzioni)</button>
                                 </div>
 
                                 <div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
                                     💡 <strong>Come allineare più dispositivi (PC Principale ➔ Palestra ➔ Smartphone):</strong><br>
-                                    <strong>1. Sul PC dove hai inserito i dati:</strong> clicca su <span style="color:#10b981; font-weight:600;">⬆️ Sovrascrivi Cloud con Dati Locali</span> per aggiornare Google Drive.<br>
-                                    <strong>2. Sul PC secondario o Smartphone:</strong> clicca su <span style="color:#fbbf24; font-weight:600;">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</span> per ricevere l'archivio aggiornato.<br>
+                                    <strong>1. Sul dispositivo principale dove hai inserito i dati:</strong> clicca su <span style="color:#10b981; font-weight:600;">⬆️ Sovrascrivi Cloud con Dati Locali</span> per aggiornare Google Drive.<br>
+                                    <strong>2. Sul dispositivo secondario (es. Smartphone o Tablet):</strong> clicca su <span style="color:#fbbf24; font-weight:600;">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</span> per ricevere l'archivio aggiornato.<br>
                                     <strong>3. Per controllare le copie storiche:</strong> clicca su <span style="color:#818cf8; font-weight:600;">📂 Versioni & Copie sul Cloud</span> per verificare data/ora o ripristinare la Copia di Riserva Precedente.
                                 </div>
                             </div>
@@ -28784,7 +28827,7 @@ ${r.annullata ? `
                                     </div>
                                     <ul style="margin: 0 0 10px 0; padding-left: 18px; color: #94a3b8; font-size: 0.76rem; display: flex; flex-direction: column; gap: 4px;">
                                         <li><strong style="color: #f8fafc;">Crea il file PDF (A4):</strong> Documento formattato e pronto da firmare o stampare.</li>
-                                        <li><strong style="color: #f8fafc;">Salva sul computer:</strong> Archivia il PDF nella cartella documenti dell'ASD (sottocartella <em>assemblee</em>).</li>
+                                        <li><strong style="color: #f8fafc;">Salva sul dispositivo:</strong> Archivia il PDF nella cartella documenti dell'ASD (sottocartella <em>assemblee</em>).</li>
                                         <li><strong style="color: #f8fafc;">Apre anteprima:</strong> Mostra subito il file PDF in una nuova scheda.</li>
                                         <li><strong style="color: #f8fafc;">Archivia nel gestionale:</strong> Registra i dati anche nell'archivio interno.</li>
                                     </ul>
@@ -29372,8 +29415,8 @@ ${r.annullata ? `
                                 <div style="color: #94a3b8; font-size: 0.85rem;">Potrai riaprire la scheda dall'Elenco Verbali, modificarla, ricalcolare o rifinire le delibere in qualsiasi momento successivo.</div>
                             </li>
                             <li>
-                                <strong>Nessun File creato sul Computer:</strong>
-                                <div style="color: #94a3b8; font-size: 0.85rem;">A differenza del tasto PDF, non crea e non scarica alcun file <code>.pdf</code> sul computer, salvaguardando lo spazio e mantenendo il verbale in stato modificabile.</div>
+                                <strong>Nessun File creato sul Dispositivo:</strong>
+                                <div style="color: #94a3b8; font-size: 0.85rem;">A differenza del tasto PDF, non crea e non scarica alcun file <code>.pdf</code> sul dispositivo, salvaguardando lo spazio e mantenendo il verbale in stato modificabile.</div>
                             </li>
                         </ol>
                         <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 1.5rem; color: #fde68a; font-size: 0.85rem;">
