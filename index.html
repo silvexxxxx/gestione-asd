@@ -18017,8 +18017,42 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 this.toast("Indirizzo email non presente per questo socio!", "warning");
                 return;
             }
-            const subject = encodeURIComponent(`Scadenza ${tipo} - ${this.state.settings.asdName}`);
-            const body = encodeURIComponent(`Gentile ${nome},\n\nti ricordiamo che la tua ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzare la tua posizione in segreteria.\n\nCordiali saluti,\nLa Direzione`);
+
+            const socio = socioId ? this.state.soci.find(s => s.id == socioId) : null;
+            const isQuota = tipo && tipo.toLowerCase().includes('quota');
+
+            let subject = '';
+            let body = '';
+
+            if (isQuota) {
+                let isExpired = false;
+                let dataStr = '';
+                if (socio && socio.quota_scadenza) {
+                    const parts = String(socio.quota_scadenza).split('T')[0].split('-');
+                    const qd = parts.length === 3 
+                        ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) 
+                        : new Date(socio.quota_scadenza);
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0);
+                    if (qd && !isNaN(qd.getTime())) {
+                        qd.setHours(0, 0, 0, 0);
+                        isExpired = qd < now;
+                        const fmt = this.formatDate(socio.quota_scadenza);
+                        if (fmt && fmt !== '-') dataStr = ` il ${fmt}`;
+                    }
+                }
+
+                if (isExpired) {
+                    subject = encodeURIComponent(`Avviso: Quota associativa scaduta - ${this.state.settings.asdName}`);
+                    body = encodeURIComponent(`Gentile ${nome},\n\nti informiamo che la tua quota associativa presso la nostra associazione risulta scaduta${dataStr}.\n\nTi invitiamo a passare in segreteria al più presto per rinnovarla e proseguire regolarmente le tue attività.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`);
+                } else {
+                    subject = encodeURIComponent(`Promemoria: Quota associativa in scadenza - ${this.state.settings.asdName}`);
+                    body = encodeURIComponent(`Gentile ${nome},\n\nti ricordiamo che la tua quota associativa presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a recarti in segreteria per provvedere al rinnovo.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`);
+                }
+            } else {
+                subject = encodeURIComponent(`Scadenza ${tipo} - ${this.state.settings.asdName}`);
+                body = encodeURIComponent(`Gentile ${nome},\n\nti ricordiamo che la tua ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzare la tua posizione in segreteria.\n\nCordiali saluti,\nLa Direzione`);
+            }
 
             window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
             this.toast("Apertura client mail...");
@@ -18035,7 +18069,39 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 this.toast("Numero di telefono non presente!", "warning");
                 return;
             }
-            const text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`);
+
+            const socio = socioId ? this.state.soci.find(s => s.id == socioId) : null;
+            const isQuota = tipo && tipo.toLowerCase().includes('quota');
+
+            let text = '';
+
+            if (isQuota) {
+                let isExpired = false;
+                let dataStr = '';
+                if (socio && socio.quota_scadenza) {
+                    const parts = String(socio.quota_scadenza).split('T')[0].split('-');
+                    const qd = parts.length === 3 
+                        ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) 
+                        : new Date(socio.quota_scadenza);
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0);
+                    if (qd && !isNaN(qd.getTime())) {
+                        qd.setHours(0, 0, 0, 0);
+                        isExpired = qd < now;
+                        const fmt = this.formatDate(socio.quota_scadenza);
+                        if (fmt && fmt !== '-') dataStr = ` il ${fmt}`;
+                    }
+                }
+
+                if (isExpired) {
+                    text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota risulta scaduta${dataStr}. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.`);
+                } else {
+                    text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota è in scadenza${dataStr}. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.`);
+                }
+            } else {
+                text = encodeURIComponent(`Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`);
+            }
+
             const cleanTel = tel.replace(/\D/g, '');
             const prefix = cleanTel.indexOf('39') === 0 ? '' : '39';
             window.open(`https://wa.me/${prefix}${cleanTel}?text=${text}`, '_blank');
