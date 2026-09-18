@@ -8395,8 +8395,7 @@
                                       data-guide="Post-it nota socio rapida. Effetto: Mostra al passaggio o apre al click il promemoria riservato con gli appunti salvati per questo iscritto."
                                       onmouseenter="app.onSocioPostitHover(event, ${s.id})" 
                                       onmouseleave="app.onSocioPostitLeave(event, ${s.id})" 
-                                      onclick="app.onSocioPostitClick(event, ${s.id})" 
-                                      title="Post-it Nota Socio (Passa col mouse per leggere o clicca per modificare)">
+                                      onclick="app.onSocioPostitClick(event, ${s.id})">
                                     📌
                                 </span>
                             ` : ''}
@@ -8933,7 +8932,7 @@
 
             popup.innerHTML = `
                 <div class="postit-header">
-                    <span style="display:flex; align-items:center; gap:5px; font-weight:700; font-size:0.84rem; color:#881337; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:205px;" title="Nota per ${safeName}">
+                    <span style="display:flex; align-items:center; gap:5px; font-weight:700; font-size:0.84rem; color:#881337; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:205px;">
                         <span>📌</span> <span>${safeName}</span>
                     </span>
                     <div style="display:flex; gap:3px; align-items:center;">
