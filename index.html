@@ -2560,8 +2560,6 @@
                     </div>
                 </div>
 
-                <div class="nav-item" id="btn-sidebar-cartella-docs" onclick="app.openArchivioDocumentiModal()" title="Archivio e Cartella Documenti Cartacei (PDF, Excel, Ricevute)" data-guide="Apri Archivio Documenti esportati. Effetto: Mostra tutti i PDF delle ricevute, delle schede e i fogli Excel generati, permettendo di aprirli direttamente.">📁 Cartella Documenti</div>
-
                 <div class="nav-dropdown" id="dropdown-plus">
                     <div class="nav-item" onclick="mobileNav.toggleDropdown('dropdown-plus')" data-guide="Menu Plus con moduli e funzioni speciali. Effetto: Apre il sottomenu con le schede di allenamento atleti e strumenti aggiuntivi.">Plus! ▾</div>
                     <div class="nav-dropdown-content">
@@ -2634,6 +2632,27 @@
                         <span id="cloud-balloon-text">premi per sincronizzarti con il cloud di google drive</span>
                     </div>
                 </div>
+
+                <!-- Cartella Documenti (tra Offline e Schermo Intero) -->
+                <button
+                    id="btn-sidebar-cartella-docs"
+                    onclick="app.openArchivioDocumentiModal()"
+                    title="Archivio e Cartella Documenti Cartacei (PDF, Excel, Ricevute)"
+                    data-guide="Apri Archivio Documenti esportati. Effetto: Mostra tutti i PDF delle ricevute, delle schede e i fogli Excel generati, permettendo di aprirli direttamente."
+                    style="
+                        display: flex; align-items: center; justify-content: center; gap: 6px;
+                        padding: 6px 10px; font-size: 0.74rem; font-weight: 600;
+                        background: rgba(59, 130, 246, 0.12); color: #60a5fa;
+                        border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px;
+                        cursor: pointer; transition: all 0.2s;
+                        white-space: nowrap; flex-shrink: 0;
+                    "
+                    onmouseover="this.style.background='rgba(59, 130, 246, 0.24)';this.style.borderColor='rgba(59, 130, 246, 0.6)';this.style.transform='translateY(-1px)';"
+                    onmouseout="this.style.background='rgba(59, 130, 246, 0.12)';this.style.borderColor='rgba(59, 130, 246, 0.35)';this.style.transform='';"
+                >
+                    <span style="font-size: 0.85rem;">📁</span>
+                    <span>Cartella Documenti</span>
+                </button>
 
                 <!-- Controlli Finestra & Uscita (sulla destra) -->
                 <button id="fullscreen-btn" title="Schermo Intero" onclick="app.toggleFullscreen()"
