@@ -2705,7 +2705,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.1"; // Splash Screen interattivo con pulsante persistente
+        const APP_VERSION = "2.6.2"; // Supporto Storage Persistente anti-reset Android & PWA
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -4423,6 +4423,9 @@
             }
         });
 
+                // Richiesta automatica di protezione memoria persistente ad Android/browser
+                await this.initPersistentStorage();
+
                 await this.loadData();
                 this.sanitizeDates();
                 this.sanitizeSettings();
@@ -4513,6 +4516,15 @@
                 this.checkAutoSave();
                 setInterval(() => this.checkAutoSave(), 60000);
                 this.updateStorageIndicator();
+
+                // Smart Recovery: se l'archivio soci è vuoto ma il dispositivo è già registrato con licenza (es. dopo riavvio o nuovo telefono)
+                if ((!this.state.soci || this.state.soci.length === 0) && localStorage.getItem('asd_license_key')) {
+                    setTimeout(() => {
+                        if (!this.state.soci || this.state.soci.length === 0) {
+                            this.promptEmptyDatabaseRecovery();
+                        }
+                    }, 1200);
+                }
 
                 this.syncAthletesIframe();
                 const restorePage = sessionStorage.getItem('asd_restore_page') || localStorage.getItem('asd_current_page') || this.state.currentPage || 'dashboard';
@@ -7467,6 +7479,92 @@
             if (text) {
                 text.textContent = formatted;
             }
+
+            if (navigator.storage && navigator.storage.persisted) {
+                try {
+                    const isPersisted = await navigator.storage.persisted();
+                    this.isStoragePersisted = !!isPersisted;
+                    this.updateStoragePersistUI(this.isStoragePersisted);
+                } catch(e) {}
+            }
+        },
+
+        async initPersistentStorage() {
+            if (navigator.storage && navigator.storage.persist) {
+                try {
+                    let isPersisted = await navigator.storage.persisted();
+                    console.log(`[Storage] Stato persistenza iniziale: ${isPersisted ? 'Protetta (Persistente)' : 'Best-Effort'}`);
+                    if (!isPersisted) {
+                        isPersisted = await navigator.storage.persist();
+                        console.log(`[Storage] Richiesta persistenza: ${isPersisted ? 'ACCORDATA (Protetta da riavvii)' : 'Non accordata (Best-Effort)'}`);
+                    }
+                    this.isStoragePersisted = !!isPersisted;
+                    this.updateStoragePersistUI(this.isStoragePersisted);
+                    return this.isStoragePersisted;
+                } catch (err) {
+                    console.warn('[Storage] Errore richiesta persistenza storage:', err);
+                    this.isStoragePersisted = false;
+                    return false;
+                }
+            } else {
+                this.isStoragePersisted = false;
+                return false;
+            }
+        },
+
+        updateStoragePersistUI(isPersisted) {
+            const el = document.getElementById('storage-persist-status');
+            const box = document.getElementById('storage-persist-box');
+            if (!el) return;
+            if (isPersisted) {
+                el.innerHTML = '<span style="color:#34d399; font-weight:700;">🛡️ Attiva (Protetta da riavvii)</span>';
+                if (box) box.title = 'Memoria protetta attiva: Android e il browser proteggono questo database e non lo cancellano durante i riavvii o le pulizie automatiche.';
+            } else {
+                el.innerHTML = '<span style="color:#fbbf24; font-weight:700;">⚠️ Best-Effort</span> <button class="btn btn-outline" style="padding:2px 8px; font-size:0.75rem; margin-left:6px; border-color:#fbbf24; color:#fbbf24; cursor:pointer;" onclick="app.requestStoragePersistManually()" data-guide="Attiva protezione permanente database. Effetto: Invia una richiesta di archiviazione protetta ad Android/browser.">Attiva</button>';
+                if (box) box.title = 'Memoria standard: clicca su Attiva per richiedere la protezione permanente ad Android.';
+            }
+        },
+
+        async requestStoragePersistManually() {
+            if (navigator.storage && navigator.storage.persist) {
+                try {
+                    const granted = await navigator.storage.persist();
+                    if (granted) {
+                        this.isStoragePersisted = true;
+                        this.toast('✅ Protezione anti-reset attivata con successo da Android!', 'success');
+                    } else {
+                        this.toast('⚠️ Il browser richiede che l\'app sia aggiunta alla Schermata Home per concedere la persistenza.', 'warning');
+                    }
+                    this.updateStoragePersistUI(granted);
+                } catch (e) {
+                    this.toast('Errore attivazione persistenza: ' + e.message, 'danger');
+                }
+            } else {
+                this.toast('Il tuo browser non supporta la StorageManager API.', 'warning');
+            }
+        },
+
+        promptEmptyDatabaseRecovery() {
+            if (document.getElementById('modal-overlay')?.style.display === 'flex') return;
+            const html = `
+                <div style="text-align: center; padding: 10px 0;">
+                    <div style="font-size: 3rem; margin-bottom: 12px;">🛡️☁️</div>
+                    <h3 style="margin-bottom: 10px; color: var(--text-main); font-size: 1.15rem;">Archivio Locale Vuoto su ${this.getThisDeviceLabel()}</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem;">
+                        È stato rilevato che l'archivio locale su questo dispositivo è vuoto (tipico dopo un riavvio dello smartphone o una nuova installazione).<br><br>
+                        Se hai già salvato i dati della tua associazione su <strong>Google Drive</strong>, puoi sincronizzarli ed ereditarli subito con un solo tocco!
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn btn-primary" style="padding: 12px; font-size: 0.95rem; font-weight: 700; background: linear-gradient(135deg, #059669, #0d9488); border: none; justify-content: center;" onclick="app.closeModal(); app.cloudSync.toggleOnlineOffline();" data-guide="Sincronizza subito con Google Drive. Effetto: Apre la connessione a Google Drive per ereditare l'archivio sul dispositivo.">
+                            📥 Sincronizza / Eredita dal Cloud Google Drive
+                        </button>
+                        <button class="btn btn-outline" style="padding: 10px; font-size: 0.85rem; justify-content: center;" onclick="app.closeModal();" data-guide="Inizia da zero. Effetto: Chiude questo avviso e continua a lavorare con un database nuovo vuoto.">
+                            Continua con archivio vuoto (Nuovo)
+                        </button>
+                    </div>
+                </div>
+            `;
+            this.openModal('Ripristino Archivio ASD', html);
         },
             
             toast(msg, type = "success") {
@@ -20185,6 +20283,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: rgba(30, 41, 59, 0.75); border: 1px solid var(--border); border-radius: 8px;">
                                         <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Storage Occupato:</span>
                                         <span id="storage-text" style="font-weight: 700; color: var(--primary); font-size: 0.92rem;">Calcolo...</span>
+                                    </div>
+                                    <div id="storage-persist-box" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: rgba(30, 41, 59, 0.75); border: 1px solid var(--border); border-radius: 8px;">
+                                        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Protezione Anti-Reset:</span>
+                                        <span id="storage-persist-status" style="font-weight: 700; font-size: 0.85rem; color: #34d399;">Verifica...</span>
                                     </div>
                                 </div>
                             </div>
