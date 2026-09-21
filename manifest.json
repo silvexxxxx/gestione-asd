@@ -1,6 +1,6 @@
 {
   "name": "Gestionale ASD",
-  "short_name": "GestioneASD",
+  "short_name": "Gestionale ASD",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASD Gestionale - Sistema Professionale</title>
+    <title>Gestionale ASD - Sistema Professionale</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="color-scheme" content="dark">
@@ -2485,7 +2485,7 @@
                     <path d="M6 20v-6"></path>
                 </svg>
             </div>
-            <h1 style="margin: 0 0 0.3rem; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ASD GESTIONALE</h1>
+            <h1 style="margin: 0 0 0.3rem; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GESTIONALE ASD</h1>
             <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.1rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
             
             <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.25rem; font-size: 0.8rem;">
@@ -2522,14 +2522,14 @@
     <div class="app-container">
         <!-- Sidebar Navigation (Top Navbar) -->
         <aside>
-            <div class="logo-area" data-guide="Logo ASD Gestionale. Effetto: Identifica l'applicazione gestionale per Associazioni Sportive Dilettantistiche.">
+            <div class="logo-area" data-guide="Logo Gestionale ASD. Effetto: Identifica l'applicazione gestionale per Associazioni Sportive Dilettantistiche.">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18 20V10"></path>
                     <path d="M12 20V4"></path>
                     <path d="M6 20v-6"></path>
                 </svg>
-                ASD Gestionale
+                Gestionale ASD
             </div>
 
             <nav class="nav-links" id="main-nav">
@@ -7653,7 +7653,7 @@
                     // Invia brand personalizzato (logo e denominazione) per stampe e intestazioni
                     try {
                         const savedLogo = localStorage.getItem('asd_custom_logo');
-                        const asdName = (this.state && this.state.datiOrganizzazione && this.state.datiOrganizzazione.denominazione) || localStorage.getItem('asd_nome') || 'ASD Gestionale';
+                        const asdName = (this.state && this.state.datiOrganizzazione && this.state.datiOrganizzazione.denominazione) || localStorage.getItem('asd_nome') || 'Gestionale ASD';
                         iframe.contentWindow.postMessage({
                             type: 'set-custom-branding',
                             logo: savedLogo,
@@ -20410,7 +20410,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <h3 style="margin: 0 0 0.5rem 0; color: #f59e0b;">💡 Hai un'idea o un suggerimento?</h3>
                                 <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Aiutaci a migliorare il gestionale inviandoci i tuoi feedback o le tue proposte.</p>
                             </div>
-                            <button class="btn" style="background: #f59e0b; color: white; display: inline-flex; align-items: center; gap: 8px; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;" data-guide="Effetto: Apre il client di posta predefinito per inviare un'email di feedback o suggerimento agli sviluppatori." onclick="window.location.href='mailto:silveriopintus@gmail.com?subject=Suggerimento per ASD Gestionale&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
+                            <button class="btn" style="background: #f59e0b; color: white; display: inline-flex; align-items: center; gap: 8px; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap;" data-guide="Effetto: Apre il client di posta predefinito per inviare un'email di feedback o suggerimento agli sviluppatori." onclick="window.location.href='mailto:silveriopintus@gmail.com?subject=Suggerimento per Gestionale ASD&body=Ciao,%0D%0A%0D%0AEcco il mio suggerimento per migliorare il gestionale:%0D%0A'">
                                 Invia Suggerimento
                             </button>
                         </div>
@@ -30446,7 +30446,7 @@ ${r.annullata ? `
     </script>
     <script>
 // logo_custom.js
-// Gestione Logo Personalizzato per ASD Gestionale
+// Gestione Logo Personalizzato per Gestionale ASD
 
 function initAppLogo() {
     const logoArea = document.querySelector('.logo-area');
@@ -30511,7 +30511,7 @@ function initAppLogo() {
     imgEl.style.cursor = 'pointer';
     imgEl.title = 'Clicca per cambiare il logo';
 
-    // Inserisci prima dell'eventuale testo "ASD Gestionale"
+    // Inserisci prima dell'eventuale testo "Gestionale ASD"
     logoArea.prepend(placeholder);
     logoArea.prepend(imgEl);
 
