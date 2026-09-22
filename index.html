@@ -2793,6 +2793,72 @@
             return entity;
         },
 
+        getLocalDatabaseInfo() {
+            let bestTs = 0;
+            const savedTs = localStorage.getItem('asd_last_local_save');
+            if (savedTs) {
+                const t = new Date(savedTs).getTime();
+                if (!isNaN(t) && t > bestTs) bestTs = t;
+            }
+            if (this.state && this.state.last_saved_at) {
+                const t = new Date(this.state.last_saved_at).getTime();
+                if (!isNaN(t) && t > bestTs) bestTs = t;
+            }
+            if (this.state && Array.isArray(this.state.ricevute)) {
+                this.state.ricevute.forEach(r => {
+                    const t = new Date(r.updated_at || r.data_creazione || r.data || r.data_emissione || 0).getTime();
+                    if (!isNaN(t) && t > bestTs) bestTs = t;
+                });
+            }
+            if (this.state && Array.isArray(this.state.soci)) {
+                this.state.soci.forEach(s => {
+                    const t = new Date(s.updated_at || s.dataIscrizione || s.data_iscrizione || s.data_creazione || 0).getTime();
+                    if (!isNaN(t) && t > bestTs) bestTs = t;
+                });
+            }
+            if (this.state && Array.isArray(this.state.primanota)) {
+                this.state.primanota.forEach(p => {
+                    const t = new Date(p.updated_at || p.data || p.data_creazione || 0).getTime();
+                    if (!isNaN(t) && t > bestTs) bestTs = t;
+                });
+            }
+            if (this.state && Array.isArray(this.state.rimborsi)) {
+                this.state.rimborsi.forEach(rm => {
+                    const t = new Date(rm.updated_at || rm.data || 0).getTime();
+                    if (!isNaN(t) && t > bestTs) bestTs = t;
+                });
+            }
+            try {
+                const snaps = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
+                if (Array.isArray(snaps)) {
+                    snaps.forEach(s => {
+                        const t = parseInt(s.id, 10);
+                        if (!isNaN(t) && t > bestTs) bestTs = t;
+                    });
+                }
+            } catch(e) {}
+
+            const totalRecords = ((this.state && Array.isArray(this.state.soci)) ? this.state.soci.length : 0) +
+                                 ((this.state && Array.isArray(this.state.ricevute)) ? this.state.ricevute.length : 0) +
+                                 ((this.state && Array.isArray(this.state.primanota)) ? this.state.primanota.length : 0);
+
+            if (bestTs > 0) {
+                return {
+                    timestamp: bestTs,
+                    dateStr: new Date(bestTs).toLocaleString('it-IT', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    }),
+                    hasData: totalRecords > 0
+                };
+            }
+            return {
+                timestamp: 0,
+                dateStr: totalRecords > 0 ? 'Data non registrata' : 'Nessun dato salvato',
+                hasData: totalRecords > 0
+            };
+        },
+
         getDeviceType() {
             const ua = (navigator.userAgent || '').toLowerCase();
             const isIPad = /ipad/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
@@ -5988,6 +6054,9 @@
 
             saveAll() {
                 this.state.isDirty = true;
+                const nowIso = new Date().toISOString();
+                this.state.last_saved_at = nowIso;
+                try { localStorage.setItem('asd_last_local_save', nowIso); } catch(e) {}
                 
                 // Salvataggio asincrono in IndexedDB (Copia locale)
                 const stateToSave = { ...this.state };
@@ -6406,6 +6475,10 @@
             },
 
             async forceUploadToCloud() {
+                return this.promptOverwriteCloudModal();
+            },
+
+            async promptOverwriteCloudModal() {
                 if (!this.accessToken) {
                     if (confirm("Per caricare i dati su Google Drive devi prima collegarti. Desideri accedere al tuo account Google ora?")) {
                         this._pendingAction = { type: 'forceUpload' };
@@ -6413,11 +6486,181 @@
                     }
                     return;
                 }
-                if (!confirm(`⚠️ Vuoi forzare la sovrascrittura di Google Drive con i dati attuali di ${app.getThisDeviceLabel()}?\n\nQuesta operazione aggiornerà il Cloud allo stato esatto attuale di ${app.getThisDeviceLabel()}, senza rischiare di riesumare vecchi dati o vecchi numeri di ricevuta.`)) {
-                    return;
+
+                app.toast('Verifica dati online su Google Drive...', 'info');
+                try {
+                    let fId = this.fileId;
+                    if (!fId) {
+                        const found = await this.findFileByName('GestioneASD_CloudSync.json');
+                        if (found) {
+                            fId = found.id;
+                            this.fileId = fId;
+                            localStorage.setItem('asd_gdrive_file_id', fId);
+                        }
+                    }
+
+                    let cloudData = null;
+                    let cloudDateStr = 'Nessun file presente';
+                    let cloudLastTs = 0;
+                    let cloudSoci = 0;
+                    let cloudRic = 0;
+                    let cloudPn = 0;
+                    let fileExistsOnDrive = false;
+
+                    if (fId) {
+                        try {
+                            const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?fields=id,name,modifiedTime,size`, {
+                                headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                            });
+                            if (metaRes.ok) {
+                                const meta = await metaRes.json();
+                                if (meta && meta.modifiedTime) {
+                                    cloudDateStr = new Date(meta.modifiedTime).toLocaleString('it-IT', {
+                                        day: '2-digit', month: '2-digit', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                                    });
+                                    cloudLastTs = new Date(meta.modifiedTime).getTime();
+                                    fileExistsOnDrive = true;
+                                }
+                            }
+
+                            const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?alt=media`, {
+                                headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                            });
+                            if (fileRes.ok) {
+                                cloudData = await fileRes.json();
+                                if (cloudData) {
+                                    cloudSoci = (cloudData.soci || []).length;
+                                    cloudRic = (cloudData.ricevute || []).length;
+                                    cloudPn = (cloudData.primanota || []).length;
+                                }
+                            }
+                        } catch(fetchErr) {
+                            console.warn('[CloudSync] Impossibile recuperare dettagli copia cloud:', fetchErr);
+                        }
+                    }
+
+                    const localInfo = app.getLocalDatabaseInfo();
+                    const localSoci = (app.state.soci || []).length;
+                    const localRic = (app.state.ricevute || []).length;
+                    const localPn = (app.state.primanota || []).length;
+                    const localDateStr = localInfo.dateStr;
+                    const localLastTs = localInfo.timestamp;
+
+                    const isCloudNewer = fileExistsOnDrive && localLastTs > 0 && cloudLastTs > 0 && (cloudLastTs - localLastTs > 60000);
+                    const isLocalNewer = fileExistsOnDrive && localLastTs > 0 && cloudLastTs > 0 && (localLastTs - cloudLastTs > 60000);
+                    const hasFewerLocalRecords = fileExistsOnDrive && (localRic < cloudRic || localSoci < cloudSoci);
+
+                    const warningBox = (isCloudNewer || hasFewerLocalRecords) ? `
+                        <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
+                            <strong>⚠️ ATTENZIONE: La copia su Google Drive potrebbe essere più recente!</strong><br>
+                            ${isCloudNewer ? `• Il file su Google Drive (<strong>${cloudDateStr}</strong>) ha un timestamp <strong>PIÙ RECENTE</strong> rispetto a ${app.getThisDeviceLabel()} (${localDateStr}).<br>` : ''}
+                            ${hasFewerLocalRecords ? `• Questo dispositivo locale contiene meno ricevute (${localRic} vs ${cloudRic}) o meno soci (${localSoci} vs ${cloudSoci}) rispetto al Cloud.<br>` : ''}
+                            Se confermi la sovrascrittura, la versione online verrà integralmente sostituita dallo stato di questo dispositivo.
+                        </div>
+                    ` : `
+                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; color: #6ee7b7; font-size: 0.85rem; line-height: 1.45;">
+                            ℹ️ Stai per aggiornare Google Drive con i dati attuali di ${app.getThisDeviceLabel()}. Tutti gli altri tuoi dispositivi allineati erediteranno questa versione.
+                        </div>
+                    `;
+
+                    const modalHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            ${warningBox}
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <!-- CARD LOCALE (SORGENTE DA INVIARE) -->
+                                <div class="glass-card" style="padding: 14px; border-top: 3px solid #10b981;">
+                                    <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                        <span style="display:flex; align-items:center; gap:6px;"><span>${app.getDeviceIcon()}</span> Questo ${app.getDeviceTypeName()} (Sorgente)</span>
+                                        <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">DA CARICARE</span>
+                                    </div>
+
+                                    <!-- DATA SALVATAGGIO LOCALE -->
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6ee7b7; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                                <span>📅</span> DATA SALVATAGGIO PC
+                                            </span>
+                                            ${isLocalNewer
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 PIÙ RECENTE</span>`
+                                                : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">VERSIONE ATTUALE</span>`
+                                            }
+                                        </div>
+                                        <div style="font-size: 1.08rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
+                                            ${localDateStr}
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                        <div>Soci: <strong style="color:var(--text-main); font-size: 0.95rem;">${localSoci}</strong></div>
+                                        <div>Ricevute: <strong style="color:var(--text-main); font-size: 0.95rem;">${localRic}</strong></div>
+                                        <div>Prima Nota: <strong style="color:var(--text-main); font-size: 0.95rem;">${localPn}</strong></div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: #34d399;">Stato: Dati pronti per l'invio su Google Drive</div>
+                                    </div>
+                                </div>
+
+                                <!-- CARD CLOUD (DESTINAZIONE DA SOVRASCRIVERE) -->
+                                <div class="glass-card" style="padding: 14px; border-top: 3px solid #f59e0b;">
+                                    <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                        <span style="display:flex; align-items:center; gap:6px;"><span>☁️</span> Google Drive (Online)</span>
+                                        <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(245,158,11,0.2); color:#fbbf24; border:1px solid rgba(245,158,11,0.4);">VERRÀ SOSTITUITO</span>
+                                    </div>
+
+                                    <!-- DATA SALVATAGGIO CLOUD -->
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #f59e0b; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #fde68a; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                                <span>📅</span> ULTIMO SALVATAGGIO DRIVE
+                                            </span>
+                                            ${isCloudNewer 
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ RECENTE</span>`
+                                                : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">DA SOVRASCRIVERE</span>`
+                                            }
+                                        </div>
+                                        <div style="font-size: 1.08rem; font-weight: 800; color: #fbbf24; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);">
+                                            ${cloudDateStr}
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                        <div>Soci: <strong style="color:#fbbf24; font-size: 0.95rem;">${fileExistsOnDrive ? cloudSoci : 'N/D'}</strong></div>
+                                        <div>Ricevute: <strong style="color:#fbbf24; font-size: 0.95rem;">${fileExistsOnDrive ? cloudRic : 'N/D'}</strong></div>
+                                        <div>Prima Nota: <strong style="color:#fbbf24; font-size: 0.95rem;">${fileExistsOnDrive ? cloudPn : 'N/D'}</strong></div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: #fbbf24;">Stato: ${fileExistsOnDrive ? 'Copia attualmente presente su Google Drive' : 'Nessun file presente su Drive (creazione nuovo)'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #6ee7b7; line-height: 1.4;">
+                                🛡️ <strong>Paracadute di Sicurezza Attivo:</strong><br>
+                                Prima di sovrascrivere Google Drive, il sistema archivia in automatico la copia online precedente nel file denominato <strong>"GestioneASD_Backup_Precedente.json"</strong>. Potrai sempre consultarlo o ripristinarlo da <em>Versioni & Copie di Riserva sul Cloud</em>.
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px;">
+                                <button type="button" class="btn btn-outline" data-guide="Annulla l'invio su Google Drive. Effetto: Chiude la modale senza alterare alcun file su Google Drive." onclick="app.closeModal()">❌ Annulla (Non fare nulla)</button>
+                                <button type="button" id="btn-confirm-overwrite-cloud" class="btn btn-primary" style="background: #059669; border-color: #059669; font-weight: 700;" data-guide="Conferma la sovrascrittura di Google Drive. Effetto: Salva la copia di riserva precedente ed invia lo stato esatto attuale di ${app.getThisDeviceLabel()} sul Cloud." onclick="app.cloudSync.executeForceUpload(this)">
+                                    ⬆️ Conferma e Sovrascrivi Cloud
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    app.openModal('⬆️ Sovrascrivi Cloud con Dati Locali (Doppia Sicurezza)', modalHtml);
+                } catch(e) {
+                    console.error('Errore preparazione modale sovrascrittura:', e);
+                    app.toast('Impossibile verificare i dati Cloud: ' + e.message, 'danger');
                 }
-                app.toast("Caricamento forzato su Google Drive in corso...", "info");
+            },
+
+            async executeForceUpload(btnEl = null) {
+                if (btnEl) {
+                    btnEl.disabled = true;
+                    btnEl.innerHTML = '⏳ Caricamento su Drive...';
+                }
+                app.toast("Caricamento su Google Drive in corso...", "info");
                 const uploadOk = await this.uploadBackup(false, true);
+                app.closeModal();
                 if (uploadOk) {
                     app.toast("✅ Google Drive sovrascritto con successo con i dati locali!", "success");
                 } else {
@@ -6495,35 +6738,37 @@
                     const cloudData = await fileRes.json();
                     if (!cloudData) throw new Error("Contenuto file non valido");
 
+                    const localInfo = app.getLocalDatabaseInfo();
                     const localSoci = (app.state.soci || []).length;
                     const localRic = (app.state.ricevute || []).length;
                     const localPn = (app.state.primanota || []).length;
+                    const localDateStr = localInfo.dateStr;
+                    const localLastTs = localInfo.timestamp;
 
                     const cloudSoci = (cloudData.soci || []).length;
                     const cloudRic = (cloudData.ricevute || []).length;
                     const cloudPn = (cloudData.primanota || []).length;
 
-                    const cloudDateStr = meta.modifiedTime ? new Date(meta.modifiedTime).toLocaleString('it-IT') : 'N/D';
-
-                    let localLastTs = 0;
-                    (app.state.ricevute || []).forEach(r => {
-                        const t = new Date(r.data_creazione || r.data || r.data_emissione || 0).getTime();
-                        if (t > localLastTs) localLastTs = t;
-                    });
+                    const cloudDateStr = meta.modifiedTime ? new Date(meta.modifiedTime).toLocaleString('it-IT', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    }) : 'N/D';
                     const cloudLastTs = meta.modifiedTime ? new Date(meta.modifiedTime).getTime() : 0;
+
                     const isCloudOlder = localLastTs > 0 && cloudLastTs > 0 && (localLastTs - cloudLastTs > 60000);
+                    const isCloudNewer = localLastTs > 0 && cloudLastTs > 0 && (cloudLastTs - localLastTs > 60000);
                     const hasFewerRecords = cloudRic < localRic || cloudSoci < localSoci;
 
                     const warningBox = (isCloudOlder || hasFewerRecords) ? `
                         <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
                             <strong>⚠️ ATTENZIONE: Disallineamento Dati Rilevato!</strong><br>
-                            ${isCloudOlder ? `• La copia su Google Drive risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su ${app.getThisDeviceLabel()}.<br>` : ''}
-                            ${hasFewerRecords ? `• Il Cloud contiene meno ricevute o soci rispetto a ${app.getThisDeviceLabel()} locale.<br>` : ''}
+                            ${isCloudOlder ? `• La copia su Google Drive (<strong>${cloudDateStr}</strong>) risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su ${app.getThisDeviceLabel()} (${localDateStr}).<br>` : ''}
+                            ${hasFewerRecords ? `• Il Cloud contiene meno ricevute (${cloudRic} vs ${localRic}) o soci (${cloudSoci} vs ${localSoci}) rispetto a ${app.getThisDeviceLabel()} locale.<br>` : ''}
                             Assicurati di trovarti sul dispositivo secondario che desideri aggiornare prima di confermare.
                         </div>
                     ` : `
                         <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 14px; color: #93c5fd; font-size: 0.85rem; line-height: 1.45;">
-                            ℹ️ Stai per allineare ${app.getThisDeviceLabel()} ai dati salvati su Google Drive. I dati locali attuali verranno sostituiti.
+                            ℹ️ Stai per allineare ${app.getThisDeviceLabel()} ai dati salvati su Google Drive (${cloudDateStr}). I dati locali attuali verranno sostituiti.
                         </div>
                     `;
 
@@ -6534,27 +6779,67 @@
                             ${warningBox}
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <!-- CARD LOCALE (ATTUALE CHE VERRÀ SOSTITUITO) -->
                                 <div class="glass-card" style="padding: 14px; border-top: 3px solid #3b82f6;">
-                                    <div style="font-weight: 700; color: #60a5fa; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
-                                        <span>${app.getDeviceIcon()}</span> Questo ${app.getDeviceTypeName()} (Attuale)
+                                    <div style="font-weight: 700; color: #60a5fa; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                        <span style="display:flex; align-items:center; gap:6px;"><span>${app.getDeviceIcon()}</span> Questo ${app.getDeviceTypeName()} (Attuale)</span>
+                                        <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(59,130,246,0.2); color:#93c5fd; border:1px solid rgba(59,130,246,0.4);">LOCALE</span>
                                     </div>
-                                    <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+
+                                    <!-- DATA SALVATAGGIO LOCALE AD ALTA VISIBILITÀ -->
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #3b82f6; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(59, 130, 246, 0.25);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #93c5fd; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                                <span>📅</span> DATA SALVATAGGIO PC
+                                            </span>
+                                            ${isCloudOlder
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ RECENTE DEL CLOUD</span>`
+                                                : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">MEMORIA LOCALE</span>`
+                                            }
+                                        </div>
+                                        <div style="font-size: 1.08rem; font-weight: 800; color: #ffffff; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
+                                            ${localDateStr}
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
                                         <div>Soci: <strong style="color:var(--text-main); font-size: 0.95rem;">${localSoci}</strong></div>
                                         <div>Ricevute: <strong style="color:var(--text-main); font-size: 0.95rem;">${localRic}</strong></div>
                                         <div>Prima Nota: <strong style="color:var(--text-main); font-size: 0.95rem;">${localPn}</strong></div>
-                                        <div style="margin-top: 4px; font-size: 0.76rem; color: var(--text-muted);">Stato: Memoria Locale</div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: var(--text-muted);">Stato: Memoria Locale su questo dispositivo</div>
                                     </div>
                                 </div>
 
+                                <!-- CARD CLOUD (DA EREDITARE) -->
                                 <div class="glass-card" style="padding: 14px; border-top: 3px solid #10b981;">
-                                    <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
-                                        <span>☁️</span> Google Drive (${targetFileName === 'GestioneASD_Backup_Precedente.json' ? 'Riserva' : 'Cloud'})
+                                    <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                        <span style="display:flex; align-items:center; gap:6px;"><span>☁️</span> Google Drive (${targetFileName === 'GestioneASD_Backup_Precedente.json' ? 'Riserva' : 'Cloud'})</span>
+                                        <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CLOUD ONLINE</span>
                                     </div>
-                                    <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+
+                                    <!-- DATA SALVATAGGIO CLOUD AD ALTA VISIBILITÀ -->
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6ee7b7; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                                <span>📅</span> DATA SALVATAGGIO DRIVE
+                                            </span>
+                                            ${isCloudNewer 
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 PIÙ RECENTE</span>`
+                                                : (isCloudOlder 
+                                                    ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ VECCHIO</span>`
+                                                    : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 SINCRONIZZATO</span>`)
+                                            }
+                                        </div>
+                                        <div style="font-size: 1.08rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
+                                            ${cloudDateStr}
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
                                         <div>Soci: <strong style="color:#34d399; font-size: 0.95rem;">${cloudSoci}</strong></div>
                                         <div>Ricevute: <strong style="color:#34d399; font-size: 0.95rem;">${cloudRic}</strong></div>
                                         <div>Prima Nota: <strong style="color:#34d399; font-size: 0.95rem;">${cloudPn}</strong></div>
-                                        <div style="margin-top: 4px; font-size: 0.76rem; color: #34d399;">Salvataggio: ${cloudDateStr}</div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: #34d399;">Stato: File online su Google Drive (${targetFileName})</div>
                                     </div>
                                 </div>
                             </div>
@@ -6699,8 +6984,12 @@
                                             <strong style="font-size: 0.92rem; color: var(--text-main);">${f.name}</strong>
                                             ${badge}
                                         </div>
-                                        <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                            Ultimo salvataggio: <strong style="color: var(--text-light);">${modDate}</strong> ${sizeKb ? `• Dimensione: ${sizeKb}` : ''}
+                                        <div style="margin-top: 6px; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #38bdf8; border-radius: 6px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);">
+                                                <span style="font-size: 0.72rem; color: #7dd3fc; font-weight: 700; text-transform: uppercase;">📅 SALVATAGGIO:</span>
+                                                <strong style="color: #ffffff; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92rem; letter-spacing: 0.3px;">${modDate}</strong>
+                                            </div>
+                                            ${sizeKb ? `<span style="font-size: 0.78rem; color: var(--text-muted);">Dimensione: ${sizeKb}</span>` : ''}
                                         </div>
                                     </div>
                                     <button class="btn btn-outline" style="border-color: #ca8a04; color: #fbbf24; font-size: 0.82rem; padding: 6px 12px; font-weight: 600;" data-guide="Ripristina questa versione del file da Google Drive. Effetto: Apre la schermata di conferma per sostituire il database locale con questa copia." onclick="app.cloudSync.promptInheritFromCloudModal('${f.id}', '${f.name}')">
@@ -6735,22 +7024,45 @@
                 }
             },
 
-            promptSyncConflictModal() {
+            promptSyncConflictModal(cloudFileInfo = null) {
                 return new Promise((resolve) => {
                     this._syncResolve = resolve;
                     const sociCount = (app.state.soci || []).length;
                     const ricevuteCount = (app.state.ricevute || []).length;
                     const pnCount = (app.state.primanota || []).length;
 
+                    const localInfo = app.getLocalDatabaseInfo();
+                    const localDateStr = localInfo.dateStr;
+                    const cloudDateStr = (cloudFileInfo && cloudFileInfo.modifiedTime)
+                        ? new Date(cloudFileInfo.modifiedTime).toLocaleString('it-IT', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        })
+                        : 'Disponibile su Google Drive';
+
                     const html = `
                         <div style="display: flex; flex-direction: column; gap: 14px;">
-                            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 12px 16px;">
-                                <div style="font-weight: 600; font-size: 0.95rem; color: #93c5fd; display: flex; align-items: center; gap: 8px;">
-                                    <span>☁️</span> <span>È stato trovato un file di backup esistente su Google Drive</span>
+                            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 14px 16px;">
+                                <div style="font-weight: 700; font-size: 0.98rem; color: #93c5fd; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px;">
+                                    <span style="display:flex; align-items:center; gap:8px;"><span>☁️</span> <span>Archivio Cloud Rilevato su Google Drive</span></span>
                                 </div>
-                                <div style="font-size: 0.84rem; color: var(--text-muted); margin-top: 6px; line-height: 1.45;">
-                                    Su ${app.getThisDeviceLabel()} sono attualmente presenti: <strong style="color:var(--text-main);">${sociCount} soci</strong>, <strong style="color:var(--text-main);">${ricevuteCount} ricevute</strong>${pnCount > 0 ? `, <strong style="color:var(--text-main);">${pnCount} movimenti prima nota</strong>` : ''}.
-                                    <br>Seleziona l'operazione che desideri effettuare:
+
+                                <!-- RIEPILOGO DATE COMPARATIVE AD ALTA VISIBILITÀ -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #3b82f6; border-radius: 8px; padding: 8px 10px; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);">
+                                        <div style="font-size: 0.68rem; color: #93c5fd; font-weight: 700; text-transform: uppercase;">💻 Questo PC (Attuale)</div>
+                                        <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff; font-family: ui-monospace, Menlo, monospace; margin: 3px 0;">${localDateStr}</div>
+                                        <div style="font-size: 0.76rem; color: var(--text-muted);">${sociCount} soci • ${ricevuteCount} ricevute</div>
+                                    </div>
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 10px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);">
+                                        <div style="font-size: 0.68rem; color: #34d399; font-weight: 700; text-transform: uppercase;">☁️ Google Drive (Cloud)</div>
+                                        <div style="font-size: 0.95rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, monospace; margin: 3px 0;">${cloudDateStr}</div>
+                                        <div style="font-size: 0.76rem; color: var(--text-muted);">Copia online memorizzata</div>
+                                    </div>
+                                </div>
+
+                                <div style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
+                                    Seleziona l'operazione che desideri effettuare:
                                 </div>
                             </div>
 
@@ -6874,7 +7186,7 @@
                         
                         const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
                         if (hasLocalData) {
-                            const choice = await this.promptSyncConflictModal();
+                            const choice = await this.promptSyncConflictModal(mainFile);
                             if (choice === 'overwrite') {
                                 app.toast('Caricamento su Google Drive in corso...', 'info');
                                 const ok = await this.uploadBackup(false, true);
@@ -21496,13 +21808,103 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             }
         },
         restoreSnapshot(id) {
-            if(!confirm("ATTENZIONE: Ripristinare questo stato sovrascriverà i dati attuali. Vuoi procedere?")) return;
+            const snapshots = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
+            const snap = snapshots.find(s => s.id === id);
+            if (!snap) {
+                this.toast('Snapshot non trovato.', 'warning');
+                return;
+            }
+
+            const localInfo = this.getLocalDatabaseInfo();
+            const localDateStr = localInfo.dateStr;
+            const localSoci = (this.state.soci || []).length;
+            const localRic = (this.state.ricevute || []).length;
+            const localPn = (this.state.primanota || []).length;
+
+            const snapSoci = snap.counts ? (snap.counts.soci || 0) : ((snap.data && snap.data.soci) ? snap.data.soci.length : 'N/D');
+            const snapRic = snap.counts ? (snap.counts.ricevute || 0) : ((snap.data && snap.data.ricevute) ? snap.data.ricevute.length : 'N/D');
+            const snapPn = snap.counts ? (snap.counts.primanota || 0) : ((snap.data && snap.data.primanota) ? snap.data.primanota.length : 'N/D');
+
+            const modalHtml = `
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.45;">
+                        ⚠️ <strong>ATTENZIONE: Ripristino Punto di Salvataggio (Snapshot)</strong><br>
+                        Stai per sovrascrivere lo stato corrente del gestionale con i dati salvati in questo snapshot.
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <!-- CARD STATO ATTUALE -->
+                        <div class="glass-card" style="padding: 14px; border-top: 3px solid #ef4444;">
+                            <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                <span style="display:flex; align-items:center; gap:6px;"><span>💻</span> Stato Attuale (Verrà Sostituito)</span>
+                                <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4);">CORRENTE</span>
+                            </div>
+
+                            <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #ef4444; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                    <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #fca5a5; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                        <span>📅</span> DATA SALVATAGGIO ATTUALE
+                                    </span>
+                                </div>
+                                <div style="font-size: 1.08rem; font-weight: 800; color: #f87171; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);">
+                                    ${localDateStr}
+                                </div>
+                            </div>
+
+                            <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                <div>Soci: <strong style="color:var(--text-main); font-size: 0.95rem;">${localSoci}</strong></div>
+                                <div>Ricevute: <strong style="color:var(--text-main); font-size: 0.95rem;">${localRic}</strong></div>
+                                <div>Prima Nota: <strong style="color:var(--text-main); font-size: 0.95rem;">${localPn}</strong></div>
+                                <div style="margin-top: 4px; font-size: 0.76rem; color: var(--text-muted);">Stato: Dati correnti sul computer</div>
+                            </div>
+                        </div>
+
+                        <!-- CARD SNAPSHOT DA RIPRISTINARE -->
+                        <div class="glass-card" style="padding: 14px; border-top: 3px solid #10b981;">
+                            <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                <span style="display:flex; align-items:center; gap:6px;"><span>🛡️</span> Snapshot (${snap.type.toUpperCase()})</span>
+                                <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">DA RIPRISTINARE</span>
+                            </div>
+
+                            <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                    <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6ee7b7; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                        <span>📅</span> DATA SNAPSHOT
+                                    </span>
+                                </div>
+                                <div style="font-size: 1.08rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
+                                    ${snap.date}
+                                </div>
+                            </div>
+
+                            <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                <div>Soci: <strong style="color:#34d399; font-size: 0.95rem;">${snapSoci}</strong></div>
+                                <div>Ricevute: <strong style="color:#34d399; font-size: 0.95rem;">${snapRic}</strong></div>
+                                <div>Prima Nota: <strong style="color:#34d399; font-size: 0.95rem;">${snapPn}</strong></div>
+                                <div style="margin-top: 4px; font-size: 0.76rem; color: #34d399;">Stato: Punto di ripristino in memoria locale</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">❌ Annulla</button>
+                        <button type="button" class="btn btn-primary" style="background:#ca8a04; border-color:#ca8a04; font-weight:700;" onclick="app.executeRestoreSnapshot('${snap.id}')">
+                            🔄 Conferma e Ripristina Snapshot
+                        </button>
+                    </div>
+                </div>
+            `;
+            this.openModal('🔄 Ripristino Snapshot di Sicurezza', modalHtml);
+        },
+        executeRestoreSnapshot(id) {
             const snapshots = JSON.parse(localStorage.getItem('asd_snapshots') || '[]');
             const snap = snapshots.find(s => s.id === id);
             if(snap) {
+                try { this.createSnapshot('pre-undo'); } catch(e) {}
                 Object.assign(this.state, snap.data);
                 this.saveAll();
-                this.toast('Stato ripristinato con successo.', 'success');
+                this.closeModal();
+                this.toast('Stato ripristinato con successo dallo snapshot!', 'success');
                 this.renderDatabase();
             }
         },
@@ -21704,114 +22106,123 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     const numRicevute = Array.isArray(data.ricevute) ? data.ricevute.length : (this.state.ricevute || []).length;
                     const hasPrimaNota = Array.isArray(data.primanota);
                     const numPn = hasPrimaNota ? data.primanota.length : (this.state.primanota || []).length;
-                    const numCorsi = Array.isArray(data.corsi) ? data.corsi.length : (this.state.corsi || []).length;
-                    const numIstruttori = Array.isArray(data.istruttori) ? data.istruttori.length : (this.state.istruttori || []).length;
-                    const numRimborsi = Array.isArray(data.rimborsi) ? data.rimborsi.length : (this.state.rimborsi || []).length;
-                    const numMagazzino = Array.isArray(data.magazzino) ? data.magazzino.length : (this.state.magazzino || []).length;
 
-                    let pnMsg = hasPrimaNota 
-                        ? `${numPn} movimenti (Tutti inclusi)` 
-                        : `${numPn} movimenti (ATTENZIONE: non presenti nel file vecchio, verranno mantenuti quelli attuali)`;
+                    // Info database locale
+                    const localInfo = this.getLocalDatabaseInfo();
+                    const localDateStr = localInfo.dateStr;
+                    const localSoci = (this.state.soci || []).length;
+                    const localRic = (this.state.ricevute || []).length;
+                    const localPn = (this.state.primanota || []).length;
 
-                    let confirmMsg = `Confermi il ripristino dei dati dal file selezionato?\n\nElementi rilevati nel backup:\n• Soci: ${numSoci}\n• Ricevute: ${numRicevute}\n• Prima Nota & Cassa: ${pnMsg}\n• Corsi: ${numCorsi}\n• Istruttori: ${numIstruttori}\n• Rimborsi Spese: ${Array.isArray(data.rimborsi) ? numRimborsi : 'N/D'}\n• Magazzino Articoli: ${Array.isArray(data.magazzino) ? numMagazzino : 'N/D'}\n\nOperazione di ripristino e sincronizzazione totale.`;
-
-                    if (confirm(confirmMsg)) {
-                        // 1. Ripristino entità principali
-                        if (Array.isArray(data.soci)) this.state.soci = data.soci;
-                        if (Array.isArray(data.ricevute)) this.state.ricevute = data.ricevute;
-                        
-                        // CRITICO: se il file ha primanota, ripristinala. Se è un backup vecchio privo di primanota, PRESERVA i movimenti correnti!
-                        if (Array.isArray(data.primanota)) {
-                            this.state.primanota = data.primanota;
-                        } else {
-                            console.warn("[Import] 'primanota' assente nel backup, mantenuta la contabilità attuale.");
+                    // Data e metadati del file di backup
+                    let backupDateStr = 'N/D';
+                    let backupDateRaw = null;
+                    if (data._backup_meta && data._backup_meta.data_creazione) {
+                        backupDateStr = data._backup_meta.data_creazione;
+                    }
+                    if (data._backup_meta && data._backup_meta.timestamp) {
+                        backupDateRaw = new Date(data._backup_meta.timestamp);
+                        if (backupDateStr === 'N/D' && !isNaN(backupDateRaw.getTime())) {
+                            backupDateStr = backupDateRaw.toLocaleString('it-IT');
                         }
-
-                        if (Array.isArray(data.corsi)) this.state.corsi = data.corsi;
-                        if (Array.isArray(data.corsi_disponibili)) this.state.corsi_disponibili = data.corsi_disponibili;
-                        if (Array.isArray(data.sale)) this.state.sale = data.sale;
-                        if (Array.isArray(data.istruttori)) this.state.istruttori = data.istruttori;
-                        if (Array.isArray(data.magazzino)) this.state.magazzino = data.magazzino;
-                        if (Array.isArray(data.eventi)) this.state.eventi = data.eventi;
-                        if (Array.isArray(data.rimborsi)) this.state.rimborsi = data.rimborsi;
-                        if (Array.isArray(data.quote_presets)) this.state.quote_presets = data.quote_presets;
-                        if (Array.isArray(data.postit)) this.state.postit = data.postit;
-                        if (Array.isArray(data.calendario_note)) this.state.calendario_note = data.calendario_note;
-
-                        // 2. Settings (merge con predefiniti per non perdere campi)
-                        const mySavedRole = this.getDeviceRole();
-                        const mySavedSplash = localStorage.getItem('asd_show_splashscreen');
-                        if (data.settings && typeof data.settings === 'object') {
-                            this.state.settings = { ...this.state.settings, ...data.settings };
+                    } else if (data.last_saved_at) {
+                        backupDateRaw = new Date(data.last_saved_at);
+                        if (backupDateStr === 'N/D' && !isNaN(backupDateRaw.getTime())) {
+                            backupDateStr = backupDateRaw.toLocaleString('it-IT');
                         }
-                        this.state.settings.device_role = mySavedRole;
-                        if (mySavedSplash !== null) {
-                            this.state.settings.show_splashscreen = (mySavedSplash !== 'false');
-                        }
-                        if (data._backup_meta && typeof data._backup_meta.sequenza_backup === 'number') {
-                            const curSeq = parseInt(this.state.settings.backup_sequence_counter, 10) || 0;
-                            this.state.settings.backup_sequence_counter = Math.max(curSeq, data._backup_meta.sequenza_backup);
-                        }
-
-                        // 3. Configurazioni secondarie e metadati
-                        if (data.corsi_colori && typeof data.corsi_colori === 'object') {
-                            this.state.corsi_colori = { ...this.state.corsi_colori, ...data.corsi_colori };
-                        }
-                        if (data.sent_reminders && typeof data.sent_reminders === 'object') {
-                            this.state.sent_reminders = data.sent_reminders;
-                        }
-                        if (Array.isArray(data.cronologia_messaggi)) {
-                            this.state.cronologia_messaggi = data.cronologia_messaggi;
-                        }
-                        if (Array.isArray(data.dismissed_quotes)) {
-                            this.state.dismissed_quotes = data.dismissed_quotes;
-                        }
-                        if (Array.isArray(data.deletedIds)) {
-                            this.state.deletedIds = Array.from(new Set([...(this.state.deletedIds || []), ...data.deletedIds]));
-                        }
-
-                        // 4. Immagini locali (custom_logo, esercizi_images)
-                        if (data._localStorageBackup && typeof data._localStorageBackup === 'object') {
-                            if (data._localStorageBackup.asd_custom_logo) {
-                                localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
-                            }
-                            if (data._localStorageBackup.asd_esercizi_images) {
-                                localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
-                            }
-                        }
-
-                        // 5. Normalizzazioni, migrazioni e pulizia
-                        this.sanitizeSettings();
-                        this.syncSaldiInizialiWithPrimaNota();
-                        this.sanitizePrimaNota();
-                        this.migrateSoci();
-                        this.migrateIstruttori();
-                        this.migrateCorsiNames();
-
-                        // 6. Salvataggio definitivo su IndexedDB, Cloud e localStorage
-                        this.saveAll();
-
-                        // Se il Cloud Drive è attivo, chiedi se forzare l'upload per evitare conflitti coi timestamp
-                        if (this.cloudSync && this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
-                            if (confirm("Vuoi caricare immediatamente questo backup sul Cloud Google Drive sovrascrivendo la copia online?\n\n(Consigliato: impedisce che dati cloud con timestamp differenti vadano in conflitto con il ripristino)")) {
-                                this.cloudSync.uploadBackup(false, true); // skipMerge = true
-                            }
-                        }
-                        if (this.getDeviceRole() === 'server') {
-                            setTimeout(() => this.autoGenerateMissingPDFs(), 600);
-                        }
-
-                        this.toast('🎉 Backup completo ripristinato con successo!', 'success');
-
-                        // 7. Aggiorna schermata corrente
-                        if (this.state.currentPage === 'primanota') {
-                            this.renderPrimaNota();
-                        } else if (this.state.currentPage === 'database') {
-                            this.renderDatabase();
-                        } else {
-                            this.showPage(this.state.currentPage || 'dashboard');
+                    } else if (file.lastModified) {
+                        backupDateRaw = new Date(file.lastModified);
+                        if (backupDateStr === 'N/D') {
+                            backupDateStr = backupDateRaw.toLocaleString('it-IT');
                         }
                     }
+
+                    // Valutazione cronologica per badge
+                    let diffBadge = '';
+                    if (localInfo.rawDate && backupDateRaw && !isNaN(localInfo.rawDate.getTime()) && !isNaN(backupDateRaw.getTime())) {
+                        const diffMs = backupDateRaw.getTime() - localInfo.rawDate.getTime();
+                        if (diffMs > 60000) {
+                            diffBadge = `<span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">🟢 FILE PIÙ RECENTE</span>`;
+                        } else if (diffMs < -60000) {
+                            diffBadge = `<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">⚠️ FILE PIÙ VECCHIO</span>`;
+                        } else {
+                            diffBadge = `<span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">🟢 STESSA DATA</span>`;
+                        }
+                    }
+
+                    this._pendingImportData = data;
+
+                    const modalHtml = `
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.45;">
+                                ⚠️ <strong>ATTENZIONE: Importazione e Sostituzione Database</strong><br>
+                                Stai per caricare un archivio JSON esterno. I dati sul gestionale verranno sostituiti con i record del file.<br>
+                                <span style="font-size: 0.78rem; opacity: 0.9;">(Prima di applicare i dati, verrà creato automaticamente uno snapshot di sicurezza per annullare l'operazione in qualsiasi momento)</span>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <!-- CARD STATO ATTUALE SUL PC -->
+                                <div class="glass-card" style="padding: 14px; border-top: 3px solid #ef4444;">
+                                    <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                        <span style="display:flex; align-items:center; gap:6px;"><span>💻</span> Questo PC (Verrà Sostituito)</span>
+                                        <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4);">LOCALE</span>
+                                    </div>
+
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #ef4444; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #fca5a5; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                                <span>📅</span> DATA ULTIMO SALVATAGGIO
+                                            </span>
+                                        </div>
+                                        <div style="font-size: 1.08rem; font-weight: 800; color: #f87171; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);">
+                                            ${localDateStr}
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                        <div>Soci: <strong style="color:var(--text-main); font-size: 0.95rem;">${localSoci}</strong></div>
+                                        <div>Ricevute: <strong style="color:var(--text-main); font-size: 0.95rem;">${localRic}</strong></div>
+                                        <div>Prima Nota: <strong style="color:var(--text-main); font-size: 0.95rem;">${localPn}</strong></div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: var(--text-muted);">Posizione: Memoria locale del gestionale</div>
+                                    </div>
+                                </div>
+
+                                <!-- CARD FILE BACKUP JSON -->
+                                <div class="glass-card" style="padding: 14px; border-top: 3px solid #10b981;">
+                                    <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                        <span style="display:flex; align-items:center; gap:6px;"><span>📥</span> File Backup JSON</span>
+                                        ${diffBadge}
+                                    </div>
+
+                                    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                                            <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6ee7b7; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                                                <span>📅</span> DATA GENERAZIONE FILE
+                                            </span>
+                                        </div>
+                                        <div style="font-size: 1.08rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
+                                            ${backupDateStr}
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.84rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px;">
+                                        <div>Soci: <strong style="color:#34d399; font-size: 0.95rem;">${numSoci}</strong></div>
+                                        <div>Ricevute: <strong style="color:#34d399; font-size: 0.95rem;">${numRicevute}</strong></div>
+                                        <div>Prima Nota: <strong style="color:#34d399; font-size: 0.95rem;">${numPn}</strong> ${!hasPrimaNota ? '<span style="color:#f59e0b; font-size:0.75rem;">(mantenuti attuali)</span>' : ''}</div>
+                                        <div style="margin-top: 4px; font-size: 0.76rem; color: var(--text-muted); word-break: break-all;">File: <strong>${this.escapeHtml(file.name)}</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px;">
+                                <button type="button" class="btn btn-outline" onclick="app.closeModal()">❌ Annulla</button>
+                                <button type="button" class="btn btn-primary" style="background:#059669; border-color:#059669; font-weight:700;" onclick="app.executeImportData()">
+                                    📥 Conferma e Importa nel Gestionale
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    this.openModal('📥 Importa Backup JSON (Confronto Dati)', modalHtml);
                 } catch (err) {
                     console.error("Errore importazione backup:", err);
                     this.toast("Errore durante l'importazione: file non valido o corrotto.", 'danger');
@@ -21820,6 +22231,117 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 }
             };
             reader.readAsText(file);
+        },
+
+        executeImportData(data = null) {
+            data = data || this._pendingImportData;
+            if (!data) return;
+            this._pendingImportData = null;
+            this.closeModal();
+
+            try {
+                // Snapshot di sicurezza preventivo
+                try { this.createSnapshot('pre-import'); } catch(e) {}
+
+                // 1. Ripristino entità principali
+                if (Array.isArray(data.soci)) this.state.soci = data.soci;
+                if (Array.isArray(data.ricevute)) this.state.ricevute = data.ricevute;
+                
+                // CRITICO: se il file ha primanota, ripristinala. Se è un backup vecchio privo di primanota, PRESERVA i movimenti correnti!
+                if (Array.isArray(data.primanota)) {
+                    this.state.primanota = data.primanota;
+                } else {
+                    console.warn("[Import] 'primanota' assente nel backup, mantenuta la contabilità attuale.");
+                }
+
+                if (Array.isArray(data.corsi)) this.state.corsi = data.corsi;
+                if (Array.isArray(data.corsi_disponibili)) this.state.corsi_disponibili = data.corsi_disponibili;
+                if (Array.isArray(data.sale)) this.state.sale = data.sale;
+                if (Array.isArray(data.istruttori)) this.state.istruttori = data.istruttori;
+                if (Array.isArray(data.magazzino)) this.state.magazzino = data.magazzino;
+                if (Array.isArray(data.eventi)) this.state.eventi = data.eventi;
+                if (Array.isArray(data.rimborsi)) this.state.rimborsi = data.rimborsi;
+                if (Array.isArray(data.quote_presets)) this.state.quote_presets = data.quote_presets;
+                if (Array.isArray(data.postit)) this.state.postit = data.postit;
+                if (Array.isArray(data.calendario_note)) this.state.calendario_note = data.calendario_note;
+
+                // 2. Settings (merge con predefiniti per non perdere campi)
+                const mySavedRole = this.getDeviceRole();
+                const mySavedSplash = localStorage.getItem('asd_show_splashscreen');
+                if (data.settings && typeof data.settings === 'object') {
+                    this.state.settings = { ...this.state.settings, ...data.settings };
+                }
+                this.state.settings.device_role = mySavedRole;
+                if (mySavedSplash !== null) {
+                    this.state.settings.show_splashscreen = (mySavedSplash !== 'false');
+                }
+                if (data._backup_meta && typeof data._backup_meta.sequenza_backup === 'number') {
+                    const curSeq = parseInt(this.state.settings.backup_sequence_counter, 10) || 0;
+                    this.state.settings.backup_sequence_counter = Math.max(curSeq, data._backup_meta.sequenza_backup);
+                }
+
+                // 3. Configurazioni secondarie e metadati
+                if (data.corsi_colori && typeof data.corsi_colori === 'object') {
+                    this.state.corsi_colori = { ...this.state.corsi_colori, ...data.corsi_colori };
+                }
+                if (data.sent_reminders && typeof data.sent_reminders === 'object') {
+                    this.state.sent_reminders = data.sent_reminders;
+                }
+                if (Array.isArray(data.cronologia_messaggi)) {
+                    this.state.cronologia_messaggi = data.cronologia_messaggi;
+                }
+                if (Array.isArray(data.dismissed_quotes)) {
+                    this.state.dismissed_quotes = data.dismissed_quotes;
+                }
+                if (Array.isArray(data.deletedIds)) {
+                    this.state.deletedIds = Array.from(new Set([...(this.state.deletedIds || []), ...data.deletedIds]));
+                }
+
+                // 4. Immagini locali (custom_logo, esercizi_images)
+                if (data._localStorageBackup && typeof data._localStorageBackup === 'object') {
+                    if (data._localStorageBackup.asd_custom_logo) {
+                        localStorage.setItem('asd_custom_logo', data._localStorageBackup.asd_custom_logo);
+                    }
+                    if (data._localStorageBackup.asd_esercizi_images) {
+                        localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
+                    }
+                }
+
+                // 5. Normalizzazioni, migrazioni e pulizia
+                this.sanitizeSettings();
+                this.syncSaldiInizialiWithPrimaNota();
+                this.sanitizePrimaNota();
+                this.migrateSoci();
+                this.migrateIstruttori();
+                this.migrateCorsiNames();
+
+                // 6. Salvataggio definitivo su IndexedDB, Cloud e localStorage
+                this.saveAll();
+
+                // Se il Cloud Drive è attivo, chiedi se forzare l'upload per evitare conflitti coi timestamp
+                if (this.cloudSync && this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
+                    if (confirm("Vuoi caricare immediatamente questo backup sul Cloud Google Drive sovrascrivendo la copia online?\n\n(Consigliato: impedisce che dati cloud con timestamp differenti vadano in conflitto con il ripristino)")) {
+                        this.cloudSync.uploadBackup(false, true); // skipMerge = true
+                    }
+                }
+                if (this.getDeviceRole() === 'server') {
+                    setTimeout(() => this.autoGenerateMissingPDFs(), 600);
+                }
+
+                this.toast('🎉 Backup completo ripristinato con successo!', 'success');
+
+                // 7. Aggiorna schermata corrente
+                if (this.state.currentPage === 'primanota') {
+                    this.renderPrimaNota();
+                } else if (this.state.currentPage === 'database') {
+                    this.renderDatabase();
+                } else {
+                    this.showPage(this.state.currentPage || 'dashboard');
+                }
+            } catch (err) {
+                console.error("Errore durante l'applicazione del backup:", err);
+                this.toast("Errore durante l'applicazione dei dati di backup.", "danger");
+            }
         },
 
         exportSociExcel() {
