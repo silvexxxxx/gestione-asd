@@ -2757,7 +2757,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.6"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
+        const APP_VERSION = "2.6.7"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -12173,47 +12173,47 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
         updateReceiptSocioInfo(val, previewId = 'receipt-socio-preview') {
             const preview = document.getElementById(previewId);
+            const socioNoteInput = document.getElementById('receipt-socio-note');
             if (!val) {
                 if (preview) preview.style.display = 'none';
-                const socioNoteInput = document.getElementById('receipt-socio-note');
-                if (socioNoteInput) socioNoteInput.value = '';
+                if (socioNoteInput) {
+                    socioNoteInput.value = '';
+                    socioNoteInput.style.borderColor = '';
+                    socioNoteInput.style.boxShadow = '';
+                    socioNoteInput.style.background = '';
+                }
                 return;
             }
             const s = this.state.soci.find(x => x.id == val);
             if (!s) return;
-            const socioNoteInput = document.getElementById('receipt-socio-note');
+            const hasNote = Boolean(s.note && s.note.trim());
             if (socioNoteInput) {
-                socioNoteInput.value = (s && s.note) ? s.note : '';
+                socioNoteInput.value = hasNote ? s.note : '';
+                if (hasNote) {
+                    socioNoteInput.style.borderColor = '#ff4d6d';
+                    socioNoteInput.style.boxShadow = '0 0 0 2px rgba(255, 77, 109, 0.25)';
+                    socioNoteInput.style.background = 'rgba(255, 77, 109, 0.06)';
+                } else {
+                    socioNoteInput.style.borderColor = '';
+                    socioNoteInput.style.boxShadow = '';
+                    socioNoteInput.style.background = '';
+                }
             }
             if (!preview) return;
             preview.style.display = 'block';
-            const hasNote = Boolean(s.note && s.note.trim());
-            const safeNote = hasNote ? s.note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') : '';
             preview.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
                     <div>
                         <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
                         <strong>Status Certificato:</strong> <span class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</span>
                         ${s.quota_scadenza ? `<br><strong>Scadenza Quota Attuale:</strong> <span>${this.formatDate(s.quota_scadenza)}</span>` : ''}
                     </div>
-                    <div>
-                        ${hasNote ? `
-                            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.75rem; border-color:#ff1744; color:#ff1744;" onclick="app.onSocioPostitClick(event, ${s.id})" title="Modifica questa nota" data-guide="Modifica nota post-it socio. Effetto: Apre il post-it fucsia per aggiornare o consultare l'appunto.">📌 Modifica Nota</button>
-                        ` : `
-                            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.75rem; border-color:var(--border); opacity:0.85;" onclick="app.onSocioPostitAddClick(event, ${s.id})" title="Aggiungi una nota al socio" data-guide="Aggiungi appunto socio. Effetto: Apre il post-it fucsia per inserire un promemoria interno.">➕📌 Aggiungi Nota</button>
-                        `}
-                    </div>
+                    ${hasNote ? `
+                        <span style="font-size:0.75rem; color:#ff4d6d; font-weight:600; padding:4px 9px; background:rgba(255,77,109,0.12); border:1px solid rgba(255,77,109,0.35); border-radius:12px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+                            📌 Nota presente in basso
+                        </span>
+                    ` : ''}
                 </div>
-                ${hasNote ? `
-                    <div style="margin-top:10px; padding:8px 12px; background:linear-gradient(135deg, rgba(244,63,94,0.18) 0%, rgba(225,29,72,0.12) 100%); border:1px solid rgba(244,63,94,0.55); border-left:4px solid #ff1744; border-radius:6px; box-shadow:0 0 14px rgba(255,23,68,0.2);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="color:#ff1744; font-size:0.82rem; display:flex; align-items:center; gap:5px;">
-                                <span>📌</span> Appunto / Promemoria Riservato Socio:
-                            </strong>
-                        </div>
-                        <div style="font-size:0.84rem; color:var(--text-main); line-height:1.4; word-break:break-word;">${safeNote}</div>
-                    </div>
-                ` : ''}
             `;
             if (typeof this.updateReceiptScadenzaPreview === 'function') {
                 this.updateReceiptScadenzaPreview();
