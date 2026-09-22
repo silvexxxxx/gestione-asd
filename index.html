@@ -819,8 +819,16 @@
         }
 
         .modal-wide {
-            max-width: 900px !important;
+            width: 95% !important;
+            max-width: 950px !important;
         }
+
+        .modal-extra-wide {
+            width: 96% !important;
+            max-width: 1200px !important;
+            padding: 1.5rem !important;
+        }
+
 
         .receipt-form-grid {
             display: grid;
@@ -1575,8 +1583,11 @@
                 max-height: 90dvh !important;
                 border-radius: 16px !important;
             }
-            .modal-wide {
+            .modal-wide,
+            .modal-extra-wide {
+                width: 95% !important;
                 max-width: 95% !important;
+                padding: 1rem !important;
             }
 
             /* === TOOLBAR & FILTRI MOBILE (RICEVUTE, RIMBORSI, COMPENSI, SOCI, PRIMA NOTA) === */
@@ -2705,7 +2716,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.2"; // Supporto Storage Persistente anti-reset Android & PWA
+        const APP_VERSION = "2.6.3"; // Supporto Storage Persistente anti-reset Android & PWA
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -8505,7 +8516,12 @@
                     try { prevClose(); } catch(e) { console.error(e); }
                 }
                 document.getElementById('modal-overlay').style.display = 'none';
-                document.getElementById('modal-content').classList.remove('modal-wide');
+                const mc = document.getElementById('modal-content');
+                if (mc) {
+                    mc.classList.remove('modal-wide', 'modal-extra-wide');
+                    mc.style.maxWidth = '';
+                    mc.style.width = '';
+                }
             },
 
             // --- DASHBOARD & GENERAL ---
@@ -13207,8 +13223,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px; margin-left:auto;" onclick="app.openCronologiaMessaggiModal()" title="Visualizza registro cronologico messaggi">📨 Cronologia Invii (${(this.state.cronologia_messaggi || []).length})</button>
                     ${withEmail.length > 0 ? `<a href="mailto:${bulkMailHref}?subject=${bulkEmailTitle}&body=${bulkEmailBody}" class="btn btn-outline" style="font-size:0.75rem; padding:5px 10px;" data-guide="Invia email a tutti i soci in scadenza. Effetto: Apre il client di posta per inviare un promemoria cumulativo a tutti i soci con certificato medico in scadenza.">📧 Email a tutti (${withEmail.length})</a>` : ''}
                 </div>
-                <div class="table-container" style="max-height:60vh; overflow-y:auto;">
-                <table style="font-size:0.8rem;">
+                <div class="table-container" style="max-height:60vh; overflow-x:auto; overflow-y:auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                <table style="font-size:0.8rem; width:100%; min-width:760px; border-collapse:collapse;">
                     <thead><tr>
                         <th>Socio</th><th>Telefono</th><th>Email</th><th>Scad. Certificato</th><th>Giorni</th><th>Tesseramento</th><th>Azioni</th>
                     </tr></thead>
@@ -13276,8 +13292,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px; margin-left:auto;" onclick="app.openCronologiaMessaggiModal()" title="Visualizza registro cronologico messaggi">📨 Cronologia Invii (${(this.state.cronologia_messaggi || []).length})</button>
                     ${withEmail.length > 0 ? `<a href="mailto:${bulkMailHref}?subject=${bulkEmailTitle}&body=${bulkEmailBody}" class="btn btn-outline" style="font-size:0.75rem; padding:5px 10px;" data-guide="Invia email di rinnovo a tutti. Effetto: Apre il client di posta per inviare un promemoria cumulativo a tutti i soci con quota associativa in scadenza.">📧 Email a tutti (${withEmail.length})</a>` : ''}
                 </div>
-                <div class="table-container" style="max-height:60vh; overflow-y:auto;">
-                <table style="font-size:0.8rem;">
+                <div class="table-container" style="max-height:60vh; overflow-x:auto; overflow-y:auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                <table style="font-size:0.8rem; width:100%; min-width:760px; border-collapse:collapse;">
                     <thead><tr>
                         <th>Socio</th><th>Telefono</th><th>Email</th><th>Scadenza Quota</th><th>Stato</th><th>Azioni</th>
                     </tr></thead>
@@ -19198,16 +19214,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     </div>
 
                     <!-- Tabella Cronologia -->
-                    <div class="table-container" style="max-height: 55vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
-                        <table style="font-size: 0.8rem; width: 100%;">
+                    <div class="table-container" style="max-height: 60vh; overflow-x: auto; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; width: 100%; -webkit-overflow-scrolling: touch;">
+                        <table style="font-size: 0.8rem; width: 100%; min-width: 860px; border-collapse: collapse;">
                             <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                                 <tr>
-                                    <th style="width: 130px;">Data & Ora</th>
-                                    <th>Socio</th>
-                                    <th style="width: 110px;">Canale</th>
-                                    <th style="width: 130px;">Tipo</th>
-                                    <th>Recapito & Anteprima</th>
-                                    <th style="width: 80px; text-align: center;">Scheda</th>
+                                    <th style="width: 135px; min-width: 130px; text-align: left; padding: 10px 12px; white-space: nowrap;">Data & Ora</th>
+                                    <th style="width: 170px; min-width: 140px; text-align: left; padding: 10px 12px;">Socio</th>
+                                    <th style="width: 120px; min-width: 110px; text-align: center; padding: 10px 12px; white-space: nowrap;">Canale</th>
+                                    <th style="width: 140px; min-width: 125px; text-align: left; padding: 10px 12px; white-space: nowrap;">Tipo</th>
+                                    <th style="min-width: 260px; text-align: left; padding: 10px 12px;">Recapito & Anteprima</th>
+                                    <th style="width: 105px; min-width: 95px; text-align: center; padding: 10px 12px; white-space: nowrap;">Scheda</th>
                                 </tr>
                             </thead>
                             <tbody id="cronologia-table-body">
@@ -19219,7 +19235,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             this.openModal(title, html);
             const mc = document.getElementById('modal-content');
-            if (mc) mc.classList.add('modal-wide');
+            if (mc) {
+                mc.classList.add('modal-extra-wide');
+                mc.style.maxWidth = '1200px';
+                mc.style.width = '96%';
+            }
             this.filterCronologiaTable(socioId);
         },
 
@@ -19277,31 +19297,31 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             tbody.innerHTML = list.map(m => {
                 const isWA = m.canale === 'whatsapp';
                 const channelBadge = isWA
-                    ? `<span class="badge" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;">${this.getWhatsAppIcon(12)} WhatsApp</span>`
-                    : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;">📧 Email</span>`;
+                    ? `<span class="badge" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;">${this.getWhatsAppIcon(12)} WhatsApp</span>`
+                    : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;">📧 Email</span>`;
 
                 return `
-                    <tr>
-                        <td style="white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
-                        <td>
+                    <tr style="border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));">
+                        <td style="padding: 10px 12px; white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
+                        <td style="padding: 10px 12px;">
                             <div style="font-weight: 600; cursor: ${m.socio_id ? 'pointer' : 'default'}; color: ${m.socio_id ? 'var(--primary)' : 'inherit'};" onclick="${m.socio_id ? `app.openEditSocioModal(${m.socio_id})` : ''}" title="${m.socio_id ? 'Clicca per aprire la Scheda Socio' : ''}">
                                 ${m.socio_nome || '-'} ${m.socio_id ? '<span style="font-size:0.65rem; opacity:0.7;">↗</span>' : ''}
                             </div>
-                            ${m.stato_quota ? `<div style="font-size: 0.7rem; color: var(--text-muted);">${m.stato_quota}</div>` : ''}
+                            ${m.stato_quota ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${m.stato_quota}</div>` : ''}
                         </td>
-                        <td>${channelBadge}</td>
-                        <td>
+                        <td style="padding: 10px 12px; text-align: center;">${channelBadge}</td>
+                        <td style="padding: 10px 12px;">
                             <span style="font-weight: 600; font-size: 0.75rem;">${m.tipo || 'Sollecito'}</span>
                         </td>
-                        <td style="max-width: 320px;">
-                            <div style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">${m.destinatario || '-'}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${(m.anteprima || '').replace(/"/g, '&quot;')}">
+                        <td style="padding: 10px 12px;">
+                            <div style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px;">${m.destinatario || '-'}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-main); line-height: 1.35; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(m.anteprima || '').replace(/"/g, '&quot;')}">
                                 ${m.anteprima || '-'}
                             </div>
                         </td>
-                        <td style="text-align: center; white-space: nowrap;">
+                        <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
                             ${m.socio_id ? `
-                                <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.7rem;" onclick="app.openEditSocioModal(${m.socio_id})" title="Apri scheda socio">
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" onclick="app.openEditSocioModal(${m.socio_id})" title="Apri scheda socio">
                                     👤 Scheda
                                 </button>
                             ` : '-'}
