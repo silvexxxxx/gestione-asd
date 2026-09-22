@@ -829,6 +829,11 @@
             padding: 1.5rem !important;
         }
 
+        .modal-socio {
+            width: 94% !important;
+            max-width: 700px !important;
+        }
+
 
         .receipt-form-grid {
             display: grid;
@@ -2536,7 +2541,7 @@
             <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.1rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
             
             <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.25rem; font-size: 0.8rem;">
-                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.4</span>
+                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.5</span>
                 <span style="color: #475569;">•</span>
                 <span id="splash-role-badge" style="color: #34d399; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                     🖥️ Server
@@ -2752,7 +2757,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.4"; // Note fucsia socio estese a Dashboard e Ricevute con aggiunta/modifica rapida ovunque
+        const APP_VERSION = "2.6.5"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -8533,6 +8538,11 @@
                 }
                 const overlay = document.getElementById('modal-overlay');
                 const content = document.getElementById('modal-content');
+                if (content) {
+                    content.className = 'modal';
+                    content.style.maxWidth = '';
+                    content.style.width = '';
+                }
                 content.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem;">${title}</h2>
@@ -8554,7 +8564,7 @@
                 document.getElementById('modal-overlay').style.display = 'none';
                 const mc = document.getElementById('modal-content');
                 if (mc) {
-                    mc.classList.remove('modal-wide', 'modal-extra-wide');
+                    mc.className = 'modal';
                     mc.style.maxWidth = '';
                     mc.style.width = '';
                 }
@@ -9672,16 +9682,53 @@
                         </div>
                     </form>
                 `);
+                const mc = document.getElementById('modal-content');
+                if (mc) {
+                    mc.classList.add('modal-socio');
+                    mc.style.maxWidth = '700px';
+                    mc.style.width = '94%';
+                }
             },
 
-            openEditSocioModal(id) {
-                const s = this.state.soci.find(x => x.id === id);
+            openEditSocioModal(id, fromCronologia = false) {
+                const s = this.state.soci.find(x => x.id === id || String(x.id) === String(id));
                 if (!s) return;
 
                 this.openAddSocioModal();
+                const mc = document.getElementById('modal-content');
+                if (mc) {
+                    mc.classList.add('modal-socio');
+                    mc.style.maxWidth = '700px';
+                    mc.style.width = '94%';
+                }
                 const form = document.getElementById('socio-form');
                 form.dataset.editId = id;
-                document.querySelector('.modal h2').textContent = "Modifica Socio: " + (s.cognome || '') + " " + (s.nome || '');
+                if (fromCronologia) {
+                    form.dataset.fromCronologia = 'true';
+                }
+                const modalHeader = document.querySelector('.modal h2');
+                if (modalHeader) {
+                    modalHeader.textContent = "Modifica Socio: " + (s.cognome || '') + " " + (s.nome || '');
+                }
+
+                // Se aperta da Cronologia, predisponi pulsante di ritorno elegante
+                if (fromCronologia) {
+                    const btnContainer = form.querySelector('div[style*="justify-content: flex-end"]');
+                    if (btnContainer) {
+                        const backBtn = document.createElement('button');
+                        backBtn.type = 'button';
+                        backBtn.className = 'btn btn-outline';
+                        backBtn.style.marginRight = 'auto';
+                        backBtn.style.fontSize = '0.82rem';
+                        backBtn.innerHTML = '⬅ Torna alla Cronologia';
+                        backBtn.onclick = () => app.openCronologiaMessaggiModal(id);
+                        btnContainer.insertBefore(backBtn, btnContainer.firstChild);
+                    }
+                    const cancelBtn = form.querySelector('button[onclick*="closeModal"]');
+                    if (cancelBtn) {
+                        cancelBtn.onclick = () => app.openCronologiaMessaggiModal(id);
+                    }
+                }
 
                 // Fill form
                 Object.keys(s).forEach(key => {
@@ -10099,8 +10146,13 @@
                 }
 
                 this.saveAll();
+                const fromCronologia = e.target.dataset.fromCronologia === 'true';
                 this.closeModal();
-                this.refreshCurrentPageUI();
+                if (fromCronologia) {
+                    this.openCronologiaMessaggiModal(editId || null);
+                } else {
+                    this.refreshCurrentPageUI();
+                }
             },
 
             deleteSocio(id) {
@@ -19174,7 +19226,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     tipo: isQuota ? 'Quota Associativa' : tipo,
                     stato_quota: statoQuota,
                     destinatario: email,
-                    anteprima: subject
+                    testo: (subject ? 'Oggetto: ' + subject + '\n\n' : '') + body,
+                    anteprima: body
                 });
             }
         },
@@ -19234,7 +19287,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     tipo: isQuota ? 'Quota Associativa' : tipo,
                     stato_quota: statoQuota,
                     destinatario: tel,
-                    anteprima: text.slice(0, 100)
+                    testo: text,
+                    anteprima: text
                 });
             }
         },
@@ -19266,7 +19320,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 tipo: extra.tipo || 'Sollecito',
                 stato_quota: extra.stato_quota || '',
                 destinatario: extra.destinatario || (channel === 'whatsapp' ? (socio ? socio.tel : '') : (socio ? socio.email : '')),
-                anteprima: extra.anteprima || ''
+                testo: extra.testo || extra.anteprima || '',
+                anteprima: extra.anteprima || extra.testo || ''
             };
 
             this.state.cronologia_messaggi.unshift(entry);
@@ -19352,6 +19407,99 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 `;
         },
 
+        getMessageFullText(m) {
+            if (!m) return '';
+            let text = m.testo || m.anteprima || '';
+            // Se il testo è stato troncato in passato a 100 caratteri (vecchia versione)
+            if (text.length === 100 && !text.endsWith('.') && !text.endsWith('!')) {
+                if (text.includes('quota è in scadenza')) {
+                    text += '. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.';
+                } else if (text.includes('quota risulta scaduta')) {
+                    text += '. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.';
+                } else if (text.includes('in scadenza')) {
+                    text += '. Passa in segreteria per il rinnovo! Cordiali saluti.';
+                }
+            }
+            return text;
+        },
+
+        openMessageDetailModal(msgId, fromSource = 'cronologia') {
+            const m = (this.state.cronologia_messaggi || []).find(x => x.id === msgId || String(x.id) === String(msgId));
+            if (!m) return;
+
+            const isWA = m.canale === 'whatsapp';
+            const fullText = this.getMessageFullText(m);
+            const safeText = (fullText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+
+            const detailHtml = `
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Informazioni Intestazione -->
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; font-size: 0.85rem;">
+                            <div>
+                                <span style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-bottom: 2px;">DESTINATARIO</span>
+                                <strong style="font-size: 0.95rem;">${m.socio_nome || 'Socio'}</strong>
+                                ${m.socio_id ? this.renderSocioPostitBadge(m.socio_id) : ''}
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-bottom: 2px;">CANALE DI INVIO</span>
+                                ${isWA 
+                                    ? `<span class="badge" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.75rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;">${this.getWhatsAppIcon(13)} WhatsApp</span>`
+                                    : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.75rem; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;">📧 Email</span>`}
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-bottom: 2px;">RECAPITO</span>
+                                <span style="font-family: monospace; font-weight: 600; font-size: 0.85rem;">${m.destinatario || '-'}</span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-bottom: 2px;">DATA & ORA REGISTRATA</span>
+                                <span style="font-size: 0.85rem;">${m.data_ora || this.formatDateTime(m.timestamp)}</span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-bottom: 2px;">OGGETTO / TIPO</span>
+                                <span style="font-size: 0.85rem; font-weight: 600;">${m.tipo || 'Sollecito'}${m.stato_quota ? ` (${m.stato_quota})` : ''}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Testo Completo del Messaggio -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">Testo Integrale Inviato:</label>
+                            <span style="font-size: 0.72rem; color: var(--text-muted);">${(fullText || '').length} caratteri</span>
+                        </div>
+                        <div id="full-msg-text-content" style="padding: 1rem 1.2rem; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid ${isWA ? '#25D366' : '#3b82f6'}; border-radius: 8px; font-size: 0.92rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; word-break: break-word; user-select: text; max-height: 280px; overflow-y: auto; box-shadow: inset 0 2px 6px rgba(0,0,0,0.2);">${safeText}</div>
+                    </div>
+
+                    <!-- Azioni Rapide -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="navigator.clipboard.writeText(document.getElementById('full-msg-text-content').innerText); app.toast('Testo del messaggio copiato negli appunti! 📋', 'success');">
+                                <span>📋 Copia Testo</span>
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            ${m.socio_id ? `
+                                <button type="button" class="btn ${fromSource === 'socio' ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="app.openEditSocioModal(${m.socio_id}, ${fromSource === 'cronologia' ? 'true' : 'false'})">
+                                    <span>${fromSource === 'socio' ? '⬅ Torna alla Scheda Socio' : '👤 Scheda Socio'}</span>
+                                </button>
+                            ` : ''}
+                            <button type="button" class="btn ${fromSource === 'socio' ? 'btn-outline' : 'btn-primary'}" style="font-size: 0.8rem; padding: 6px 14px;" onclick="app.openCronologiaMessaggiModal(${m.socio_id || 'null'})">
+                                <span>${fromSource === 'socio' ? '📋 Registro Cronologia' : '⬅ Torna alla Cronologia'}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            this.openModal('📨 Testo Completo Messaggio Inviato', detailHtml);
+            const mc = document.getElementById('modal-content');
+            if (mc) {
+                mc.style.maxWidth = '680px';
+                mc.style.width = '94%';
+            }
+        },
+
         openCronologiaMessaggiModal(socioId = null) {
             socioId = socioId ? Number(socioId) : null;
             const socio = socioId ? this.state.soci.find(s => s.id === socioId) : null;
@@ -19400,7 +19548,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <th style="width: 170px; min-width: 140px; text-align: left; padding: 10px 12px;">Socio</th>
                                     <th style="width: 120px; min-width: 110px; text-align: center; padding: 10px 12px; white-space: nowrap;">Canale</th>
                                     <th style="width: 140px; min-width: 125px; text-align: left; padding: 10px 12px; white-space: nowrap;">Tipo</th>
-                                    <th style="min-width: 260px; text-align: left; padding: 10px 12px;">Recapito & Anteprima</th>
+                                    <th style="min-width: 320px; text-align: left; padding: 10px 12px;">Recapito & Messaggio</th>
                                     <th style="width: 105px; min-width: 95px; text-align: center; padding: 10px 12px; white-space: nowrap;">Scheda</th>
                                 </tr>
                             </thead>
@@ -19439,8 +19587,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     const matchDest = (m.destinatario || '').toLowerCase().includes(q);
                     const matchTipo = (m.tipo || '').toLowerCase().includes(q);
                     const matchAnteprima = (m.anteprima || '').toLowerCase().includes(q);
+                    const matchTesto = (m.testo || '').toLowerCase().includes(q);
                     const matchData = (m.data_ora || '').toLowerCase().includes(q);
-                    if (!matchSocio && !matchDest && !matchTipo && !matchAnteprima && !matchData) return false;
+                    if (!matchSocio && !matchDest && !matchTipo && !matchAnteprima && !matchTesto && !matchData) return false;
                 }
                 return true;
             });
@@ -19478,31 +19627,41 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     ? `<span class="badge" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;">${this.getWhatsAppIcon(12)} WhatsApp</span>`
                     : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;">📧 Email</span>`;
 
+                const fullMsg = this.getMessageFullText(m);
+                const safeMsg = (fullMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+
                 return `
                     <tr style="border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));">
-                        <td style="padding: 10px 12px; white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
-                        <td style="padding: 10px 12px;">
+                        <td style="padding: 10px 12px; white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted); vertical-align: top;">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
+                        <td style="padding: 10px 12px; vertical-align: top;">
                             <div style="display: flex; align-items: center; gap: 4px;">
-                                <span style="font-weight: 600; cursor: ${m.socio_id ? 'pointer' : 'default'}; color: ${m.socio_id ? 'var(--primary)' : 'inherit'};" onclick="${m.socio_id ? `app.openEditSocioModal(${m.socio_id})` : ''}" title="${m.socio_id ? 'Clicca per aprire la Scheda Socio' : ''}">
+                                <span style="font-weight: 600; cursor: ${m.socio_id ? 'pointer' : 'default'}; color: ${m.socio_id ? 'var(--primary)' : 'inherit'};" onclick="${m.socio_id ? `app.openEditSocioModal(${m.socio_id}, true)` : ''}" title="${m.socio_id ? 'Clicca per aprire la Scheda Socio' : ''}">
                                     ${m.socio_nome || '-'} ${m.socio_id ? '<span style="font-size:0.65rem; opacity:0.7;">↗</span>' : ''}
                                 </span>
                                 ${m.socio_id ? this.renderSocioPostitBadge(m.socio_id) : ''}
                             </div>
                             ${m.stato_quota ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${m.stato_quota}</div>` : ''}
                         </td>
-                        <td style="padding: 10px 12px; text-align: center;">${channelBadge}</td>
-                        <td style="padding: 10px 12px;">
+                        <td style="padding: 10px 12px; text-align: center; vertical-align: top;">${channelBadge}</td>
+                        <td style="padding: 10px 12px; vertical-align: top;">
                             <span style="font-weight: 600; font-size: 0.75rem;">${m.tipo || 'Sollecito'}</span>
                         </td>
-                        <td style="padding: 10px 12px;">
-                            <div style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px;">${m.destinatario || '-'}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-main); line-height: 1.35; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(m.anteprima || '').replace(/"/g, '&quot;')}">
-                                ${m.anteprima || '-'}
+                        <td style="padding: 10px 12px; vertical-align: top;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; gap: 6px;">
+                                <div style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">
+                                    ${isWA ? '📱 ' : '📧 '}${m.destinatario || '-'}
+                                </div>
+                                <button type="button" class="btn btn-outline" style="font-size: 0.68rem; padding: 2px 7px; display: inline-flex; align-items: center; gap: 3px; border-radius: 4px; border-color: rgba(99, 102, 241, 0.3);" onclick="event.stopPropagation(); app.openMessageDetailModal('${m.id}', 'cronologia')" title="Espandi e leggi il messaggio completo a tutto schermo">
+                                    👁️ Leggi Tutto
+                                </button>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-main); line-height: 1.45; white-space: pre-wrap; word-break: break-word; background: ${isWA ? 'rgba(37, 211, 102, 0.05)' : 'rgba(59, 130, 246, 0.05)'}; border-left: 3px solid ${isWA ? '#25D366' : '#3b82f6'}; padding: 6px 9px; border-radius: 4px; max-height: 115px; overflow-y: auto; cursor: pointer;" onclick="app.openMessageDetailModal('${m.id}', 'cronologia')" title="Clicca per visualizzare a tutto schermo o copiare il messaggio">
+                                ${safeMsg}
                             </div>
                         </td>
-                        <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
+                        <td style="padding: 10px 12px; text-align: center; white-space: nowrap; vertical-align: top;">
                             ${m.socio_id ? `
-                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" onclick="app.openEditSocioModal(${m.socio_id})" title="Apri scheda socio">
+                                <button class="btn btn-outline" style="padding: 4px 10px; font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;" onclick="app.openEditSocioModal(${m.socio_id}, true)" title="Apri scheda socio">
                                     👤 Scheda
                                 </button>
                             ` : '-'}
@@ -19536,31 +19695,41 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const messagesListHtml = messages.length === 0
                 ? `<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; padding: 4px 0;">Nessun messaggio inviato registrato finora. I promemoria inviati via WhatsApp ed Email compariranno qui e rimarranno sincronizzati su tutti i tuoi PC.</div>`
                 : `
-                    <div style="max-height: 160px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card, #fff);">
+                    <div style="max-height: 180px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card, #fff);">
                         <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
                             <thead>
                                 <tr style="background: rgba(0,0,0,0.03); border-bottom: 1px solid var(--border-color); text-align: left;">
-                                    <th style="padding: 4px 8px; font-weight: 600;">Data/Ora</th>
-                                    <th style="padding: 4px 8px; font-weight: 600;">Canale</th>
-                                    <th style="padding: 4px 8px; font-weight: 600;">Tipo</th>
-                                    <th style="padding: 4px 8px; font-weight: 600;">Anteprima</th>
+                                    <th style="padding: 6px 8px; font-weight: 600; width: 110px;">Data/Ora</th>
+                                    <th style="padding: 6px 8px; font-weight: 600; width: 90px;">Canale</th>
+                                    <th style="padding: 6px 8px; font-weight: 600; width: 90px;">Tipo</th>
+                                    <th style="padding: 6px 8px; font-weight: 600;">Messaggio</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${messages.slice(0, 20).map(m => `
+                                ${messages.slice(0, 25).map(m => {
+                                    const isWA = m.canale === 'whatsapp';
+                                    const fullText = this.getMessageFullText(m);
+                                    const safeText = (fullText || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                                    return `
                                     <tr style="border-bottom: 1px solid rgba(0,0,0,0.04);">
-                                        <td style="padding: 4px 8px; white-space: nowrap; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
-                                        <td style="padding: 4px 8px; white-space: nowrap;">
-                                            ${m.canale === 'whatsapp' 
+                                        <td style="padding: 6px 8px; white-space: nowrap; color: var(--text-muted); vertical-align: top;">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
+                                        <td style="padding: 6px 8px; white-space: nowrap; vertical-align: top;">
+                                            ${isWA 
                                                 ? '<span style="color: #25D366; font-weight: 600;">💬 WhatsApp</span>' 
                                                 : '<span style="color: #3b82f6; font-weight: 600;">📧 Email</span>'}
                                         </td>
-                                        <td style="padding: 4px 8px; white-space: nowrap;">${m.tipo || 'Sollecito'}</td>
-                                        <td style="padding: 4px 8px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(m.anteprima || '').replace(/"/g, '&quot;')}">
-                                            ${m.anteprima || '-'}
+                                        <td style="padding: 6px 8px; white-space: nowrap; vertical-align: top;">${m.tipo || 'Sollecito'}</td>
+                                        <td style="padding: 6px 8px; vertical-align: top;">
+                                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                                <div style="font-size: 0.75rem; color: var(--text-main); line-height: 1.4; max-height: 62px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; flex: 1; padding: 4px 6px; background: ${isWA ? 'rgba(37, 211, 102, 0.05)' : 'rgba(59, 130, 246, 0.05)'}; border-left: 2px solid ${isWA ? '#25D366' : '#3b82f6'}; border-radius: 4px; cursor: pointer;" onclick="app.openMessageDetailModal('${m.id}', 'socio')" title="Clicca per leggere tutto il messaggio">
+                                                    ${safeText}
+                                                </div>
+                                                <button type="button" class="btn btn-outline" style="font-size: 0.65rem; padding: 2px 6px; white-space: nowrap; flex-shrink: 0;" onclick="app.openMessageDetailModal('${m.id}', 'socio')" title="Leggi tutto">👁️ Leggi</button>
+                                            </div>
                                         </td>
                                     </tr>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -19595,7 +19764,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 return;
             }
 
-            const headers = ["ID", "Data_Ora", "Timestamp", "Socio_ID", "Socio_Nome", "Canale", "Tipo", "Stato_Quota", "Destinatario", "Anteprima"];
+            const headers = ["ID", "Data_Ora", "Timestamp", "Socio_ID", "Socio_Nome", "Canale", "Tipo", "Stato_Quota", "Destinatario", "Anteprima", "Testo_Completo"];
             const escapeCsv = (val) => {
                 if (val === null || val === undefined) return '""';
                 const str = String(val).replace(/"/g, '""');
@@ -19614,7 +19783,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     escapeCsv(m.tipo || ''),
                     escapeCsv(m.stato_quota || ''),
                     escapeCsv(m.destinatario || ''),
-                    escapeCsv(m.anteprima || '')
+                    escapeCsv(m.anteprima || ''),
+                    escapeCsv(this.getMessageFullText(m))
                 ];
                 csvContent += row.join(";") + "\n";
             });
