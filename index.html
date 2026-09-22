@@ -2314,6 +2314,42 @@
             transform: scale(1.25);
             box-shadow: 0 0 16px rgba(255, 23, 68, 1), 0 3px 6px rgba(0, 0, 0, 0.45);
         }
+        .socio-name-with-postit {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            vertical-align: middle;
+        }
+        .socio-postit-add-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            margin-left: 4px;
+            font-size: 0.7rem;
+            opacity: 0;
+            cursor: pointer;
+            border-radius: 4px;
+            color: var(--text-muted);
+            border: 1px dashed rgba(255, 255, 255, 0.28);
+            background: rgba(255, 255, 255, 0.04);
+            transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+            user-select: none;
+            vertical-align: middle;
+        }
+        .socio-name-with-postit:hover .socio-postit-add-btn,
+        tr:hover .socio-postit-add-btn,
+        td:hover .socio-postit-add-btn {
+            opacity: 0.65;
+        }
+        .socio-postit-add-btn:hover {
+            opacity: 1 !important;
+            color: #ff1744 !important;
+            border-color: #ff1744 !important;
+            background: rgba(255, 23, 68, 0.18) !important;
+            transform: scale(1.2);
+        }
         .postit-note-red {
             position: fixed;
             width: 290px;
@@ -2500,7 +2536,7 @@
             <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.1rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
             
             <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.25rem; font-size: 0.8rem;">
-                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.1</span>
+                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.4</span>
                 <span style="color: #475569;">•</span>
                 <span id="splash-role-badge" style="color: #34d399; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                     🖥️ Server
@@ -2716,7 +2752,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.3"; // Supporto Storage Persistente anti-reset Android & PWA
+        const APP_VERSION = "2.6.4"; // Note fucsia socio estese a Dashboard e Ricevute con aggiunta/modifica rapida ovunque
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -9218,18 +9254,11 @@
                     <tr style="${rowStyle}">
                         <td style="font-weight: 600;">${s.cognome || '-'}</td>
                         <td style="font-weight: 500; white-space: nowrap;">
-                            <span>${s.nome || '-'}</span>
-                            ${isMinore ? '<span style="font-size:0.65rem; background:rgba(59,130,246,0.1); color:var(--primary); padding:2px 4px; border-radius:4px; margin-left:4px;">U18</span>' : ''}
-                            ${hasNote ? `
-                                <span class="socio-postit-icon" 
-                                      data-socio-id="${s.id}" 
-                                      data-guide="Post-it nota socio rapida. Effetto: Mostra al passaggio o apre al click il promemoria riservato con gli appunti salvati per questo iscritto."
-                                      onmouseenter="app.onSocioPostitHover(event, ${s.id})" 
-                                      onmouseleave="app.onSocioPostitLeave(event, ${s.id})" 
-                                      onclick="app.onSocioPostitClick(event, ${s.id})">
-                                    📌
-                                </span>
-                            ` : ''}
+                            <span class="socio-name-with-postit">
+                                <span>${s.nome || '-'}</span>
+                                ${isMinore ? '<span style="font-size:0.65rem; background:rgba(59,130,246,0.1); color:var(--primary); padding:2px 4px; border-radius:4px; margin-left:4px;">U18</span>' : ''}
+                                ${this.renderSocioPostitBadge(s.id)}
+                            </span>
                         </td>
                         <td class="socio-contacts-col">
                             <div style="font-size: 0.8rem; color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-muted)'}; opacity: 0.85;">${s.residenza || '-'}</div>
@@ -9706,12 +9735,94 @@
                 this.touchEntity(s);
                 this.saveAll();
                 this.closeModal();
-                this.renderSoci();
+                this.refreshViewsAfterSocioNoteChange(s.id);
                 this.toast("Nota aggiornata con successo!");
             },
         /* ==========================================================================
            GESTIONE POST-IT ROSSO FLUO SOCI (NOTE INTERNE)
            ========================================================================== */
+        renderSocioPostitBadge(socioId, showAddIfEmpty = true) {
+            if (!socioId) return '';
+            const s = (this.state.soci || []).find(x => x.id === socioId || String(x.id) === String(socioId));
+            if (!s) return '';
+
+            const hasNote = Boolean(s.note && String(s.note).trim());
+            if (hasNote) {
+                const noteTitle = (s.note || '').replace(/"/g, '&quot;');
+                return `
+                    <span class="socio-postit-icon" 
+                          data-socio-id="${s.id}" 
+                          data-guide="Post-it nota socio rapida. Effetto: Mostra al passaggio o apre al click il promemoria riservato con gli appunti salvati per questo iscritto."
+                          onmouseenter="app.onSocioPostitHover(event, ${s.id})" 
+                          onmouseleave="app.onSocioPostitLeave(event, ${s.id})" 
+                          onclick="app.onSocioPostitClick(event, ${s.id})"
+                          title="Nota socio: ${noteTitle}">
+                        📌
+                    </span>
+                `.trim();
+            }
+
+            if (showAddIfEmpty) {
+                return `
+                    <span class="socio-postit-add-btn" 
+                          data-socio-id="${s.id}" 
+                          data-guide="Aggiungi nota rapida socio. Effetto: Apre il post-it fucsia per inserire un appunto interno su questo socio."
+                          onclick="app.onSocioPostitAddClick(event, ${s.id})" 
+                          title="Aggiungi nota rapida (Post-it)">
+                        ➕📌
+                    </span>
+                `.trim();
+            }
+
+            return '';
+        },
+
+        onSocioPostitAddClick(e, socioId) {
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            this.showSocioPostitPopup(e, socioId, true);
+            setTimeout(() => {
+                const textarea = document.getElementById('socio-postit-active-text');
+                if (textarea) {
+                    textarea.focus();
+                    textarea.select();
+                }
+            }, 50);
+        },
+
+        refreshViewsAfterSocioNoteChange(socioId) {
+            // 1. Aggiorna interfaccia pagina attiva
+            if (typeof this.refreshCurrentPageUI === 'function') {
+                this.refreshCurrentPageUI();
+            } else if (typeof this.renderSoci === 'function') {
+                this.renderSoci();
+            }
+
+            // 2. Se ci sono popup modali aperti, aggiorna i dati in tempo reale
+            const overlay = document.getElementById('modal-overlay');
+            if (overlay && overlay.style.display !== 'none') {
+                const titleEl = overlay.querySelector('h2');
+                const titleText = titleEl ? titleEl.textContent : '';
+                if (titleText.includes('Certificati in Scadenza') && typeof this.openCertAlertsModal === 'function') {
+                    this.openCertAlertsModal();
+                } else if (titleText.includes('Quote in Scadenza') && typeof this.openQuoteAlertsModal === 'function') {
+                    this.openQuoteAlertsModal();
+                } else if (titleText.includes('Registro Cronologico') && typeof this.filterCronologiaTable === 'function') {
+                    this.filterCronologiaTable();
+                }
+                
+                // Se è aperta la schermata di compilazione/modifica ricevuta per questo socio
+                const receiptSocioInput = document.getElementById('receipt-socio-id');
+                if (receiptSocioInput && receiptSocioInput.value && (!socioId || String(receiptSocioInput.value) === String(socioId))) {
+                    if (typeof this.updateReceiptSocioInfo === 'function') {
+                        this.updateReceiptSocioInfo(receiptSocioInput.value);
+                    }
+                }
+            }
+        },
+
         ensureSocioPostitPopupContainer() {
             let popup = document.getElementById('socio-postit-floating-popup');
             if (!popup) {
@@ -9733,7 +9844,7 @@
             document.addEventListener('click', (e) => {
                 const popup = document.getElementById('socio-postit-floating-popup');
                 if (!popup || popup.style.display === 'none') return;
-                if (!popup.contains(e.target) && !e.target.closest('.socio-postit-icon')) {
+                if (!popup.contains(e.target) && !e.target.closest('.socio-postit-icon') && !e.target.closest('.socio-postit-add-btn')) {
                     this.hideSocioPostitPopup(true);
                 }
             });
@@ -9746,9 +9857,11 @@
             }, { passive: true });
         },
 
-        showSocioPostitPopup(e, socioId) {
+        showSocioPostitPopup(e, socioId, allowEmpty = false) {
             const s = (this.state.soci || []).find(x => x.id === socioId || String(x.id) === String(socioId));
-            if (!s || !s.note || !s.note.trim()) return;
+            if (!s) return;
+            const hasNote = Boolean(s.note && s.note.trim());
+            if (!allowEmpty && !hasNote) return;
 
             if (this._socioPostitCloseTimer) {
                 clearTimeout(this._socioPostitCloseTimer);
@@ -9758,62 +9871,68 @@
             const popup = this.ensureSocioPostitPopupContainer();
             this._activePostitSocioId = socioId;
 
-            const safeNote = s.note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const safeNote = (s.note || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const safeName = ((s.cognome || '') + ' ' + (s.nome || '')).trim() || 'Socio';
 
             popup.innerHTML = `
                 <div class="postit-header">
-                    <span style="display:flex; align-items:center; gap:5px; font-weight:700; font-size:0.84rem; color:#881337; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:205px;">
+                    <span style="display:flex; align-items:center; gap:5px; font-weight:700; font-size:0.84rem; color:#881337; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px;" title="${safeName}">
                         <span>📌</span> <span>${safeName}</span>
                     </span>
                     <div style="display:flex; gap:3px; align-items:center;">
                         <button type="button" class="postit-btn" data-guide="Copia appunto del socio. Effetto: Copia negli appunti di sistema il testo della nota." onclick="app.copyActiveSocioPostitText()" title="Copia appunto">📋</button>
-                        <button type="button" class="postit-btn" data-guide="Elimina questa nota post-it. Effetto: Rimuove definitivamente la nota rapida del socio." onclick="app.deleteSocioPostit(${s.id})" title="Elimina questa nota">🗑️</button>
+                        ${hasNote ? `
+                            <button type="button" class="postit-btn" data-guide="Elimina questa nota post-it. Effetto: Rimuove definitivamente la nota rapida del socio." onclick="app.deleteSocioPostit(${s.id})" title="Elimina questa nota">🗑️</button>
+                        ` : ''}
                         <button type="button" class="postit-btn" data-guide="Chiudi finestra appunto. Effetto: Chiude il popup del post-it." onclick="app.hideSocioPostitPopup(true)" title="Chiudi finestra">✖️</button>
                     </div>
                 </div>
                 <textarea id="socio-postit-active-text" 
                           class="postit-textarea" 
-                          data-guide="Testo del post-it rapido per il socio. Effetto: Memorizza una nota adesiva visibile istantaneamente sulla scheda anagrafica."
-                          placeholder="Scrivi qui la nota del socio..."
+                          data-guide="Testo del post-it rapido per il socio. Effetto: Memorizza una nota adesiva visibile istantaneamente in tutte le sezioni del gestionale."
+                          placeholder="Scrivi qui un appunto o promemoria per ${safeName}..."
                           oninput="app.onSocioPostitTextInput(${s.id})"
+                          onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'Enter'){ event.preventDefault(); app.saveActiveSocioPostit(${s.id}); }"
                           onfocus="app.onSocioPostitFocus()"
                           onblur="app.onSocioPostitBlur()">${safeNote}</textarea>
                 <div class="postit-footer">
-                    <span id="socio-postit-status" style="font-size:0.72rem; color:#881337; opacity:0.85;">✏️ Modifica e premi Salva</span>
+                    <span id="socio-postit-status" style="font-size:0.72rem; color:#881337; opacity:0.85;">${hasNote ? '✏️ Modifica e premi Salva' : '➕ Scrivi e premi Salva'}</span>
                     <div style="display:flex; gap:4px;">
                         <button type="button" class="btn btn-primary" style="padding:2px 8px; font-size:0.75rem; background:#e11d48; border-color:#be123c; color:#fff;" data-guide="Salva appunto socio. Effetto: Salva la nota rapida inserita per questo socio." onclick="app.saveActiveSocioPostit(${s.id})">💾 Salva</button>
                     </div>
                 </div>
             `;
 
-            const targetEl = e.currentTarget || e.target;
-            const rect = targetEl.getBoundingClientRect();
+            const targetEl = (e && (e.currentTarget || e.target)) ? (e.currentTarget || e.target) : null;
+            let left = Math.max(10, Math.floor(window.innerWidth / 2 - 145));
+            let top = Math.max(10, Math.floor(window.innerHeight / 2 - 110));
+
+            if (targetEl && typeof targetEl.getBoundingClientRect === 'function') {
+                const rect = targetEl.getBoundingClientRect();
+                const popupWidth = 290;
+                const popupHeight = 220;
+
+                left = rect.right + 10;
+                if (left + popupWidth > window.innerWidth - 15) {
+                    left = rect.left - popupWidth - 10;
+                }
+                if (left < 10) left = 10;
+
+                top = rect.top - 15;
+                if (top + popupHeight > window.innerHeight - 15) {
+                    top = window.innerHeight - popupHeight - 15;
+                }
+                if (top < 10) top = 10;
+            }
 
             popup.style.display = 'flex';
             popup.style.opacity = '1';
-
-            const popupWidth = 290;
-            const popupHeight = 220;
-
-            let left = rect.right + 10;
-            if (left + popupWidth > window.innerWidth - 15) {
-                left = rect.left - popupWidth - 10;
-            }
-            if (left < 10) left = 10;
-
-            let top = rect.top - 15;
-            if (top + popupHeight > window.innerHeight - 15) {
-                top = window.innerHeight - popupHeight - 15;
-            }
-            if (top < 10) top = 10;
-
             popup.style.left = `${left}px`;
             popup.style.top = `${top}px`;
         },
 
         onSocioPostitHover(e, socioId) {
-            this.showSocioPostitPopup(e, socioId);
+            this.showSocioPostitPopup(e, socioId, false);
         },
 
         onSocioPostitLeave(e, socioId) {
@@ -9824,8 +9943,11 @@
         },
 
         onSocioPostitClick(e, socioId) {
-            e.stopPropagation();
-            this.showSocioPostitPopup(e, socioId);
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            this.showSocioPostitPopup(e, socioId, true);
             const textarea = document.getElementById('socio-postit-active-text');
             if (textarea) {
                 textarea.focus();
@@ -9898,7 +10020,7 @@
                 status.style.color = '#15803d';
             }
 
-            this.renderSoci();
+            this.refreshViewsAfterSocioNoteChange(s.id);
             if (!newText) {
                 this.hideSocioPostitPopup(true);
             }
@@ -9915,7 +10037,7 @@
                 this.touchEntity(s);
                 this.saveAll();
                 this.hideSocioPostitPopup(true);
-                this.renderSoci();
+                this.refreshViewsAfterSocioNoteChange(s.id);
                 this.toast('🗑️ Nota socio eliminata', 'info');
             }
         },
@@ -10388,7 +10510,12 @@
                     return `
                     <tr id="receipt-row-${r.id}" data-id="${r.id}">
                         <td style="white-space: nowrap;">${r.numero}/${app.formatAnno(r.anno)}</td>
-                        <td style="font-weight: 600; white-space: nowrap;">${r.socio_nome}</td>
+                        <td style="font-weight: 600; white-space: nowrap;">
+                            <span class="socio-name-with-postit">
+                                <span>${r.socio_nome}</span>
+                                ${this.renderSocioPostitBadge(r.socio_id || s?.id)}
+                            </span>
+                        </td>
                         <td style="white-space: nowrap;">${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
                         <td style="white-space: nowrap;">
                             <div style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
@@ -10646,11 +10773,14 @@
             
             list.innerHTML = filtered.map(s => {
                 const safeName = (s.cognome + ' ' + s.nome).replace(/'/g, "\\'");
-                return `<div class="autocomplete-item" style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main);" 
+                const hasNote = Boolean(s.note && s.note.trim());
+                const noteBadge = hasNote ? `<span title="Ha note riservate: ${s.note.replace(/"/g, '&quot;')}" style="font-size:0.9rem; filter:drop-shadow(0 0 6px rgba(255,23,68,0.9));">📌</span>` : '';
+                return `<div class="autocomplete-item" style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main); display:flex; align-items:center; justify-content:space-between;" 
                         onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
                         onmouseout="this.style.background='transparent'" 
                         onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; if('${previewId}' && '${previewId}' !== 'null' && '${previewId}' !== 'undefined') { app.updateReceiptSocioInfo('${s.id}', '${previewId}'); } document.getElementById('${listId}').style.display='none';">
-                        ${s.cognome} ${s.nome}
+                        <span>${s.cognome} ${s.nome}</span>
+                        ${noteBadge}
                         </div>`;
             }).join('');
             
@@ -11995,10 +12125,33 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
             if (!preview) return;
             preview.style.display = 'block';
+            const hasNote = Boolean(s.note && s.note.trim());
+            const safeNote = hasNote ? s.note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') : '';
             preview.innerHTML = `
-                <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
-                <strong>Status Certificato:</strong> <span class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</span>
-                ${s.quota_scadenza ? `<br><strong>Scadenza Quota Attuale:</strong> <span>${this.formatDate(s.quota_scadenza)}</span>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                    <div>
+                        <strong>Destinatario:</strong> ${s.cognome} ${s.nome}<br>
+                        <strong>Status Certificato:</strong> <span class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</span>
+                        ${s.quota_scadenza ? `<br><strong>Scadenza Quota Attuale:</strong> <span>${this.formatDate(s.quota_scadenza)}</span>` : ''}
+                    </div>
+                    <div>
+                        ${hasNote ? `
+                            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.75rem; border-color:#ff1744; color:#ff1744;" onclick="app.onSocioPostitClick(event, ${s.id})" title="Modifica questa nota" data-guide="Modifica nota post-it socio. Effetto: Apre il post-it fucsia per aggiornare o consultare l'appunto.">📌 Modifica Nota</button>
+                        ` : `
+                            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.75rem; border-color:var(--border); opacity:0.85;" onclick="app.onSocioPostitAddClick(event, ${s.id})" title="Aggiungi una nota al socio" data-guide="Aggiungi appunto socio. Effetto: Apre il post-it fucsia per inserire un promemoria interno.">➕📌 Aggiungi Nota</button>
+                        `}
+                    </div>
+                </div>
+                ${hasNote ? `
+                    <div style="margin-top:10px; padding:8px 12px; background:linear-gradient(135deg, rgba(244,63,94,0.18) 0%, rgba(225,29,72,0.12) 100%); border:1px solid rgba(244,63,94,0.55); border-left:4px solid #ff1744; border-radius:6px; box-shadow:0 0 14px rgba(255,23,68,0.2);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <strong style="color:#ff1744; font-size:0.82rem; display:flex; align-items:center; gap:5px;">
+                                <span>📌</span> Appunto / Promemoria Riservato Socio:
+                            </strong>
+                        </div>
+                        <div style="font-size:0.84rem; color:var(--text-main); line-height:1.4; word-break:break-word;">${safeNote}</div>
+                    </div>
+                ` : ''}
             `;
             if (typeof this.updateReceiptScadenzaPreview === 'function') {
                 this.updateReceiptScadenzaPreview();
@@ -13199,7 +13352,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
                         : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp');
                     return `<tr>
-                        <td style="font-weight:600;">${s.cognome || ''} ${s.nome || ''}</td>
+                        <td style="font-weight:600;">
+                            <span class="socio-name-with-postit">
+                                <span>${s.cognome || ''} ${s.nome || ''}</span>
+                                ${this.renderSocioPostitBadge(s.id)}
+                            </span>
+                        </td>
                         <td style="font-size:0.8rem;">${s.tel || '-'}</td>
                         <td style="font-size:0.8rem;">${s.email || '-'}</td>
                         <td>${this.formatDate(s.certificato_scadenza)}</td>
@@ -13269,7 +13427,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                         ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
                         : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp rinnovo');
                     return `<tr>
-                        <td style="font-weight:600;">${s.cognome || ''} ${s.nome || ''}</td>
+                        <td style="font-weight:600;">
+                            <span class="socio-name-with-postit">
+                                <span>${s.cognome || ''} ${s.nome || ''}</span>
+                                ${this.renderSocioPostitBadge(s.id)}
+                            </span>
+                        </td>
                         <td style="font-size:0.8rem;">${s.tel || '-'}</td>
                         <td style="font-size:0.8rem;">${s.email || '-'}</td>
                         <td>${this.formatDate(s.quota_scadenza)}</td>
@@ -18782,7 +18945,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 return `
                                 <tr>
                                     <td>
-                                        <div style="font-weight: 600;">${s.cognome || ''} ${s.nome || ''}</div>
+                                        <div style="font-weight: 600;">
+                                            <span class="socio-name-with-postit">
+                                                <span>${s.cognome || ''} ${s.nome || ''}</span>
+                                                ${this.renderSocioPostitBadge(s.id)}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td>
                                         <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem;">${s.tesserato || 'NO'}</span>
@@ -18855,7 +19023,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 return `
                                 <tr>
                                     <td>
-                                        <div style="font-weight: 600;">${s.cognome || ''} ${s.nome || ''}</div>
+                                        <div style="font-weight: 600;">
+                                            <span class="socio-name-with-postit">
+                                                <span>${s.cognome || ''} ${s.nome || ''}</span>
+                                                ${this.renderSocioPostitBadge(s.id)}
+                                            </span>
+                                        </div>
                                         <div style="font-size: 0.7rem; color: var(--text-muted);">${s.tel || ''}</div>
                                     </td>
                                     <td class="${colorClass}">
@@ -18891,7 +19064,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             ${receipts.map(r => `
                                 <tr>
                                     <td>${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
-                                    <td>${r.socio_nome}</td>
+                                    <td style="font-weight: 600; white-space: nowrap;">
+                                        <span class="socio-name-with-postit">
+                                            <span>${r.socio_nome}</span>
+                                            ${this.renderSocioPostitBadge(r.socio_id)}
+                                        </span>
+                                    </td>
                                     <td class="text-success">€ ${parseFloat(r.importo).toFixed(2)}</td>
                                 </tr>
                             `).join('')}
@@ -19304,8 +19482,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     <tr style="border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));">
                         <td style="padding: 10px 12px; white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
                         <td style="padding: 10px 12px;">
-                            <div style="font-weight: 600; cursor: ${m.socio_id ? 'pointer' : 'default'}; color: ${m.socio_id ? 'var(--primary)' : 'inherit'};" onclick="${m.socio_id ? `app.openEditSocioModal(${m.socio_id})` : ''}" title="${m.socio_id ? 'Clicca per aprire la Scheda Socio' : ''}">
-                                ${m.socio_nome || '-'} ${m.socio_id ? '<span style="font-size:0.65rem; opacity:0.7;">↗</span>' : ''}
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-weight: 600; cursor: ${m.socio_id ? 'pointer' : 'default'}; color: ${m.socio_id ? 'var(--primary)' : 'inherit'};" onclick="${m.socio_id ? `app.openEditSocioModal(${m.socio_id})` : ''}" title="${m.socio_id ? 'Clicca per aprire la Scheda Socio' : ''}">
+                                    ${m.socio_nome || '-'} ${m.socio_id ? '<span style="font-size:0.65rem; opacity:0.7;">↗</span>' : ''}
+                                </span>
+                                ${m.socio_id ? this.renderSocioPostitBadge(m.socio_id) : ''}
                             </div>
                             ${m.stato_quota ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${m.stato_quota}</div>` : ''}
                         </td>
