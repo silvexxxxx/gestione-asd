@@ -2541,7 +2541,7 @@
             <div style="font-size: 0.88rem; color: #94a3b8; margin-bottom: 1.1rem; font-weight: 500;">Gestionale Amministrativo & Fiscale ASD</div>
             
             <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 30px; padding: 5px 14px; margin-bottom: 1.25rem; font-size: 0.8rem;">
-                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.5</span>
+                <span id="splash-version-badge" style="color: #60a5fa; font-weight: 700;">v2.6.6</span>
                 <span style="color: #475569;">•</span>
                 <span id="splash-role-badge" style="color: #34d399; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                     🖥️ Server
@@ -13393,16 +13393,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     let tessLabel = tessDays === null ? `<span style="color:var(--text-muted);font-size:0.75rem;">N/A</span>` : !isTessActive ? `<span style="color:var(--danger);font-weight:700;">SCADUTO</span>` : `<span style="color:${tessDays <= 30 ? 'var(--danger)' : 'var(--warning)'}; font-weight:600;">${tessDays}gg</span>`;
                     const today = new Date().toISOString().split('T')[0];
                     const sentList = this.state.sent_reminders[today] || [];
-                    const isEmailSent = sentList.includes(`${s.id}_email`);
-                    const isWASent = sentList.includes(`${s.id}_whatsapp`);
-                    const lastEmail = this.getLastMessageInfo(s.id, 'email');
-                    const lastWA = this.getLastMessageInfo(s.id, 'whatsapp');
+                    const lastEmail = this.getLastMessageInfo(s.id, 'email', 'cert');
+                    const lastWA = this.getLastMessageInfo(s.id, 'whatsapp', 'cert');
+                    const isEmailSent = sentList.includes(`${s.id}_email_cert`) || (lastEmail && lastEmail.isToday);
+                    const isWASent = sentList.includes(`${s.id}_whatsapp_cert`) || (lastWA && lastWA.isToday);
                     const emailTitle = isEmailSent 
                         ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : 'Email inviata oggi')
-                        : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia email di rinnovo');
+                        : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia email di rinnovo certificato');
                     const waTitle = isWASent 
                         ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
-                        : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp');
+                        : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp certificato');
                     return `<tr>
                         <td style="font-weight:600;">
                             <span class="socio-name-with-postit">
@@ -13468,10 +13468,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     const statusText = diffDays < 0 ? `SCADUTA (${Math.abs(diffDays)}gg fa)` : diffDays === 0 ? 'SCADE OGGI' : diffDays === 1 ? 'MANCA 1 GIORNO' : `MANCANO ${diffDays} GIORNI`;
                     const today = new Date().toISOString().split('T')[0];
                     const sentList = this.state.sent_reminders[today] || [];
-                    const isEmailSent = sentList.includes(`${s.id}_email`);
-                    const isWASent = sentList.includes(`${s.id}_whatsapp`);
-                    const lastEmail = this.getLastMessageInfo(s.id, 'email');
-                    const lastWA = this.getLastMessageInfo(s.id, 'whatsapp');
+                    const lastEmail = this.getLastMessageInfo(s.id, 'email', 'quota');
+                    const lastWA = this.getLastMessageInfo(s.id, 'whatsapp', 'quota');
+                    const isEmailSent = sentList.includes(`${s.id}_email_quota`) || (lastEmail && lastEmail.isToday);
+                    const isWASent = sentList.includes(`${s.id}_whatsapp_quota`) || (lastWA && lastWA.isToday);
                     const emailTitle = isEmailSent 
                         ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : 'Email inviata oggi')
                         : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia email di rinnovo quota');
@@ -19013,7 +19013,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <td>${tessHtml}</td>
                                     <td>
                                         <div style="display: flex; gap: 4px;">
-                                            ${this.renderReminderButtons(s)}
+                                            ${this.renderReminderButtons(s, 'Certificato Medico')}
                                         </div>
                                     </td>
                                 </tr>
@@ -19092,7 +19092,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <td>
                                         <div style="display: flex; gap: 4px;">
                                             ${diffDays < 0 ? `<button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.65rem;" data-guide="Effetto: Rimuove e ignora l'avviso di scadenza quota per questo socio." onclick="app.dismissQuoteAlert(${s.id})">Rimuovi</button>` : ''}
-                                            ${this.renderReminderButtons(s)}
+                                            ${this.renderReminderButtons(s, 'Quota Associativa')}
                                         </div>
                                     </td>
                                 </tr>
@@ -19180,6 +19180,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             const socio = socioId ? this.state.soci.find(s => s.id == socioId) : null;
             const isQuota = tipo && tipo.toLowerCase().includes('quota');
+            const isCert = tipo && tipo.toLowerCase().includes('certificat');
 
             let subject = '';
             let body = '';
@@ -19212,10 +19213,46 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     subject = `Promemoria: Quota associativa in scadenza - ${this.state.settings.asdName}`;
                     body = `Gentile ${nome},\n\nti ricordiamo che la tua quota associativa presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a recarti in segreteria per provvedere al rinnovo.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
                 }
+            } else if (isCert) {
+                let isExpired = false;
+                let isMissing = false;
+                let dataStr = '';
+                if (socio && socio.certificato_scadenza) {
+                    const parts = String(socio.certificato_scadenza).split('T')[0].split('-');
+                    const cd = parts.length === 3 
+                        ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) 
+                        : new Date(socio.certificato_scadenza);
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0);
+                    if (cd && !isNaN(cd.getTime())) {
+                        cd.setHours(0, 0, 0, 0);
+                        isExpired = cd < now;
+                        const fmt = this.formatDate(socio.certificato_scadenza);
+                        if (fmt && fmt !== '-') dataStr = ` il ${fmt}`;
+                    } else {
+                        isMissing = true;
+                    }
+                } else {
+                    isMissing = true;
+                }
+
+                if (isMissing) {
+                    statoQuota = 'Mancante';
+                    subject = `Richiesta: Certificato medico non presente - ${this.state.settings.asdName}`;
+                    body = `Gentile ${nome},\n\nti ricordiamo che per poter svolgere le attività sportive presso la nostra associazione è necessario essere in possesso di un certificato medico in corso di validità, che attualmente non risulta registrato.\n\nTi invitiamo a consegnarne copia in segreteria al più presto.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                } else if (isExpired) {
+                    statoQuota = 'Scaduto' + dataStr;
+                    subject = `Avviso: Certificato medico scaduto - ${this.state.settings.asdName}`;
+                    body = `Gentile ${nome},\n\nti informiamo che il tuo certificato medico presso la nostra associazione risulta scaduto${dataStr}.\n\nTi invitiamo a provvedere al rinnovo e a consegnarne copia in segreteria al più presto per poter proseguire regolarmente le attività sportive.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                } else {
+                    statoQuota = 'In scadenza' + dataStr;
+                    subject = `Promemoria: Certificato medico in scadenza - ${this.state.settings.asdName}`;
+                    body = `Gentile ${nome},\n\nti ricordiamo che il tuo certificato medico presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a provvedere per tempo al rinnovo e a consegnarne copia in segreteria.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                }
             } else {
                 statoQuota = tipo;
                 subject = `Scadenza ${tipo} - ${this.state.settings.asdName}`;
-                body = `Gentile ${nome},\n\nti ricordiamo che la tua ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzare la tua posizione in segreteria.\n\nCordiali saluti,\nLa Direzione`;
+                body = `Gentile ${nome},\n\nti ricordiamo che la tua posizione per ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzarla in segreteria.\n\nCordiali saluti,\nLa Direzione`;
             }
 
             window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
@@ -19223,7 +19260,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             if (socioId) {
                 this.markAsSent(socioId, 'email', {
-                    tipo: isQuota ? 'Quota Associativa' : tipo,
+                    tipo: isQuota ? 'Quota Associativa' : (isCert ? 'Certificato Medico' : tipo),
                     stato_quota: statoQuota,
                     destinatario: email,
                     testo: (subject ? 'Oggetto: ' + subject + '\n\n' : '') + body,
@@ -19244,6 +19281,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             const socio = socioId ? this.state.soci.find(s => s.id == socioId) : null;
             const isQuota = tipo && tipo.toLowerCase().includes('quota');
+            const isCert = tipo && tipo.toLowerCase().includes('certificat');
 
             let text = '';
             let statoQuota = '';
@@ -19273,9 +19311,42 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     statoQuota = 'In scadenza' + dataStr;
                     text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota è in scadenza${dataStr}. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.`;
                 }
+            } else if (isCert) {
+                let isExpired = false;
+                let isMissing = false;
+                let dataStr = '';
+                if (socio && socio.certificato_scadenza) {
+                    const parts = String(socio.certificato_scadenza).split('T')[0].split('-');
+                    const cd = parts.length === 3 
+                        ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)) 
+                        : new Date(socio.certificato_scadenza);
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0);
+                    if (cd && !isNaN(cd.getTime())) {
+                        cd.setHours(0, 0, 0, 0);
+                        isExpired = cd < now;
+                        const fmt = this.formatDate(socio.certificato_scadenza);
+                        if (fmt && fmt !== '-') dataStr = ` il ${fmt}`;
+                    } else {
+                        isMissing = true;
+                    }
+                } else {
+                    isMissing = true;
+                }
+
+                if (isMissing) {
+                    statoQuota = 'Mancante';
+                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che non risulta registrato il tuo certificato medico in corso di validità. Ti invitiamo a consegnarne copia in segreteria per poter svolgere le tue attività! Cordiali saluti.`;
+                } else if (isExpired) {
+                    statoQuota = 'Scaduto' + dataStr;
+                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che il tuo certificato medico risulta scaduto${dataStr}. Ti invitiamo a rinnovarlo e a consegnarne copia in segreteria per poter proseguire le attività! Cordiali saluti.`;
+                } else {
+                    statoQuota = 'In scadenza' + dataStr;
+                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che il tuo certificato medico è in scadenza${dataStr}. Ti aspettiamo in segreteria per la consegna del rinnovo! Cordiali saluti.`;
+                }
             } else {
                 statoQuota = tipo;
-                text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`;
+                text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua posizione per ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`;
             }
 
             const cleanTel = tel.replace(/\D/g, '');
@@ -19284,7 +19355,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             if (socioId) {
                 this.markAsSent(socioId, 'whatsapp', {
-                    tipo: isQuota ? 'Quota Associativa' : tipo,
+                    tipo: isQuota ? 'Quota Associativa' : (isCert ? 'Certificato Medico' : tipo),
                     stato_quota: statoQuota,
                     destinatario: tel,
                     testo: text,
@@ -19298,9 +19369,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const today = now.toISOString().split('T')[0];
             if (!this.state.sent_reminders) this.state.sent_reminders = {};
             if (!this.state.sent_reminders[today]) this.state.sent_reminders[today] = [];
-            const key = `${socioId}_${channel}`;
-            if (!this.state.sent_reminders[today].includes(key)) {
-                this.state.sent_reminders[today].push(key);
+
+            const isCert = extra.tipo && extra.tipo.toLowerCase().includes('cert');
+            const cat = isCert ? 'cert' : 'quota';
+            const keyCat = `${socioId}_${channel}_${cat}`;
+            const keyLegacy = `${socioId}_${channel}`;
+            if (!this.state.sent_reminders[today].includes(keyCat)) {
+                this.state.sent_reminders[today].push(keyCat);
+            }
+            if (!this.state.sent_reminders[today].includes(keyLegacy)) {
+                this.state.sent_reminders[today].push(keyLegacy);
             }
 
             if (!Array.isArray(this.state.cronologia_messaggi)) {
@@ -19333,11 +19411,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             this.renderDashboard();
         },
 
-        getLastMessageInfo(socioId, channel = null) {
+        getLastMessageInfo(socioId, channel = null, tipoFilter = null) {
             if (!socioId || !Array.isArray(this.state.cronologia_messaggi)) return null;
             const list = this.state.cronologia_messaggi.filter(m => {
                 if (m.socio_id != socioId) return false;
                 if (channel && m.canale !== channel) return false;
+                if (tipoFilter) {
+                    const isCertFilter = tipoFilter.toLowerCase().includes('cert');
+                    const mIsCert = (m.tipo || '').toLowerCase().includes('cert');
+                    if (isCertFilter !== mIsCert) return false;
+                }
                 return true;
             });
             if (list.length === 0) return null;
@@ -19372,19 +19455,24 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         renderReminderButtons(s, tipo = 'Quota') {
             const today = new Date().toISOString().split('T')[0];
             const sentList = this.state.sent_reminders[today] || [];
-            const isEmailSentToday = sentList.includes(`${s.id}_email`);
-            const isWASentToday = sentList.includes(`${s.id}_whatsapp`);
+            const isCert = tipo && tipo.toLowerCase().includes('cert');
+            const cat = isCert ? 'cert' : 'quota';
 
-            const lastEmail = this.getLastMessageInfo(s.id, 'email');
-            const lastWA = this.getLastMessageInfo(s.id, 'whatsapp');
+            const lastEmail = this.getLastMessageInfo(s.id, 'email', cat);
+            const lastWA = this.getLastMessageInfo(s.id, 'whatsapp', cat);
+
+            const isEmailSentToday = sentList.includes(`${s.id}_email_${cat}`) || (lastEmail && lastEmail.isToday);
+            const isWASentToday = sentList.includes(`${s.id}_whatsapp_${cat}`) || (lastWA && lastWA.isToday);
+
+            const labelTipo = isCert ? 'Certificato' : 'Quota';
 
             const emailTooltip = isEmailSentToday 
-                ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : 'Email inviata oggi')
-                : (lastEmail ? `Ultimo invio email: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : 'Invia Email');
+                ? (lastEmail ? `Email inviata oggi alle ${lastEmail.timeStr}` : `Email inviata oggi (${labelTipo})`)
+                : (lastEmail ? `Ultimo invio email ${labelTipo}: ${lastEmail.daysAgo === 1 ? 'ieri' : lastEmail.daysAgo + ' gg fa'} (${lastEmail.dateStr})` : `Invia Email ${labelTipo}`);
 
             const waTooltip = isWASentToday 
-                ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : 'WhatsApp inviato oggi')
-                : (lastWA ? `Ultimo invio WhatsApp: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : 'Invia WhatsApp');
+                ? (lastWA ? `WhatsApp inviato oggi alle ${lastWA.timeStr}` : `WhatsApp inviato oggi (${labelTipo})`)
+                : (lastWA ? `Ultimo invio WhatsApp ${labelTipo}: ${lastWA.daysAgo === 1 ? 'ieri' : lastWA.daysAgo + ' gg fa'} (${lastWA.dateStr})` : `Invia WhatsApp ${labelTipo}`);
 
             const hasPastEmail = !isEmailSentToday && lastEmail;
             const hasPastWA = !isWASentToday && lastWA;
@@ -19392,14 +19480,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             return `
                     <button class="btn ${isEmailSentToday ? 'btn-success' : 'btn-outline'}" 
                             style="padding: 4px; font-size: 0.7rem; opacity: ${isEmailSentToday ? '0.7' : '1'}; position: relative; ${hasPastEmail ? 'border-color: rgba(59, 130, 246, 0.7); color: #3b82f6;' : ''}" 
-                            data-guide="Effetto: Apre il client email per inviare un promemoria di scadenza al socio."
+                            data-guide="Effetto: Apre il client email per inviare un promemoria per ${isCert ? 'il certificato medico' : 'la quota associativa'} al socio."
                             title="${emailTooltip}" 
                             onclick="app.sendReminder('${s.email || ''}', '${(s.nome || '').replace(/'/g, "\\'")}', '${tipo}', ${s.id})">
                         ${isEmailSentToday ? '✅' : '📧'}${hasPastEmail ? '<span style="font-size:0.55rem; position:absolute; top:-4px; right:-4px; background:#3b82f6; color:#fff; border-radius:50%; width:10px; height:10px; display:flex; align-items:center; justify-content:center; line-height:1;" title="' + emailTooltip + '">•</span>' : ''}
                     </button>
                     <button class="btn ${isWASentToday ? 'btn-success' : 'btn-outline'}" 
                             style="padding: 4px; font-size: 0.7rem; ${!isWASentToday ? (hasPastWA ? 'border-color: #25D366; color: #25D366;' : 'border-color: rgba(37, 211, 102, 0.45); color: #25D366;') : 'background: rgba(16, 185, 129, 0.4);'} opacity: ${isWASentToday ? '0.7' : '1'}; display: inline-flex; align-items: center; justify-content: center; position: relative;" 
-                            data-guide="Effetto: Apre WhatsApp Web/Desktop con un messaggio precompilato di sollecito."
+                            data-guide="Effetto: Apre WhatsApp Web/Desktop con un messaggio precompilato per ${isCert ? 'il certificato medico' : 'la quota associativa'}."
                             title="${waTooltip}" 
                             onclick="app.sendWhatsAppReminder('${s.tel || ''}', '${(s.nome || '').replace(/'/g, "\\'")}', '${tipo}', ${s.id})">
                         ${isWASentToday ? '✅' : this.getWhatsAppIcon(14)}${hasPastWA ? '<span style="font-size:0.55rem; position:absolute; top:-4px; right:-4px; background:#25D366; color:#fff; border-radius:50%; width:10px; height:10px; display:flex; align-items:center; justify-content:center; line-height:1;" title="' + waTooltip + '">•</span>' : ''}
@@ -19416,6 +19504,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     text += '. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.';
                 } else if (text.includes('quota risulta scaduta')) {
                     text += '. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.';
+                } else if (text.includes('certificato medico risulta scaduto')) {
+                    text += '. Ti invitiamo a rinnovarlo e a consegnarne copia in segreteria per poter proseguire le attività! Cordiali saluti.';
+                } else if (text.includes('certificato medico è in scadenza')) {
+                    text += '. Ti aspettiamo in segreteria per la consegna del rinnovo! Cordiali saluti.';
                 } else if (text.includes('in scadenza')) {
                     text += '. Passa in segreteria per il rinnovo! Cordiali saluti.';
                 }
