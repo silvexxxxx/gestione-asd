@@ -2757,7 +2757,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.7"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
+        const APP_VERSION = "2.6.8"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -9190,7 +9190,7 @@
                                             <th style="cursor: pointer; width: 10%;" onclick="app.handleSort('certificato_scadenza')" data-guide="Ordina per scadenza certificato medico. Effetto: Raggruppa i certificati scaduti o in scadenza entro 30 giorni per richiederne il rinnovo.">Certificato ${this.getSortIcon('certificato_scadenza')}</th>
                                             <th style="cursor: pointer; width: 11%;" onclick="app.handleSort('tesseramento_data')" data-guide="Ordina per data tesseramento. Effetto: Visualizza la data di emissione dell'affiliazione federale/EPS e la relativa validità annuale.">Data Tess. Fed. ${this.getSortIcon('tesseramento_data')}</th>
                                             <th style="cursor: pointer; width: 5%;" onclick="app.handleSort('stato')" data-guide="Ordina per stato tesserato. Effetto: Raggruppa i soci in base allo stato (Attivo, Moroso, Non Attivo, Cessato).">Stato ${this.getSortIcon('stato')}</th>
-                                            <th style="text-align: right; padding-right: 1.5rem; width: 15%; min-width: 160px;" data-guide="Pulsanti azione socio. Effetto: Permette di gestire note interne, liberatorie minori, modificare anagrafica o eliminare l'iscritto.">Azioni</th>
+                                            <th style="text-align: right; padding-right: 1.5rem; width: 15%; min-width: 175px;" data-guide="Pulsanti azione socio. Effetto: Permette di inviare comunicazioni WhatsApp/Email, gestire note interne, modificare la scheda anagrafica o eliminare l'iscritto.">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody id="soci-tbody"></tbody>
@@ -9310,15 +9310,48 @@
                             </div>
                         </td>
                         <td><span class="badge badge-${displayStato.toLowerCase().replace(/\s+/g, '-')}">${displayStato}</span></td>
-                        <td class="socio-actions-col" style="text-align: right; padding-right: 1.5rem;">
-                            <div class="socio-actions-row" style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap;">
+                        <td class="socio-actions-col" style="text-align: right; padding-right: 1.5rem; white-space: nowrap;">
+                            <div class="socio-actions-row" style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center; flex-wrap: nowrap;">
                                 ${s.note 
-                                    ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" data-guide="Modifica o leggi nota del socio. Effetto: Apre il popup delle note interne per consultare o aggiornare le annotazioni riservate." title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">📝</button>` 
-                                    : `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" data-guide="Aggiungi una nota interna. Effetto: Apre la finestra per inserire una nota riservata su questo socio (es. richieste particolari, certificati, pagamenti in sospeso)." title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗒️</button>`
+                                    ? `<button type="button" class="btn btn-outline" style="padding: 4px 7px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" data-guide="Modifica o leggi nota del socio. Effetto: Apre il popup delle note interne per consultare o aggiornare le annotazioni riservate." title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">📝</button>` 
+                                    : `<button type="button" class="btn btn-outline" style="padding: 4px 7px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" data-guide="Aggiungi una nota interna. Effetto: Apre la finestra per inserire una nota riservata su questo socio." title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗒️</button>`
                                 }
-                                ${isMinore ? `<button class="btn btn-outline" style="padding: 5px; font-size:0.75rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria minori. Effetto: Registra lo stato di consegna e approvazione della liberatoria firmata dai genitori del minore." title="Liberatoria Minori" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
-                                <button class="btn btn-outline" style="padding: 5px; border-color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--border)'};" data-guide="Modifica scheda socio. Effetto: Apre il modulo completo per aggiornare anagrafica, recapiti, visite mediche e quote associative." title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
-                                <button class="btn btn-outline text-danger" style="padding: 5px; border-color: rgba(239, 68, 68, 0.2);" data-guide="Elimina socio dal registro. Effetto: Rimuove l'iscritto dal database dell'associazione (richiede conferma)." title="Elimina" onclick="app.deleteSocio(${s.id})">🗑️</button>
+                                ${isMinore ? `<button type="button" class="btn btn-outline" style="padding: 4px 6px; font-size:0.72rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria minori." title="Liberatoria Minori" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
+                                <button type="button" class="btn btn-outline" style="padding: 4px 7px; border-color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--border)'};" data-guide="Modifica scheda socio. Effetto: Apre il modulo completo per aggiornare anagrafica, recapiti, visite mediche e quote associative." title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
+                                <div class="row-actions-dropdown">
+                                    <button type="button" class="btn btn-outline row-actions-btn" style="padding: 4px 8px !important; height: 28px;" onclick="app.toggleRowActionsMenu(this, event)" title="Menu contatti e comunicazioni socio (WhatsApp, Email, Messaggio libero)..." data-guide="Menu contatti e messaggi socio. Effetto: Invia avvisi WhatsApp o Email per quote e certificati, oppure scrivi un messaggio personalizzato per ogni evenienza.">⋮</button>
+                                    <div class="row-actions-menu" style="min-width: 235px;">
+                                        <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">🩺 Certificato Medico</div>
+                                        <button type="button" class="row-actions-item ${!s.tel ? 'disabled' : ''}" onclick="${s.tel ? `app.sendWhatsAppReminder('${s.tel}', '${(s.nome || '').replace(/'/g, "\\'")}', 'Certificato Medico', ${s.id})` : ''}" title="${s.tel ? 'Invia WhatsApp Certificato a ' + s.tel : 'Telefono non registrato'}">
+                                            <span class="row-actions-icon" style="color:#25D366;">${app.getWhatsAppIcon(14)}</span>
+                                            <span>WhatsApp Certificato</span>
+                                        </button>
+                                        <button type="button" class="row-actions-item ${!s.email ? 'disabled' : ''}" onclick="${s.email ? `app.sendReminder('${s.email}', '${(s.nome || '').replace(/'/g, "\\'")}', 'Certificato Medico', ${s.id})` : ''}" title="${s.email ? 'Invia Email Certificato a ' + s.email : 'Email non registrata'}">
+                                            <span class="row-actions-icon">📧</span>
+                                            <span>Email Certificato</span>
+                                        </button>
+
+                                        <div class="row-actions-divider"></div>
+
+                                        <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">💳 Quota Associativa</div>
+                                        <button type="button" class="row-actions-item ${!s.tel ? 'disabled' : ''}" onclick="${s.tel ? `app.sendWhatsAppReminder('${s.tel}', '${(s.nome || '').replace(/'/g, "\\'")}', 'Quota Associativa', ${s.id})` : ''}" title="${s.tel ? 'Invia WhatsApp Quota a ' + s.tel : 'Telefono non registrato'}">
+                                            <span class="row-actions-icon" style="color:#25D366;">${app.getWhatsAppIcon(14)}</span>
+                                            <span>WhatsApp Quota</span>
+                                        </button>
+                                        <button type="button" class="row-actions-item ${!s.email ? 'disabled' : ''}" onclick="${s.email ? `app.sendReminder('${s.email}', '${(s.nome || '').replace(/'/g, "\\'")}', 'Quota Associativa', ${s.id})` : ''}" title="${s.email ? 'Invia Email Quota a ' + s.email : 'Email non registrata'}">
+                                            <span class="row-actions-icon">📧</span>
+                                            <span>Email Quota</span>
+                                        </button>
+
+                                        <div class="row-actions-divider"></div>
+
+                                        <button type="button" class="row-actions-item" onclick="app.openContactSocioModal(${s.id})" title="Scrivi messaggio libero o personalizzato">
+                                            <span class="row-actions-icon">💬</span>
+                                            <span style="font-weight: 600; color: #60a5fa;">Scrivi Messaggio Libero...</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline text-danger" style="padding: 4px 7px; border-color: rgba(239, 68, 68, 0.2);" data-guide="Elimina socio dal registro. Effetto: Rimuove l'iscritto dal database dell'associazione (richiede conferma)." title="Elimina" onclick="app.deleteSocio(${s.id})">🗑️</button>
                             </div>
                         </td>
                     </tr>
@@ -19201,6 +19234,155 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             if (isNaN(date.getTime())) return "-";
             const pad = n => String(n).padStart(2, '0');
             return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        },
+
+        openContactSocioModal(socioId) {
+            const s = this.state.soci.find(x => x.id == socioId || String(x.id) === String(socioId));
+            if (!s) return;
+            const hasTel = Boolean(s.tel && String(s.tel).trim());
+            const hasEmail = Boolean(s.email && String(s.email).trim());
+            const asdName = this.state.settings?.asdName || 'ASD';
+
+            const modalHtml = `
+                <div style="margin-bottom: 0.5rem;">
+                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <strong style="font-size: 1.05rem; color: var(--text-light);">${s.cognome || ''} ${s.nome || ''}</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                Socio #${s.id} • Stato: <span class="badge badge-${(s.stato || 'ATTIVO').toLowerCase()}">${s.stato || 'ATTIVO'}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 14px; font-size: 0.83rem; flex-wrap: wrap;">
+                            <div>
+                                <span style="color: var(--text-muted);">📱 Cell:</span> 
+                                <strong style="color: ${hasTel ? '#25D366' : 'var(--text-muted)'};">${s.tel || 'Non registrato'}</strong>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">✉️ Email:</span> 
+                                <strong style="color: ${hasEmail ? '#60a5fa' : 'var(--text-muted)'};">${s.email || 'Non registrata'}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modelli / Testi Rapidi Preimpostati -->
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 6px;">⚡ Testi Rapidi Preimpostati (clicca per applicare):</label>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="app.setContactCustomText('promemoria', ${s.id})">📋 Promemoria</button>
+                            <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="app.setContactCustomText('orario', ${s.id})">⏰ Cambio Orario</button>
+                            <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="app.setContactCustomText('documenti', ${s.id})">📑 Richiesta Documenti</button>
+                            <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="app.setContactCustomText('chiusura', ${s.id})">🏖️ Festività/Chiusura</button>
+                            <button type="button" class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px; color: var(--danger); border-color: rgba(239,68,68,0.3);" onclick="document.getElementById('contact-custom-message').value='';">❌ Pulisci</button>
+                        </div>
+                    </div>
+
+                    <!-- Oggetto (per Email) -->
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 4px;">Oggetto (per invio Email):</label>
+                        <input type="text" id="contact-custom-subject" class="form-control" style="font-size: 0.85rem;" value="Comunicazione da ${asdName}">
+                    </div>
+
+                    <!-- Messaggio Libero -->
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span>Testo del Messaggio:</span>
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">(in calce verrà allegato il testo finale automatico)</span>
+                        </label>
+                        <textarea id="contact-custom-message" class="form-control" rows="5" style="font-size: 0.85rem; font-family: inherit; line-height: 1.4; resize: vertical;" placeholder="Scrivi qui il messaggio per il socio..."></textarea>
+                    </div>
+
+                    <!-- Anteprima Footer -->
+                    <div style="font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.2); border-radius: 4px; padding: 6px 10px; margin-bottom: 1.25rem;">
+                        ℹ️ <em>Firma finale automatica:</em> <code>${(this.state.settings?.messaggi_footer || 'Messaggio generato automaticamente da Gestionale ASD')}</code>
+                    </div>
+
+                    <!-- Pulsanti Invio -->
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-outline" onclick="app.closeModal()">Annulla</button>
+                        <button type="button" class="btn ${!hasEmail ? 'btn-outline disabled' : 'btn-outline'}" style="border-color: #3b82f6; color: #60a5fa; display: inline-flex; align-items: center; gap: 6px;" onclick="app.sendCustomContact(${s.id}, 'email')" ${!hasEmail ? 'disabled' : ''}>
+                            <span>📧 Invia per Email</span>
+                        </button>
+                        <button type="button" class="btn ${!hasTel ? 'btn-outline disabled' : 'btn-primary'}" style="background: #25D366; border-color: #25D366; color: #fff; display: inline-flex; align-items: center; gap: 6px;" onclick="app.sendCustomContact(${s.id}, 'whatsapp')" ${!hasTel ? 'disabled' : ''}>
+                            <span>${this.getWhatsAppIcon(15)} Invia su WhatsApp</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            this.openModal(`💬 Contatta Socio — ${s.cognome || ''} ${s.nome || ''}`, modalHtml);
+        },
+
+        setContactCustomText(tipo, socioId) {
+            const s = this.state.soci.find(x => x.id == socioId);
+            const nome = s ? s.nome : 'socio';
+            const asdName = this.state.settings?.asdName || 'ASD';
+            const msgEl = document.getElementById('contact-custom-message');
+            const subjEl = document.getElementById('contact-custom-subject');
+            if (!msgEl) return;
+
+            if (tipo === 'promemoria') {
+                if (subjEl) subjEl.value = `Promemoria da ${asdName}`;
+                msgEl.value = `Ciao ${nome}, ti contattiamo da ${asdName} per un promemoria relativo alle tue attività in associazione.\n\nRestiamo a tua disposizione in segreteria per qualsiasi informazione.\n\nCordiali saluti,\nLa Direzione`;
+            } else if (tipo === 'orario') {
+                if (subjEl) subjEl.value = `Avviso variazione orario - ${asdName}`;
+                msgEl.value = `Ciao ${nome}, ti informiamo da ${asdName} che è intervenuta una variazione negli orari delle lezioni.\n\nTi invitiamo a verificare il nuovo calendario o a contattare la segreteria.\n\nCordiali saluti,\nLa Direzione`;
+            } else if (tipo === 'documenti') {
+                if (subjEl) subjEl.value = `Richiesta documentazione - ${asdName}`;
+                msgEl.value = `Ciao ${nome}, ti chiediamo cortesemente di consegnare in segreteria presso ${asdName} i documenti mancanti per completare la tua scheda tesseramento.\n\nGrazie per la collaborazione!\nCordiali saluti,\nLa Direzione`;
+            } else if (tipo === 'chiusura') {
+                if (subjEl) subjEl.value = `Avviso festività e chiusura - ${asdName}`;
+                msgEl.value = `Gentile ${nome}, ti comunichiamo che in occasione delle prossime festività la nostra struttura ${asdName} rimarrà chiusa.\n\nLe attività riprenderanno regolarmente alla riapertura.\n\nAuguri e cordiali saluti,\nLa Direzione`;
+            }
+        },
+
+        sendCustomContact(socioId, channel) {
+            const s = this.state.soci.find(x => x.id == socioId);
+            if (!s) return;
+            const msgEl = document.getElementById('contact-custom-message');
+            const subjEl = document.getElementById('contact-custom-subject');
+            const text = msgEl ? msgEl.value.trim() : '';
+            if (!text) {
+                this.toast("Inserisci un testo prima di inviare!", "warning");
+                return;
+            }
+
+            if (channel === 'whatsapp') {
+                if (!s.tel) {
+                    this.toast("Numero di telefono non presente per questo socio!", "warning");
+                    return;
+                }
+                const fullText = text + this.getMessageFooter('whatsapp');
+                const cleanTel = String(s.tel).replace(/\D/g, '');
+                const prefix = cleanTel.indexOf('39') === 0 ? '' : '39';
+                window.open(`https://wa.me/${prefix}${cleanTel}?text=${encodeURIComponent(fullText)}`, '_blank');
+                this.markAsSent(s.id, 'whatsapp', {
+                    tipo: 'Comunicazione Personalizzata',
+                    stato_quota: 'Inviato',
+                    destinatario: s.tel,
+                    testo: fullText,
+                    anteprima: text
+                });
+                this.closeModal();
+                this.toast("Apertura WhatsApp in corso...");
+            } else if (channel === 'email') {
+                if (!s.email) {
+                    this.toast("Indirizzo email non presente per questo socio!", "warning");
+                    return;
+                }
+                const asdName = this.state.settings?.asdName || 'ASD';
+                const subject = (subjEl && subjEl.value.trim()) ? subjEl.value.trim() : `Comunicazione da ${asdName}`;
+                const fullBody = text + this.getMessageFooter('email');
+                window.open(`mailto:${s.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(fullBody)}`, '_self');
+                this.markAsSent(s.id, 'email', {
+                    tipo: 'Comunicazione Personalizzata',
+                    stato_quota: 'Inviato',
+                    destinatario: s.email,
+                    testo: `Oggetto: ${subject}\n\n` + fullBody,
+                    anteprima: text
+                });
+                this.closeModal();
+                this.toast("Apertura client email...");
+            }
         },
 
         getDefaultMessageTemplates() {
