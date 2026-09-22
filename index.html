@@ -2757,7 +2757,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.5"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
+        const APP_VERSION = "2.6.6"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -2819,7 +2819,9 @@
                     saldi_iniziali: [],
                     backup_sequence_counter: 0,
                     device_role: "server", // "server" (PC banco/principale) o "client" (istruttore/smartphone)
-                    show_splashscreen: true
+                    show_splashscreen: true,
+                    messaggi_templates: {},
+                    messaggi_footer: "Messaggio generato automaticamente da Gestionale ASD"
                 },
                 guideMode: true,
                 sent_reminders: {}, // Structure: { "YYYY-MM-DD": ["socioId_type", ...] }
@@ -4203,6 +4205,14 @@
             if (typeof this.state.settings.backup_sequence_counter !== 'number') {
                 const parsed = parseInt(this.state.settings.backup_sequence_counter, 10);
                 this.state.settings.backup_sequence_counter = (!isNaN(parsed) && parsed >= 0) ? parsed : 0;
+            }
+            if (!this.state.settings.messaggi_templates || typeof this.state.settings.messaggi_templates !== 'object') {
+                this.state.settings.messaggi_templates = {};
+                changed = true;
+            }
+            if (this.state.settings.messaggi_footer === undefined) {
+                this.state.settings.messaggi_footer = "Messaggio generato automaticamente da Gestionale ASD";
+                changed = true;
             }
 
             if (changed && typeof this.saveAll === 'function') {
@@ -13424,7 +13434,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             const withEmail = alerts.filter(s => s.email && s.email.trim() !== '');
             const bulkEmailTitle = encodeURIComponent(`Rinnovo Certificato Medico - ${this.state.settings.asdName}`);
-            const bulkEmailBody = encodeURIComponent(`Gentile socio,\n\nti ricordiamo che il tuo certificato medico è in scadenza. Ti invitiamo a provvedere al rinnovo presso il tuo medico e a consegnarne copia in segreteria.\n\nCordiali saluti,\nLa Direzione`);
+            const bulkEmailBody = encodeURIComponent(`Gentile socio,\n\nti ricordiamo che il tuo certificato medico è in scadenza. Ti invitiamo a provvedere al rinnovo presso il tuo medico e a consegnarne copia in segreteria.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}` + this.getMessageFooter('email'));
             const bulkMailHref = withEmail.map(s => s.email).join(',');
 
             const modalHtml = `
@@ -13498,7 +13508,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             const withEmail = alerts.filter(s => s.email && s.email.trim() !== '');
             const bulkEmailTitle = encodeURIComponent(`Rinnovo Quota Associativa - ${this.state.settings.asdName}`);
-            const bulkEmailBody = encodeURIComponent(`Gentile socio,\n\nti ricordiamo che la tua quota associativa è in scadenza. Ti invitiamo a provvedere al rinnovo in segreteria al più presto.\n\nCordiali saluti,\nLa Direzione`);
+            const bulkEmailBody = encodeURIComponent(`Gentile socio,\n\nti ricordiamo che la tua quota associativa è in scadenza. Ti invitiamo a provvedere al rinnovo in segreteria al più presto.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}` + this.getMessageFooter('email'));
             const bulkMailHref = withEmail.map(s => s.email).join(',');
 
             const modalHtml = `
@@ -14242,8 +14252,18 @@ ${annullataBanner}
                 return;
             }
             const asdName = this.state.settings?.asdName || 'ASD';
-            const subject = encodeURIComponent(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} - ${asdName}`);
-            const body = encodeURIComponent(`Gentile ${s ? `${s.nome} ${s.cognome}` : r.socio_nome},\n\nTi inviamo i dettagli della Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} del ${app.formatDate(r.data)}:\n\n• Causale: ${r.tipo}${r.note ? ' - ' + r.note : ''}\n• Importo: € ${parseFloat(r.importo).toFixed(2)}\n• Metodo Pagamento: ${r.metodo_pagamento || r.pagamento || 'Contanti'}\n\nNota: Il documento PDF originale è conservato nell'archivio dell'associazione.\n\nCordiali saluti,\n${asdName}`);
+            const vars = {
+                nome: s ? `${s.nome} ${s.cognome}` : (r.socio_nome || 'Socio'),
+                asd: asdName,
+                numero: r.numero,
+                anno: app.formatAnno(r.anno),
+                data: app.formatDate(r.data),
+                causale: `${r.tipo}${r.note ? ' - ' + r.note : ''}`,
+                importo: parseFloat(r.importo || 0).toFixed(2),
+                metodo: r.metodo_pagamento || r.pagamento || 'Contanti'
+            };
+            const subject = encodeURIComponent(this.renderTemplate(this.getMessageTemplate('ricevuta_email_subject'), vars, 'subject'));
+            const body = encodeURIComponent(this.renderTemplate(this.getMessageTemplate('ricevuta_email_body'), vars, 'email'));
             
             window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
             this.toast("Apertura client email in corso...");
@@ -14259,7 +14279,18 @@ ${annullataBanner}
                 return;
             }
             const asdName = this.state.settings?.asdName || 'ASD';
-            const text = encodeURIComponent(`Ciao ${s ? s.nome : r.socio_nome}, ti inviamo il riepilogo della Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} del ${app.formatDate(r.data)} emessa da ${asdName}:\n• Causale: ${r.tipo}${r.note ? ' - ' + r.note : ''}\n• Importo: €${parseFloat(r.importo).toFixed(2)}\n• Metodo Pagamento: ${r.metodo_pagamento || r.pagamento || 'Contanti'}\n\nGrazie e cordiali saluti!`);
+            const vars = {
+                nome: s ? s.nome : (r.socio_nome || 'Socio'),
+                asd: asdName,
+                numero: r.numero,
+                anno: app.formatAnno(r.anno),
+                data: app.formatDate(r.data),
+                causale: `${r.tipo}${r.note ? ' - ' + r.note : ''}`,
+                importo: parseFloat(r.importo || 0).toFixed(2),
+                metodo: r.metodo_pagamento || r.pagamento || 'Contanti'
+            };
+            const rawText = this.renderTemplate(this.getMessageTemplate('ricevuta_wa'), vars, 'whatsapp');
+            const text = encodeURIComponent(rawText);
             const cleanTel = String(tel).replace(/\D/g, '');
             const prefix = cleanTel.indexOf('39') === 0 ? '' : '39';
             window.open(`https://wa.me/${prefix}${cleanTel}?text=${text}`, '_blank');
@@ -19172,6 +19203,241 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
         },
 
+        getDefaultMessageTemplates() {
+            return {
+                footer: "Messaggio generato automaticamente da Gestionale ASD",
+
+                // Certificato Medico Scaduto
+                certificato_scaduto_email_subject: "Avviso: Certificato medico scaduto - {asd}",
+                certificato_scaduto_email_body: "Gentile {nome},\n\nti informiamo che il tuo certificato medico presso la nostra associazione risulta scaduto{scadenza}.\n\nTi invitiamo a provvedere al rinnovo e a consegnarne copia in segreteria al più presto per poter proseguire regolarmente le attività sportive.\n\nCordiali saluti,\nLa Direzione - {asd}",
+                certificato_scaduto_wa: "Ciao {nome}, ti ricordiamo da {asd} che il tuo certificato medico risulta scaduto{scadenza}. Ti invitiamo a rinnovarlo e a consegnarne copia in segreteria per poter proseguire le attività! Cordiali saluti.",
+
+                // Certificato Medico in Scadenza
+                certificato_in_scadenza_email_subject: "Promemoria: Certificato medico in scadenza - {asd}",
+                certificato_in_scadenza_email_body: "Gentile {nome},\n\nti ricordiamo che il tuo certificato medico presso la nostra associazione è in scadenza{scadenza}.\n\nTi invitiamo a provvedere per tempo al rinnovo e a consegnarne copia in segreteria.\n\nCordiali saluti,\nLa Direzione - {asd}",
+                certificato_in_scadenza_wa: "Ciao {nome}, ti ricordiamo da {asd} che il tuo certificato medico è in scadenza{scadenza}. Ti aspettiamo in segreteria per la consegna del rinnovo! Cordiali saluti.",
+
+                // Certificato Medico Mancante
+                certificato_mancante_email_subject: "Richiesta: Certificato medico non presente - {asd}",
+                certificato_mancante_email_body: "Gentile {nome},\n\nti ricordiamo che per poter svolgere le attività sportive presso la nostra associazione è necessario essere in possesso di un certificato medico in corso di validità, che attualmente non risulta registrato.\n\nTi invitiamo a consegnarne copia in segreteria al più presto.\n\nCordiali saluti,\nLa Direzione - {asd}",
+                certificato_mancante_wa: "Ciao {nome}, ti ricordiamo da {asd} che non risulta registrato il tuo certificato medico in corso di validità. Ti invitiamo a consegnarne copia in segreteria per poter svolgere le tue attività! Cordiali saluti.",
+
+                // Quota Associativa Scaduta
+                quota_scaduta_email_subject: "Avviso: Quota associativa scaduta - {asd}",
+                quota_scaduta_email_body: "Gentile {nome},\n\nti informiamo che la tua quota associativa presso la nostra associazione risulta scaduta{scadenza}.\n\nTi invitiamo a passare in segreteria al più presto per rinnovarla e proseguire regolarmente le tue attività.\n\nCordiali saluti,\nLa Direzione - {asd}",
+                quota_scaduta_wa: "Ciao {nome}, ti ricordiamo da {asd} che la tua quota risulta scaduta{scadenza}. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.",
+
+                // Quota Associativa in Scadenza
+                quota_in_scadenza_email_subject: "Promemoria: Quota associativa in scadenza - {asd}",
+                quota_in_scadenza_email_body: "Gentile {nome},\n\nti ricordiamo che la tua quota associativa presso la nostra associazione è in scadenza{scadenza}.\n\nTi invitiamo a recarti in segreteria per provvedere al rinnovo.\n\nCordiali saluti,\nLa Direzione - {asd}",
+                quota_in_scadenza_wa: "Ciao {nome}, ti ricordiamo da {asd} che la tua quota è in scadenza{scadenza}. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.",
+
+                // Ricevute
+                ricevuta_email_subject: "Ricevuta N. {numero}/{anno} - {asd}",
+                ricevuta_email_body: "Gentile {nome},\n\nTi inviamo i dettagli della Ricevuta N. {numero}/{anno} del {data}:\n\n• Causale: {causale}\n• Importo: € {importo}\n• Metodo Pagamento: {metodo}\n\nNota: Il documento PDF originale è conservato nell'archivio dell'associazione.\n\nCordiali saluti,\n{asd}",
+                ricevuta_wa: "Ciao {nome}, ti inviamo il riepilogo della Ricevuta N. {numero}/{anno} del {data} emessa da {asd}:\n• Causale: {causale}\n• Importo: €{importo}\n• Metodo Pagamento: {metodo}\n\nGrazie e cordiali saluti!"
+            };
+        },
+
+        getMessageTemplate(key) {
+            const defaults = this.getDefaultMessageTemplates();
+            if (this.state.settings && this.state.settings.messaggi_templates && this.state.settings.messaggi_templates[key] !== undefined && this.state.settings.messaggi_templates[key] !== '') {
+                return this.state.settings.messaggi_templates[key];
+            }
+            return defaults[key] !== undefined ? defaults[key] : '';
+        },
+
+        getMessageFooter(channel = 'email') {
+            let footer = '';
+            if (this.state.settings && this.state.settings.messaggi_footer !== undefined) {
+                footer = this.state.settings.messaggi_footer;
+            } else if (this.state.settings && this.state.settings.messaggi_templates && this.state.settings.messaggi_templates.footer !== undefined) {
+                footer = this.state.settings.messaggi_templates.footer;
+            } else {
+                footer = this.getDefaultMessageTemplates().footer;
+            }
+            footer = (footer || '').trim();
+            if (!footer) return '';
+            if (channel === 'whatsapp') {
+                return "\n\n---\n_" + footer + "_";
+            }
+            return "\n\n---\n" + footer;
+        },
+
+        renderTemplate(templateText, vars = {}, channel = 'email') {
+            let out = templateText || '';
+            for (const [k, v] of Object.entries(vars)) {
+                out = out.split('{' + k + '}').join(v !== undefined && v !== null ? v : '');
+            }
+            if (channel !== 'subject') {
+                const footer = this.getMessageFooter(channel);
+                if (footer) {
+                    out += footer;
+                }
+            }
+            return out;
+        },
+
+        updateMessageTemplate(key, val) {
+            if (!this.state.settings.messaggi_templates) {
+                this.state.settings.messaggi_templates = {};
+            }
+            this.state.settings.messaggi_templates[key] = val;
+            this.saveAll();
+            this.toast("Modello salvato!");
+        },
+
+        updateMessageFooter(val) {
+            this.state.settings.messaggi_footer = val;
+            this.saveAll();
+            this.toast("Testo finale salvato!");
+        },
+
+        setMessageTemplateTab(tab) {
+            this.state.message_templates_tab = tab;
+            this.renderDatabase();
+        },
+
+        resetMessageTemplates() {
+            if (confirm("Vuoi davvero ripristinare tutti i modelli di messaggio ai testi originali di default?")) {
+                this.state.settings.messaggi_templates = {};
+                this.state.settings.messaggi_footer = "Messaggio generato automaticamente da Gestionale ASD";
+                this.saveAll();
+                this.toast("Modelli predefiniti ripristinati!");
+                this.renderDatabase();
+            }
+        },
+
+        renderMessageTemplatesCard() {
+            const activeTab = this.state.message_templates_tab || 'certificati';
+            const footerVal = (this.state.settings?.messaggi_footer !== undefined)
+                ? this.state.settings.messaggi_footer
+                : this.getDefaultMessageTemplates().footer;
+
+            const renderFieldGroup = (title, icon, subjectKey, bodyKey, waKey, varsNote) => `
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-light); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>${icon}</span> ${title}
+                    </div>
+                    ${subjectKey ? `
+                        <div class="form-group" style="margin-bottom: 10px;">
+                            <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px;">✉️ Oggetto Email:</label>
+                            <input type="text" class="form-control" style="font-size: 0.85rem;" value="${(this.getMessageTemplate(subjectKey) || '').replace(/"/g, '&quot;')}" onchange="app.updateMessageTemplate('${subjectKey}', this.value)" placeholder="Es. Avviso...">
+                        </div>
+                    ` : ''}
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 6px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px;">📧 Testo Corpo Email:</label>
+                            <textarea class="form-control" rows="5" style="font-size: 0.82rem; font-family: inherit; line-height: 1.4; resize: vertical;" onchange="app.updateMessageTemplate('${bodyKey}', this.value)">${this.getMessageTemplate(bodyKey) || ''}</textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.78rem; color: #25D366; display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+                                ${this.getWhatsAppIcon(13)} Testo Messaggio WhatsApp:
+                            </label>
+                            <textarea class="form-control" rows="5" style="font-size: 0.82rem; font-family: inherit; line-height: 1.4; resize: vertical;" onchange="app.updateMessageTemplate('${waKey}', this.value)">${this.getMessageTemplate(waKey) || ''}</textarea>
+                        </div>
+                    </div>
+                    ${varsNote ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">💡 <em>Segnaposto disponibili:</em> ${varsNote}</div>` : ''}
+                </div>
+            `;
+
+            let tabContent = '';
+
+            if (activeTab === 'certificati') {
+                tabContent = `
+                    <div style="margin-bottom: 10px;">
+                        <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0;">
+                            Modelli per le comunicazioni di <strong>Certificato Medico</strong> (inviabili da Dashboard, anagrafica soci e pannello scadenze).
+                        </p>
+                    </div>
+                    ${renderFieldGroup('1. Certificato Medico Scaduto', '🔴', 'certificato_scaduto_email_subject', 'certificato_scaduto_email_body', 'certificato_scaduto_wa', '<code>{nome}</code> (Nome socio), <code>{asd}</code> (Nome associazione), <code>{scadenza}</code> (Data scadenza, es. " il 15/09/2026")')}
+                    ${renderFieldGroup('2. Certificato Medico in Scadenza', '🟡', 'certificato_in_scadenza_email_subject', 'certificato_in_scadenza_email_body', 'certificato_in_scadenza_wa', '<code>{nome}</code> (Nome socio), <code>{asd}</code> (Nome associazione), <code>{scadenza}</code> (Data scadenza, es. " il 28/09/2026")')}
+                    ${renderFieldGroup('3. Certificato Medico Mancante (Non registrato)', '⚪', 'certificato_mancante_email_subject', 'certificato_mancante_email_body', 'certificato_mancante_wa', '<code>{nome}</code> (Nome socio), <code>{asd}</code> (Nome associazione)')}
+                `;
+            } else if (activeTab === 'quote') {
+                tabContent = `
+                    <div style="margin-bottom: 10px;">
+                        <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0;">
+                            Modelli per le comunicazioni di <strong>Quota Associativa</strong> (scaduta o in scadenza).
+                        </p>
+                    </div>
+                    ${renderFieldGroup('1. Quota Associativa Scaduta', '🔴', 'quota_scaduta_email_subject', 'quota_scaduta_email_body', 'quota_scaduta_wa', '<code>{nome}</code> (Nome socio), <code>{asd}</code> (Nome associazione), <code>{scadenza}</code> (Data scadenza, es. " il 10/09/2026")')}
+                    ${renderFieldGroup('2. Quota Associativa in Scadenza', '🟡', 'quota_in_scadenza_email_subject', 'quota_in_scadenza_email_body', 'quota_in_scadenza_wa', '<code>{nome}</code> (Nome socio), <code>{asd}</code> (Nome associazione), <code>{scadenza}</code> (Data scadenza, es. " il 05/10/2026")')}
+                `;
+            } else if (activeTab === 'ricevute') {
+                tabContent = `
+                    <div style="margin-bottom: 10px;">
+                        <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0;">
+                            Modelli per l\'invio del riepilogo delle <strong>Ricevute di Pagamento</strong> emesse.
+                        </p>
+                    </div>
+                    ${renderFieldGroup('Invio Riepilogo Ricevuta', '🧾', 'ricevuta_email_subject', 'ricevuta_email_body', 'ricevuta_wa', '<code>{nome}</code>, <code>{numero}</code>, <code>{anno}</code>, <code>{data}</code>, <code>{causale}</code>, <code>{importo}</code>, <code>{metodo}</code>, <code>{asd}</code>')}
+                `;
+            } else if (activeTab === 'footer') {
+                tabContent = `
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-light); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                            <span>✍️</span> Testo Finale Automatico (Firma & Footer in calce)
+                        </div>
+                        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 12px;">
+                            Questo testo viene aggiunto <strong>automaticamente in calce a tutte le comunicazioni</strong> (sia Email che messaggi WhatsApp), preceduto da una linea di stacco. Puoi personalizzarlo a piacimento o lasciarlo vuoto per non inserirlo.
+                        </p>
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Dicitura automatica finale:</label>
+                            <input type="text" class="form-control" style="font-size: 0.9rem; padding: 8px 12px;" value="${(footerVal || '').replace(/"/g, '&quot;')}" onchange="app.updateMessageFooter(this.value)" placeholder="Es. Messaggio generato automaticamente da Gestionale ASD">
+                        </div>
+                        <div style="background: rgba(30, 41, 59, 0.7); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; padding: 12px; font-size: 0.82rem; color: var(--text-muted);">
+                            <strong style="color: var(--text-light); display: block; margin-bottom: 4px;">👁️ Anteprima di resa a fondo messaggio:</strong>
+                            <div>... Cordiali saluti, La Direzione - Mia ASD</div>
+                            <div style="margin: 6px 0; color: rgba(255,255,255,0.3);">---</div>
+                            <div style="font-style: italic; color: #94a3b8;">${footerVal || '(Nessun testo finale impostato)'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="glass-card" style="border-left: 4px solid #3b82f6; grid-column: 1 / -1;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 1.25rem;">
+                        <div>
+                            <h3 style="margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+                                <span>✉️💬</span> Modelli Notifiche & Messaggi (WhatsApp ed Email)
+                            </h3>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+                                Configura e personalizza i testi proforma per l\'invio rapido di Email e WhatsApp ai soci per scadenze e ricevute.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <button type="button" class="btn btn-outline" style="border-color: #ef4444; color: #ef4444; font-size: 0.82rem; padding: 6px 12px;" onclick="app.resetMessageTemplates()" data-guide="Ripristina tutti i modelli ai testi originali predefiniti di fabbrica.">
+                                🔄 Ripristina Default
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Categorie -->
+                    <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 1.25rem; flex-wrap: wrap;">
+                        <button type="button" class="btn ${activeTab === 'certificati' ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.83rem; padding: 6px 12px;" onclick="app.setMessageTemplateTab('certificati')">
+                            🩺 Certificati Medici
+                        </button>
+                        <button type="button" class="btn ${activeTab === 'quote' ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.83rem; padding: 6px 12px;" onclick="app.setMessageTemplateTab('quote')">
+                            💳 Quote Associative
+                        </button>
+                        <button type="button" class="btn ${activeTab === 'ricevute' ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.83rem; padding: 6px 12px;" onclick="app.setMessageTemplateTab('ricevute')">
+                            🧾 Ricevute di Pagamento
+                        </button>
+                        <button type="button" class="btn ${activeTab === 'footer' ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.83rem; padding: 6px 12px;" onclick="app.setMessageTemplateTab('footer')">
+                            ✍️ Testo Finale Automatico
+                        </button>
+                    </div>
+
+                    <!-- Contenuto Tab -->
+                    <div>
+                        ${tabContent}
+                    </div>
+                </div>
+            `;
+        },
+
         sendReminder(email, nome, tipo = "Socio", socioId = null) {
             if (!email || email.trim() === "") {
                 this.toast("Indirizzo email non presente per questo socio!", "warning");
@@ -19185,6 +19451,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             let subject = '';
             let body = '';
             let statoQuota = '';
+
+            const asdName = this.state.settings?.asdName || 'ASD';
+            const vars = {
+                nome: nome || '',
+                asd: asdName,
+                scadenza: '',
+                tipo: tipo || ''
+            };
 
             if (isQuota) {
                 let isExpired = false;
@@ -19203,15 +19477,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         if (fmt && fmt !== '-') dataStr = ` il ${fmt}`;
                     }
                 }
+                vars.scadenza = dataStr;
 
                 if (isExpired) {
                     statoQuota = 'Scaduta' + dataStr;
-                    subject = `Avviso: Quota associativa scaduta - ${this.state.settings.asdName}`;
-                    body = `Gentile ${nome},\n\nti informiamo che la tua quota associativa presso la nostra associazione risulta scaduta${dataStr}.\n\nTi invitiamo a passare in segreteria al più presto per rinnovarla e proseguire regolarmente le tue attività.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                    subject = this.renderTemplate(this.getMessageTemplate('quota_scaduta_email_subject'), vars, 'subject');
+                    body = this.renderTemplate(this.getMessageTemplate('quota_scaduta_email_body'), vars, 'email');
                 } else {
                     statoQuota = 'In scadenza' + dataStr;
-                    subject = `Promemoria: Quota associativa in scadenza - ${this.state.settings.asdName}`;
-                    body = `Gentile ${nome},\n\nti ricordiamo che la tua quota associativa presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a recarti in segreteria per provvedere al rinnovo.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                    subject = this.renderTemplate(this.getMessageTemplate('quota_in_scadenza_email_subject'), vars, 'subject');
+                    body = this.renderTemplate(this.getMessageTemplate('quota_in_scadenza_email_body'), vars, 'email');
                 }
             } else if (isCert) {
                 let isExpired = false;
@@ -19235,24 +19510,25 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 } else {
                     isMissing = true;
                 }
+                vars.scadenza = dataStr;
 
                 if (isMissing) {
                     statoQuota = 'Mancante';
-                    subject = `Richiesta: Certificato medico non presente - ${this.state.settings.asdName}`;
-                    body = `Gentile ${nome},\n\nti ricordiamo che per poter svolgere le attività sportive presso la nostra associazione è necessario essere in possesso di un certificato medico in corso di validità, che attualmente non risulta registrato.\n\nTi invitiamo a consegnarne copia in segreteria al più presto.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                    subject = this.renderTemplate(this.getMessageTemplate('certificato_mancante_email_subject'), vars, 'subject');
+                    body = this.renderTemplate(this.getMessageTemplate('certificato_mancante_email_body'), vars, 'email');
                 } else if (isExpired) {
                     statoQuota = 'Scaduto' + dataStr;
-                    subject = `Avviso: Certificato medico scaduto - ${this.state.settings.asdName}`;
-                    body = `Gentile ${nome},\n\nti informiamo che il tuo certificato medico presso la nostra associazione risulta scaduto${dataStr}.\n\nTi invitiamo a provvedere al rinnovo e a consegnarne copia in segreteria al più presto per poter proseguire regolarmente le attività sportive.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                    subject = this.renderTemplate(this.getMessageTemplate('certificato_scaduto_email_subject'), vars, 'subject');
+                    body = this.renderTemplate(this.getMessageTemplate('certificato_scaduto_email_body'), vars, 'email');
                 } else {
                     statoQuota = 'In scadenza' + dataStr;
-                    subject = `Promemoria: Certificato medico in scadenza - ${this.state.settings.asdName}`;
-                    body = `Gentile ${nome},\n\nti ricordiamo che il tuo certificato medico presso la nostra associazione è in scadenza${dataStr}.\n\nTi invitiamo a provvedere per tempo al rinnovo e a consegnarne copia in segreteria.\n\nCordiali saluti,\nLa Direzione - ${this.state.settings.asdName}`;
+                    subject = this.renderTemplate(this.getMessageTemplate('certificato_in_scadenza_email_subject'), vars, 'subject');
+                    body = this.renderTemplate(this.getMessageTemplate('certificato_in_scadenza_email_body'), vars, 'email');
                 }
             } else {
                 statoQuota = tipo;
-                subject = `Scadenza ${tipo} - ${this.state.settings.asdName}`;
-                body = `Gentile ${nome},\n\nti ricordiamo che la tua posizione per ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzarla in segreteria.\n\nCordiali saluti,\nLa Direzione`;
+                subject = `Scadenza ${tipo} - ${asdName}`;
+                body = this.renderTemplate(`Gentile ${nome},\n\nti ricordiamo che la tua posizione per ${tipo.toLowerCase()} presso la nostra associazione è in fase di scadenza. Ti invitiamo a regolarizzarla in segreteria.\n\nCordiali saluti,\nLa Direzione - ${asdName}`, vars, 'email');
             }
 
             window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
@@ -19286,6 +19562,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             let text = '';
             let statoQuota = '';
 
+            const asdName = this.state.settings?.asdName || 'ASD';
+            const vars = {
+                nome: nome || '',
+                asd: asdName,
+                scadenza: '',
+                tipo: tipo || ''
+            };
+
             if (isQuota) {
                 let isExpired = false;
                 let dataStr = '';
@@ -19303,13 +19587,14 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         if (fmt && fmt !== '-') dataStr = ` il ${fmt}`;
                     }
                 }
+                vars.scadenza = dataStr;
 
                 if (isExpired) {
                     statoQuota = 'Scaduta' + dataStr;
-                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota risulta scaduta${dataStr}. Passa in segreteria per rinnovarla e proseguire le tue attività! Cordiali saluti.`;
+                    text = this.renderTemplate(this.getMessageTemplate('quota_scaduta_wa'), vars, 'whatsapp');
                 } else {
                     statoQuota = 'In scadenza' + dataStr;
-                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua quota è in scadenza${dataStr}. Ti aspettiamo in segreteria per il rinnovo! Cordiali saluti.`;
+                    text = this.renderTemplate(this.getMessageTemplate('quota_in_scadenza_wa'), vars, 'whatsapp');
                 }
             } else if (isCert) {
                 let isExpired = false;
@@ -19333,20 +19618,21 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 } else {
                     isMissing = true;
                 }
+                vars.scadenza = dataStr;
 
                 if (isMissing) {
                     statoQuota = 'Mancante';
-                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che non risulta registrato il tuo certificato medico in corso di validità. Ti invitiamo a consegnarne copia in segreteria per poter svolgere le tue attività! Cordiali saluti.`;
+                    text = this.renderTemplate(this.getMessageTemplate('certificato_mancante_wa'), vars, 'whatsapp');
                 } else if (isExpired) {
                     statoQuota = 'Scaduto' + dataStr;
-                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che il tuo certificato medico risulta scaduto${dataStr}. Ti invitiamo a rinnovarlo e a consegnarne copia in segreteria per poter proseguire le attività! Cordiali saluti.`;
+                    text = this.renderTemplate(this.getMessageTemplate('certificato_scaduto_wa'), vars, 'whatsapp');
                 } else {
                     statoQuota = 'In scadenza' + dataStr;
-                    text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che il tuo certificato medico è in scadenza${dataStr}. Ti aspettiamo in segreteria per la consegna del rinnovo! Cordiali saluti.`;
+                    text = this.renderTemplate(this.getMessageTemplate('certificato_in_scadenza_wa'), vars, 'whatsapp');
                 }
             } else {
                 statoQuota = tipo;
-                text = `Ciao ${nome}, ti ricordiamo da ${this.state.settings.asdName} che la tua posizione per ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`;
+                text = this.renderTemplate(`Ciao ${nome}, ti ricordiamo da ${asdName} che la tua posizione per ${tipo.toLowerCase()} è in scadenza. Passa in segreteria per il rinnovo! Cordiali saluti.`, vars, 'whatsapp');
             }
 
             const cleanTel = tel.replace(/\D/g, '');
@@ -21335,6 +21621,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Modelli Notifiche & Messaggi (WhatsApp ed Email) -->
+                            ${this.renderMessageTemplatesCard()}
 
                             <!-- Sincronizzazione e Modalità -->
                             <div class="glass-card" style="border-left: 4px solid #3b82f6;">
