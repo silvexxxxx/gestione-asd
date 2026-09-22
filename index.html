@@ -2859,6 +2859,310 @@
             };
         },
 
+        diffDatabases(stateA, stateB, labelA = 'Questo PC', labelB = 'Google Drive') {
+            if (!stateA || !stateB) {
+                return { isIdentical: false, totalDiffCount: 0, categories: [], labelA, labelB };
+            }
+
+            const ignoreKeys = [
+                'updated_at', '_tempId', '_rowId', 'last_saved_at', 
+                'backup_sequence_counter', 'data_modifica'
+            ];
+
+            const fieldLabelMap = {
+                nome: 'Nome',
+                cognome: 'Cognome',
+                cf: 'Codice Fiscale',
+                codice_fiscale: 'Codice Fiscale',
+                data_nascita: 'Data di Nascita',
+                luogo_nascita: 'Luogo di Nascita',
+                indirizzo: 'Indirizzo',
+                telefono: 'Telefono',
+                tel: 'Telefono',
+                email: 'Email',
+                stato: 'Stato',
+                dataIscrizione: 'Data Iscrizione',
+                data_iscrizione: 'Data Iscrizione',
+                quota_scadenza: 'Scadenza Quota',
+                certificato_scadenza: 'Scadenza Certificato',
+                data_visita: 'Data Visita Medica',
+                corso: 'Attività / Corso',
+                note: 'Note',
+                importo: 'Importo',
+                data: 'Data',
+                numero: 'Numero',
+                anno: 'Anno',
+                causale: 'Causale',
+                tipo: 'Tipo',
+                tipo_pagamento: 'Metodo Pagamento',
+                conto: 'Cassa / Conto',
+                categoria: 'Categoria',
+                quantita: 'Quantità',
+                beneficiario: 'Beneficiario'
+            };
+
+            const normalizeVal = (v) => {
+                if (v === undefined || v === null) return '';
+                if (typeof v === 'string') return v.trim();
+                if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+                if (typeof v === 'object') return JSON.stringify(v);
+                return String(v);
+            };
+
+            const compareArrays = (arrA, arrB, getLabel, entityName) => {
+                const mapA = new Map();
+                (arrA || []).forEach(item => {
+                    if (item && item.id !== undefined && item.id !== null) {
+                        mapA.set(String(item.id), item);
+                    }
+                });
+                const mapB = new Map();
+                (arrB || []).forEach(item => {
+                    if (item && item.id !== undefined && item.id !== null) {
+                        mapB.set(String(item.id), item);
+                    }
+                });
+
+                const onlyInA = [];
+                const onlyInB = [];
+                const modified = [];
+
+                mapA.forEach((itemA, id) => {
+                    if (!mapB.has(id)) {
+                        onlyInA.push({ id, label: getLabel(itemA), item: itemA });
+                    } else {
+                        const itemB = mapB.get(id);
+                        const diffFields = [];
+                        const keys = new Set([...Object.keys(itemA), ...Object.keys(itemB)]);
+                        keys.forEach(k => {
+                            if (ignoreKeys.includes(k)) return;
+                            const vA = itemA[k];
+                            const vB = itemB[k];
+                            if (normalizeVal(vA) !== normalizeVal(vB)) {
+                                diffFields.push(fieldLabelMap[k] || k);
+                            }
+                        });
+                        if (diffFields.length > 0) {
+                            modified.push({ id, label: getLabel(itemA), fields: diffFields, itemA, itemB });
+                        }
+                    }
+                });
+
+                mapB.forEach((itemB, id) => {
+                    if (!mapA.has(id)) {
+                        onlyInB.push({ id, label: getLabel(itemB), item: itemB });
+                    }
+                });
+
+                return { entityName, onlyInA, onlyInB, modified, count: onlyInA.length + onlyInB.length + modified.length };
+            };
+
+            const categories = [];
+
+            // 1. Soci
+            const sociDiff = compareArrays(
+                stateA.soci, stateB.soci,
+                s => [s.cognome, s.nome].filter(Boolean).join(' ').trim() || s.codice_fiscale || ('Socio #' + s.id),
+                'Soci'
+            );
+            if (sociDiff.count > 0) categories.push({ icon: '👥', ...sociDiff });
+
+            // 2. Ricevute
+            const ricDiff = compareArrays(
+                stateA.ricevute, stateB.ricevute,
+                r => `Ricevuta n. ${r.numero || r.id}${r.anno ? '/' + r.anno : ''}${r.importo ? ' (€' + r.importo + ')' : ''}${r.socio_nome ? ' - ' + r.socio_nome : ''}`,
+                'Ricevute'
+            );
+            if (ricDiff.count > 0) categories.push({ icon: '🧾', ...ricDiff });
+
+            // 3. Prima Nota
+            const pnDiff = compareArrays(
+                stateA.primanota, stateB.primanota,
+                p => `${p.tipo === 'entrata' ? '🟢 Entrata' : '🔴 Uscita'} €${p.importo || 0}${p.causale ? ' (' + p.causale + ')' : ''}${p.data ? ' - ' + p.data : ''}`,
+                'Prima Nota & Cassa'
+            );
+            if (pnDiff.count > 0) categories.push({ icon: '💰', ...pnDiff });
+
+            // 4. Corsi
+            const corsiDiff = compareArrays(
+                stateA.corsi, stateB.corsi,
+                c => c.nome || ('Corso #' + c.id),
+                'Attività & Corsi'
+            );
+            if (corsiDiff.count > 0) categories.push({ icon: '📚', ...corsiDiff });
+
+            // 5. Istruttori
+            const istrDiff = compareArrays(
+                stateA.istruttori, stateB.istruttori,
+                i => [i.cognome, i.nome].filter(Boolean).join(' ').trim() || ('Istruttore #' + i.id),
+                'Istruttori'
+            );
+            if (istrDiff.count > 0) categories.push({ icon: '🏋️', ...istrDiff });
+
+            // 6. Rimborsi
+            const rimbDiff = compareArrays(
+                stateA.rimborsi, stateB.rimborsi,
+                rm => `Rimborso €${rm.importo || 0}${rm.beneficiario ? ' a ' + rm.beneficiario : ''}`,
+                'Rimborsi Spese'
+            );
+            if (rimbDiff.count > 0) categories.push({ icon: '💸', ...rimbDiff });
+
+            // 7. Magazzino
+            const magDiff = compareArrays(
+                stateA.magazzino, stateB.magazzino,
+                m => m.nome || ('Articolo #' + m.id),
+                'Magazzino'
+            );
+            if (magDiff.count > 0) categories.push({ icon: '📦', ...magDiff });
+
+            // 8. Eventi
+            const evDiff = compareArrays(
+                stateA.eventi, stateB.eventi,
+                e => e.titolo || e.nome || ('Evento #' + e.id),
+                'Eventi'
+            );
+            if (evDiff.count > 0) categories.push({ icon: '🎫', ...evDiff });
+
+            // 9. Postit
+            const postDiff = compareArrays(
+                stateA.postit, stateB.postit,
+                p => (p.testo || 'Post-it').substring(0, 30),
+                'Post-it & Note'
+            );
+            if (postDiff.count > 0) categories.push({ icon: '📌', ...postDiff });
+
+            // 10. Calendario note
+            const calDiff = compareArrays(
+                stateA.calendario_note, stateB.calendario_note,
+                c => (c.testo || 'Nota').substring(0, 30),
+                'Calendario Note'
+            );
+            if (calDiff.count > 0) categories.push({ icon: '📅', ...calDiff });
+
+            // 11. Settings di configurazione associazione
+            const ignoredSettings = [
+                'device_role', 'backup_sequence_counter', 'autoSaveHours', 
+                'show_splashscreen', 'last_saved_at', 'activeTab'
+            ];
+            const setA = stateA.settings || {};
+            const setB = stateB.settings || {};
+            const setDiffFields = [];
+            const setKeys = new Set([...Object.keys(setA), ...Object.keys(setB)]);
+            setKeys.forEach(k => {
+                if (ignoredSettings.includes(k)) return;
+                const vA = setA[k];
+                const vB = setB[k];
+                if (normalizeVal(vA) !== normalizeVal(vB)) {
+                    setDiffFields.push(k);
+                }
+            });
+            if (setDiffFields.length > 0) {
+                categories.push({
+                    icon: '⚙️',
+                    entityName: 'Impostazioni Associazione',
+                    onlyInA: [],
+                    onlyInB: [],
+                    modified: setDiffFields.map(f => ({ id: f, label: `Parametro '${f}'`, fields: [f] })),
+                    count: setDiffFields.length
+                });
+            }
+
+            const totalDiffCount = categories.reduce((sum, c) => sum + c.count, 0);
+            const isIdentical = totalDiffCount === 0;
+
+            return {
+                isIdentical,
+                totalDiffCount,
+                categories,
+                labelA,
+                labelB
+            };
+        },
+
+        renderDiffReportHtml(diff) {
+            if (!diff || diff.isIdentical) {
+                return `
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; color: #a7f3d0; font-size: 0.85rem; text-align: center;">
+                        ✅ <strong>Nessuna differenza rilevata</strong>: tutti i dati nei due database coincidono perfettamente.
+                    </div>
+                `;
+            }
+
+            const safeEscape = (s) => (this.escapeHtml ? this.escapeHtml(s) : String(s).replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag] || tag)));
+
+            let html = `
+                <div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; max-height: 220px; overflow-y: auto; font-size: 0.82rem; line-height: 1.45; text-align: left; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);">
+                    <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 6px;">
+                        <span>📋 Resoconto Dettagliato Modifiche Rilevate (${diff.totalDiffCount})</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">${safeEscape(diff.labelA)} vs ${safeEscape(diff.labelB)}</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+            `;
+
+            diff.categories.forEach(cat => {
+                html += `
+                    <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 6px; padding: 8px 10px;">
+                        <div style="font-weight: 700; color: #f8fafc; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                            <span>${cat.icon} ${safeEscape(cat.entityName)}</span>
+                            <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700;">${cat.count} differenze</span>
+                        </div>
+                        <ul style="margin: 0; padding-left: 18px; color: #cbd5e1; display: flex; flex-direction: column; gap: 3px;">
+                `;
+
+                if (cat.onlyInA.length > 0) {
+                    const sample = cat.onlyInA.slice(0, 3).map(x => safeEscape(x.label)).join(', ');
+                    const more = cat.onlyInA.length > 3 ? ` e altri ${cat.onlyInA.length - 3}...` : '';
+                    html += `<li style="color: #60a5fa;"><strong style="color:#93c5fd;">+${cat.onlyInA.length} solo su ${safeEscape(diff.labelA)}:</strong> ${sample}${more}</li>`;
+                }
+
+                if (cat.onlyInB.length > 0) {
+                    const sample = cat.onlyInB.slice(0, 3).map(x => safeEscape(x.label)).join(', ');
+                    const more = cat.onlyInB.length > 3 ? ` e altri ${cat.onlyInB.length - 3}...` : '';
+                    html += `<li style="color: #34d399;"><strong style="color:#6ee7b7;">+${cat.onlyInB.length} solo su ${safeEscape(diff.labelB)}:</strong> ${sample}${more}</li>`;
+                }
+
+                if (cat.modified.length > 0) {
+                    const sample = cat.modified.slice(0, 3).map(x => {
+                        const fieldList = (x.fields && x.fields.length > 0) ? ` (campi: ${x.fields.slice(0, 2).join(', ')})` : '';
+                        return `${safeEscape(x.label)}${fieldList}`;
+                    }).join(', ');
+                    const more = cat.modified.length > 3 ? ` e altri ${cat.modified.length - 3}...` : '';
+                    html += `<li style="color: #fbbf24;"><strong style="color:#fde047;">${cat.modified.length} modificati:</strong> ${sample}${more}</li>`;
+                }
+
+                html += `
+                        </ul>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            return html;
+        },
+
+        toggleDiffReport(containerId, btn) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            const isHidden = el.style.display === 'none' || !el.style.display;
+            if (isHidden) {
+                el.style.display = 'block';
+                if (btn) {
+                    btn.innerHTML = btn.innerHTML.replace('▾', '▴');
+                    btn.style.background = 'rgba(245, 158, 11, 0.35)';
+                }
+            } else {
+                el.style.display = 'none';
+                if (btn) {
+                    btn.innerHTML = btn.innerHTML.replace('▴', '▾');
+                    btn.style.background = 'rgba(245, 158, 11, 0.2)';
+                }
+            }
+        },
+
         getDeviceType() {
             const ua = (navigator.userAgent || '').toLowerCase();
             const isIPad = /ipad/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
@@ -6551,18 +6855,64 @@
                     const isLocalNewer = fileExistsOnDrive && localLastTs > 0 && cloudLastTs > 0 && (localLastTs - cloudLastTs > 60000);
                     const hasFewerLocalRecords = fileExistsOnDrive && (localRic < cloudRic || localSoci < cloudSoci);
 
-                    const warningBox = (isCloudNewer || hasFewerLocalRecords) ? `
-                        <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
-                            <strong>⚠️ ATTENZIONE: La copia su Google Drive potrebbe essere più recente!</strong><br>
-                            ${isCloudNewer ? `• Il file su Google Drive (<strong>${cloudDateStr}</strong>) ha un timestamp <strong>PIÙ RECENTE</strong> rispetto a ${app.getThisDeviceLabel()} (${localDateStr}).<br>` : ''}
-                            ${hasFewerLocalRecords ? `• Questo dispositivo locale contiene meno ricevute (${localRic} vs ${cloudRic}) o meno soci (${localSoci} vs ${cloudSoci}) rispetto al Cloud.<br>` : ''}
-                            Se confermi la sovrascrittura, la versione online verrà integralmente sostituita dallo stato di questo dispositivo.
-                        </div>
-                    ` : `
-                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; color: #6ee7b7; font-size: 0.85rem; line-height: 1.45;">
-                            ℹ️ Stai per aggiornare Google Drive con i dati attuali di ${app.getThisDeviceLabel()}. Tutti gli altri tuoi dispositivi allineati erediteranno questa versione.
-                        </div>
-                    `;
+                    const diff = (fileExistsOnDrive && cloudData) ? app.diffDatabases(app.state, cloudData, app.getThisDeviceLabel(), 'Google Drive') : null;
+
+                    let warningBox = '';
+                    if (diff && diff.isIdentical) {
+                        warningBox = `
+                            <div style="background: rgba(16, 185, 129, 0.1); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 10px; padding: 12px 14px; color: #a7f3d0; font-size: 0.85rem; line-height: 1.45;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="font-weight: 700; color: #34d399; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+                                        <span>✅</span> Database Identici: Nessuna Modifica nei Dati
+                                    </span>
+                                    <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">CONTENUTI IDENTICI</span>
+                                </div>
+                                I contenuti su ${app.getThisDeviceLabel()} e la copia su Google Drive coincidono perfettamente (${localSoci} soci, ${localRic} ricevute, ${localPn} movimenti Prima Nota).<br>
+                                <span style="color: #6ee7b7; font-size: 0.8rem;">La sovrascrittura aggiornerà unicamente l'orario di salvataggio online su Google Drive.</span>
+                            </div>
+                        `;
+                    } else if (isCloudNewer || hasFewerLocalRecords) {
+                        warningBox = `
+                            <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                    <strong style="color: #f87171; font-size: 0.92rem;">⚠️ ATTENZIONE: La copia su Google Drive potrebbe essere più recente!</strong>
+                                    ${diff && diff.totalDiffCount > 0 ? `
+                                        <button type="button" class="btn" onclick="app.toggleDiffReport('diff-report-overwrite', this)" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                                            🔍 Modifiche Rilevate (${diff.totalDiffCount}): Vedi Quali ▾
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                ${isCloudNewer ? `• Il file su Google Drive (<strong>${cloudDateStr}</strong>) ha un timestamp <strong>PIÙ RECENTE</strong> rispetto a ${app.getThisDeviceLabel()} (${localDateStr}).<br>` : ''}
+                                ${hasFewerLocalRecords ? `• Questo dispositivo locale contiene meno ricevute (${localRic} vs ${cloudRic}) o meno soci (${localSoci} vs ${cloudSoci}) rispetto al Cloud.<br>` : ''}
+                                Se confermi la sovrascrittura, la versione online verrà integralmente sostituita dallo stato di questo dispositivo.
+                                
+                                ${diff && diff.totalDiffCount > 0 ? `
+                                    <div id="diff-report-overwrite" style="display: none; margin-top: 10px;">
+                                        ${app.renderDiffReportHtml(diff)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    } else {
+                        warningBox = `
+                            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; color: #6ee7b7; font-size: 0.85rem; line-height: 1.45;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 6px;">
+                                    <span>ℹ️ Stai per aggiornare Google Drive con i dati attuali di ${app.getThisDeviceLabel()}.</span>
+                                    ${diff && diff.totalDiffCount > 0 ? `
+                                        <button type="button" class="btn" onclick="app.toggleDiffReport('diff-report-overwrite', this)" style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #34d399; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                                            🔍 Vedi Differenze (${diff.totalDiffCount}) ▾
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                Tutti gli altri tuoi dispositivi allineati erediteranno questa versione.
+                                ${diff && diff.totalDiffCount > 0 ? `
+                                    <div id="diff-report-overwrite" style="display: none; margin-top: 10px;">
+                                        ${app.renderDiffReportHtml(diff)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
 
                     const modalHtml = `
                         <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -6582,9 +6932,12 @@
                                             <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6ee7b7; font-weight: 700; display: flex; align-items: center; gap: 4px;">
                                                 <span>📅</span> DATA SALVATAGGIO PC
                                             </span>
-                                            ${isLocalNewer
-                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 PIÙ RECENTE</span>`
-                                                : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">VERSIONE ATTUALE</span>`
+                                            ${diff && diff.isIdentical
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 CONTENUTO IDENTICO</span>`
+                                                : (isLocalNewer
+                                                    ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 PIÙ RECENTE</span>`
+                                                    : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">VERSIONE ATTUALE</span>`
+                                                )
                                             }
                                         </div>
                                         <div style="font-size: 1.08rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
@@ -6613,9 +6966,12 @@
                                             <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #fde68a; font-weight: 700; display: flex; align-items: center; gap: 4px;">
                                                 <span>📅</span> ULTIMO SALVATAGGIO DRIVE
                                             </span>
-                                            ${isCloudNewer 
-                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ RECENTE</span>`
-                                                : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">DA SOVRASCRIVERE</span>`
+                                            ${diff && diff.isIdentical
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 CONTENUTO IDENTICO</span>`
+                                                : (isCloudNewer 
+                                                    ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ RECENTE</span>`
+                                                    : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">DA SOVRASCRIVERE</span>`
+                                                )
                                             }
                                         </div>
                                         <div style="font-size: 1.08rem; font-weight: 800; color: #fbbf24; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);">
@@ -6759,18 +7115,60 @@
                     const isCloudNewer = localLastTs > 0 && cloudLastTs > 0 && (cloudLastTs - localLastTs > 60000);
                     const hasFewerRecords = cloudRic < localRic || cloudSoci < localSoci;
 
-                    const warningBox = (isCloudOlder || hasFewerRecords) ? `
-                        <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
-                            <strong>⚠️ ATTENZIONE: Disallineamento Dati Rilevato!</strong><br>
-                            ${isCloudOlder ? `• La copia su Google Drive (<strong>${cloudDateStr}</strong>) risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su ${app.getThisDeviceLabel()} (${localDateStr}).<br>` : ''}
-                            ${hasFewerRecords ? `• Il Cloud contiene meno ricevute (${cloudRic} vs ${localRic}) o soci (${cloudSoci} vs ${localSoci}) rispetto a ${app.getThisDeviceLabel()} locale.<br>` : ''}
-                            Assicurati di trovarti sul dispositivo secondario che desideri aggiornare prima di confermare.
-                        </div>
-                    ` : `
-                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 14px; color: #93c5fd; font-size: 0.85rem; line-height: 1.45;">
-                            ℹ️ Stai per allineare ${app.getThisDeviceLabel()} ai dati salvati su Google Drive (${cloudDateStr}). I dati locali attuali verranno sostituiti.
-                        </div>
-                    `;
+                    const diff = app.diffDatabases(app.state, cloudData, app.getThisDeviceLabel(), 'Google Drive');
+
+                    let warningBox = '';
+                    if (diff.isIdentical) {
+                        warningBox = `
+                            <div style="background: rgba(16, 185, 129, 0.1); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 10px; padding: 12px 14px; color: #a7f3d0; font-size: 0.85rem; line-height: 1.45;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="font-weight: 700; color: #34d399; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+                                        <span>✅</span> Database Identici: Nessuna Modifica nei Dati
+                                    </span>
+                                    <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">CONTENUTI IDENTICI</span>
+                                </div>
+                                I contenuti su ${app.getThisDeviceLabel()} e la copia su Google Drive coincidono perfettamente (${localSoci} soci, ${localRic} ricevute, ${localPn} movimenti Prima Nota).<br>
+                                <span style="color: #6ee7b7; font-size: 0.8rem;">La differenza di data (${cloudDateStr} vs ${localDateStr}) è dovuta unicamente all'orario dell'ultimo salvataggio del file. Non rischi di perdere alcun dato.</span>
+                            </div>
+                        `;
+                    } else if (isCloudOlder || hasFewerRecords) {
+                        warningBox = `
+                            <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.5); border-radius: 10px; padding: 12px 14px; color: #fca5a5; font-size: 0.85rem; line-height: 1.45;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                    <strong style="color: #f87171; font-size: 0.92rem;">⚠️ ATTENZIONE: Disallineamento Dati Rilevato!</strong>
+                                    <button type="button" class="btn" onclick="app.toggleDiffReport('diff-report-inherit', this)" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                                        🔍 Modifiche Rilevate (${diff.totalDiffCount}): Vedi Quali ▾
+                                    </button>
+                                </div>
+                                ${isCloudOlder ? `• La copia su Google Drive (<strong>${cloudDateStr}</strong>) risulta <strong>PIÙ VECCHIA</strong> rispetto all'ultima attività su ${app.getThisDeviceLabel()} (${localDateStr}).<br>` : ''}
+                                ${hasFewerRecords ? `• Il Cloud contiene meno ricevute (${cloudRic} vs ${localRic}) o soci (${cloudSoci} vs ${localSoci}) rispetto a ${app.getThisDeviceLabel()} locale.<br>` : ''}
+                                Assicurati di trovarti sul dispositivo secondario che desideri aggiornare prima di confermare.
+                                
+                                <div id="diff-report-inherit" style="display: none; margin-top: 10px;">
+                                    ${app.renderDiffReportHtml(diff)}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        warningBox = `
+                            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 14px; color: #93c5fd; font-size: 0.85rem; line-height: 1.45;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 6px;">
+                                    <span>ℹ️ Stai per allineare ${app.getThisDeviceLabel()} ai dati salvati su Google Drive (${cloudDateStr}).</span>
+                                    ${diff.totalDiffCount > 0 ? `
+                                        <button type="button" class="btn" onclick="app.toggleDiffReport('diff-report-inherit', this)" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); color: #93c5fd; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                                            🔍 Modifiche Rilevate (${diff.totalDiffCount}) ▾
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                I dati locali attuali verranno sostituiti con la copia online.
+                                ${diff.totalDiffCount > 0 ? `
+                                    <div id="diff-report-inherit" style="display: none; margin-top: 10px;">
+                                        ${app.renderDiffReportHtml(diff)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
 
                     this._pendingCloudData = cloudData;
 
@@ -6792,9 +7190,12 @@
                                             <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #93c5fd; font-weight: 700; display: flex; align-items: center; gap: 4px;">
                                                 <span>📅</span> DATA SALVATAGGIO PC
                                             </span>
-                                            ${isCloudOlder
-                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ RECENTE DEL CLOUD</span>`
-                                                : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">MEMORIA LOCALE</span>`
+                                            ${diff.isIdentical
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 CONTENUTO IDENTICO</span>`
+                                                : (isCloudOlder
+                                                    ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ RECENTE DEL CLOUD</span>`
+                                                    : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">MEMORIA LOCALE</span>`
+                                                )
                                             }
                                         </div>
                                         <div style="font-size: 1.08rem; font-weight: 800; color: #ffffff; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
@@ -6823,11 +7224,15 @@
                                             <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6ee7b7; font-weight: 700; display: flex; align-items: center; gap: 4px;">
                                                 <span>📅</span> DATA SALVATAGGIO DRIVE
                                             </span>
-                                            ${isCloudNewer 
-                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 PIÙ RECENTE</span>`
-                                                : (isCloudOlder 
-                                                    ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ VECCHIO</span>`
-                                                    : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 SINCRONIZZATO</span>`)
+                                            ${diff.isIdentical
+                                                ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 CONTENUTO IDENTICO</span>`
+                                                : (isCloudNewer 
+                                                    ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 PIÙ RECENTE</span>`
+                                                    : (isCloudOlder 
+                                                        ? `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">⚠️ PIÙ VECCHIO</span>`
+                                                        : `<span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 SINCRONIZZATO</span>`
+                                                    )
+                                                )
                                             }
                                         </div>
                                         <div style="font-size: 1.08rem; font-weight: 800; color: #34d399; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
@@ -21825,19 +22230,52 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const snapRic = snap.counts ? (snap.counts.ricevute || 0) : ((snap.data && snap.data.ricevute) ? snap.data.ricevute.length : 'N/D');
             const snapPn = snap.counts ? (snap.counts.primanota || 0) : ((snap.data && snap.data.primanota) ? snap.data.primanota.length : 'N/D');
 
+            const diff = snap.data ? this.diffDatabases(this.state, snap.data, 'Stato Attuale', 'Snapshot') : null;
+
+            const warningBox = (diff && diff.isIdentical) ? `
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 10px; padding: 12px 14px; color: #a7f3d0; font-size: 0.85rem; line-height: 1.45;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="font-weight: 700; color: #34d399; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+                            <span>✅</span> Database Identici: Nessuna Modifica nei Dati
+                        </span>
+                        <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">CONTENUTI IDENTICI</span>
+                    </div>
+                    Lo stato attuale del gestionale coincide perfettamente con i dati salvati in questo snapshot.<br>
+                    <span style="color: #6ee7b7; font-size: 0.8rem;">Non ci sono modifiche da annullare, ma puoi comunque ripristinare se desideri forzare la riscrittura.</span>
+                </div>
+            ` : `
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.45;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                        <strong>⚠️ ATTENZIONE: Ripristino Punto di Salvataggio (Snapshot)</strong>
+                        ${diff && diff.totalDiffCount > 0 ? `
+                            <button type="button" class="btn" onclick="app.toggleDiffReport('diff-report-snapshot', this)" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                                🔍 Modifiche Rilevate (${diff.totalDiffCount}): Vedi Quali ▾
+                            </button>
+                        ` : ''}
+                    </div>
+                    Stai per sovrascrivere lo stato corrente del gestionale con i dati salvati in questo snapshot.
+                    
+                    ${diff && diff.totalDiffCount > 0 ? `
+                        <div id="diff-report-snapshot" style="display: none; margin-top: 10px;">
+                            ${this.renderDiffReportHtml(diff)}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
             const modalHtml = `
                 <div style="display: flex; flex-direction: column; gap: 14px;">
-                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.45;">
-                        ⚠️ <strong>ATTENZIONE: Ripristino Punto di Salvataggio (Snapshot)</strong><br>
-                        Stai per sovrascrivere lo stato corrente del gestionale con i dati salvati in questo snapshot.
-                    </div>
+                    ${warningBox}
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                         <!-- CARD STATO ATTUALE -->
                         <div class="glass-card" style="padding: 14px; border-top: 3px solid #ef4444;">
                             <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                                 <span style="display:flex; align-items:center; gap:6px;"><span>💻</span> Stato Attuale (Verrà Sostituito)</span>
-                                <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4);">CORRENTE</span>
+                                ${diff && diff.isIdentical
+                                    ? `<span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CONTENUTO IDENTICO</span>`
+                                    : `<span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4);">CORRENTE</span>`
+                                }
                             </div>
 
                             <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #ef4444; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);">
@@ -22150,22 +22588,51 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         }
                     }
 
+                    const diff = this.diffDatabases(this.state, data, 'Questo PC', 'File Backup JSON');
+
                     this._pendingImportData = data;
+
+                    const warningBox = diff.isIdentical ? `
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 10px; padding: 12px 14px; color: #a7f3d0; font-size: 0.85rem; line-height: 1.45;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                <span style="font-weight: 700; color: #34d399; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+                                    <span>✅</span> Database Identici: Nessuna Modifica nei Dati
+                                </span>
+                                <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">CONTENUTI IDENTICI</span>
+                            </div>
+                            I dati su questo PC e il file JSON selezionato contengono gli stessi identici record (${numSoci} soci, ${numRicevute} ricevute, ${numPn} movimenti Prima Nota).<br>
+                            <span style="color: #6ee7b7; font-size: 0.8rem;">Non ci sono differenze nei dati. Puoi confermare per ripristinare comunque l'archivio.</span>
+                        </div>
+                    ` : `
+                        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.45;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                <strong>⚠️ ATTENZIONE: Importazione e Sostituzione Database</strong>
+                                <button type="button" class="btn" onclick="app.toggleDiffReport('diff-report-import', this)" style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+                                    🔍 Modifiche Rilevate (${diff.totalDiffCount}): Vedi Quali ▾
+                                </button>
+                            </div>
+                            Stai per caricare un archivio JSON esterno. I dati sul gestionale verranno sostituiti con i record del file.<br>
+                            <span style="font-size: 0.78rem; opacity: 0.9;">(Prima di applicare i dati, verrà creato automaticamente uno snapshot di sicurezza per annullare l'operazione in qualsiasi momento)</span>
+                            
+                            <div id="diff-report-import" style="display: none; margin-top: 10px;">
+                                ${this.renderDiffReportHtml(diff)}
+                            </div>
+                        </div>
+                    `;
 
                     const modalHtml = `
                         <div style="display: flex; flex-direction: column; gap: 14px;">
-                            <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.45;">
-                                ⚠️ <strong>ATTENZIONE: Importazione e Sostituzione Database</strong><br>
-                                Stai per caricare un archivio JSON esterno. I dati sul gestionale verranno sostituiti con i record del file.<br>
-                                <span style="font-size: 0.78rem; opacity: 0.9;">(Prima di applicare i dati, verrà creato automaticamente uno snapshot di sicurezza per annullare l'operazione in qualsiasi momento)</span>
-                            </div>
+                            ${warningBox}
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                                 <!-- CARD STATO ATTUALE SUL PC -->
                                 <div class="glass-card" style="padding: 14px; border-top: 3px solid #ef4444;">
                                     <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                                         <span style="display:flex; align-items:center; gap:6px;"><span>💻</span> Questo PC (Verrà Sostituito)</span>
-                                        <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4);">LOCALE</span>
+                                        ${diff.isIdentical
+                                            ? `<span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CONTENUTO IDENTICO</span>`
+                                            : `<span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4);">LOCALE</span>`
+                                        }
                                     </div>
 
                                     <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #ef4444; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);">
@@ -22191,7 +22658,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <div class="glass-card" style="padding: 14px; border-top: 3px solid #10b981;">
                                     <div style="font-weight: 700; color: #34d399; margin-bottom: 8px; font-size: 0.92rem; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                                         <span style="display:flex; align-items:center; gap:6px;"><span>📥</span> File Backup JSON</span>
-                                        ${diffBadge}
+                                        ${diff.isIdentical
+                                            ? `<span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">CONTENUTO IDENTICO</span>`
+                                            : diffBadge
+                                        }
                                     </div>
 
                                     <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);">
