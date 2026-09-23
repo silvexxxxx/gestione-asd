@@ -11018,7 +11018,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                     <select id="receipt-tipo-quota" class="form-control" onchange="app.onTipoQuotaChange(this.value)" style="font-size:0.85rem; font-weight:600;" data-guide="Menu selezione rapida pacchetto o quota. Effetto: Compila automaticamente le quote, la causale e calcola la nuova scadenza per il socio.">
                                         <option value="">-- Seleziona Quota / Pacchetto --</option>
                                         <optgroup label="📋 TESSERAMENTO E INGRESSI">
-                                            <option value="solo_tess">📋 Solo Tesseramento Federale (€${defaultTess.toFixed(2)})</option>
+                                            <option value="solo_tess">📋 Tesseramento (€${defaultTess.toFixed(2)})</option>
                                             <option value="singolo">🎟️ Ingresso Singolo / Prova (€10.00)</option>
                                         </optgroup>
                                         <optgroup label="📅 QUOTE PERIODICHE STANDARD">
@@ -11850,57 +11850,91 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 quotaVal = 120.00;
                 if (durataEl) durataEl.value = '3';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Associativa Trimestrale';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
+                    noteEl.value = tessVal > 0 ? 'Quota Trimestrale + Tesseramento' : 'Quota Associativa Trimestrale';
+                }
             } else if (tipo === 'semestrale') {
                 quotaVal = 230.00;
                 if (durataEl) durataEl.value = '6';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Associativa Semestrale';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
+                    noteEl.value = tessVal > 0 ? 'Quota Semestrale + Tesseramento' : 'Quota Associativa Semestrale';
+                }
             } else if (tipo === 'annuale_promo') {
                 quotaVal = 360.00;
                 if (durataEl) durataEl.value = '12';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Annuale in promo fino al 31 Ottobre';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
+                    noteEl.value = tessVal > 0 ? 'Quota Annuale in promo fino al 31 Ottobre + Tesseramento' : 'Quota Annuale in promo fino al 31 Ottobre';
+                }
             } else if (tipo === 'annuale_standard') {
                 quotaVal = 410.00;
                 if (durataEl) durataEl.value = '12';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Associativa Annuale dal 1 Novembre';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
+                    noteEl.value = tessVal > 0 ? 'Quota Associativa Annuale dal 1 Novembre + Tesseramento' : 'Quota Associativa Annuale dal 1 Novembre';
+                }
             } else if (tipo === 'rateale_promo_90') {
                 quotaVal = 90.00;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = true; this.onReceiptRatealeChange(true); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Annuale a Rate (fino al 31 Ottobre) - Rata €90';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
+                    noteEl.value = tessVal > 0 ? 'Quota Annuale a Rate (fino al 31 Ottobre) - Rata €90 + Tesseramento' : 'Quota Annuale a Rate (fino al 31 Ottobre) - Rata €90';
+                }
             } else if (tipo === 'rateale_nov_102') {
                 quotaVal = 102.50;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = true; this.onReceiptRatealeChange(true); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata'))) noteEl.value = 'Quota Annuale a Rate (dal 1 Novembre) - Rata €102,50';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
+                    noteEl.value = tessVal > 0 ? 'Quota Annuale a Rate (dal 1 Novembre) - Rata €102,50 + Tesseramento' : 'Quota Annuale a Rate (dal 1 Novembre) - Rata €102,50';
+                }
             } else if (tipo === 'family_1m') {
                 quotaVal = 80.00;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata') || noteVal.includes('Family'))) noteEl.value = 'Family 2 - 1 Mese';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata') || noteVal.includes('Family'))) {
+                    noteEl.value = tessVal > 0 ? 'Family 2 - 1 Mese + Tesseramento' : 'Family 2 - 1 Mese';
+                }
             } else if (tipo === 'family_3m') {
                 quotaVal = 220.00;
                 if (durataEl) durataEl.value = '3';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata') || noteVal.includes('Family'))) noteEl.value = 'Family 2 - 3 Mesi';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata') || noteVal.includes('Family'))) {
+                    noteEl.value = tessVal > 0 ? 'Family 2 - 3 Mesi + Tesseramento' : 'Family 2 - 3 Mesi';
+                }
             } else if (tipo === 'family_6m') {
                 quotaVal = 400.00;
                 if (durataEl) durataEl.value = '6';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata') || noteVal.includes('Family'))) noteEl.value = 'Family 2 - 6 Mesi';
-            } else if (tipo === 'solo_tess') {
-                quotaVal = 0;
-                tessVal = this.getTesseramentoDefaultAmount();
-                if (durataEl) durataEl.value = '';
-                if (overrideInput) {
-                    overrideInput.value = '';
-                    overrideInput.dataset.manualEdit = 'false';
+                if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata') || noteVal.includes('Family'))) {
+                    noteEl.value = tessVal > 0 ? 'Family 2 - 6 Mesi + Tesseramento' : 'Family 2 - 6 Mesi';
                 }
-                if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl && (!noteVal || noteVal.includes('Quota'))) noteEl.value = 'Tesseramento Federale';
+            } else if (tipo === 'solo_tess' || tipo === 'tesseramento') {
+                tessVal = this.getTesseramentoDefaultAmount();
+                if (tessEl) tessEl.value = tessVal.toFixed(2);
+                if (quotaVal > 0) {
+                    // Quota già inserita: rendila sommabile senza rimuovere la quota o la durata/scadenza
+                    if (noteEl) {
+                        const cur = (noteEl.value || '').trim();
+                        if (!cur) {
+                            noteEl.value = 'Quota + Tesseramento';
+                        } else if (!cur.toLowerCase().includes('tesseramento')) {
+                            noteEl.value = cur + ' + Tesseramento';
+                        }
+                    }
+                } else {
+                    // Solo tesseramento (senza quota corso)
+                    quotaVal = 0;
+                    if (durataEl) durataEl.value = '';
+                    if (overrideInput) {
+                        overrideInput.value = '';
+                        overrideInput.dataset.manualEdit = 'false';
+                    }
+                    if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
+                    if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Rata') || !noteVal.trim())) {
+                        noteEl.value = 'Tesseramento Federale';
+                    }
+                }
             } else if (tipo === 'singolo') {
                 quotaVal = 10.00;
                 if (durataEl) durataEl.value = '';
@@ -11909,7 +11943,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     overrideInput.dataset.manualEdit = 'false';
                 }
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
-                if (noteEl) noteEl.value = 'Ingresso Singolo / Prova';
+                if (noteEl) {
+                    noteEl.value = tessVal > 0 ? 'Ingresso Singolo / Prova + Tesseramento' : 'Ingresso Singolo / Prova';
+                }
             } else if (tipo === 'custom') {
                 if (durataEl && !durataEl.value) durataEl.value = '1';
             } else if (tipo.startsWith('preset:')) {
@@ -11917,7 +11953,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = (this.state.quote_presets || []).find(x => x.id == presetId);
                 if (p) {
                     quotaVal = parseFloat(p.importo) || 0;
-                    if (noteEl) noteEl.value = p.nome;
+                    if (noteEl) {
+                        noteEl.value = tessVal > 0 ? (p.nome + ' + Tesseramento') : p.nome;
+                    }
                     const lower = (p.nome + ' ' + (p.note || '')).toLowerCase();
                     if (durataEl) {
                         if (lower.includes('annuale') || lower.includes('12')) durataEl.value = '12';
@@ -11935,7 +11973,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
 
             if (quotaEl) quotaEl.value = quotaVal > 0 ? quotaVal.toFixed(2) : '';
-            if (tessEl && tipo === 'solo_tess') tessEl.value = tessVal.toFixed(2);
+            if (tessEl && (tipo === 'solo_tess' || tipo === 'tesseramento')) tessEl.value = tessVal.toFixed(2);
 
             const currentTess = parseFloat(tessEl?.value) || 0;
             const tot = (quotaVal || 0) + currentTess;
