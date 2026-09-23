@@ -23848,21 +23848,33 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 colWidths: colWidths
             });
 
-            let filterSlug = 'soci';
-            if (filterValue === 'ANNO_CORRENTE') filterSlug = `soci_anno_sportivo_${sportsYear}`;
-            else if (filterValue === 'ALL') filterSlug = 'tutti_i_soci_archivio';
-            else if (filterValue === 'ATTIVO') filterSlug = 'soci_attivi';
-            else if (filterValue === 'MOROSO') filterSlug = 'soci_morosi';
-            else if (filterValue === 'NON ATTIVO') filterSlug = 'soci_non_attivi';
-            else if (filterValue === 'CESSATO') filterSlug = 'soci_cessati';
-            else if (filterValue === 'QUOTA_SCADUTA') filterSlug = 'soci_quote_scadute';
+            // Definizione esplicita del metodo di filtro applicato per il nome file
+            let metodoFiltroStr = 'filtro_generale';
+            if (filterValue === 'ANNO_CORRENTE') {
+                metodoFiltroStr = `filtro_ANNO_SPORTIVO_${sportsYear}`;
+            } else if (filterValue === 'ALL') {
+                metodoFiltroStr = 'filtro_TUTTI_I_SOCI_ARCHIVIO';
+            } else if (filterValue === 'ATTIVO') {
+                metodoFiltroStr = 'filtro_ATTIVI_QUOTA_VALIDA';
+            } else if (filterValue === 'MOROSO') {
+                metodoFiltroStr = 'filtro_MOROSI_QUOTA_SCADUTA';
+            } else if (filterValue === 'NON ATTIVO') {
+                metodoFiltroStr = 'filtro_NON_ATTIVI_ARCHIVIO';
+            } else if (filterValue === 'CESSATO') {
+                metodoFiltroStr = 'filtro_CESSATI';
+            } else if (filterValue === 'QUOTA_SCADUTA') {
+                metodoFiltroStr = 'filtro_QUOTE_SCADUTE';
+            } else {
+                metodoFiltroStr = `filtro_${filterValue.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+            }
 
             if (searchVal) {
-                filterSlug += `_cerca_${searchVal.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 15)}`;
+                const cleanSearch = searchVal.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+                metodoFiltroStr += `_ricerca_${cleanSearch}`;
             }
 
             const todayStr = new Date().toISOString().split('T')[0];
-            const fileName = `elenco_${filterSlug}_${todayStr}.xlsx`;
+            const fileName = `elenco_soci_${metodoFiltroStr}_${todayStr}.xlsx`;
 
             this.saveDocumentFS(fileName, blob, 'esportazione elenco soci', sportsYear);
             this.toast(`✅ Esportati ${soci.length} soci in Excel (${fileName}) nella cartella "esportazione elenco soci"`, 'success');
