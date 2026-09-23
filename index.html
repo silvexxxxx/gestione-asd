@@ -9162,21 +9162,27 @@
                                 <h1>Anagrafica Soci <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">(${attiviAnno} attivi ${currSportYearLabel} / ${totalSoci} totali in archivio)</span></h1>
                                 <span class="header-subtitle">Gestisci l'elenco dei soci iscritti alla tua associazione.</span>
                             </div>
-                            <button class="btn btn-primary" onclick="app.openAddSocioModal()" data-guide="Aggiungi un nuovo socio o atleta. Effetto: Apre la scheda anagrafica per inserire i dati personali, calcolare in automatico il Codice Fiscale e assegnare quote o scadenze.">+ Aggiungi Socio</button>
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button class="btn btn-outline" style="border-color: #10b981; color: #34d399; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="app.exportSociFiltratiExcel()" title="Esporta in Excel l'elenco soci filtrato (.xlsx)" data-guide="Esporta in un file Excel l'elenco dei soci corrispondente al filtro selezionato (es. Soci Anno Sportivo Corrente, Attivi, Morosi, ecc.). Il file verrà salvato automaticamente nella cartella dedicata alle esportazioni soci.">📊 Esporta Excel</button>
+                                <button class="btn btn-primary" onclick="app.openAddSocioModal()" data-guide="Aggiungi un nuovo socio o atleta. Effetto: Apre la scheda anagrafica per inserire i dati personali, calcolare in automatico il Codice Fiscale e assegnare quote o scadenze.">+ Aggiungi Socio</button>
+                            </div>
                         </div>
 
                         <div class="glass-card member-card">
-                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <div class="toolbar" style="padding: 0.85rem 1.25rem; flex-shrink: 0; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                                 <input type="text" id="socio-search" class="form-control search-input" placeholder="Cerca per nome o Codice Fiscale..." oninput="app.onSocioSearchInput()" data-guide="Ricerca veloce nell'anagrafica soci. Effetto: Filtra in tempo reale la tabella digitando parte del cognome, nome o Codice Fiscale.">
-                                <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtro per stato soci. Effetto: Isola gli iscritti dell'anno sportivo in corso, attivi con quota valida, morosi con pagamenti in sospeso o archiviati.">
-                                    <option value="ANNO_CORRENTE" selected>⭐ Soci Anno Sportivo Corrente (${currSportYearLabel}) (${attiviAnno})</option>
-                                    <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
-                                    <option value="ATTIVO">🟢 Attivi con Quota Valida</option>
-                                    <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
-                                    <option value="NON ATTIVO">💤 Non Attivi (Archivio)</option>
-                                    <option value="CESSATO">🚫 Cessati</option>
-                                    <option value="QUOTA_SCADUTA">⌛ Quote Scadute</option>
-                                </select>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <select id="socio-filter-status" class="form-control" style="width: auto; min-width: 240px;" onchange="app.onSocioFilterChange()" data-guide="Filtro per stato soci. Effetto: Isola gli iscritti dell'anno sportivo in corso, attivi con quota valida, morosi con pagamenti in sospeso o archiviati.">
+                                        <option value="ANNO_CORRENTE" selected>⭐ Soci Anno Sportivo Corrente (${currSportYearLabel}) (${attiviAnno})</option>
+                                        <option value="ALL">📁 Tutti i Soci / Archivio (${totalSoci})</option>
+                                        <option value="ATTIVO">🟢 Attivi con Quota Valida</option>
+                                        <option value="MOROSO">⚠️ Morosi (Quota Scaduta)</option>
+                                        <option value="NON ATTIVO">💤 Non Attivi (Archivio)</option>
+                                        <option value="CESSATO">🚫 Cessati</option>
+                                        <option value="QUOTA_SCADUTA">⌛ Quote Scadute</option>
+                                    </select>
+                                    <button class="btn btn-outline" style="border-color: #10b981; color: #34d399; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;" onclick="app.exportSociFiltratiExcel()" title="Esporta l'elenco soci con il filtro attivo in Excel (.xlsx)" data-guide="Esporta l'elenco dei soci visualizzati con il filtro selezionato in un file Excel (.xlsx) salvato nella cartella dedicata.">📊 Esporta Excel</button>
+                                </div>
                             </div>
 
                             <div class="table-container" onscroll="app.onSociTableScroll(this)">
@@ -9405,14 +9411,14 @@
                 return 'ATTIVO';
             },
 
-            filterSoci() {
+            getFilteredSoci() {
                 const searchInput = document.getElementById('socio-search');
                 const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
                 const searchWords = search ? search.split(/\s+/).filter(Boolean) : [];
                 const statusSelect = document.getElementById('socio-filter-status');
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
 
-                let filtered = this.state.soci.filter(s => {
+                let filtered = (this.state.soci || []).filter(s => {
                     let matchSearch = true;
                     if (searchWords.length > 0) {
                         const cognome = (s.cognome || '').toLowerCase();
@@ -9444,12 +9450,12 @@
                 });
 
                 // Ordinamento personalizzato
-                const { key, direction } = this.state.sortConfig;
+                const { key, direction } = this.state.sortConfig || { key: 'cognome', direction: 'asc' };
                 filtered.sort((a, b) => {
                     let valA = a[key];
                     let valB = b[key];
 
-                    const isDateKey = key.includes('scadenza') || key === 'data_nascita' || key === 'inizio';
+                    const isDateKey = key && (key.includes('scadenza') || key === 'data_nascita' || key === 'inizio');
                     if (isDateKey) {
                         // Sposta i valori vuoti o non inseriti in fondo alla lista
                         if (!valA && !valB) return 0;
@@ -9480,6 +9486,17 @@
                         return 0;
                     }
                 });
+
+                return filtered;
+            },
+
+            filterSoci() {
+                const searchInput = document.getElementById('socio-search');
+                const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+                const statusSelect = document.getElementById('socio-filter-status');
+                const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
+
+                const filtered = this.getFilteredSoci();
 
                 const tbody = document.getElementById('soci-tbody');
                 if (tbody) {
@@ -17662,7 +17679,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 // 4. Cartella dell'Anno Sportivo corrente con tutte le sottocartelle
                 const curYear = this.getSportsYear ? this.getSportsYear() : (new Date().getFullYear() + '-' + (new Date().getFullYear() + 1));
                 const yearDir = await dirHandle.getDirectoryHandle('anno ' + curYear, { create: true });
-                const subCats = ['ricevute', 'compensi', 'esportazioni_excel', 'prima nota cassa completata', 'liberatorie', 'rimborsi'];
+                const subCats = ['ricevute', 'compensi', 'esportazioni_excel', 'esportazione elenco soci', 'prima nota cassa completata', 'liberatorie', 'rimborsi'];
                 for (const cat of subCats) {
                     await yearDir.getDirectoryHandle(cat, { create: true });
                 }
@@ -18418,6 +18435,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         'liberatorie': '📋',
                         'prima nota cassa completata': '📑',
                         'esportazioni_excel': '📊',
+                        'esportazione elenco soci': '👥',
+                        'esportazioni elenco soci': '👥',
                         'backup': '🖴',
                         'magazzino': '📦',
                         'eventi': '🎟️',
@@ -23748,6 +23767,107 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             }
         },
 
+        exportSociFiltratiExcel() {
+            if (typeof XLSX === 'undefined') {
+                this.toast('Libreria Excel non disponibile.', 'warning');
+                return;
+            }
+
+            const statusSelect = document.getElementById('socio-filter-status');
+            const filterValue = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
+            const filterLabel = statusSelect && statusSelect.selectedOptions && statusSelect.selectedOptions[0]
+                ? statusSelect.selectedOptions[0].text.trim()
+                : 'Soci Anno Sportivo Corrente';
+            const cleanFilterLabel = filterLabel.replace(/^⭐\s*|^📁\s*|^🟢\s*|^⚠️\s*|^💤\s*|^🚫\s*|^⌛\s*/, '').replace(/\s*\(\d+\)$/, '').trim();
+
+            const searchInput = document.getElementById('socio-search');
+            const searchVal = searchInput ? searchInput.value.trim() : '';
+
+            const soci = (typeof this.getFilteredSoci === 'function') ? this.getFilteredSoci() : (this.state.soci || []);
+            if (!soci || soci.length === 0) {
+                this.toast('Nessun socio da esportare con i criteri di filtro selezionati.', 'warning');
+                return;
+            }
+
+            const rows = soci.map(s => {
+                const isMinore = s.data_nascita && typeof this.calcolaEta === 'function' && this.calcolaEta(s.data_nascita) < 18;
+                const libMinoriStr = isMinore ? (s.liberatoria_consegnata ? 'Consegnata' : 'In attesa') : 'Non applicabile';
+                const tessScadStr = typeof this.getTesseramentoScadenza === 'function' ? this.getTesseramentoScadenza(s) : (s.tesseramento_scadenza || '');
+                const displayStato = typeof this.getSocioDisplayStato === 'function' ? this.getSocioDisplayStato(s) : (s.stato || 'ATTIVO');
+
+                return {
+                    'Cognome': s.cognome || '',
+                    'Nome': s.nome || '',
+                    'Codice Fiscale': s.cf || '',
+                    'Data di Nascita': s.data_nascita ? app.formatDate(s.data_nascita) : '',
+                    'Luogo di Nascita': s.luogo_nascita || '',
+                    'Sesso': s.sesso || '',
+                    'Residenza': s.residenza || '',
+                    'Telefono': s.tel || s.telefono || s.cellulare || '',
+                    'Email': s.email || '',
+                    'Data Iscrizione': s.data_iscrizione ? app.formatDate(s.data_iscrizione) : '',
+                    'Scadenza Quota': s.quota_scadenza ? app.formatDate(s.quota_scadenza) : '',
+                    'Scad. Certificato': s.certificato_scadenza ? app.formatDate(s.certificato_scadenza) : '',
+                    'Data Tess. Fed.': s.tesseramento_data ? app.formatDate(s.tesseramento_data) : '',
+                    'Scad. Tesseramento': tessScadStr ? app.formatDate(tessScadStr) : '',
+                    'Stato': (displayStato || 'ATTIVO').toUpperCase(),
+                    'Liberatoria Minori': libMinoriStr,
+                    'Note': s.note || ''
+                };
+            });
+
+            const colWidths = [
+                { wch: 18 }, // Cognome
+                { wch: 18 }, // Nome
+                { wch: 18 }, // Codice Fiscale
+                { wch: 15 }, // Data Nascita
+                { wch: 18 }, // Luogo Nascita
+                { wch: 6 },  // Sesso
+                { wch: 28 }, // Residenza
+                { wch: 16 }, // Telefono
+                { wch: 26 }, // Email
+                { wch: 15 }, // Data Iscrizione
+                { wch: 15 }, // Scadenza Quota
+                { wch: 16 }, // Scad. Certificato
+                { wch: 16 }, // Data Tess. Fed.
+                { wch: 18 }, // Scad. Tesseramento
+                { wch: 14 }, // Stato
+                { wch: 18 }, // Liberatoria Minori
+                { wch: 28 }  // Note
+            ];
+
+            const sportsYear = this.getSportsYear ? this.getSportsYear(new Date()) : `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+            const searchClause = searchVal ? ` | Ricerca: "${searchVal}"` : '';
+            const periodStr = `Filtro: ${cleanFilterLabel}${searchClause} | Totale Soci Esportati: ${soci.length}`;
+
+            const blob = this.createExcelWithHeader({
+                title: `ELENCO SOCI - ${cleanFilterLabel.toUpperCase()}`,
+                period: periodStr,
+                rows: rows,
+                sheetName: 'ElencoSoci',
+                colWidths: colWidths
+            });
+
+            let filterSlug = 'soci';
+            if (filterValue === 'ANNO_CORRENTE') filterSlug = `soci_anno_sportivo_${sportsYear}`;
+            else if (filterValue === 'ALL') filterSlug = 'tutti_i_soci_archivio';
+            else if (filterValue === 'ATTIVO') filterSlug = 'soci_attivi';
+            else if (filterValue === 'MOROSO') filterSlug = 'soci_morosi';
+            else if (filterValue === 'NON ATTIVO') filterSlug = 'soci_non_attivi';
+            else if (filterValue === 'CESSATO') filterSlug = 'soci_cessati';
+            else if (filterValue === 'QUOTA_SCADUTA') filterSlug = 'soci_quote_scadute';
+
+            if (searchVal) {
+                filterSlug += `_cerca_${searchVal.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 15)}`;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const fileName = `elenco_${filterSlug}_${todayStr}.xlsx`;
+
+            this.saveDocumentFS(fileName, blob, 'esportazione elenco soci', sportsYear);
+            this.toast(`✅ Esportati ${soci.length} soci in Excel (${fileName}) nella cartella "esportazione elenco soci"`, 'success');
+        },
+
         exportSociExcel() {
             if (typeof XLSX === 'undefined') { this.toast('Libreria Excel non disponibile.', 'warning'); return; }
             const soci = this.state.soci || [];
@@ -23805,7 +23925,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             const yearStr = this.getSportsYear(new Date());
             const fileName = `libro_soci_asd_${new Date().toISOString().split('T')[0]}.xlsx`;
-            this.saveDocumentFS(fileName, blob, 'esportazioni_excel', yearStr);
+            this.saveDocumentFS(fileName, blob, 'esportazione elenco soci', yearStr);
             this.toast(`✅ Esportata anagrafica di ${soci.length} soci in Excel (${fileName})`, 'success');
         },
 
