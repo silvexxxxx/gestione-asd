@@ -482,6 +482,7 @@
             this.state.currentFileName = '';
             this.updateProgressUI();
             this.renderResults();
+            this.cleanAllObsoleteUnsignedLiberatorie();
             this.addLog(`🏁 Elaborazione batch completata!`, 'success');
             if (window.app && typeof window.app.toast === 'function') {
                 window.app.toast(`Scansione completata: ${recognizedItems.length} pagine riconosciute, ${manualCandidateFiles.length} file da smistare.`, 'success');
@@ -590,25 +591,57 @@
                 const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: false });
                 const libDir = await yearDir.getDirectoryHandle('liberatorie', { create: false });
 
-                const sCog = (socio.cognome || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                const sNom = (socio.nome || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const getTokens = (str) => (str || '').toLowerCase().replace(/[^a-z0-9àèéìòù]/g, ' ').split(/\s+/).filter(t => t.length >= 2);
+                const fuzzySimilarity = (s1, s2) => {
+                    if (!s1 || !s2) return 0;
+                    if (s1 === s2) return 1;
+                    const l1 = s1.length, l2 = s2.length;
+                    const dp = Array(l1 + 1).fill(0).map(() => Array(l2 + 1).fill(0));
+                    for (let i = 0; i <= l1; i++) dp[i][0] = i;
+                    for (let j = 0; j <= l2; j++) dp[0][j] = j;
+                    for (let i = 1; i <= l1; i++) {
+                        for (let j = 1; j <= l2; j++) {
+                            const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+                        }
+                    }
+                    const maxLen = Math.max(l1, l2);
+                    return maxLen === 0 ? 1 : 1 - (dp[l1][l2] / maxLen);
+                };
+
+                const cogTokens = getTokens(socio.cognome);
+                const nomTokens = getTokens(socio.nome);
 
                 for await (const entry of libDir.values()) {
                     if (entry.kind === 'file') {
                         const fn = entry.name.toLowerCase();
-                        const fnClean = fn.replace(/[^a-z0-9]/g, '');
                         const isLiberatoria = fn.startsWith('liberatoria_') || fn.includes('liberatoria');
                         const isSigned = fn.includes('firmata');
                         
-                        // Corrisponde al socio se contiene cognome e nome
-                        const matchesSocio = sCog.length >= 2 && fnClean.includes(sCog) && (sNom.length < 2 || fnClean.includes(sNom));
+                        if (isLiberatoria && !isSigned) {
+                            const fileTokens = getTokens(entry.name);
+                            const fnClean = fn.replace(/[^a-z0-9]/g, '');
 
-                        if (isLiberatoria && matchesSocio && !isSigned) {
-                            try {
-                                await libDir.removeEntry(entry.name);
-                                this.addLog(`🧹 Rimosso modulo vuoto obsoleto: ${entry.name} (sostituito dal firmato)`, 'info');
-                            } catch (eRm) {
-                                console.warn('Rimozione modulo vuoto fallita:', entry.name, eRm);
+                            // 1. Cognome deve corrispondere (token esatto o incluso)
+                            const matchesCognome = cogTokens.some(c => fileTokens.includes(c) || fnClean.includes(c));
+
+                            // 2. Nome corrisponde se:
+                            // - nessun nome specificato
+                            // - oppure uno dei token del nome è presente (es. 'andrea' o 'mingliang')
+                            // - oppure fuzzy similarity >= 0.7 (es. 'ninglang' vs 'mingliang' = 0.77)
+                            const matchesNome = nomTokens.length === 0 || nomTokens.some(n => 
+                                fileTokens.includes(n) || 
+                                fnClean.includes(n) ||
+                                fileTokens.some(f => f.length >= 4 && fuzzySimilarity(n, f) >= 0.7)
+                            );
+
+                            if (matchesCognome && matchesNome) {
+                                try {
+                                    await libDir.removeEntry(entry.name);
+                                    this.addLog(`🧹 Rimosso modulo vuoto obsoleto: ${entry.name} (sostituito dal firmato)`, 'info');
+                                } catch (eRm) {
+                                    console.warn('Rimozione modulo vuoto fallita:', entry.name, eRm);
+                                }
                             }
                         }
                     }
@@ -619,8 +652,110 @@
         },
 
         /**
-         * Salva il documento riconosciuto nel File System e aggiorna IndexedDB / stato
+         * Scansione globale e pulizia retroattiva di tutte le liberatorie vuote per cui
+         * esiste già la controparte firmata nella cartella o nell'anagrafica del socio.
          */
+        async cleanAllObsoleteUnsignedLiberatorie(sportsYear) {
+            if (!window.app || typeof window.app.getOutputFolder !== 'function') return;
+            try {
+                const dirHandle = await window.app.getOutputFolder();
+                if (!dirHandle) return;
+                const safeYear = (sportsYear || window.app.getSportsYear() || new Date().getFullYear()).toString().replace(/[/_\\]/g, '-');
+                const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: false });
+                const libDir = await yearDir.getDirectoryHandle('liberatorie', { create: false });
+
+                const getTokens = (str) => (str || '').toLowerCase().replace(/[^a-z0-9àèéìòù]/g, ' ').split(/\s+/).filter(t => t.length >= 2);
+                const fuzzySimilarity = (s1, s2) => {
+                    if (!s1 || !s2) return 0;
+                    if (s1 === s2) return 1;
+                    const l1 = s1.length, l2 = s2.length;
+                    const dp = Array(l1 + 1).fill(0).map(() => Array(l2 + 1).fill(0));
+                    for (let i = 0; i <= l1; i++) dp[i][0] = i;
+                    for (let j = 0; j <= l2; j++) dp[0][j] = j;
+                    for (let i = 1; i <= l1; i++) {
+                        for (let j = 1; j <= l2; j++) {
+                            const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+                        }
+                    }
+                    const maxLen = Math.max(l1, l2);
+                    return maxLen === 0 ? 1 : 1 - (dp[l1][l2] / maxLen);
+                };
+
+                const signedFiles = [];
+                const unsignedFiles = [];
+
+                for await (const entry of libDir.values()) {
+                    if (entry.kind === 'file') {
+                        const fn = entry.name.toLowerCase();
+                        if (fn.startsWith('liberatoria_') || fn.includes('liberatoria')) {
+                            if (fn.includes('firmata')) {
+                                signedFiles.push(entry.name);
+                            } else {
+                                unsignedFiles.push(entry.name);
+                            }
+                        }
+                    }
+                }
+
+                if (unsignedFiles.length === 0) return;
+
+                for (const uName of unsignedFiles) {
+                    const uTokens = getTokens(uName);
+                    const uClean = uName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    let shouldDelete = false;
+
+                    // A) Confronto con i file firmati presenti nella cartella
+                    for (const sName of signedFiles) {
+                        const sTokens = getTokens(sName.replace(/^liberatoria_firmata_/i, ''));
+                        const matchCog = sTokens.length > 0 && uTokens.some(ut => ut === sTokens[0] || uClean.includes(sTokens[0]));
+                        const matchNom = sTokens.length <= 1 || sTokens.slice(1).some(st => 
+                            uTokens.includes(st) || 
+                            uClean.includes(st) || 
+                            uTokens.some(ut => ut.length >= 4 && fuzzySimilarity(st, ut) >= 0.7)
+                        );
+                        if (matchCog && matchNom) {
+                            shouldDelete = true;
+                            break;
+                        }
+                    }
+
+                    // B) Confronto con l'anagrafica soci (se liberatoria consegnata)
+                    if (!shouldDelete && window.app && window.app.state && Array.isArray(window.app.state.soci)) {
+                        for (const s of window.app.state.soci) {
+                            if (s.liberatoria_consegnata) {
+                                const cTokens = getTokens(s.cognome);
+                                const nTokens = getTokens(s.nome);
+                                const matchCog = cTokens.some(c => uTokens.includes(c) || uClean.includes(c));
+                                const matchNom = nTokens.length === 0 || nTokens.some(n => 
+                                    uTokens.includes(n) || 
+                                    uClean.includes(n) || 
+                                    uTokens.some(ut => ut.length >= 4 && fuzzySimilarity(n, ut) >= 0.7)
+                                );
+                                if (matchCog && matchNom) {
+                                    shouldDelete = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (shouldDelete) {
+                        try {
+                            await libDir.removeEntry(uName);
+                            if (typeof this.addLog === 'function') {
+                                this.addLog(`🧹 Rimosso modulo vuoto obsoleto: ${uName} (sostituito dal firmato)`, 'info');
+                            }
+                        } catch (errRm) {
+                            console.warn('Errore eliminazione file vuoto:', uName, errRm);
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignore silently
+            }
+        },
+
         async archiveRecognizedDocument(group, blob, thumbnail, pageCount) {
             const { tipoDoc, idSocioRaw, anno } = group;
             const currentYearStr = window.app && typeof window.app.getSportsYear === 'function' ? window.app.getSportsYear() : (anno || new Date().getFullYear());
@@ -698,6 +833,7 @@
             // Se è una liberatoria firmata, rimuove automaticamente la bozza vuota precompilata del socio
             if ((tipoDoc === 'LIB' || tipoDoc === 'MAN' || tipoDoc === 'ISC') && socio) {
                 await this.cleanObsoleteUnsignedLiberatorie(socio, currentYearStr);
+                await this.cleanAllObsoleteUnsignedLiberatorie(currentYearStr);
             }
 
             // Salva le modifiche in IndexedDB
@@ -977,6 +1113,12 @@
             const defaultScadenza = todayPlusOneYear.toISOString().split('T')[0];
 
             for (const c of candidateFiles) {
+                // Controllo preventivo: evita doppioni identici nella coda di smistamento
+                const isDuplicateInQueue = this.state.manualQueue.some(m => m.fileName === c.file.name && m.blob.size === c.file.size);
+                if (isDuplicateInQueue) {
+                    this.addLog(`ℹ️ File "${c.file.name}" già presente nella coda di smistamento (duplicato saltato)`, 'warning');
+                    continue;
+                }
                 const detectedSocio = this.detectSocioFromFileName(c.file.name);
                 const matchedRule = this.detectRuleFromFileName(c.file.name);
 
@@ -1258,6 +1400,7 @@
             // Se è una liberatoria firmata, rimuove automaticamente la bozza vuota precompilata del socio
             if (isSocio && item.docType === 'liberatoria' && socio) {
                 await this.cleanObsoleteUnsignedLiberatorie(socio, currentYearStr);
+                await this.cleanAllObsoleteUnsignedLiberatorie(currentYearStr);
             }
 
             // Salva nel database IndexedDB per aggiornare anche gli indicatori Dashboard e stato soci!
@@ -1854,10 +1997,26 @@
                                         <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-top: 2px;">
                                             Aggiorna scadenza e KPI Dashboard.
                                         </span>
+                                        ${selectedSocio && selectedSocio.certificato_scadenza ? (
+                                            selectedSocio.certificato_scadenza === item.scadenzaCertificato ? `
+                                                <div style="font-size: 0.74rem; color: #f59e0b; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 4px; padding: 4px 8px; margin-top: 5px;">
+                                                    ⚠️ <strong>Doppione:</strong> Certificato già registrato con questa stessa scadenza. Salvando andrai a sovrascrivere il file esistente.
+                                                </div>
+                                            ` : `
+                                                <div style="font-size: 0.74rem; color: #34d399; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 4px 8px; margin-top: 5px;">
+                                                    🔄 <strong>Rinnovo:</strong> Sostituirà la vecchia scadenza (${selectedSocio.certificato_scadenza}) con ${item.scadenzaCertificato}.
+                                                </div>
+                                            `
+                                        ) : ''}
                                     </div>
                                 ` : (item.docType === 'liberatoria' ? `
                                     <div style="font-size: 0.78rem; color: #93c5fd; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; padding: 8px; align-self: center;">
                                         ✅ <strong>Sostituzione Automatica:</strong> Il modulo vuoto precedente verrà rimosso e il socio risulterà con <em>Liberatoria Consegnata ✔</em>.
+                                        ${selectedSocio && selectedSocio.liberatoria_consegnata ? `
+                                            <div style="font-size: 0.73rem; color: #facc15; margin-top: 4px; border-top: 1px dashed rgba(250, 204, 21, 0.3); padding-top: 4px;">
+                                                ℹ️ <em>Nota:</em> Il socio ha già una liberatoria firmata archiviata. Questa scansione la aggiornerà.
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 ` : `
                                     <div style="font-size: 0.78rem; color: #94a3b8; align-self: center; padding-top: 10px;">
