@@ -8817,7 +8817,11 @@
                                     <li><strong>"Inghiottitoio" Batch Drag & Drop:</strong> Trascina decine di file misti (PDF multipagina, scansioni singole JPG, PNG, WEBP) nell'apposita dropzone: il motore analizza e scansiona tutti i fogli a velocità ultra-rapida (decodifica locale in circa 15 ms per pagina).</li>
                                     <li><strong>Assemblaggio & Fusione Automatica Multipagina:</strong> Se una liberatoria o verbale di 3 pagine viene scansionata come fogli sparsi o separati (anche caricati in ordine disordinato), il gestionale riconosce le pagine corrispondenti e le assembla automaticamente in un unico PDF conforme nell'ordine corretto tramite <code>pdf-lib</code>. In caso di pagine mancanti (es. trovata solo pagina 1 e 3 su 3), il sistema emette un'allerta bloccando l'archiviazione parziale a tutela dell'integrità probatoria.</li>
                                     <li><strong>Archiviazione Automatica Diretta:</strong> I documenti riconosciuti vengono salvati direttamente nella Cartella Documenti della rispettiva stagione sportiva (es. <em>anno 2026-2027/liberatorie</em> o <em>ricevute</em>) e lo stato del socio o della ricevuta viene marcato istantaneamente come <em>Firmato / Consegnato</em> nel database.</li>
-                                    <li><strong>Coda di Smistamento Rapido per Documenti Esterni:</strong> I documenti privi di QR Code (come <strong>certificati medici</strong> rilasciati dal medico o <strong>distinte di bonifico bancario</strong>) confluiscono nella corsia di smistamento rapido con miniatura ad alta risoluzione (zoomabile a tutto schermo). Con un clic associ il socio (con ricerca autocompletata) e, nel caso dei certificati medici, inserisci la data di scadenza: il gestionale archivia il file nella cartella dedicata e aggiorna istantaneamente la scheda del socio e i badge di idoneità sanitaria.</li>
+                                    <li><strong>Coda di Smistamento Rapido per Documenti Esterni &amp; Pregressi:</strong> I documenti privi di QR Code (come <strong>certificati medici</strong>, <strong>bonifici</strong> o <strong>liberatorie cartacee stampate in precedenza</strong>) confluiscono nella corsia di smistamento rapido con miniatura ad alta risoluzione (zoomabile a schermo intero). Il motore riconosce automaticamente dal nome file il socio o la parola chiave, precompilando i campi per velocizzare l'archiviazione.</li>
+                                    <li><strong>📄 Sostituzione &amp; Pulizia Automatica Moduli Vuoti:</strong> Archiviando una liberatoria firmata (sia via QR sia tramite smistamento manuale), il sistema aggiorna l'anagrafica del socio (<code>Lib ✔</code>) e <strong>rimuove automaticamente dal disco il vecchio modulo PDF vuoto non compilato</strong>, azzerando i duplicati e ottimizzando lo spazio fisico.</li>
+                                    <li><strong>🏛️ Documenti Generali ASD, Bollette &amp; Spese:</strong> Grazie al selettore di ambito <em>Documento Socio</em> vs <em>Generale ASD / Spese</em>, è possibile archiviare bollette energetiche (Enel, A2A, gas), fatture acquisti attrezzi, scontrini per rimborsi cassa e contratti senza l'obbligo di associare un atleta.</li>
+                                    <li><strong>📁 Creazione Dinamica Nuove Cartelle:</strong> Con l'opzione <em>➕ Nuova Cartella...</em> puoi creare al volo qualsiasi cartella di archivio non prevista, scegliendo se collocarla dentro l'anno sportivo (es. <code>anno 2026-2027/manutenzioni</code>) o come cartella radice permanente dell'ASD.</li>
+                                    <li><strong>🧠 Motore "Smart Rules" (Auto-Apprendimento):</strong> Spuntando <em>"Memorizza questa regola"</em> durante lo smistamento, il gestionale apprende la regola (es. la parola <em>enel</em> indirizza automaticamente alla cartella <em>bollette utenze</em>) e la applicherà a tutti i futuri caricamenti. Tramite il pulsante <code>⚙️ Regole Intelligenti</code> è possibile consultare, creare o eliminare le regole attive.</li>
                                 </ul>
 
                                 <h3>Esportazione Excel & Altre Funzionalità:</h3>
@@ -19237,7 +19241,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             }
         },
 
-        async saveDocumentFS(filename, blob, category, yearStr, silent = false) {
+        async saveDocumentFS(filename, blob, category, yearStr, silent = false, isRoot = false) {
             if (!yearStr) yearStr = this.getSportsYear();
             if (!category) category = 'documenti';
 
@@ -19286,6 +19290,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     targetDir = await dirHandle.getDirectoryHandle('esportazioni json', { create: true });
                     savePathStr = `esportazioni json/${targetFilename}`;
                     bannerLocationStr = `esportazioni json`;
+                } else if (isRoot) {
+                    targetDir = await dirHandle.getDirectoryHandle(safeCat, { create: true });
+                    savePathStr = `${safeCat}/${targetFilename}`;
+                    bannerLocationStr = `${safeCat}`;
                 } else {
                     const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: true });
                     targetDir = await yearDir.getDirectoryHandle(safeCat, { create: true });
@@ -19318,7 +19326,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 await writable.close();
                 if (!silent) {
                     this.toast(`💾 Salvato in: ${savePathStr}`, 'success');
-                    this.showDocumentProducedBanner(targetFilename, blob, bannerLocationStr, isJsonBackup ? 'esportazioni json' : safeCat, isJsonBackup ? null : safeYear);
+                    this.showDocumentProducedBanner(targetFilename, blob, bannerLocationStr, isJsonBackup ? 'esportazioni json' : safeCat, (isJsonBackup || isRoot) ? null : safeYear);
                 }
                 return true;
             } catch (e) {

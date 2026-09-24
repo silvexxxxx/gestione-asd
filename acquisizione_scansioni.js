@@ -578,6 +578,47 @@
         },
 
         /**
+         * Rimuove dal File System l'eventuale bozza vuota o modulo non compilato (es. Liberatoria_Adulto_... o Liberatoria_Minori_...)
+         * una volta che la versione firmata è stata acquisita e archiviata.
+         */
+        async cleanObsoleteUnsignedLiberatorie(socio, sportsYear) {
+            if (!socio || !window.app || typeof window.app.getOutputFolder !== 'function') return;
+            try {
+                const dirHandle = await window.app.getOutputFolder();
+                if (!dirHandle) return;
+                const safeYear = (sportsYear || window.app.getSportsYear() || new Date().getFullYear()).toString().replace(/[/_\\]/g, '-');
+                const yearDir = await dirHandle.getDirectoryHandle('anno ' + safeYear, { create: false });
+                const libDir = await yearDir.getDirectoryHandle('liberatorie', { create: false });
+
+                const sCog = (socio.cognome || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const sNom = (socio.nome || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                for await (const entry of libDir.values()) {
+                    if (entry.kind === 'file') {
+                        const fn = entry.name.toLowerCase();
+                        const fnClean = fn.replace(/[^a-z0-9]/g, '');
+                        const isLiberatoria = fn.startsWith('liberatoria_') || fn.includes('liberatoria');
+                        const isSigned = fn.includes('firmata');
+                        
+                        // Corrisponde al socio se contiene cognome e nome
+                        const matchesSocio = sCog.length >= 2 && fnClean.includes(sCog) && (sNom.length < 2 || fnClean.includes(sNom));
+
+                        if (isLiberatoria && matchesSocio && !isSigned) {
+                            try {
+                                await libDir.removeEntry(entry.name);
+                                this.addLog(`🧹 Rimosso modulo vuoto obsoleto: ${entry.name} (sostituito dal firmato)`, 'info');
+                            } catch (eRm) {
+                                console.warn('Rimozione modulo vuoto fallita:', entry.name, eRm);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // Cartella non trovata o permessi non concessi, ignora silenziosamente
+            }
+        },
+
+        /**
          * Salva il documento riconosciuto nel File System e aggiorna IndexedDB / stato
          */
         async archiveRecognizedDocument(group, blob, thumbnail, pageCount) {
@@ -654,6 +695,11 @@
                 saveSuccess = await window.app.saveDocumentFS(targetFileName, blob, category, currentYearStr, true);
             }
 
+            // Se è una liberatoria firmata, rimuove automaticamente la bozza vuota precompilata del socio
+            if ((tipoDoc === 'LIB' || tipoDoc === 'MAN' || tipoDoc === 'ISC') && socio) {
+                await this.cleanObsoleteUnsignedLiberatorie(socio, currentYearStr);
+            }
+
             // Salva le modifiche in IndexedDB
             if (window.app && typeof window.app.saveAll === 'function') {
                 window.app.saveAll();
@@ -701,8 +747,229 @@
             this.addLog(`💾 Salvato e registrato: ${savedPath}`, 'success');
         },
 
+        // =========================================================================
+        // SEZIONE 5: MOTORE SMART RULES (REGOLE DI SMISTAMENTO INTELLIGENTI)
+        // =========================================================================
+
+        getSmartRules() {
+            const custom = (window.app && window.app.state && window.app.state.settings && Array.isArray(window.app.state.settings.document_smart_rules))
+                ? window.app.state.settings.document_smart_rules
+                : [];
+            
+            const defaults = [
+                { id: 'def_lib', keyword: 'liberatoria', scope: 'socio', docType: 'liberatoria', category: 'liberatorie', isRoot: false, label: 'Liberatorie Soci' },
+                { id: 'def_man', keyword: 'manleva', scope: 'socio', docType: 'liberatoria', category: 'liberatorie', isRoot: false, label: 'Manleve Soci' },
+                { id: 'def_med', keyword: 'certificato', scope: 'socio', docType: 'certificato', category: 'certificati medici', isRoot: false, label: 'Certificati Medici' },
+                { id: 'def_vis', keyword: 'visita', scope: 'socio', docType: 'certificato', category: 'certificati medici', isRoot: false, label: 'Visite Mediche' },
+                { id: 'def_bon', keyword: 'bonifico', scope: 'socio', docType: 'bonifico', category: 'bonifici', isRoot: false, label: 'Bonifici Esterni' },
+                { id: 'def_con', keyword: 'contabile', scope: 'socio', docType: 'bonifico', category: 'bonifici', isRoot: false, label: 'Contabili Bonifico' },
+                { id: 'def_bol', keyword: 'bolletta', scope: 'asd', docType: 'bolletta', category: 'bollette utenze', isRoot: false, label: 'Bollette Utenze' },
+                { id: 'def_ene', keyword: 'enel', scope: 'asd', docType: 'bolletta', category: 'bollette utenze', isRoot: false, label: 'Utenze Elettriche' },
+                { id: 'def_a2a', keyword: 'a2a', scope: 'asd', docType: 'bolletta', category: 'bollette utenze', isRoot: false, label: 'Utenze A2A' },
+                { id: 'def_luc', keyword: 'luce', scope: 'asd', docType: 'bolletta', category: 'bollette utenze', isRoot: false, label: 'Utenze Luce' },
+                { id: 'def_gas', keyword: 'gas', scope: 'asd', docType: 'bolletta', category: 'bollette utenze', isRoot: false, label: 'Utenze Gas' },
+                { id: 'def_fat', keyword: 'fattura', scope: 'asd', docType: 'fattura', category: 'fatture acquisti', isRoot: false, label: 'Fatture Fornitori' },
+                { id: 'def_sco', keyword: 'scontrino', scope: 'asd', docType: 'scontrino', category: 'scontrini e rimborsi', isRoot: false, label: 'Scontrini Cassa' },
+                { id: 'def_rim', keyword: 'rimborso', scope: 'asd', docType: 'scontrino', category: 'scontrini e rimborsi', isRoot: false, label: 'Rimborsi Spese' },
+                { id: 'def_aff', keyword: 'affitto', scope: 'asd', docType: 'contratto', category: 'contratti e affitti', isRoot: false, label: 'Contratti e Affitti' }
+            ];
+
+            return [...custom, ...defaults];
+        },
+
+        addCustomSmartRule(rule) {
+            if (!window.app.state.settings) window.app.state.settings = {};
+            if (!Array.isArray(window.app.state.settings.document_smart_rules)) {
+                window.app.state.settings.document_smart_rules = [];
+            }
+            const cleanKw = (rule.keyword || '').trim().toLowerCase();
+            if (!cleanKw) return;
+
+            window.app.state.settings.document_smart_rules = window.app.state.settings.document_smart_rules.filter(
+                r => (r.keyword || '').toLowerCase() !== cleanKw
+            );
+            window.app.state.settings.document_smart_rules.unshift({
+                id: 'rule_' + Date.now(),
+                keyword: cleanKw,
+                scope: rule.scope || 'asd',
+                docType: rule.docType || 'altro',
+                category: rule.category || 'documenti',
+                isRoot: !!rule.isRoot,
+                label: rule.label || rule.category || cleanKw,
+                created_at: new Date().toISOString()
+            });
+            window.app.saveAll();
+        },
+
+        deleteCustomSmartRule(ruleId) {
+            if (window.app.state && window.app.state.settings && Array.isArray(window.app.state.settings.document_smart_rules)) {
+                window.app.state.settings.document_smart_rules = window.app.state.settings.document_smart_rules.filter(r => r.id !== ruleId);
+                window.app.saveAll();
+                this.renderSmartRulesModalContent();
+                if (window.app) window.app.toast('Regola eliminata con successo.', 'info');
+            }
+        },
+
+        detectSocioFromFileName(fileName) {
+            if (!fileName || !window.app || !window.app.state || !Array.isArray(window.app.state.soci)) return null;
+            const cleanName = fileName.toLowerCase().replace(/[^a-z0-9àèéìòù\s]/g, ' ');
+            const words = cleanName.split(/\s+/).filter(w => w.length >= 3);
+
+            for (const s of window.app.state.soci) {
+                const cog = (s.cognome || '').toLowerCase().trim();
+                const nom = (s.nome || '').toLowerCase().trim();
+                const note = (s.note || '').toLowerCase().trim();
+                const cf = (s.cf || '').toLowerCase().trim();
+
+                // 1. Corrispondenza Codice Fiscale
+                if (cf && cf.length >= 8 && cleanName.includes(cf)) return s;
+
+                // 2. Corrispondenza Cognome e Nome o Alias in note (es. "Andrea" per Zhou Mingliang)
+                const hasCog = cog && cog.length >= 3 && cleanName.includes(cog);
+                const hasNom = nom && nom.length >= 3 && cleanName.includes(nom);
+                const hasAlias = note && words.some(w => note.includes(w));
+
+                if (hasCog && (hasNom || hasAlias)) return s;
+                if (hasCog && words.length <= 4) return s;
+            }
+            return null;
+        },
+
+        detectRuleFromFileName(fileName) {
+            if (!fileName) return null;
+            const cleanName = fileName.toLowerCase();
+            const rules = this.getSmartRules();
+            for (const r of rules) {
+                const kw = (r.keyword || '').toLowerCase().trim();
+                if (kw && cleanName.includes(kw)) {
+                    return r;
+                }
+            }
+            return null;
+        },
+
+        openSmartRulesModal() {
+            if (!window.app || typeof window.app.openModal !== 'function') return;
+            window.app.openModal('⚙️ Regole Intelligenti di Smistamento', this.renderSmartRulesModalHtml());
+        },
+
+        renderSmartRulesModalHtml() {
+            const allRules = this.getSmartRules();
+
+            return `
+                <div style="padding: 10px 0;">
+                    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.2rem; line-height: 1.5;">
+                        Il gestionale analizza il nome dei file scansionati privi di QR Code e applica automaticamente la cartella, l'ambito e la tipologia corrispondente.
+                        Puoi memorizzare nuove regole al volo durante lo smistamento manuale, oppure gestirle da questo pannello.
+                    </p>
+
+                    <!-- Modulo Rapido Nuova Regola -->
+                    <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(59, 130, 246, 0.25);">
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
+                            <span>➕ Aggiungi Nuova Regola Manuale</span>
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end;">
+                            <div>
+                                <label style="font-size: 0.75rem; color: #cbd5e1; display: block; margin-bottom: 3px;">Parola chiave nel file:</label>
+                                <input type="text" id="new-rule-kw" class="form-control" placeholder="es: tim, vodafone, gasolio" style="font-size: 0.82rem; padding: 6px 8px;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.75rem; color: #cbd5e1; display: block; margin-bottom: 3px;">Ambito:</label>
+                                <select id="new-rule-scope" class="form-control" style="font-size: 0.82rem; padding: 6px 8px;">
+                                    <option value="asd">🏛️ Generale ASD / Spese</option>
+                                    <option value="socio">👤 Socio / Atleta</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.75rem; color: #cbd5e1; display: block; margin-bottom: 3px;">Cartella Destinazione:</label>
+                                <input type="text" id="new-rule-cat" class="form-control" placeholder="es: telecomunicazioni" style="font-size: 0.82rem; padding: 6px 8px;">
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-primary" style="width: 100%; font-size: 0.82rem; padding: 6px 12px; font-weight: 600;" onclick="app.scanProcessor.handleCreateRuleFromModal()">
+                                    Salva Regola
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Elenco Regole Esistenti -->
+                    <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: #f8fafc;">
+                        Regole Attive nel Sistema (${allRules.length})
+                    </h4>
+                    <div style="max-height: 280px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+                        <table class="data-table" style="font-size: 0.82rem;">
+                            <thead>
+                                <tr>
+                                    <th>Parola Chiave</th>
+                                    <th>Ambito</th>
+                                    <th>Cartella Assegnata</th>
+                                    <th>Origine</th>
+                                    <th style="text-align: right;">Azione</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${allRules.map(r => {
+                                    const isCustom = r.id && r.id.startsWith('rule_');
+                                    return `
+                                        <tr>
+                                            <td><code style="color:#60a5fa; font-weight:600;">${r.keyword}</code></td>
+                                            <td>${r.scope === 'socio' ? '👤 Socio' : '🏛️ Generale ASD'}</td>
+                                            <td><span class="badge" style="background:rgba(59,130,246,0.15); color:#93c5fd;">${r.category}</span></td>
+                                            <td><span style="font-size:0.75rem; color:${isCustom ? '#34d399' : '#94a3b8'};">${isCustom ? '🧠 Appresa' : '⚙️ Predefinita'}</span></td>
+                                            <td style="text-align: right;">
+                                                ${isCustom ? `
+                                                    <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.72rem; color: #f87171; border-color: rgba(239,68,68,0.3);" onclick="app.scanProcessor.deleteCustomSmartRule('${r.id}')" title="Elimina regola">
+                                                        🗑️
+                                                    </button>
+                                                ` : `<span style="font-size:0.75rem; color:#64748b;">Sistema</span>`}
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        },
+
+        renderSmartRulesModalContent() {
+            const modalBody = document.querySelector('#generic-modal .modal-body');
+            if (modalBody) {
+                modalBody.innerHTML = this.renderSmartRulesModalHtml();
+            }
+        },
+
+        handleCreateRuleFromModal() {
+            const kwInput = document.getElementById('new-rule-kw');
+            const scopeInput = document.getElementById('new-rule-scope');
+            const catInput = document.getElementById('new-rule-cat');
+            if (!kwInput || !scopeInput || !catInput) return;
+
+            const kw = kwInput.value.trim().toLowerCase();
+            const scope = scopeInput.value;
+            const cat = catInput.value.trim().toLowerCase();
+
+            if (!kw || !cat) {
+                if (window.app) window.app.toast('Inserisci parola chiave e cartella di destinazione!', 'warning');
+                return;
+            }
+
+            this.addCustomSmartRule({
+                keyword: kw,
+                scope: scope,
+                docType: 'altro',
+                category: cat,
+                isRoot: false,
+                label: cat
+            });
+
+            if (window.app) window.app.toast(`Regola per "${kw}" salvata con successo!`, 'success');
+            this.renderSmartRulesModalContent();
+        },
+
         /**
-         * Aggiunge file non riconosciuti alla coda di smistamento manuale
+         * Aggiunge file non riconosciuti alla coda di smistamento manuale applicando Smart Rules e auto-match socio
          */
         processManualCandidates(candidateFiles) {
             const todayPlusOneYear = new Date();
@@ -710,6 +977,39 @@
             const defaultScadenza = todayPlusOneYear.toISOString().split('T')[0];
 
             for (const c of candidateFiles) {
+                const detectedSocio = this.detectSocioFromFileName(c.file.name);
+                const matchedRule = this.detectRuleFromFileName(c.file.name);
+
+                let scope = 'socio';
+                let docType = 'altro';
+                let category = 'documenti';
+                let isRoot = false;
+                let appliedRuleInfo = null;
+
+                if (matchedRule) {
+                    scope = matchedRule.scope;
+                    docType = matchedRule.docType;
+                    category = matchedRule.category;
+                    isRoot = !!matchedRule.isRoot;
+                    appliedRuleInfo = matchedRule;
+                } else if (detectedSocio) {
+                    scope = 'socio';
+                    docType = 'liberatoria';
+                    category = 'liberatorie';
+                }
+
+                // Estrai una parola chiave suggerita per la regola
+                let suggestedKeyword = '';
+                const fnTokens = c.file.name.replace(/[^a-zA-Z0-9àèéìòù]/g, ' ').split(/\s+/).filter(t => t.length >= 4);
+                if (matchedRule) {
+                    suggestedKeyword = matchedRule.keyword;
+                } else if (fnTokens.length > 0) {
+                    suggestedKeyword = fnTokens[0].toLowerCase();
+                }
+
+                // Titolo descrittivo per documenti generali
+                let generalTitle = c.file.name.replace(/\.[^/.]+$/, "").replace(/_/g, ' ').trim();
+
                 const item = {
                     id: 'man_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                     file: c.file,
@@ -718,9 +1018,21 @@
                     isPdf: c.isPdf,
                     thumbnail: c.thumbnail,
                     blob: new Blob([c.arrayBuffer], { type: c.file.type || (c.isPdf ? 'application/pdf' : 'image/jpeg') }),
-                    selectedSocioId: null,
-                    docType: 'certificato', // Valore predefinito intelligente
+                    
+                    scope: scope, // 'socio' o 'asd'
+                    selectedSocioId: detectedSocio ? detectedSocio.id : null,
+                    autoDetectedSocio: !!detectedSocio,
+                    generalTitle: generalTitle,
+
+                    docType: docType, // 'liberatoria', 'certificato', 'bonifico', 'bolletta', 'fattura', 'scontrino', 'altro'
+                    category: category,
+                    customCategoryName: '',
+                    isRoot: isRoot,
                     scadenzaCertificato: defaultScadenza,
+                    
+                    rememberRule: false,
+                    ruleKeyword: suggestedKeyword,
+                    appliedRule: appliedRuleInfo,
                     note: ''
                 };
                 this.state.manualQueue.push(item);
@@ -728,7 +1040,7 @@
         },
 
         // =========================================================================
-        // SEZIONE 5: SMISTAMENTO MANUALE CERTIFICATI MEDICI & BONIFICI
+        // SEZIONE 5.1: METODI SMISTAMENTO MANUALE & MODIFICHE INTERFACCIA
         // =========================================================================
 
         selectManualSocio(itemId, socioId) {
@@ -753,16 +1065,74 @@
             this.renderResults();
         },
 
+        changeManualScope(itemId, newScope) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (!item) return;
+            item.scope = newScope;
+            if (newScope === 'asd') {
+                item.docType = 'bolletta';
+                item.category = 'bollette utenze';
+            } else {
+                item.docType = 'liberatoria';
+                item.category = 'liberatorie';
+            }
+            this.renderResults();
+        },
+
         changeManualDocType(itemId, newType) {
             const item = this.state.manualQueue.find(x => x.id === itemId);
             if (!item) return;
             item.docType = newType;
+            if (newType === 'liberatoria') {
+                item.category = 'liberatorie';
+            } else if (newType === 'certificato') {
+                item.category = 'certificati medici';
+            } else if (newType === 'bonifico') {
+                item.category = 'bonifici';
+            } else if (newType === 'altro') {
+                item.category = 'documenti';
+            }
             this.renderResults();
+        },
+
+        changeManualCategory(itemId, newCat) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (!item) return;
+            item.category = newCat;
+            this.renderResults();
+        },
+
+        changeManualCustomCat(itemId, val) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (item) item.customCategoryName = val;
+        },
+
+        changeManualIsRoot(itemId, val) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (item) item.isRoot = val;
+        },
+
+        changeManualGeneralTitle(itemId, val) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (item) item.generalTitle = val;
         },
 
         changeManualScadenza(itemId, val) {
             const item = this.state.manualQueue.find(x => x.id === itemId);
             if (item) item.scadenzaCertificato = val;
+        },
+
+        toggleManualRememberRule(itemId, val) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (item) {
+                item.rememberRule = val;
+                this.renderResults();
+            }
+        },
+
+        changeManualRuleKeyword(itemId, val) {
+            const item = this.state.manualQueue.find(x => x.id === itemId);
+            if (item) item.ruleKeyword = val;
         },
 
         removeManualItem(itemId) {
@@ -777,59 +1147,120 @@
             const item = this.state.manualQueue.find(x => x.id === itemId);
             if (!item) return;
 
-            if (!item.selectedSocioId) {
-                if (window.app) window.app.toast('Seleziona prima il socio a cui associare il documento!', 'warning');
-                return;
-            }
-
-            const socio = (window.app.state.soci || []).find(s => s.id == item.selectedSocioId);
-            if (!socio) {
-                if (window.app) window.app.toast('Socio selezionato non trovato nel database.', 'danger');
-                return;
-            }
-
-            const safeName = `${socio.cognome}_${socio.nome}`.replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+            const isSocio = item.scope === 'socio';
             const currentYearStr = window.app && typeof window.app.getSportsYear === 'function' ? window.app.getSportsYear() : new Date().getFullYear();
             const ext = item.fileName.split('.').pop() || (item.isPdf ? 'pdf' : 'jpg');
 
-            let category = 'documenti';
+            let socio = null;
+            let safeName = 'ASD';
+            if (isSocio) {
+                if (!item.selectedSocioId) {
+                    if (window.app) window.app.toast('Seleziona prima il socio a cui associare il documento!', 'warning');
+                    return;
+                }
+                socio = (window.app.state.soci || []).find(s => s.id == item.selectedSocioId);
+                if (!socio) {
+                    if (window.app) window.app.toast('Socio selezionato non trovato nel database.', 'danger');
+                    return;
+                }
+                safeName = `${socio.cognome}_${socio.nome}`.replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+            }
+
+            let category = item.category || 'documenti';
+            if (category === 'personalizzata') {
+                category = (item.customCategoryName || '').trim() || 'altri_documenti';
+            }
+            const isRoot = !!item.isRoot;
+
             let targetFileName = '';
             let typeLabel = '';
 
-            if (item.docType === 'certificato') {
-                if (!item.scadenzaCertificato) {
-                    if (window.app) window.app.toast('Inserisci la data di scadenza del certificato medico!', 'warning');
-                    return;
+            if (isSocio) {
+                if (item.docType === 'liberatoria') {
+                    category = 'liberatorie';
+                    typeLabel = 'Liberatoria Firmata';
+                    targetFileName = `Liberatoria_Firmata_${safeName}_${currentYearStr}.${ext}`;
+
+                    // Aggiorna anagrafica socio
+                    socio.liberatoria_consegnata = true;
+                    socio.liberatoria_file = targetFileName;
+                    socio.liberatoria_data_acquisizione = new Date().toISOString();
+                    socio.updated_at = new Date().toISOString();
+
+                    this.addLog(`📄 Registrata liberatoria firmata per ${socio.cognome} ${socio.nome}`, 'success');
+                } else if (item.docType === 'certificato') {
+                    if (!item.scadenzaCertificato) {
+                        if (window.app) window.app.toast('Inserisci la data di scadenza del certificato medico!', 'warning');
+                        return;
+                    }
+                    category = 'certificati medici';
+                    typeLabel = 'Certificato Medico';
+                    targetFileName = `Certificato_Medico_${safeName}_scad_${item.scadenzaCertificato}.${ext}`;
+
+                    socio.certificato_scadenza = item.scadenzaCertificato;
+                    socio.certificato_file = targetFileName;
+                    socio.certificato_aggiornato_il = new Date().toISOString();
+                    socio.updated_at = new Date().toISOString();
+
+                    this.addLog(`🩺 Aggiornato certificato medico socio ${socio.cognome} ${socio.nome}: nuova scadenza ${item.scadenzaCertificato}`, 'success');
+                } else if (item.docType === 'bonifico') {
+                    category = 'bonifici';
+                    typeLabel = 'Ricevuta / Bonifico Esterno';
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    targetFileName = `Bonifico_${safeName}_${todayStr}.${ext}`;
+                    this.addLog(`💳 Archiviata contabile/bonifico per ${socio.cognome} ${socio.nome}`, 'info');
+                } else {
+                    typeLabel = 'Altro Documento Socio';
+                    targetFileName = `Doc_${safeName}_${item.fileName}`;
                 }
-                category = 'certificati medici';
-                typeLabel = 'Certificato Medico';
-                targetFileName = `Certificato_Medico_${safeName}_scad_${item.scadenzaCertificato}.${ext}`;
-
-                // AGGIORNA ANAGRAFICA SOCIO: data di scadenza certificato e file
-                socio.certificato_scadenza = item.scadenzaCertificato;
-                socio.certificato_file = targetFileName;
-                socio.certificato_aggiornato_il = new Date().toISOString();
-                socio.updated_at = new Date().toISOString();
-
-                this.addLog(`🩺 Aggiornato certificato medico socio ${socio.cognome} ${socio.nome}: nuova scadenza ${item.scadenzaCertificato}`, 'success');
-            } else if (item.docType === 'bonifico') {
-                category = 'bonifici';
-                typeLabel = 'Ricevuta / Bonifico Esterno';
-                const todayStr = new Date().toISOString().split('T')[0];
-                targetFileName = `Bonifico_${safeName}_${todayStr}.${ext}`;
-                this.addLog(`💳 Archiviata contabile/bonifico per ${socio.cognome} ${socio.nome}`, 'info');
             } else {
-                category = 'documenti';
-                typeLabel = 'Altro Documento';
-                targetFileName = `Doc_${safeName}_${item.fileName}`;
+                // Ambito GENERALE ASD / SPESE
+                const cleanTitle = (item.generalTitle || 'Doc_ASD').replace(/[\/\s]+/g, '_').replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ_\-]/g, '');
+                const todayStr = new Date().toISOString().split('T')[0];
+
+                if (item.docType === 'bolletta') {
+                    typeLabel = 'Bolletta Utenze';
+                    targetFileName = `Bolletta_${cleanTitle}_${todayStr}.${ext}`;
+                } else if (item.docType === 'fattura') {
+                    typeLabel = 'Fattura Fornitore';
+                    targetFileName = `Fattura_${cleanTitle}_${todayStr}.${ext}`;
+                } else if (item.docType === 'scontrino') {
+                    typeLabel = 'Scontrino / Spesa Cassa';
+                    targetFileName = `Scontrino_${cleanTitle}_${todayStr}.${ext}`;
+                } else if (item.docType === 'contratto') {
+                    typeLabel = 'Contratto / Accordo';
+                    targetFileName = `Contratto_${cleanTitle}.${ext}`;
+                } else {
+                    typeLabel = 'Documento Generale ASD';
+                    targetFileName = `ASD_${cleanTitle}.${ext}`;
+                }
+                this.addLog(`🏛️ Archiviato documento societario: ${typeLabel} (${targetFileName}) in "${category}"`, 'info');
+            }
+
+            // Memorizza regola se l'utente ha spuntato "Memorizza questa regola"
+            if (item.rememberRule && item.ruleKeyword && item.ruleKeyword.trim()) {
+                this.addCustomSmartRule({
+                    keyword: item.ruleKeyword.trim(),
+                    scope: item.scope,
+                    docType: item.docType,
+                    category: category,
+                    isRoot: isRoot,
+                    label: typeLabel
+                });
+                this.addLog(`🧠 Nuova regola memorizzata: "${item.ruleKeyword.trim()}" ➔ Cartella "${category}"`, 'success');
             }
 
             // Salva il file nel File System Access API
             if (window.app && typeof window.app.saveDocumentFS === 'function') {
-                await window.app.saveDocumentFS(targetFileName, item.blob, category, currentYearStr, true);
+                await window.app.saveDocumentFS(targetFileName, item.blob, category, currentYearStr, true, isRoot);
             }
 
-            // Salva nel database IndexedDB per aggiornare anche gli indicatori Dashboard!
+            // Se è una liberatoria firmata, rimuove automaticamente la bozza vuota precompilata del socio
+            if (isSocio && item.docType === 'liberatoria' && socio) {
+                await this.cleanObsoleteUnsignedLiberatorie(socio, currentYearStr);
+            }
+
+            // Salva nel database IndexedDB per aggiornare anche gli indicatori Dashboard e stato soci!
             if (window.app && typeof window.app.saveAll === 'function') {
                 window.app.saveAll();
             }
@@ -838,14 +1269,14 @@
             this.state.manualQueue = this.state.manualQueue.filter(x => x.id !== itemId);
 
             // Aggiungi ai documenti archiviati con successo
-            const savedPath = `anno ${currentYearStr}/${category}/${targetFileName}`;
+            const savedPath = isRoot ? `${category}/${targetFileName}` : `anno ${currentYearStr}/${category}/${targetFileName}`;
             const archivedRecord = {
                 id: 'arc_' + Date.now(),
-                title: `${typeLabel} — ${socio.cognome} ${socio.nome}`,
+                title: `${typeLabel} — ${isSocio && socio ? (socio.cognome + ' ' + socio.nome) : (item.generalTitle || 'ASD')}`,
                 type: typeLabel,
                 tipoDoc: item.docType.toUpperCase(),
-                socioName: `${socio.cognome} ${socio.nome}`,
-                socioId: socio.id,
+                socioName: isSocio && socio ? `${socio.cognome} ${socio.nome}` : 'Generale ASD',
+                socioId: isSocio && socio ? socio.id : null,
                 fileName: targetFileName,
                 path: savedPath,
                 time: new Date().toLocaleTimeString('it-IT'),
@@ -857,7 +1288,10 @@
             this.state.archived.unshift(archivedRecord);
 
             if (window.app) {
-                window.app.toast(`Documento archiviato con successo per ${socio.cognome} ${socio.nome}!`, 'success');
+                const msg = isSocio && item.docType === 'liberatoria'
+                    ? `Liberatoria firmata archiviata per ${socio.cognome} ${socio.nome}! Il modulo vuoto precedente è stato rimosso.`
+                    : `Documento archiviato con successo in "${category}"!`;
+                window.app.toast(msg, 'success');
             }
 
             this.renderResults();
@@ -981,6 +1415,9 @@
                             </p>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn btn-outline" onclick="app.scanProcessor.openSmartRulesModal()" style="display:inline-flex; align-items:center; gap:6px;" title="Visualizza e gestisci le regole di smistamento intelligenti">
+                                <span>⚙️ Regole Intelligenti</span>
+                            </button>
                             <button class="btn btn-outline" onclick="app.scanProcessor.checkFolderStatus()" style="display:inline-flex; align-items:center; gap:6px;" title="Verifica o collega la cartella di archiviazione">
                                 <span id="scan-folder-indicator">📁 Cartella Documenti</span>
                             </button>
@@ -1321,9 +1758,10 @@
         renderManualItemCard(item) {
             const sociList = (window.app && window.app.state && Array.isArray(window.app.state.soci)) ? window.app.state.soci : [];
             const selectedSocio = item.selectedSocioId ? sociList.find(s => s.id == item.selectedSocioId) : null;
+            const isSocio = item.scope === 'socio';
 
             return `
-                <div class="glass-card" style="padding: 1.2rem; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; display: grid; grid-template-columns: 100px 1fr; gap: 1.2rem; align-items: start;" id="card-${item.id}">
+                <div class="glass-card" style="padding: 1.25rem; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; display: grid; grid-template-columns: 110px 1fr; gap: 1.2rem; align-items: start;" id="card-${item.id}">
                     
                     <!-- Colonna Sinistra: Miniatura con zoom al click -->
                     <div style="text-align: center;">
@@ -1342,59 +1780,147 @@
                         </div>
                     </div>
 
-                    <!-- Colonna Destra: Modulo di Smistamento e Associazione -->
+                    <!-- Colonna Destra: Modulo di Smistamento Avanzato -->
                     <div>
+                        <!-- SELETTORE AMBITO: Socio vs Generale ASD -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: inline-flex; background: rgba(15, 23, 42, 0.8); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                                <button type="button" class="btn ${isSocio ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.78rem; padding: 4px 12px; border: none; border-radius: 6px;" onclick="app.scanProcessor.changeManualScope('${item.id}', 'socio')">
+                                    👤 Documento Socio
+                                </button>
+                                <button type="button" class="btn ${!isSocio ? 'btn-primary' : 'btn-outline'}" style="font-size: 0.78rem; padding: 4px 12px; border: none; border-radius: 6px;" onclick="app.scanProcessor.changeManualScope('${item.id}', 'asd')">
+                                    🏛️ Generale ASD / Spese
+                                </button>
+                            </div>
+
+                            ${item.appliedRule ? `
+                                <div style="font-size: 0.74rem; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                                    <span>✨ Regola applicata:</span>
+                                    <strong style="color: #6ee7b7;">"${item.appliedRule.keyword}"</strong> ➔ <span>${item.category}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                             
-                            <!-- Campo 1: Autocomplete Ricerca Socio -->
-                            <div class="form-group" style="margin: 0; position: relative;">
-                                <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #cbd5e1;">
-                                    👤 Associa a Socio:
-                                </label>
-                                
-                                ${selectedSocio ? `
-                                    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; border-radius: 6px; padding: 6px 10px;">
-                                        <div style="font-size: 0.85rem; font-weight: 600; color: #93c5fd;">
-                                            ${selectedSocio.cognome} ${selectedSocio.nome} 
-                                            <span style="font-size: 0.75rem; font-weight: normal; color: #cbd5e1;">(CF: ${selectedSocio.cf || '-'})</span>
+                            ${isSocio ? `
+                                <!-- CAMPO SOCIO -->
+                                <div class="form-group" style="margin: 0; position: relative;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin: 0;">
+                                            👤 Associa a Socio:
+                                        </label>
+                                        ${item.autoDetectedSocio && selectedSocio ? `
+                                            <span style="font-size: 0.68rem; color: #34d399; background: rgba(16, 185, 129, 0.15); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                                ✨ Rilevato dal nome file
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    
+                                    ${selectedSocio ? `
+                                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; border-radius: 6px; padding: 6px 10px;">
+                                            <div style="font-size: 0.85rem; font-weight: 600; color: #93c5fd;">
+                                                ${selectedSocio.cognome} ${selectedSocio.nome} 
+                                                <span style="font-size: 0.75rem; font-weight: normal; color: #cbd5e1;">(CF: ${selectedSocio.cf || '-'})</span>
+                                            </div>
+                                            <button type="button" onclick="app.scanProcessor.selectManualSocio('${item.id}', null)" style="background: none; border: none; color: #f87171; cursor: pointer; font-size: 1rem; padding: 0 4px;" title="Cambia socio">&times;</button>
                                         </div>
-                                        <button type="button" onclick="app.scanProcessor.selectManualSocio('${item.id}', null)" style="background: none; border: none; color: #f87171; cursor: pointer; font-size: 1rem; padding: 0 4px;" title="Cambia socio">&times;</button>
+                                    ` : `
+                                        <input type="text" class="form-control" placeholder="Cerca cognome, nome, CF..." oninput="app.scanProcessor.handleSocioSearch(this, '${item.id}')" style="font-size: 0.85rem; padding: 7px 10px;">
+                                        <div id="dropdown-soci-${item.id}" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 180px; overflow-y: auto; background: #1e293b; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.5);"></div>
+                                    `}
+                                </div>
+
+                                <!-- TIPOLOGIA DOCUMENTO SOCIO -->
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #cbd5e1;">
+                                        📋 Tipologia Documento:
+                                    </label>
+                                    <select class="form-control" style="font-size: 0.85rem; padding: 7px 10px;" onchange="app.scanProcessor.changeManualDocType('${item.id}', this.value)">
+                                        <option value="liberatoria" ${item.docType === 'liberatoria' ? 'selected' : ''}>📄 Liberatoria / Manleva Firmata</option>
+                                        <option value="certificato" ${item.docType === 'certificato' ? 'selected' : ''}>🩺 Certificato Medico</option>
+                                        <option value="bonifico" ${item.docType === 'bonifico' ? 'selected' : ''}>💳 Ricevuta / Bonifico Esterno</option>
+                                        <option value="altro" ${item.docType === 'altro' ? 'selected' : ''}>📁 Altro Documento Socio</option>
+                                    </select>
+                                </div>
+
+                                <!-- CAMPO CONDIZIONALE SCADENZA SE CERTIFICATO -->
+                                ${item.docType === 'certificato' ? `
+                                    <div class="form-group" style="margin: 0;">
+                                        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #34d399;">
+                                            📅 Scadenza Certificato:
+                                        </label>
+                                        <input type="date" class="form-control" value="${item.scadenzaCertificato || ''}" onchange="app.scanProcessor.changeManualScadenza('${item.id}', this.value)" style="font-size: 0.85rem; padding: 6px 10px; border-color: rgba(16, 185, 129, 0.4);">
+                                        <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-top: 2px;">
+                                            Aggiorna scadenza e KPI Dashboard.
+                                        </span>
+                                    </div>
+                                ` : (item.docType === 'liberatoria' ? `
+                                    <div style="font-size: 0.78rem; color: #93c5fd; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; padding: 8px; align-self: center;">
+                                        ✅ <strong>Sostituzione Automatica:</strong> Il modulo vuoto precedente verrà rimosso e il socio risulterà con <em>Liberatoria Consegnata ✔</em>.
                                     </div>
                                 ` : `
-                                    <input type="text" class="form-control" placeholder="Cerca cognome, nome, CF..." oninput="app.scanProcessor.handleSocioSearch(this, '${item.id}')" style="font-size: 0.85rem; padding: 7px 10px;">
-                                    <div id="dropdown-soci-${item.id}" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 180px; overflow-y: auto; background: #1e293b; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.5);"></div>
-                                `}
-                            </div>
-
-                            <!-- Campo 2: Selezione Tipo Documento -->
-                            <div class="form-group" style="margin: 0;">
-                                <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #cbd5e1;">
-                                    📋 Tipologia Documento:
-                                </label>
-                                <select class="form-control" style="font-size: 0.85rem; padding: 7px 10px;" onchange="app.scanProcessor.changeManualDocType('${item.id}', this.value)">
-                                    <option value="certificato" ${item.docType === 'certificato' ? 'selected' : ''}>🩺 Certificato Medico</option>
-                                    <option value="bonifico" ${item.docType === 'bonifico' ? 'selected' : ''}>💳 Ricevuta / Bonifico Esterno</option>
-                                    <option value="altro" ${item.docType === 'altro' ? 'selected' : ''}>📁 Altro Documento</option>
-                                </select>
-                            </div>
-
-                            <!-- Campo 3: Condizionale per Certificato Medico (Data Scadenza) -->
-                            ${item.docType === 'certificato' ? `
-                                <div class="form-group" style="margin: 0;">
-                                    <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #34d399;">
-                                        📅 Nuova Scadenza Certificato:
-                                    </label>
-                                    <input type="date" class="form-control" value="${item.scadenzaCertificato || ''}" onchange="app.scanProcessor.changeManualScadenza('${item.id}', this.value)" style="font-size: 0.85rem; padding: 6px 10px; border-color: rgba(16, 185, 129, 0.4);">
-                                    <span style="font-size: 0.7rem; color: #94a3b8; display: block; margin-top: 2px;">
-                                        Aggiorna automaticamente anagrafica socio e KPI Dashboard.
-                                    </span>
-                                </div>
+                                    <div style="font-size: 0.78rem; color: #94a3b8; align-self: center; padding-top: 10px;">
+                                        Verrà salvato nella cartella documenti del socio.
+                                    </div>
+                                `)}
                             ` : `
-                                <div style="display: flex; align-items: center; font-size: 0.8rem; color: #94a3b8; padding-top: 1.5rem;">
-                                    Verrà archiviato nella cartella dedicata del socio.
+                                <!-- CAMPI GENERALE ASD / SPESE -->
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #cbd5e1;">
+                                        🏷️ Intestazione / Fornitore / Oggetto:
+                                    </label>
+                                    <input type="text" class="form-control" value="${(item.generalTitle || '').replace(/"/g, '&quot;')}" onchange="app.scanProcessor.changeManualGeneralTitle('${item.id}', this.value)" placeholder="es. Enel Energia, Decathlon, Affitto" style="font-size: 0.85rem; padding: 7px 10px;">
                                 </div>
+
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #cbd5e1;">
+                                        📁 Cartella / Tipologia Spesa:
+                                    </label>
+                                    <select class="form-control" style="font-size: 0.85rem; padding: 7px 10px;" onchange="app.scanProcessor.changeManualCategory('${item.id}', this.value)">
+                                        <option value="bollette utenze" ${item.category === 'bollette utenze' ? 'selected' : ''}>💡 Bollette Utenze (Luce/Gas/Acqua)</option>
+                                        <option value="fatture acquisti" ${item.category === 'fatture acquisti' ? 'selected' : ''}>🧾 Fatture Acquisti / Fornitori</option>
+                                        <option value="scontrini e rimborsi" ${item.category === 'scontrini e rimborsi' ? 'selected' : ''}>🎟️ Scontrini / Spese Cassa</option>
+                                        <option value="contratti e affitti" ${item.category === 'contratti e affitti' ? 'selected' : ''}>📑 Contratti / Locazioni</option>
+                                        <option value="verbali direttivo" ${item.category === 'verbali direttivo' ? 'selected' : ''}>🏛️ Verbali Direttivo</option>
+                                        <option value="personalizzata" ${item.category === 'personalizzata' ? 'selected' : ''}>➕ Nuova Cartella Personalizzata...</option>
+                                    </select>
+                                </div>
+
+                                ${item.category === 'personalizzata' ? `
+                                    <div class="form-group" style="margin: 0;">
+                                        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #60a5fa;">
+                                            ✏️ Nome Nuova Cartella:
+                                        </label>
+                                        <input type="text" class="form-control" value="${(item.customCategoryName || '').replace(/"/g, '&quot;')}" onchange="app.scanProcessor.changeManualCustomCat('${item.id}', this.value)" placeholder="es. manutenzioni impianti" style="font-size: 0.85rem; padding: 6px 10px; border-color: #60a5fa;">
+                                        <div style="margin-top: 4px;">
+                                            <label style="font-size: 0.74rem; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                                <input type="checkbox" ${item.isRoot ? 'checked' : ''} onchange="app.scanProcessor.changeManualIsRoot('${item.id}', this.checked)">
+                                                Cartella radice permanente (fuori dall'anno)
+                                            </label>
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div style="font-size: 0.78rem; color: #94a3b8; align-self: center; padding-top: 10px;">
+                                        Verrà salvato in <code>anno ${window.app ? window.app.getSportsYear() : ''}/${item.category}</code>.
+                                    </div>
+                                `}
                             `}
 
+                        </div>
+
+                        <!-- Riquadro Apprendimento Regola (Smart Rule) -->
+                        <div style="background: rgba(15, 23, 42, 0.4); border: 1px dashed rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 12px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <label style="font-size: 0.78rem; color: #e2e8f0; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                                <input type="checkbox" ${item.rememberRule ? 'checked' : ''} onchange="app.scanProcessor.toggleManualRememberRule('${item.id}', this.checked)">
+                                <span>🧠 <strong>Memorizza questa regola</strong> per i prossimi file simili</span>
+                            </label>
+                            ${item.rememberRule ? `
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 0.75rem; color: #94a3b8;">Parola chiave:</span>
+                                    <input type="text" class="form-control" value="${(item.ruleKeyword || '').replace(/"/g, '&quot;')}" onchange="app.scanProcessor.changeManualRuleKeyword('${item.id}', this.value)" style="font-size: 0.78rem; padding: 3px 8px; width: 140px; border-color: #3b82f6;">
+                                </div>
+                            ` : ''}
                         </div>
 
                         <!-- Riga Pulsanti Azione -->
@@ -1403,7 +1929,7 @@
                                 🗑️ Rimuovi
                             </button>
                             <button class="btn btn-primary" style="font-size: 0.85rem; padding: 6px 16px; font-weight: 600;" onclick="app.scanProcessor.confirmManualSorting('${item.id}')">
-                                💾 Archivia e Associa a Socio
+                                💾 Archivia Documento
                             </button>
                         </div>
 
