@@ -33,6 +33,8 @@
 
     <style>
         :root {
+            --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
             color-scheme: dark;
             --bg-deep: #0f172a;
             --bg-card: rgba(30, 41, 59, 0.8);
@@ -75,6 +77,62 @@
             background-image:
                 radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+        }
+
+        /* --- PRIVACY & GDPR: OSCURAMENTO TOTALE SFONDO CON GESTIONALE BLOCCATO --- */
+        body.app-is-locked > *:not(#app-lock-overlay) {
+            filter: blur(35px) grayscale(90%) brightness(25%) !important;
+            opacity: 0.03 !important;
+            pointer-events: none !important;
+            user-select: none !important;
+            transition: filter 0.25s ease, opacity 0.25s ease;
+        }
+
+        #app-lock-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #090d16 !important;
+            background: radial-gradient(circle at 50% 35%, rgba(26, 35, 54, 0.98) 0%, rgba(9, 13, 22, 0.995) 100%) !important;
+            backdrop-filter: blur(35px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(35px) saturate(180%) !important;
+            z-index: 99999999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            color: #f8fafc !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        .app-lock-card {
+            background: #1e293b !important;
+            background: linear-gradient(145deg, #1e293b 0%, #111827 100%) !important;
+            padding: 38px 34px !important;
+            border-radius: 20px !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            text-align: center !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+            max-width: 420px !important;
+            width: 90% !important;
+            animation: appLockScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+
+        @keyframes appLockScaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.92);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         /* Notifications */
@@ -5005,6 +5063,9 @@
             },
 
             showAppLockScreen(savedPin, isDueToInactivity = false) {
+                // Aggiunge classe di oscuramento totale sfondo a tutto il body (privacy GDPR)
+                document.body.classList.add('app-is-locked');
+
                 // Rimuove eventuali lock esistenti
                 const existing = document.getElementById('app-lock-overlay');
                 if (existing) existing.remove();
@@ -5016,17 +5077,16 @@
 
                 const lockOverlay = document.createElement('div');
                 lockOverlay.id = 'app-lock-overlay';
-                lockOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-color); z-index:999999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:"Helvetica Neue", sans-serif;';
                 lockOverlay.innerHTML = `
-                    <div style="background:var(--sidebar-bg); padding:30px; border-radius:15px; border:1px solid rgba(255,255,255,0.1); text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); max-width: 400px; width: 90%;">
-                        <div style="font-size:3rem; margin-bottom:15px;">🔒</div>
-                        <h2 style="margin-bottom:10px;">Gestionale Bloccato</h2>
-                        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">${subtitle}</p>
-                        <form id="app-lock-form" style="display:flex; flex-direction:column; gap:15px;">
-                            <input type="password" id="app-lock-input" class="form-control" placeholder="Inserisci Password..." style="text-align:center; font-size:1.2rem; padding:10px;" required autofocus data-guide="Inserisci la password o PIN di sicurezza. Effetto: Verifica le credenziali per sbloccare l'applicazione.">
-                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:1.1rem; width:100%; background:#ca8a04; border:none;" data-guide="Sblocca il gestionale. Effetto: Rimuove la schermata di blocco se la password è corretta.">Sblocca</button>
+                    <div class="app-lock-card">
+                        <div style="font-size:3.2rem; margin-bottom:15px; filter: drop-shadow(0 4px 12px rgba(202, 138, 4, 0.45));">🔒</div>
+                        <h2 style="margin-bottom:8px; font-weight:700; color:#f8fafc; font-size:1.5rem; letter-spacing:-0.5px;">Gestionale Bloccato</h2>
+                        <p style="font-size:0.92rem; color:var(--text-muted); margin-bottom:22px; line-height:1.4;">${subtitle}</p>
+                        <form id="app-lock-form" style="display:flex; flex-direction:column; gap:16px;">
+                            <input type="password" id="app-lock-input" class="form-control" placeholder="Inserisci Password..." style="text-align:center; font-size:1.25rem; letter-spacing:2px; padding:12px; border-radius:10px; background:#0f172a; border:1px solid rgba(255,255,255,0.2); color:#f8fafc;" required autofocus data-guide="Inserisci la password o PIN di sicurezza. Effetto: Verifica le credenziali per sbloccare l'applicazione.">
+                            <button type="submit" class="btn btn-primary" style="padding:12px; font-size:1.05rem; font-weight:600; width:100%; border-radius:10px; background:#ca8a04; border:none; box-shadow: 0 4px 14px rgba(202, 138, 4, 0.4); cursor:pointer;" data-guide="Sblocca il gestionale. Effetto: Rimuove la schermata di blocco se la password è corretta.">Sblocca</button>
                         </form>
-                        <div id="app-lock-error" style="color:var(--danger); margin-top:15px; font-weight:bold; display:none;">Password Errata!</div>
+                        <div id="app-lock-error" style="color:var(--danger); margin-top:16px; font-weight:600; font-size:0.95rem; display:none;">Password Errata! Riprova.</div>
                     </div>
                 `;
                 document.body.appendChild(lockOverlay);
@@ -5041,6 +5101,7 @@
                     const input = document.getElementById('app-lock-input').value;
                     if (input === savedPin) {
                         lockOverlay.remove();
+                        document.body.classList.remove('app-is-locked');
                         this._appLockLastActivity = Date.now();
                         if (!this._isInitialized) {
                             this._isInitialized = true;
@@ -5211,6 +5272,9 @@
                     localStorage.removeItem('asd_app_lock');
                     localStorage.removeItem('asd_app_lock_timeout');
                     this.stopAppLockTimer();
+                    const existing = document.getElementById('app-lock-overlay');
+                    if (existing) existing.remove();
+                    document.body.classList.remove('app-is-locked');
                     this.toast("Blocco App rimosso.", "success");
                     this.renderDatabase();
                 }
