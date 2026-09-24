@@ -28,6 +28,7 @@
     <script src="./lib/pdf-lib.min.js"></script>
     <script src="./lib/pdf.min.js"></script>
     <script src="./lib/jsqr.min.js"></script>
+    <script src="./lib/jszip.min.js"></script>
     <script src="./acquisizione_scansioni.js"></script>
 
     <style>
@@ -2765,7 +2766,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.7.1"; // Singolo pulsante esportazione Excel soci a lato del selettore condizione / caption
+        const APP_VERSION = "2.8.0"; // Trasferimento Archivio Completo .ZIP (Database + Scansioni Fisiche) e Guida Online Aggiornata
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -8634,10 +8635,10 @@
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Prima Nota & Cassa. Effetto: Mostra le istruzioni su registrazioni entrate/uscite, riconciliazione e rendiconto." onclick="app.showGuideSection('primanota')">4. Prima Nota & Chiusura Esercizio</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Istruttori & Compensi. Effetto: Mostra le istruzioni su compensi sportivi, filtri per stagione, ricerca collaboratori e flusso bozza/emessa." onclick="app.showGuideSection('istruttori')">5. Istruttori & Compensi Sportivi</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Corsi & Calendario. Effetto: Mostra le istruzioni su orari, planning settimanale, sale e presenze." onclick="app.showGuideSection('corsi')">6. Corsi & Calendario Settimanale</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Segreteria & Note Spesa. Effetto: Mostra le istruzioni su magazzino, note spesa a piè di lista, filtri stagione e liquidazione rimborsi." onclick="app.showGuideSection('segreteria')">7. Segreteria, Magazzino & Note Spesa</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Segreteria & Note Spesa. Effetto: Mostra le istruzioni su magazzino, note spesa a piè di lista, filtri stagione e liquidazione rimborsi." onclick="app.showGuideSection('segreteria')">7. Segreteria, Spese & Scansioni QR</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Governance & Verbali. Effetto: Mostra le istruzioni sulla redazione guidata dei verbali direttivo e assemblea." onclick="app.showGuideSection('verbali')">8. Governance, Verbali & Direttivo</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Impostazioni, Dati ASD & Licenza. Effetto: Mostra come configurare la griglia modulare, organi sociali, licenza fino a 5 postazioni e cartelle." onclick="app.showGuideSection('impostazioni')">9. Dati ASD, Registro RASD & Licenza</button></li>
-                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Backup, Snapshot & Ripopolamento. Effetto: Mostra come gestire snapshot di sicurezza, modello Excel e il wizard di ripopolamento archivio su nuovo server." onclick="app.showGuideSection('backup')">10. Salvataggio Locale, Backup & Ripopolamento</button></li>
+                                    <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Backup, Snapshot & Ripopolamento. Effetto: Mostra come gestire snapshot di sicurezza, modello Excel e il wizard di ripopolamento archivio su nuovo server." onclick="app.showGuideSection('backup')">10. Backup, Trasferimento ZIP & Ripopolamento</button></li>
                                     <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: none; justify-content: flex-start; font-size: 0.85rem;" data-guide="Capitolo Multi-Dispositivo & Menu Cloud. Effetto: Mostra come utilizzare più postazioni, il menu rapido cloud in navbar e la sincronizzazione con Google Drive." onclick="app.showGuideSection('multidevice')">11. Utilizzo Multi-Dispositivo & Menu Cloud</button></li>
                                     ${this.state.debugMode ? `
                                         <li><button class="btn btn-outline" style="width: 100%; text-align: left; border: 1px solid rgba(196, 181, 253, 0.4); background: rgba(139, 92, 246, 0.1); justify-content: flex-start; font-size: 0.85rem; color: #c4b5fd; font-weight: 600;" data-guide="Capitolo Debug & Diagnostica. Effetto: Mostra gli strumenti tecnici per la diagnostica avanzata e il controllo integrità." onclick="app.showGuideSection('debug')">🛠️ 12. Modalità Debug (Attiva)</button></li>
@@ -8689,6 +8690,8 @@
                                     <li><strong>Comunicazioni WhatsApp Ufficiali (Novità):</strong> Icona ufficiale WhatsApp con logo verde per aprire istantaneamente la chat con il socio e inviare promemoria scadenze, quote associative o ricevute con testi formali precompilati.</li>
                                     <li><strong>Taglie & Discipline:</strong> Tracciamento taglie abbigliamento per kit e divise societarie e assegnazione ai corsi della struttura.</li>
                                     <li><strong>Importazione Massiva da Modello Excel Collaudato:</strong> Se possiedi un archivio corposo di soci in un foglio di calcolo, puoi scaricare il <em>Modello Excel ufficiale (.xlsx)</em> da <em>Impostazioni</em> e importare tutti gli iscritti in pochi istanti senza rischi di disallineamento (vedi Capitolo 10 per la guida passo-passo).</li>
+                                    <li><strong>Modulo & Liberatoria con QR Code Univoco (Novità):</strong> Tramite il nuovo pulsante dedicato <code>📝 Lib</code> presente su ogni riga socio e nel menu contestuale, il gestionale genera e stampa all'istante la <em>Liberatoria Minori</em> o la <em>Liberatoria & Manleva Adulti</em> già precompilata con tutti i dati anagrafici e con timbro <strong>QR Code univoco anticontraffazione</strong> in alto a destra per l'acquisizione automatica. Lo stato dell'acquisizione (⏳ In attesa o ✅ Acquisita con data e nome file allegato) è sempre visibile e aggiornabile con un clic.</li>
+                                    <li><strong>Esportazione Excel Dinamica a lato della Condizione (Novità):</strong> Accanto al selettore dello stato socio (in cui leggi la condizione attiva: <em>Soci Anno Sportivo Corrente</em>, <em>Attivi con Quota</em>, <em>Morosi</em>, <em>Archivio</em>, ecc.) è presente un <strong>singolo pulsante compatto di Esportazione Excel</strong>. Cliccandolo, il gestionale esporta esattamente l'elenco filtrato corrispondente alla condizione visualizzata, corredato di intestazioni, date, contatti, stato tesseramento e liberatorie, salvando il file nella cartella dedicata alle esportazioni soci.</li>
                                 </ul>`;
                         break;
                     case 'ricevute':
@@ -8807,6 +8810,16 @@
                                 <h3>⋮ Menu Azioni Compatto Riga:</h3>
                                 <p>Accesso immediato con pulsante primario <code>🖨️ Stampa</code> (genera la distinta analitica PDF del rimborso) e menu a tendina <code>⋮</code> con <em>Modifica Rimborso</em>, <em>Segna come Liquidato / Bozza</em>, <em>Annulla Rimborso</em> ed <em>Elimina Definitivamente (Debug)</em>.</p>
 
+                                <h3>📥 Modulo Acquisizione Documenti & Scansioni con Inghiottitoio Batch (Nuova Funzionalità):</h3>
+                                <p>Accessibile dal menu <em>Segreteria ➔ 📥 Acquisizione Documenti & Scansioni</em>, è il nuovo centro di dematerializzazione documentale 100% offline basato su riconoscimento ottico dei QR Code e fusione multipagina intelligente:</p>
+                                <ul>
+                                    <li><strong>QR Code Univoco Standard:</strong> Tutti i documenti emessi dal gestionale (Ricevute, Liberatorie Minori, Liberatorie Adulti e Verbali) recano in alto a destra un QR Code con standard <code>ASD|TIPO|ID|ANNO|PAGINA|TOT_PAGINE</code>.</li>
+                                    <li><strong>"Inghiottitoio" Batch Drag & Drop:</strong> Trascina decine di file misti (PDF multipagina, scansioni singole JPG, PNG, WEBP) nell'apposita dropzone: il motore analizza e scansiona tutti i fogli a velocità ultra-rapida (decodifica locale in circa 15 ms per pagina).</li>
+                                    <li><strong>Assemblaggio & Fusione Automatica Multipagina:</strong> Se una liberatoria o verbale di 3 pagine viene scansionata come fogli sparsi o separati (anche caricati in ordine disordinato), il gestionale riconosce le pagine corrispondenti e le assembla automaticamente in un unico PDF conforme nell'ordine corretto tramite <code>pdf-lib</code>. In caso di pagine mancanti (es. trovata solo pagina 1 e 3 su 3), il sistema emette un'allerta bloccando l'archiviazione parziale a tutela dell'integrità probatoria.</li>
+                                    <li><strong>Archiviazione Automatica Diretta:</strong> I documenti riconosciuti vengono salvati direttamente nella Cartella Documenti della rispettiva stagione sportiva (es. <em>anno 2026-2027/liberatorie</em> o <em>ricevute</em>) e lo stato del socio o della ricevuta viene marcato istantaneamente come <em>Firmato / Consegnato</em> nel database.</li>
+                                    <li><strong>Coda di Smistamento Rapido per Documenti Esterni:</strong> I documenti privi di QR Code (come <strong>certificati medici</strong> rilasciati dal medico o <strong>distinte di bonifico bancario</strong>) confluiscono nella corsia di smistamento rapido con miniatura ad alta risoluzione (zoomabile a tutto schermo). Con un clic associ il socio (con ricerca autocompletata) e, nel caso dei certificati medici, inserisci la data di scadenza: il gestionale archivia il file nella cartella dedicata e aggiorna istantaneamente la scheda del socio e i badge di idoneità sanitaria.</li>
+                                </ul>
+
                                 <h3>Esportazione Excel & Altre Funzionalità:</h3>
                                 <ul>
                                     <li><strong>📊 Esporta Excel:</strong> Scarica istantaneamente il foglio di calcolo <code>.xlsx</code> contenente l'elenco filtrato delle note spese con importi, richiedenti e date per la revisione contabile.</li>
@@ -8859,6 +8872,16 @@
                                     </li>
                                     <li><strong>Barra di Avanzamento Live & Log Dettagliato:</strong> Una progress bar dinamica con percentuale e contatore in tempo reale (es. <em>48 / 215 file generati</em>) accompagna la scrittura dei documenti sul disco.</li>
                                     <li><strong>Avviso Trasparente Ricevute Cartacee:</strong> Un box informativo giallo/arancione evidenzia quante ricevute storiche erano state emesse da blocchetto cartaceo manuale, ricordando che tali registrazioni contabili non dispongono di PDF originale autogenerato a meno di scansione manuale.</li>
+                                </ul>
+
+                                <h3>📦 Trasferimento Archivio Completo su Nuovo Server / USB / Drive (.ZIP) (Nuova Funzionalità):</h3>
+                                <p>I documenti digitali generati internamente dal software (ricevute, moduli in bianco, compensi, verbali) possono essere rigenerati dal database in qualsiasi momento. Al contrario, <strong>i documenti cartacei acquisiti da esterno (certificati medici con timbro e firma originale, liberatorie firmate a penna, bonifici e giustificativi scansionati) sono artefatti fisici probatori originali</strong> che non possono essere ricreati dal codice.</p>
+                                <p>Per garantire la trasportabilità totale di tutti i dati e di tutte le scansioni quando si cambia computer o server, il gestionale include la procedura unificata di <strong>Trasferimento con File ZIP</strong>:</p>
+                                <ul>
+                                    <li><strong>📦 Esporta Archivio Completo (.ZIP):</strong> Disponibile sia nel riquadro <em>Trasferimento / Nuovo Server</em> sia in <em>Esportazioni Sicure</em> di Impostazioni. Crea un unico archivio compresso <code>.zip</code> contenente l'intero database strutturato (tutti i soci, ricevute, contabilità) e <strong>tutte le cartelle con tutte le scansioni fisiche ed allegati</strong> presenti nella Cartella Documenti attiva. Può essere salvato su una <strong>chiavetta USB</strong>, archiviato su <strong>Google Drive</strong> o conservato come cassaforte digitale.</li>
+                                    <li><strong>📥 Importa Archivio Completo (.ZIP):</strong> Sul nuovo computer o server, basta selezionare il file ZIP precedentemente esportato: il gestionale ripristina istantaneamente l'intero database in memoria e scompatta automaticamente l'intera alberatura di cartelle e file fisici sul disco nella Cartella Documenti collegata, ricreando la corrispondenza esatta di ogni allegato.</li>
+                                    <li><strong>Snapshot Preventivo di Sicurezza:</strong> Prima di applicare l'archivio ZIP, il sistema genera in automatico lo snapshot <code>🛡️ PRE-IMPORT-ZIP</code> per consentire l'annullamento immediato (Undo) in caso di errore.</li>
+                                    <li><strong>Differenza con "Ripopola Documenti Emessi":</strong> La funzione di ripopolamento serve unicamente a rigenerare i PDF dei documenti sintetici dell'applicazione su una cartella vuota. Per trasferire l'archivio completo senza perdere le scansioni esterne originali, la procedura raccomandata è sempre il <strong>Trasferimento con File ZIP</strong>.</li>
                                 </ul>
 
                                 <h3>🛡️ Time-Machine Locale: Gli Snapshot di Sicurezza:</h3>
@@ -18391,6 +18414,319 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             }
         },
 
+        async esportaArchivioCompletoZip() {
+            if (typeof JSZip === 'undefined') {
+                this.toast('Libreria di compressione ZIP non disponibile.', 'warning');
+                return;
+            }
+
+            const dirHandle = await this.getOutputFolder();
+            let hasFolder = false;
+            if (dirHandle) {
+                try {
+                    let perm = await dirHandle.queryPermission({ mode: 'read' });
+                    if (perm !== 'granted') {
+                        perm = await dirHandle.requestPermission({ mode: 'read' });
+                    }
+                    if (perm === 'granted') {
+                        hasFolder = true;
+                    }
+                } catch (e) {
+                    hasFolder = false;
+                }
+            }
+
+            const progressModalHtml = `
+                <div style="text-align:center; padding: 20px 10px;">
+                    <div style="font-size: 2.5rem; margin-bottom: 10px;">📦</div>
+                    <h3 style="margin-top:0; color:var(--primary); font-size:1.2rem;">Creazione Archivio Completo (.ZIP)</h3>
+                    <p id="zip-export-status" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;">Preparazione dei dati del database...</p>
+                    <div style="background: rgba(255,255,255,0.08); border-radius: 9999px; height: 12px; overflow: hidden; margin-bottom: 12px;">
+                        <div id="zip-export-progress-bar" style="background: linear-gradient(90deg, #10b981, #3b82f6); height: 100%; width: 5%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div id="zip-export-detail" style="font-size: 0.8rem; color: #94a3b8; font-family: monospace;">Inizializzazione archivio...</div>
+                </div>
+            `;
+            this.openModal('Esportazione Archivio Totale (.ZIP)', progressModalHtml);
+
+            const updateUI = (status, percent, detail) => {
+                const stEl = document.getElementById('zip-export-status');
+                const pbEl = document.getElementById('zip-export-progress-bar');
+                const dtEl = document.getElementById('zip-export-detail');
+                if (stEl) stEl.textContent = status;
+                if (pbEl) pbEl.style.width = Math.min(100, Math.max(5, percent)) + '%';
+                if (dtEl) dtEl.textContent = detail;
+            };
+
+            try {
+                const zip = new JSZip();
+
+                // 1. Generazione e inclusione del backup JSON del database
+                const todayStr = new Date().toISOString().split('T')[0];
+                const fullBackup = {
+                    _backup_meta: {
+                        tipo: "backup_completo_asd",
+                        versione_app: typeof APP_VERSION !== 'undefined' ? APP_VERSION : "2.8.0",
+                        data_creazione: new Date().toLocaleString('it-IT'),
+                        timestamp: new Date().toISOString(),
+                        conteggi: {
+                            soci: (this.state.soci || []).length,
+                            ricevute: (this.state.ricevute || []).length,
+                            primanota: (this.state.primanota || []).length,
+                            corsi: (this.state.corsi || []).length,
+                            istruttori: (this.state.istruttori || []).length,
+                            rimborsi: (this.state.rimborsi || []).length,
+                            verbali_archive: (this.state.verbali_archive || []).length
+                        }
+                    },
+                    ...this.state,
+                    _localStorageBackup: {
+                        asd_custom_logo: localStorage.getItem('asd_custom_logo') || null,
+                        asd_esercizi_images: localStorage.getItem('asd_esercizi_images') || null,
+                        asd_verbali_archive: localStorage.getItem('asd_verbali_archive') || null
+                    }
+                };
+
+                const dbJsonStr = JSON.stringify(fullBackup, null, 2);
+                zip.file(`backup_database_asd_${todayStr}.json`, dbJsonStr);
+                zip.file('esportazioni json/backup_database_asd.json', dbJsonStr);
+
+                let filesCount = 0;
+                let totalBytes = dbJsonStr.length;
+
+                if (hasFolder) {
+                    updateUI('Scansione cartelle e documenti fisici sul disco...', 15, 'Lettura cartella: ' + dirHandle.name);
+
+                    const scanDirectory = async (handle, currentPath = '') => {
+                        for await (const entry of handle.values()) {
+                            if (entry.kind === 'file') {
+                                if (entry.name.endsWith('.zip') || entry.name.startsWith('._') || entry.name.startsWith('~')) continue;
+                                try {
+                                    const file = await entry.getFile();
+                                    const arrayBuffer = await file.arrayBuffer();
+                                    const zipFilePath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+                                    zip.file(zipFilePath, arrayBuffer);
+                                    filesCount++;
+                                    totalBytes += file.size;
+                                    if (filesCount % 5 === 0) {
+                                        updateUI('Inclusione documenti e scansioni...', 20 + Math.min(50, filesCount * 2), `Aggiunto: ${entry.name} (${filesCount} file)`);
+                                    }
+                                } catch (err) {
+                                    console.warn('Impossibile includere file nello ZIP:', entry.name, err);
+                                }
+                            } else if (entry.kind === 'directory') {
+                                const nextPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+                                await scanDirectory(entry, nextPath);
+                            }
+                        }
+                    };
+
+                    await scanDirectory(dirHandle, '');
+                } else {
+                    updateUI('Nessuna cartella collegata: compressione database...', 30, 'Incluso database JSON completo');
+                }
+
+                updateUI('Compressione archivio ZIP in corso...', 75, `Compressione di ${filesCount} documenti fisici + database...`);
+
+                const blob = await zip.generateAsync({
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 }
+                }, (metadata) => {
+                    const percent = Math.round(75 + (metadata.percent * 0.23));
+                    updateUI('Generazione file ZIP...', percent, `Compressione: ${Math.round(metadata.percent)}% (${metadata.currentFile || ''})`);
+                });
+
+                const zipSizeMb = (blob.size / (1024 * 1024)).toFixed(2);
+                updateUI('Download archivio completato!', 100, `Archivio creato con successo (${zipSizeMb} MB, ${filesCount} file fisici)`);
+
+                const fileName = `Archivio_Completo_ASD_${todayStr}.zip`;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 15000);
+
+                if (hasFolder) {
+                    try {
+                        await this.saveDocumentFS(fileName, blob, 'backup', null, true);
+                    } catch (e) {}
+                }
+
+                setTimeout(() => {
+                    this.closeModal();
+                    const toastMsg = hasFolder 
+                        ? `✅ Esportato Archivio Completo (.ZIP) con ${filesCount} documenti fisici e database (${zipSizeMb} MB)!`
+                        : `✅ Esportato Archivio (.ZIP) con il database JSON (${zipSizeMb} MB)! (Collega la Cartella Documenti per includere anche le scansioni fisiche)`;
+                    this.toast(toastMsg, 'success');
+                }, 1300);
+
+            } catch (err) {
+                console.error('Errore durante la creazione dello ZIP:', err);
+                const stEl = document.getElementById('zip-export-status');
+                if (stEl) stEl.innerHTML = `<span style="color:var(--danger)">Errore: ${err.message}</span>`;
+                this.toast('Errore durante la creazione del file ZIP: ' + err.message, 'danger');
+            }
+        },
+
+        async importaArchivioCompletoZip(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            event.target.value = '';
+
+            if (typeof JSZip === 'undefined') {
+                this.toast('Libreria di decompressione ZIP non disponibile.', 'warning');
+                return;
+            }
+
+            const progressModalHtml = `
+                <div style="text-align:center; padding: 20px 10px;">
+                    <div style="font-size: 2.5rem; margin-bottom: 10px;">📥</div>
+                    <h3 style="margin-top:0; color:var(--primary); font-size:1.2rem;">Ripristino Archivio Completo (.ZIP)</h3>
+                    <p id="zip-import-status" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:15px;">Lettura archivio ZIP in corso...</p>
+                    <div style="background: rgba(255,255,255,0.08); border-radius: 9999px; height: 12px; overflow: hidden; margin-bottom: 12px;">
+                        <div id="zip-import-progress-bar" style="background: linear-gradient(90deg, #3b82f6, #10b981); height: 100%; width: 10%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div id="zip-import-detail" style="font-size: 0.8rem; color: #94a3b8; font-family: monospace;">Apertura file...</div>
+                </div>
+            `;
+            this.openModal('Importazione Archivio Totale (.ZIP)', progressModalHtml);
+
+            const updateUI = (status, percent, detail) => {
+                const stEl = document.getElementById('zip-import-status');
+                const pbEl = document.getElementById('zip-import-progress-bar');
+                const dtEl = document.getElementById('zip-import-detail');
+                if (stEl) stEl.textContent = status;
+                if (pbEl) pbEl.style.width = Math.min(100, Math.max(5, percent)) + '%';
+                if (dtEl) dtEl.textContent = detail;
+            };
+
+            try {
+                updateUI('Caricamento e analisi archivio ZIP...', 15, file.name);
+                const zip = await JSZip.loadAsync(file);
+
+                // 1. Cerca il file JSON del database
+                let jsonEntry = null;
+                for (const relativePath in zip.files) {
+                    if (relativePath.endsWith('.json') && !relativePath.startsWith('__MACOSX/')) {
+                        jsonEntry = zip.files[relativePath];
+                        if (relativePath.includes('backup_database_asd') || relativePath.includes('backup_asd')) break;
+                    }
+                }
+
+                let dbRestored = false;
+                let sociCount = 0;
+                let ricevuteCount = 0;
+
+                if (jsonEntry) {
+                    updateUI('Ripristino dati del database...', 35, `Elaborazione ${jsonEntry.name}...`);
+                    const jsonText = await jsonEntry.async('string');
+                    try {
+                        const parsed = JSON.parse(jsonText);
+                        if (parsed && (parsed.soci || parsed.ricevute || parsed.state)) {
+                            const dataToApply = parsed.state || parsed;
+                            // Crea uno snapshot di sicurezza preventivo prima di sovrascrivere
+                            if (this.createSnapshot) {
+                                this.createSnapshot('PRE-IMPORT-ZIP', 'Snapshot automatico prima del ripristino archivio ZIP');
+                            }
+                            this.state = Object.assign({}, this.state, dataToApply);
+                            
+                            // Normalizzazioni e migrazioni
+                            if (this.sanitizeSettings) this.sanitizeSettings();
+                            if (this.syncSaldiInizialiWithPrimaNota) this.syncSaldiInizialiWithPrimaNota();
+                            if (this.sanitizePrimaNota) this.sanitizePrimaNota();
+                            if (this.migrateSoci) this.migrateSoci();
+                            if (this.migrateIstruttori) this.migrateIstruttori();
+                            if (this.migrateCorsiNames) this.migrateCorsiNames();
+                            
+                            await this.saveData();
+                            this.saveAll();
+                            dbRestored = true;
+                            sociCount = (this.state.soci || []).length;
+                            ricevuteCount = (this.state.ricevute || []).length;
+                        }
+                    } catch (err) {
+                        console.warn('Errore parsing JSON dallo ZIP:', err);
+                    }
+                }
+
+                // 2. Estrazione documenti fisici nella Cartella Documenti (se attiva)
+                let dirHandle = await this.getOutputFolder();
+                let filesExtracted = 0;
+                let folderAvailable = false;
+
+                if (dirHandle) {
+                    try {
+                        let perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+                        if (perm !== 'granted') {
+                            perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+                        }
+                        if (perm === 'granted') {
+                            folderAvailable = true;
+                        }
+                    } catch (e) {
+                        folderAvailable = false;
+                    }
+                }
+
+                if (folderAvailable) {
+                    updateUI('Scompattamento documenti fisici sul disco...', 55, 'Scrittura cartelle e file...');
+                    const entries = Object.keys(zip.files).filter(p => !zip.files[p].dir && !p.startsWith('__MACOSX/'));
+                    let processed = 0;
+
+                    for (const path of entries) {
+                        const zipEntry = zip.files[path];
+                        processed++;
+                        const parts = path.split('/').filter(Boolean);
+                        const fileName = parts.pop();
+                        if (!fileName) continue;
+
+                        try {
+                            // Naviga o crea sottocartelle
+                            let currentDirHandle = dirHandle;
+                            for (const folderName of parts) {
+                                currentDirHandle = await currentDirHandle.getDirectoryHandle(folderName, { create: true });
+                            }
+
+                            // Scrivi il file
+                            const fileBlob = await zipEntry.async('blob');
+                            const fileHandle = await currentDirHandle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(fileBlob);
+                            await writable.close();
+                            filesExtracted++;
+
+                            if (filesExtracted % 4 === 0 || processed === entries.length) {
+                                const percent = Math.round(55 + (processed / entries.length * 40));
+                                updateUI('Scompattamento documenti fisici sul disco...', percent, `Scritto: ${fileName} (${filesExtracted}/${entries.length})`);
+                            }
+                        } catch (eFile) {
+                            console.warn('Errore scrittura file da ZIP:', path, eFile);
+                        }
+                    }
+                }
+
+                updateUI('Ripristino completato con successo!', 100, `Ripristinati ${sociCount} soci e ${filesExtracted} documenti fisici.`);
+
+                setTimeout(() => {
+                    this.closeModal();
+                    const msg = folderAvailable 
+                        ? `✅ Archivio Totale Ripristinato! Caricati ${sociCount} soci, ${ricevuteCount} ricevute e scompattati ${filesExtracted} documenti fisici sul disco.`
+                        : `✅ Database Ripristinato (${sociCount} soci, ${ricevuteCount} ricevute)! Per estrarre anche i documenti fisici sul disco, collega la Cartella Documenti e ripeti l'importazione.`;
+                    this.toast(msg, 'success');
+                    this.renderPage(this.state.currentPage || 'impostazioni');
+                }, 1300);
+
+            } catch (err) {
+                console.error('Errore durante il ripristino dello ZIP:', err);
+                updateUI('Errore ripristino ZIP', 100, err.message);
+                this.toast('Errore durante il ripristino dell\'archivio ZIP: ' + err.message, 'danger');
+            }
+        },
+
         async browseOutputFolderOS() {
             const dirHandle = await this.getOutputFolder();
             if (!dirHandle) {
@@ -22124,28 +22460,59 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <span style="font-size:0.85rem; color:var(--text-muted);">Caricamento stato cartella...</span>
                                 </div>
 
-                                <!-- Box Ripopolamento Archivio / Nuovo Server -->
-                                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 14px 16px; margin-top: 14px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom: 8px;">
+                                <!-- Box Trasferimento e Migrazione su Nuovo Server -->
+                                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 10px; padding: 16px 18px; margin-top: 16px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom: 12px;">
                                         <div style="flex:1; min-width:280px;">
-                                            <h4 style="margin:0 0 4px 0; color:#34d399; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
-                                                <span>🖥️ Trasferimento / Rigenerazione su Nuovo Server</span>
+                                            <h4 style="margin:0 0 6px 0; color:#34d399; font-size:1rem; display:flex; align-items:center; gap:8px;">
+                                                <span>🖥️ Trasferimento & Migrazione su Nuovo PC / Server</span>
                                             </h4>
-                                            <p style="font-size:0.84rem; color:var(--text-muted); margin:0; line-height:1.4;">
-                                                Hai configurato un nuovo PC o server? Questa funzione rigenera automaticamente l'intero archivio documentale (ricevute soci, compensi sportivi, note spesa/rimborsi, verbali e backup JSON) nella cartella selezionata, ricreando la gerarchia completa di cartelle per ogni stagione sportiva.
+                                            <p style="font-size:0.85rem; color:var(--text-muted); margin:0; line-height:1.45;">
+                                                Devi cambiare computer o spostare il gestionale su un nuovo server? Qui puoi scegliere la modalità di trasferimento più adatta per non perdere né i dati né le scansioni fisiche.
                                             </p>
                                         </div>
-                                        <button class="btn" style="background: #10b981; color: white; font-weight: 600; padding: 8px 16px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);" onclick="app.ripopolaArchivioNuovoServer()" data-guide="Ripopola l'intero archivio documenti su un nuovo computer o server. Effetto: Ricrea tutte le cartelle per stagione sportiva e rigenera tutti i PDF di ricevute, compensi, note spese, verbali e backup JSON.">
-                                            🪄 Ripopola Archivio sul Nuovo Server
-                                        </button>
                                     </div>
 
-                                    <!-- Nota Documenti Cartacei ed Esterni -->
-                                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35); border-left: 4px solid #f59e0b; border-radius: 6px; padding: 10px 12px; margin-top: 10px; font-size: 0.83rem; color: #fcd34d; line-height: 1.45;">
-                                        <strong style="color: #fbbf24; display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
-                                            ℹ️ Precisazione per allegati e documenti fisici:
-                                        </strong>
-                                        La procedura rigenera esclusivamente i file digitali emessi dall'applicazione. Eventuali <em>documenti cartacei aggiuntivi</em> (note spesa con scontrini cartacei e fatture allegate, certificati medici cartacei dei soci, ricevute fisiche emesse da blocchetto manuale, ecc.) <strong>devono essere necessariamente conservati nel registro cartaceo fisico o in un archivio scansionato a parte</strong>. Se tali scansioni esterne erano già presenti nella cartella del vecchio server, ricordarsi di trasferirle o importarle a parte.
+                                    <!-- Opzione 1: File ZIP Completo (Raccomandata) -->
+                                    <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                                            <div style="flex: 1; min-width: 260px;">
+                                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                                    <span style="font-size: 1.1rem;">📦</span>
+                                                    <strong style="color: #60a5fa; font-size: 0.92rem;">Trasferimento Completo con File ZIP (Raccomandato)</strong>
+                                                    <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 9999px;">TUTTO INCLUSO</span>
+                                                </div>
+                                                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+                                                    Impacchetta in un unico file compresso (.zip) l'<strong>intero database</strong> e <strong>tutti i file e scansioni fisiche</strong> presenti nella Cartella Documenti (certificati medici timbrati, liberatorie firmate, bonifici, scontrini e quietanze). Ideale per trasferire l'archivio via <strong>chiavetta USB</strong> o <strong>Google Drive</strong> e scompattarlo sul nuovo computer con un clic.
+                                                </p>
+                                            </div>
+                                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                                <button class="btn btn-primary" style="background: #2563eb; border-color: #3b82f6; font-size: 0.84rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;" onclick="app.esportaArchivioCompletoZip()" data-guide="Esporta un unico file ZIP contenente il database completo e tutte le cartelle dei documenti fisici, certificati e liberatorie scansionate. Effetto: Scarica l'archivio compresso pronto per essere trasferito su chiavetta USB o caricato su Google Drive.">
+                                                    📦 Esporta Archivio Completo (.ZIP)
+                                                </button>
+                                                <input type="file" id="hidden-import-complete-zip" accept=".zip" style="display:none;" onchange="app.importaArchivioCompletoZip(event)">
+                                                <button class="btn btn-outline" style="border-color: #3b82f6; color: #60a5fa; font-size: 0.84rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;" onclick="document.getElementById('hidden-import-complete-zip').click()" data-guide="Ripristina l'archivio totale da un file ZIP esportato in precedenza. Effetto: Scompatta tutti i file fisici nella cartella documenti attiva e carica contemporaneamente il database.">
+                                                    📥 Importa Archivio Completo (.ZIP)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Opzione 2: Rigenerazione Procedurale dei Soli File Digitali Emessi -->
+                                    <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 12px 14px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                            <div style="flex: 1; min-width: 250px;">
+                                                <strong style="color: var(--text-light); font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                                                    <span>🪄</span> Rigenerazione Automatica Documenti Emessi (Solo File Digitali)
+                                                </strong>
+                                                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 3px 0 0 0; line-height: 1.35;">
+                                                    Ricrea da zero cartelle e PDF per i soli documenti nativi emessi dal gestionale (ricevute, compensi, verbali e note spese). <em>Attenzione:</em> non può ricostruire scansioni o certificati medici cartacei acquisiti da esterno, che vanno trasferiti tramite il file ZIP sopra.
+                                                </p>
+                                            </div>
+                                            <button class="btn btn-outline" style="border-color: #10b981; color: #34d399; font-size: 0.82rem; padding: 6px 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;" onclick="app.ripopolaArchivioNuovoServer()" data-guide="Rigenera i PDF dei documenti emessi dal gestionale nella nuova cartella selezionata. Effetto: Ricrea le cartelle per stagione e i PDF di ricevute, compensi e verbali dai dati del database.">
+                                                🪄 Rigenera Documenti Emessi
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -22261,6 +22628,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <div class="glass-card">
                                 <h3 style="margin-bottom:1rem;">💾 Esportazioni Sicure</h3>
                                 <div style="display:flex; flex-direction:column; gap:10px;">
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #60a5fa; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="app.esportaArchivioCompletoZip()" data-guide="Esporta l'intero archivio ASD in un unico file compresso ZIP (database JSON + tutti i documenti, liberatorie e certificati medici scansionati).">📦 Esporta Archivio Completo (.ZIP)</button>
                                     <button class="btn btn-outline" onclick="app.exportData()" data-guide="Scarica un file .json fisico e sequenziato di tutti i dati (soci, ricevute, corsi, cassa). Effetto: Salva una copia di sicurezza su disco Windows nella cartella Download o Documenti.">⬇️ Esporta Backup JSON</button>
                                     <button class="btn btn-outline" onclick="app.exportSociExcel()" data-guide="Genera un file Excel contenente l'anagrafica completa di tutti i soci. Effetto: Esporta un foglio di calcolo (.xlsx) con contatti, quote e certificati medici.">📊 Esporta Soci XLSX</button>
                                 </div>
@@ -22272,6 +22640,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <p style="font-size:0.85rem; margin-bottom:1rem; color:var(--text-muted);">Queste operazioni eliminano o sovrascrivono i dati attuali. Usa la sicura per confermare.</p>
                                 <div style="display:flex; flex-direction:column; gap:10px;">
                                     
+                                    <button class="btn btn-outline" style="text-align:center; border-color: #3b82f6; color: #60a5fa;" onclick="app.safeAction('import-zip', this, '📦 Importa Archivio Completo (.ZIP)', '#2563eb', () => document.getElementById('hidden-import-complete-zip').click())" data-guide="ATTENZIONE: Carica un file .zip di backup completo per ripristinare il database e scompattare tutti i documenti fisici sul disco. Effetto: I dati attuali verranno sovrascritti (richiede doppio clic per sbloccare la sicura).">📦 Importa Archivio Completo (.ZIP)</button>
+
                                     <input type="file" id="hidden-import-json" accept=".json" style="display:none" onchange="app.importData(event)">
                                     <button class="btn btn-outline" style="text-align:center;" onclick="app.safeAction('import-json', this, '⬆️ Importa Backup JSON', '#dc2626', () => document.getElementById('hidden-import-json').click())" data-guide="ATTENZIONE: Carica un file .json di backup per ripristinare il database. Effetto: I dati attuali verranno interamente sovrascritti (richiede doppio clic per sbloccare la sicura).">⬆️ Importa Backup JSON</button>
                                     

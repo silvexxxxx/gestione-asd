@@ -1,4 +1,4 @@
-const CACHE_NAME = "gestione-asd-v2.9.13";
+const CACHE_NAME = "gestione-asd-v2.9.14";
 const ASSETS = [
   "./",
   "./index.html",
@@ -9,7 +9,8 @@ const ASSETS = [
   "./lib/pdf-lib.min.js",
   "./lib/pdf.min.js",
   "./lib/pdf.worker.min.js",
-  "./lib/jsqr.min.js"
+  "./lib/jsqr.min.js",
+  "./lib/jszip.min.js"
 ];
 
 // Install: pre-cache asset essenziali e skipWaiting immediato
