@@ -29,7 +29,7 @@
     <script src="./lib/pdf.min.js"></script>
     <script src="./lib/jsqr.min.js"></script>
     <script src="./lib/jszip.min.js"></script>
-    <script src="./acquisizione_scansioni.js?v=2.9.18"></script>
+    <script src="./acquisizione_scansioni.js?v=2.9.19"></script>
 
     <style>
         :root {
@@ -5011,6 +5011,9 @@
                     }
                 }
                 // --- FINE FIX ---
+                // --- AUTO-MIGRAZIONE CAUSALI DETTAGLIATE RICEVUTE (UNA TANTUM SILENZIOSA) ---
+                this.autoMigrateCausaliDettagliate();
+
                 this.cloudSync.init();
                 this.checkAutoSave();
                 setInterval(() => this.checkAutoSave(), 60000);
@@ -8740,6 +8743,7 @@
                                     <li><strong>Salvataggio Automatico su File System (FS Access API):</strong> Collegando la cartella locale o Google Drive nelle Impostazioni, il gestionale organizza e salva in automatico tutti i PDF (ricevute, compensi, rimborsi, verbali) suddivisi in sottocartelle ordinate per Anno Sportivo (es. <em>anno 2025-2026/ricevute</em>).</li>
                                     <li><strong>Integrazione Riforma dello Sport (D.Lgs. 36/2021 & RASD):</strong> Conforme alle nuove normative in materia di tesseramento, compensi lavoro sportivo, esenzioni INPS/IRPEF e rendicontazione per il Registro Nazionale delle Attività Sportive Dilettantistiche (RASD).</li>
                                     <li><strong>Protezione Privacy GDPR & Blocco Inattività con PIN (Novità):</strong> A tutela della privacy in segreteria e della riservatezza dei dati anagrafici e sanitari dei soci, il gestionale include il blocco automatico temporizzato (configurabile in Impostazioni). All'entrata in funzione, lo schermo viene istantaneamente offuscato con sfocatura profonda (blur 35px) e oscurato dietro una schermata protetta da password per azzerare qualsiasi visibilità a persone esterne.</li>
+                                    <li><strong>Causali Dettagliate per Pacchetti Corso & Rate (Novità):</strong> Selezione integrata dei pacchetti e delle rateizzazioni nelle ricevute (es. <em>Quota Annuale a Rate - Rata 1 di 4</em>, <em>Family 2</em>, <em>Quota Trimestrale</em>) con rilevamento automatico del progressivo rata del socio, badge visuale in tabella e allineamento retroattivo senza alterare le note contabili personali.</li>
                                 </ul>
                                 <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px; margin-top: 15px;">💡 <strong>Tutor Interattivo & Guida Contestuale (Copertura 100%):</strong> Attivando la <em>Modalità Guida</em> dalla barra superiore, ogni pulsante, selettore e campo dell'applicazione mostrerà suggerimenti contestuali ed esaustivi al passaggio del mouse con spiegazione di azione ed effetto concreto.</div>`;
                         break;
@@ -8763,6 +8767,15 @@
                         html = `<h2>3. Ricevute & Quote Associative</h2>
                                 <p>Gestisci in modo professionale l'emissione, la numerazione e il registro di tutte le entrate istituzionali e commerciali dell'associazione.</p>
                                 
+                                <h3>💳 Selezione Pacchetti Corso & Rateizzazione Intelligente (Nuova Funzionalità):</h3>
+                                <p>Per garantire la massima trasparenza verso i soci e verso l'amministrazione contabile:</p>
+                                <ul>
+                                    <li><strong>Causale Specifica e Dettagliata Automatica:</strong> Selezionando un pacchetto dal menu rapido (es. <em>Quota Annuale a Rate</em>, <em>Family 2 - 1 Mese</em>, <em>Quota Trimestrale</em>, ecc.), la causale della ricevuta non mostra più una generica "quota corso", ma include il nome esatto del pacchetto sottoscritto e l'eventuale componente di <em>Tesseramento Federale</em>.</li>
+                                    <li><strong>Pulsantiera Visuale Selettore Rate (Rata 1/4 .. 4/4):</strong> Per le formule rateali si attiva automaticamente la barra con le 4 pillole interattive. Il sistema esamina lo storico contabile del socio nella stagione e preseleziona in automatico la rata successiva (ad es. <em>Rata 1 di 4</em> per la prima quietanza o <em>Rata 2 di 4</em> se la prima è già saldata), con possibilità di selezione manuale rapida.</li>
+                                    <li><strong>Badge Tabella & Documenti PDF Ufficiali:</strong> Nella colonna <em>Tipo</em> della tabella ricevute viene riportato il nome del pacchetto e l'indicazione grafica <code>💳 RATA X/4</code>. Sul PDF generato e sulla stampa della ricevuta compare la causale estesa e dettagliata, preservando in fondo tra parentesi quadre eventuali annotazioni personalizzate inserite dall'operatore.</li>
+                                    <li><strong>Riallineamento Retroattivo Automatico:</strong> All'avvio, il sistema verifica e riallinea silenziosamente le quietanze dell'archivio storico, attribuendo a ciascuna la causale dettagliata e il numero di rata calcolato in modo cronologico, senza richiedere interventi o controlli manuali.</li>
+                                </ul>
+
                                 <h3>🔴 Flusso Operativo Bozza vs 🟢 Emessa (Nuova Funzionalità):</h3>
                                 <p>Il gestionale offre un sistema evoluto di gestione a doppio stato per conciliare flessibilità operativa e rigore fiscale:</p>
                                 <ul>
@@ -10763,8 +10776,8 @@
                         <td style="white-space: nowrap;">${this.formatDate(r.data)}${r.ora ? ` <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" title="Ora emissione: ${r.ora}">🕒 ${r.ora}</span>` : ''}</td>
                         <td style="white-space: nowrap;">
                             <div style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
-                                <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle;" title="${(r.tipo || '').replace(/"/g, '&quot;')}">${r.tipo}</span>
-                                ${isRateale ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.35); white-space: nowrap;" title="Quota Rateale / Pagamento Rata (Accordo Interno)">💳 RATA</span>` : ''}
+                                <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle;" title="${(this.formatRicevutaCausale(r)).replace(/"/g, '&quot;')}">${r.pacchetto_nome ? r.pacchetto_nome + (r.tess && parseFloat(r.tess) > 0 && !r.pacchetto_nome.includes('Tesseramento') ? ' + Tess.' : '') : r.tipo}</span>
+                                ${isRateale ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.35); white-space: nowrap;" title="Quota Rateale: Rata ${r.rata || '1'}/${r.rate_totali || '4'}">💳 RATA ${r.rata ? `${r.rata}/${r.rate_totali || 4}` : ''}</span>` : ''}
                             </div>
                         </td>
                         <td class="${r.annullata ? 'text-muted' : 'text-success'}" style="font-weight: 700; white-space: nowrap; ${r.annullata ? 'text-decoration: line-through;' : ''}">€ ${parseFloat(r.importo).toFixed(2)} ${r.annullata ? '(ANNULLATA)' : ''}</td>
@@ -11150,6 +11163,23 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                     <select id="receipt-tipo-quota" class="form-control" onchange="app.onTipoQuotaChange(this.value)" style="font-size:0.85rem; font-weight:600;" data-guide="Menu selezione rapida pacchetto o quota. Effetto: Compila automaticamente le quote, la causale e calcola la nuova scadenza per il socio.">
                                         ${this.getReceiptTipoQuotaOptionsHtml()}
                                     </select>
+                                    <input type="hidden" name="pacchetto_key" id="receipt-pacchetto-key" value="">
+                                    <input type="hidden" name="pacchetto_nome" id="receipt-pacchetto-nome" value="">
+                                    <input type="hidden" name="rata_num" id="receipt-rata-num" value="">
+                                    <input type="hidden" name="rate_totali" id="receipt-rate-totali" value="">
+                                    
+                                    <div id="receipt-rate-selector-box" style="display:none; margin-top:8px; padding:10px; background:rgba(16, 185, 129, 0.1); border:1px solid #10b981; border-radius:8px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                            <span style="font-size:0.82rem; font-weight:700; color:#047857;">💳 Seleziona Numero Rata:</span>
+                                            <span id="receipt-rate-detected-hint" style="font-size:0.75rem; color:#065f46; font-style:italic;"></span>
+                                        </div>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(1, 4)" data-rata="1" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 1/4</button>
+                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(2, 4)" data-rata="2" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 2/4</button>
+                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(3, 4)" data-rata="3" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 3/4</button>
+                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(4, 4)" data-rata="4" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 4/4</button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
@@ -11905,16 +11935,316 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             }
         },
 
+        setReceiptRata(num, total = 4) {
+            const rataNumEl = document.getElementById('receipt-rata-num');
+            const rateTotaliEl = document.getElementById('receipt-rate-totali');
+            if (rataNumEl) rataNumEl.value = num || '';
+            if (rateTotaliEl) rateTotaliEl.value = total || '';
+
+            const pills = document.querySelectorAll('.rate-pill-btn');
+            pills.forEach(p => {
+                const r = parseInt(p.dataset.rata);
+                if (num && r === num) {
+                    p.style.background = 'var(--primary, #10b981)';
+                    p.style.color = '#ffffff';
+                    p.style.borderColor = 'var(--primary, #10b981)';
+                } else {
+                    p.style.background = 'transparent';
+                    p.style.color = 'var(--text-main)';
+                    p.style.borderColor = 'rgba(255,255,255,0.2)';
+                }
+            });
+
+            this.updateReceiptCausaleFromPackage();
+        },
+
+        autoDetectNextRataForSocio(socioId) {
+            if (!socioId) return { nextRata: 1, maxRataPaid: 0, totalReceipts: 0 };
+            const targetYear = parseInt(document.getElementById('receipt-anno')?.value) || (new Date().getFullYear());
+            const socioRateReceipts = (this.state.ricevute || []).filter(r => {
+                if (String(r.socio_id) !== String(socioId)) return false;
+                if (r.annullata || r.tipo === 'Compenso Sportivo') return false;
+                const rYear = parseInt(r.anno) || this.getSportsYear(r.data);
+                if (rYear !== targetYear) return false;
+                const note = (r.note || '').toLowerCase();
+                const tipo = (r.tipo || '').toLowerCase();
+                return r.rateale || (r.quota === 90 || r.quota === 102.5) || tipo.includes('rata') || note.includes('rata');
+            });
+
+            let maxRataPaid = 0;
+            socioRateReceipts.forEach(r => {
+                if (r.rata && !isNaN(parseInt(r.rata))) {
+                    maxRataPaid = Math.max(maxRataPaid, parseInt(r.rata));
+                } else {
+                    const note = (r.note || '').toLowerCase();
+                    const m = note.match(/(?:rata|rateale|ratelae)\s*(\d)\s*(?:di|\/)\s*(\d)/i);
+                    if (m) maxRataPaid = Math.max(maxRataPaid, parseInt(m[1]));
+                }
+            });
+            if (maxRataPaid === 0 && socioRateReceipts.length > 0) {
+                maxRataPaid = socioRateReceipts.length;
+            }
+
+            const nextRata = Math.min(maxRataPaid + 1, 4);
+            return { nextRata, maxRataPaid, totalReceipts: socioRateReceipts.length };
+        },
+
+        updateReceiptRateAutoDetection(socioId) {
+            const box = document.getElementById('receipt-rate-selector-box');
+            if (!box || box.style.display === 'none') return;
+            const hint = document.getElementById('receipt-rate-detected-hint');
+            if (!socioId) {
+                if (hint) hint.textContent = '';
+                this.setReceiptRata(1, 4);
+                return;
+            }
+            const det = this.autoDetectNextRataForSocio(socioId);
+            if (det.maxRataPaid > 0) {
+                if (hint) hint.textContent = `(Socio ha già ${det.maxRataPaid}/4 rate. Suggerita Rata ${det.nextRata})`;
+            } else {
+                if (hint) hint.textContent = `(Prima rata stagionale: 1/4)`;
+            }
+            this.setReceiptRata(det.nextRata, 4);
+        },
+
+        updateReceiptCausaleFromPackage() {
+            const pKeyEl = document.getElementById('receipt-pacchetto-key');
+            const pNomeEl = document.getElementById('receipt-pacchetto-nome');
+            const rataNumEl = document.getElementById('receipt-rata-num');
+            const rateTotaliEl = document.getElementById('receipt-rate-totali');
+            const noteEl = document.getElementById('receipt-note');
+            const tessEl = document.getElementById('receipt-tess');
+            if (!noteEl) return;
+
+            const pKey = pKeyEl ? pKeyEl.value : '';
+            const pNome = pNomeEl ? pNomeEl.value : '';
+            const rataNum = (rataNumEl && rataNumEl.value) ? parseInt(rataNumEl.value) : null;
+            const rateTotali = (rateTotaliEl && rateTotaliEl.value) ? parseInt(rateTotaliEl.value) : 4;
+            const tessVal = parseFloat(tessEl?.value) || 0;
+
+            if (!pKey && !pNome) return;
+
+            let causale = '';
+            if (pKey.startsWith('rateale_') || rataNum) {
+                const rNum = rataNum || 1;
+                causale = `Quota Corso - ${pNome || 'Quota Annuale a Rate'} (Rata ${rNum} di ${rateTotali})`;
+            } else if (pKey === 'solo_tess') {
+                causale = 'Tesseramento Federale';
+            } else if (pKey === 'singolo') {
+                causale = 'Ingresso Singolo / Prova';
+            } else {
+                causale = `Quota Corso - ${pNome}`;
+            }
+
+            if (tessVal > 0 && pKey !== 'solo_tess') {
+                causale += ' + Tesseramento Federale';
+            }
+
+            const curVal = (noteEl.value || '').trim();
+            const autoPrefixes = ['Quota Corso', 'Quota Annuale', 'Quota Mensile', 'Quota Trimestrale', 'Quota Semestrale', 'Family', 'Tesseramento', 'Ingresso Singolo', 'Quota/Corso'];
+            const isPureAuto = !curVal || autoPrefixes.some(prefix => curVal.startsWith(prefix));
+
+            if (isPureAuto) {
+                noteEl.value = causale;
+            } else if (!curVal.includes(causale)) {
+                noteEl.value = causale + ' [' + curVal + ']';
+            }
+            this.updateReceiptScadenzaPreview();
+        },
+
+        autoMigrateCausaliDettagliate() {
+            try {
+                if (localStorage.getItem('asd_causali_dettagliate_migrated_v1')) {
+                    return;
+                }
+                if (!this.state.ricevute || this.state.ricevute.length === 0) {
+                    localStorage.setItem('asd_causali_dettagliate_migrated_v1', 'true');
+                    return;
+                }
+
+                // Backup di sicurezza pre-migrazione
+                try {
+                    localStorage.setItem('asd_backup_pre_causali_migration', JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        ricevute: this.state.ricevute.map(r => ({ id: r.id, numero: r.numero, anno: r.anno, tipo: r.tipo, note: r.note, rateale: r.rateale, rata: r.rata }))
+                    }));
+                } catch(eSnap) {}
+
+                function escapeRegExp(string) {
+                    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\        formatRicevutaCausale(r) {');
+                }
+
+                let modifiedCount = 0;
+                const socioRateMap = {};
+
+                const sorted = [...this.state.ricevute].sort((a, b) => {
+                    const da = new Date(a.data || '1970-01-01').getTime();
+                    const db = new Date(b.data || '1970-01-01').getTime();
+                    return da - db || ((parseInt(a.numero)||0) - (parseInt(b.numero)||0));
+                });
+
+                sorted.forEach(r => {
+                    if (r.tipo === 'Compenso Sportivo') return;
+                    const q = parseFloat(r.quota) || 0;
+                    const t = parseFloat(r.tess) || 0;
+                    const imp = parseFloat(r.importo) || 0;
+                    const note = (r.note || '').trim();
+                    const noteLower = note.toLowerCase();
+                    const tipoLower = (r.tipo || '').toLowerCase();
+
+                    let pKey = '';
+                    let pNome = '';
+                    let rataNum = null;
+                    let rateTotali = null;
+                    let isRateale = false;
+
+                    const hasRataWord = noteLower.includes('rata') || noteLower.includes('rateale') || noteLower.includes('ratelae');
+                    const isRatePrice = (q === 90 || q === 102.5 || ((imp === 90 || imp === 102.5 || imp === 115 || imp === 127.5) && !noteLower.includes('bimestrale')));
+                    const isTrueRateale = hasRataWord || (isRatePrice && !noteLower.includes('mensile'));
+
+                    if (isTrueRateale) {
+                        isRateale = true;
+                        rateTotali = 4;
+                        pKey = (q === 90 || imp === 90 || imp === 115) ? 'rateale_promo_90' : 'rateale_nov_102';
+                        pNome = pKey === 'rateale_promo_90' ? 'Quota Annuale a Rate (fino al 31 Ottobre)' : 'Quota Annuale a Rate (dal 1 Novembre)';
+
+                        const m = note.match(/(?:rata|rateale|ratelae)\s*(\d)\s*(?:di|\/)\s*(\d)/i);
+                        if (m) {
+                            rataNum = parseInt(m[1]);
+                            rateTotali = parseInt(m[2]) || 4;
+                        } else {
+                            const sId = String(r.socio_id || r.socio_nome);
+                            socioRateMap[sId] = (socioRateMap[sId] || 0) + 1;
+                            rataNum = socioRateMap[sId];
+                        }
+                    } else if (noteLower.includes('family') || tipoLower.includes('family')) {
+                        const dur = String(r.durata || '');
+                        if (dur === '6' || noteLower.includes('6')) {
+                            pKey = 'family_6m';
+                            pNome = 'Family 2 - 6 Mesi';
+                        } else if (dur === '3' || noteLower.includes('3')) {
+                            pKey = 'family_3m';
+                            pNome = 'Family 2 - 3 Mesi';
+                        } else {
+                            pKey = 'family_1m';
+                            pNome = 'Family 2 - 1 Mese';
+                        }
+                    } else if (noteLower.includes('semestrale') || tipoLower.includes('semestrale') || q === 230) {
+                        pKey = 'semestrale';
+                        pNome = 'Quota Semestrale';
+                    } else if (noteLower.includes('trimestrale') || tipoLower.includes('trimestrale') || q === 120) {
+                        pKey = 'trimestrale';
+                        pNome = 'Quota Trimestrale';
+                    } else if (noteLower.includes('annuale promo') || (q === 360 && !noteLower.includes('rate'))) {
+                        pKey = 'annuale_promo';
+                        pNome = 'Quota Annuale in promo fino al 31 Ottobre';
+                    } else if (noteLower.includes('annuale') || (q === 410 && !noteLower.includes('rate'))) {
+                        pKey = 'annuale_standard';
+                        pNome = 'Quota Associativa Annuale dal 1 Novembre';
+                    } else if (q === 10 || noteLower.includes('singolo') || noteLower.includes('prova')) {
+                        pKey = 'singolo';
+                        pNome = 'Ingresso Singolo / Prova';
+                    } else if (q === 0 && t > 0) {
+                        pKey = 'solo_tess';
+                        pNome = 'Tesseramento Federale';
+                    } else {
+                        pKey = 'mensile';
+                        pNome = 'Quota Mensile Standard';
+                    }
+
+                    let causale = '';
+                    if (isRateale) {
+                        causale = `Quota Corso - ${pNome} (Rata ${rataNum} di ${rateTotali})`;
+                    } else if (pKey === 'solo_tess') {
+                        causale = 'Tesseramento Federale';
+                    } else if (pKey === 'singolo') {
+                        causale = 'Ingresso Singolo / Prova';
+                    } else {
+                        causale = `Quota Corso - ${pNome}`;
+                    }
+
+                    if (t > 0 && pKey !== 'solo_tess') {
+                        causale += ' + Tesseramento Federale';
+                    }
+
+                    let cleanNote = causale;
+                    const autoPhrases = [
+                        'quota mensile / corso sportivo (autogenerata)',
+                        'quota mensile standard',
+                        'quota corso sportivo',
+                        'quota/corso',
+                        'quota corso',
+                        'pagamento rata',
+                        'quota associativa'
+                    ];
+                    let remainingNote = note;
+                    autoPhrases.forEach(ap => {
+                        remainingNote = remainingNote.replace(new RegExp(escapeRegExp(ap), 'gi'), '').trim();
+                    });
+                    remainingNote = remainingNote.replace(/^[\s\-\,\;\[\]]+|[\s\-\,\;\[\]]+$/g, '').trim();
+
+                    if (remainingNote && !cleanNote.toLowerCase().includes(remainingNote.toLowerCase())) {
+                        cleanNote += ` [${remainingNote}]`;
+                    }
+
+                    r.pacchetto_key = pKey;
+                    r.pacchetto_nome = pNome;
+                    if (isRateale) {
+                        r.rateale = true;
+                        r.rata = rataNum;
+                        r.rate_totali = rateTotali;
+                    } else {
+                        delete r.rata;
+                        delete r.rate_totali;
+                        if (!noteLower.includes('rata')) {
+                            r.rateale = false;
+                        }
+                    }
+                    r.note = cleanNote;
+                    this.touchEntity(r);
+                    modifiedCount++;
+                });
+
+                if (modifiedCount > 0) {
+                    this.saveAll();
+                    console.log(`[AutoMigrate] Riallineate ${modifiedCount} causali ricevute storiche.`);
+                }
+                localStorage.setItem('asd_causali_dettagliate_migrated_v1', 'true');
+            } catch(eMig) {
+                console.error('[AutoMigrate] Errore migrazione causali:', eMig);
+            }
+        },
+
+        formatRicevutaCausale(r) {
+            if (!r) return '';
+            let tipo = (r.tipo || '').trim();
+            let note = (r.note || '').trim();
+            if (!tipo && !note) return 'Quota Associativa';
+            if (!note) return tipo;
+            if (!tipo) return note;
+
+            if (tipo.toLowerCase() === note.toLowerCase()) return tipo;
+            if (tipo.toLowerCase().includes(note.toLowerCase())) return tipo;
+            if (note.toLowerCase().includes(tipo.toLowerCase())) return note;
+
+            return `${tipo} - ${note}`;
+        },
+
         onReceiptRatealeChange(checked) {
             const infoEl = document.getElementById('receipt-rateale-info');
             if (infoEl) infoEl.style.display = checked ? 'block' : 'none';
-            const noteEl = document.getElementById('receipt-note');
-            if (checked && noteEl && !noteEl.value.trim()) {
-                noteEl.value = 'Quota Rateale / Pagamento Rata';
-            }
+            const rateBox = document.getElementById('receipt-rate-selector-box');
+            if (rateBox) rateBox.style.display = checked ? 'block' : 'none';
+
             const durataEl = document.getElementById('receipt-durata');
             if (checked && durataEl && (!durataEl.value || durataEl.value === '12' || durataEl.value === '2')) {
                 durataEl.value = '1';
+            }
+            if (checked) {
+                const socioId = document.getElementById('receipt-socio-id')?.value;
+                this.updateReceiptRateAutoDetection(socioId);
+            } else {
+                this.setReceiptRata(null, null);
             }
             this.updateReceiptScadenzaPreview();
         },
@@ -11927,8 +12257,12 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             const ratealeEl = document.getElementById('receipt-rateale');
             const noteEl = document.getElementById('receipt-note');
             const overrideInput = document.getElementById('receipt-scadenza-override');
+            const pKeyEl = document.getElementById('receipt-pacchetto-key');
+            const pNomeEl = document.getElementById('receipt-pacchetto-nome');
 
             if (!tipo) {
+                if (pKeyEl) pKeyEl.value = '';
+                if (pNomeEl) pNomeEl.value = '';
                 if (durataEl) durataEl.value = '';
                 if (overrideInput && overrideInput.dataset.manualEdit !== 'true') {
                     overrideInput.value = '';
@@ -11950,6 +12284,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('mensile');
                 quotaVal = p ? (parseFloat(p.importo) || 45.00) : 45.00;
                 const pNome = p ? p.nome : 'Quota Mensile Standard';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -11959,6 +12294,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('trimestrale');
                 quotaVal = p ? (parseFloat(p.importo) || 120.00) : 120.00;
                 const pNome = p ? p.nome : 'Quota Trimestrale';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '3';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -11968,6 +12304,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('semestrale');
                 quotaVal = p ? (parseFloat(p.importo) || 230.00) : 230.00;
                 const pNome = p ? p.nome : 'Quota Semestrale';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '6';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -11977,6 +12314,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('annuale_promo');
                 quotaVal = p ? (parseFloat(p.importo) || 360.00) : 360.00;
                 const pNome = p ? p.nome : 'Quota Annuale in promo fino al 31 Ottobre';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '12';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -11986,6 +12324,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('annuale_standard');
                 quotaVal = p ? (parseFloat(p.importo) || 410.00) : 410.00;
                 const pNome = p ? p.nome : 'Quota Associativa Annuale dal 1 Novembre';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '12';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -11995,6 +12334,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('rateale_promo_90');
                 quotaVal = p ? (parseFloat(p.importo) || 90.00) : 90.00;
                 const pNome = p ? p.nome : 'Quota Annuale a Rate (fino al 31 Ottobre)';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = true; this.onReceiptRatealeChange(true); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -12004,6 +12344,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('rateale_nov_102');
                 quotaVal = p ? (parseFloat(p.importo) || 102.50) : 102.50;
                 const pNome = p ? p.nome : 'Quota Annuale a Rate (dal 1 Novembre)';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = true; this.onReceiptRatealeChange(true); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata'))) {
@@ -12013,6 +12354,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('family_1m');
                 quotaVal = p ? (parseFloat(p.importo) || 80.00) : 80.00;
                 const pNome = p ? p.nome : 'Family 2 - 1 Mese';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '1';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata') || noteVal.includes('Family'))) {
@@ -12022,6 +12364,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('family_3m');
                 quotaVal = p ? (parseFloat(p.importo) || 220.00) : 220.00;
                 const pNome = p ? p.nome : 'Family 2 - 3 Mesi';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '3';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata') || noteVal.includes('Family'))) {
@@ -12031,6 +12374,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('family_6m');
                 quotaVal = p ? (parseFloat(p.importo) || 400.00) : 400.00;
                 const pNome = p ? p.nome : 'Family 2 - 6 Mesi';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '6';
                 if (ratealeEl) { ratealeEl.checked = false; this.onReceiptRatealeChange(false); }
                 if (noteEl && (!noteVal || noteVal.includes('Quota') || noteVal.includes('Tesseramento') || noteVal.includes('Rata') || noteVal.includes('Family'))) {
@@ -12041,6 +12385,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 if (tessEl) tessEl.value = tessVal.toFixed(2);
                 const p = this.getQuotePresetByKey('solo_tess');
                 const pNome = p ? p.nome : 'Tesseramento Federale';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (quotaVal > 0) {
                     // Quota già inserita: rendila sommabile senza rimuovere la quota o la durata/scadenza
                     if (noteEl) {
@@ -12068,6 +12413,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const p = this.getQuotePresetByKey('singolo');
                 quotaVal = p ? (parseFloat(p.importo) || 10.00) : 10.00;
                 const pNome = p ? p.nome : 'Ingresso Singolo / Prova';
+                if (pNomeEl) pNomeEl.value = pNome;
                 if (durataEl) durataEl.value = '';
                 if (overrideInput) {
                     overrideInput.value = '';
@@ -12113,8 +12459,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 amountEl.value = tot.toFixed(2);
             }
 
+            if (pKeyEl) pKeyEl.value = tipo;
             if (typeof this.calculateCommission === 'function') this.calculateCommission();
-            this.updateReceiptScadenzaPreview();
+            this.updateReceiptCausaleFromPackage();
         },
 
         getQuotePresetByKey(key) {
@@ -12284,6 +12631,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 const current = parseFloat(tessEl.value) || 0;
                 tessEl.value = current === val ? '' : val.toFixed(2);
                 this.onQuotaOrTessInput();
+                this.updateReceiptCausaleFromPackage();
             }
         },
 
@@ -12526,6 +12874,9 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
 
             if (typeof this.updateReceiptScadenzaPreview === 'function') {
                 this.updateReceiptScadenzaPreview();
+            }
+            if (typeof this.updateReceiptRateAutoDetection === 'function') {
+                this.updateReceiptRateAutoDetection(val);
             }
         },
 
@@ -12859,6 +13210,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 receipt.tess = tess || undefined;
                 receipt.cartacea = isCartacea || undefined;
                 receipt.rateale = isRateale ? true : undefined;
+                receipt.pacchetto_key = data.pacchetto_key || undefined;
+                receipt.pacchetto_nome = data.pacchetto_nome || undefined;
+                receipt.rata = (data.rata_num && !isNaN(parseInt(data.rata_num))) ? parseInt(data.rata_num) : (data.rata && !isNaN(parseInt(data.rata)) ? parseInt(data.rata) : undefined);
+                receipt.rate_totali = (data.rate_totali && !isNaN(parseInt(data.rate_totali))) ? parseInt(data.rate_totali) : undefined;
                 receipt.inizio_validita = data.inizio_validita || undefined;
                 receipt.durata = data.durata || undefined;
                 receipt.anno = newAnno;
@@ -12900,6 +13255,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     tess: tess || undefined,
                     cartacea: isCartacea || undefined,
                     rateale: isRateale ? true : undefined,
+                    pacchetto_key: data.pacchetto_key || undefined,
+                    pacchetto_nome: data.pacchetto_nome || undefined,
+                    rata: (data.rata_num && !isNaN(parseInt(data.rata_num))) ? parseInt(data.rata_num) : (data.rata && !isNaN(parseInt(data.rata)) ? parseInt(data.rata) : undefined),
+                    rate_totali: (data.rate_totali && !isNaN(parseInt(data.rate_totali))) ? parseInt(data.rate_totali) : undefined,
                     inizio_validita: data.inizio_validita || undefined,
                     durata: data.durata || undefined,
                     stato: 'bozza',
@@ -13006,10 +13365,15 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 this.toast(`✅ Ricevuta n.${receipt.numero} salvata! Puoi inserire la prossima.`, 'success');
                 const numInput = document.getElementById('receipt-numero');
                 if (numInput) numInput.value = receipt.numero + 1;
-                ['socio_id', 'importo', 'quota', 'tess', 'commissioni', 'note'].forEach(name => {
+                ['socio_id', 'importo', 'quota', 'tess', 'commissioni', 'note', 'pacchetto_key', 'pacchetto_nome', 'rata_num', 'rate_totali'].forEach(name => {
                     const el = form.querySelector(`[name="${name}"]`);
                     if (el) el.value = '';
                 });
+                const tipoQuotaSelectEl = document.getElementById('receipt-tipo-quota');
+                if (tipoQuotaSelectEl) tipoQuotaSelectEl.value = '';
+                this.setReceiptRata(null, null);
+                const rateSelectorBoxEl = document.getElementById('receipt-rate-selector-box');
+                if (rateSelectorBoxEl) rateSelectorBoxEl.style.display = 'none';
                 const searchInput = document.getElementById('receipt-socio-search');
                 if (searchInput) searchInput.value = '';
                 const socioNoteInputMulti = document.getElementById('receipt-socio-note');
@@ -13184,6 +13548,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 'inizio_validita': r.inizio_validita || r.data || '',
                 'durata': r.durata || '',
                 'scadenza_quota_override': r.scadenza_quota_override || r.scadenza_calcolata || '',
+                'pacchetto_key': r.pacchetto_key || '',
+                'pacchetto_nome': r.pacchetto_nome || '',
+                'rata_num': r.rata || '',
+                'rate_totali': r.rate_totali || '',
             };
             Object.keys(fieldMap).forEach(key => {
                 const input = form.querySelector(`[name="${key}"]`);
@@ -13214,11 +13582,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             if (socioNoteEl) {
                 socioNoteEl.value = (editSocio && editSocio.note) ? editSocio.note : '';
             }
-            // Popola checkbox rateale
+            // Popola checkbox rateale e selettore rata
             const ratealeCb = document.getElementById('receipt-rateale');
             if (ratealeCb) {
                 ratealeCb.checked = !!r.rateale;
                 this.onReceiptRatealeChange(!!r.rateale);
+            }
+            if (r.rata) {
+                this.setReceiptRata(r.rata, r.rate_totali || 4);
             }
 
             // Pre-seleziona il dropdown tipo quota se deducibile
@@ -13392,6 +13763,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                     tess: tess || undefined,
                     cartacea: !!data.cartacea || undefined,
                     rateale: isRateale ? true : undefined,
+                    pacchetto_key: data.pacchetto_key || undefined,
+                    pacchetto_nome: data.pacchetto_nome || undefined,
+                    rata: (data.rata_num && !isNaN(parseInt(data.rata_num))) ? parseInt(data.rata_num) : (data.rata && !isNaN(parseInt(data.rata)) ? parseInt(data.rata) : undefined),
+                    rate_totali: (data.rate_totali && !isNaN(parseInt(data.rate_totali))) ? parseInt(data.rate_totali) : undefined,
                     inizio_validita: data.inizio_validita || undefined,
                     durata: undefined,
                     scadenza_calcolata: undefined,
@@ -14162,7 +14537,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             doc.setFontSize(12);
             doc.text("Causale:", 20, 125);
             doc.setFont("helvetica", "bold");
-            doc.text(r.tipo + (r.note ? " - " + r.note : "") + (r.annullata ? " (ANNULLATA)" : ""), 20, 132);
+            const causalePdf = this.formatRicevutaCausale(r) + (r.annullata ? " (ANNULLATA)" : "");
+            doc.text(causalePdf, 20, 132);
 
             doc.setFontSize(14);
             doc.text("IMPORTO:", 20, 150);
@@ -14605,7 +14981,7 @@ ${annullataBanner}
 </div>
 <div class="info-box">
   <div class="info-label">Causale:</div>
-  <div class="info-value">${r.tipo}${r.note ? ' &ndash; ' + r.note : ''}</div>
+  <div class="info-value">${this.formatRicevutaCausale(r)}</div>
 </div>
 <p style="font-size:10pt;margin:20px 0 4px;">IMPORTO RICEVUTO:</p>
 <div class="amount">&euro; ${parseFloat(r.importo).toFixed(2)}</div>
@@ -14639,7 +15015,7 @@ ${annullataBanner}
                 numero: r.numero,
                 anno: app.formatAnno(r.anno),
                 data: app.formatDate(r.data),
-                causale: `${r.tipo}${r.note ? ' - ' + r.note : ''}`,
+                causale: this.formatRicevutaCausale(r),
                 importo: parseFloat(r.importo || 0).toFixed(2),
                 metodo: r.metodo_pagamento || r.pagamento || 'Contanti'
             };
@@ -14666,7 +15042,7 @@ ${annullataBanner}
                 numero: r.numero,
                 anno: app.formatAnno(r.anno),
                 data: app.formatDate(r.data),
-                causale: `${r.tipo}${r.note ? ' - ' + r.note : ''}`,
+                causale: this.formatRicevutaCausale(r),
                 importo: parseFloat(r.importo || 0).toFixed(2),
                 metodo: r.metodo_pagamento || r.pagamento || 'Contanti'
             };

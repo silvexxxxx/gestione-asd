@@ -7753,10 +7753,13 @@
       "commissioni": 0,
       "numero": 1,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 24.98,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787830016011.434,
@@ -7770,10 +7773,13 @@
       "commissioni": 0,
       "numero": 2,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787830071329.7446,
@@ -7787,10 +7793,13 @@
       "commissioni": 0,
       "numero": 3,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787830550905.377,
@@ -7804,10 +7813,13 @@
       "commissioni": 0,
       "numero": 4,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787831046973.2349,
@@ -7821,10 +7833,13 @@
       "commissioni": 0,
       "numero": 5,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787831490699.4524,
@@ -7838,10 +7853,13 @@
       "commissioni": 0,
       "numero": 6,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787831533237.1528,
@@ -7855,10 +7873,13 @@
       "commissioni": 0,
       "numero": 7,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787831565114.5046,
@@ -7872,10 +7893,13 @@
       "commissioni": 1.37,
       "numero": 8,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788371223045.916,
@@ -7889,11 +7913,14 @@
       "commissioni": 1.37,
       "numero": 9,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
       "cartacea": true,
-      "annullata": true
+      "annullata": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787838997399.5427,
@@ -7907,8 +7934,11 @@
       "commissioni": 2.24,
       "numero": 10,
       "anno": 2025,
-      "note": "Tesseramento Giuseppina Strazzera 25,00 - Quota mensile Giuseppina Strazzera 45,00 - Quota Mensile Pintus Graziano 45,00",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard [Tesseramento Giuseppina Strazzera 25,00 - Quota mensile Giuseppina Strazzera 45,00 - Quota Mensile Pintus Graziano 45,00]",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839104387.4907,
@@ -7922,10 +7952,13 @@
       "commissioni": 0,
       "numero": 11,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839169150.5098,
@@ -7939,10 +7972,13 @@
       "commissioni": 0,
       "numero": 12,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839228042.7676,
@@ -7956,10 +7992,13 @@
       "commissioni": 0,
       "numero": 13,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839276329.7583,
@@ -7973,10 +8012,13 @@
       "commissioni": 0,
       "numero": 14,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839323120.406,
@@ -7990,10 +8032,13 @@
       "commissioni": 0,
       "numero": 15,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839359428.265,
@@ -8007,10 +8052,13 @@
       "commissioni": 0,
       "numero": 16,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839397321.438,
@@ -8024,10 +8072,13 @@
       "commissioni": 1.37,
       "numero": 17,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 24.99,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839479282.4543,
@@ -8041,10 +8092,13 @@
       "commissioni": 1.37,
       "numero": 18,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839583817.7546,
@@ -8058,10 +8112,13 @@
       "commissioni": 1.37,
       "numero": 19,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839695736.1936,
@@ -8075,10 +8132,13 @@
       "commissioni": 0,
       "numero": 20,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839880236.455,
@@ -8092,10 +8152,13 @@
       "commissioni": 1.37,
       "numero": 21,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787839930129.8035,
@@ -8109,10 +8172,13 @@
       "commissioni": 0,
       "numero": 22,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840513818.2292,
@@ -8126,10 +8192,13 @@
       "commissioni": 0,
       "numero": 23,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840557099.9402,
@@ -8143,10 +8212,13 @@
       "commissioni": 1.37,
       "numero": 24,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840614515.538,
@@ -8160,8 +8232,11 @@
       "commissioni": 0,
       "numero": 25,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840658928.6643,
@@ -8175,8 +8250,11 @@
       "commissioni": 0,
       "numero": 26,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840841366.9072,
@@ -8190,8 +8268,11 @@
       "commissioni": 0,
       "numero": 27,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840696374.266,
@@ -8205,8 +8286,11 @@
       "commissioni": 0,
       "numero": 28,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840876194.2676,
@@ -8220,8 +8304,11 @@
       "commissioni": 0,
       "numero": 29,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840914651.9397,
@@ -8235,8 +8322,11 @@
       "commissioni": 0.88,
       "numero": 30,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787840972076.8525,
@@ -8250,8 +8340,11 @@
       "commissioni": 0,
       "numero": 31,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841008763.2705,
@@ -8265,10 +8358,13 @@
       "commissioni": 0,
       "numero": 32,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841036194.3481,
@@ -8282,8 +8378,11 @@
       "commissioni": 0,
       "numero": 33,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841080947.8027,
@@ -8297,10 +8396,13 @@
       "commissioni": 0,
       "numero": 34,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841108339.4597,
@@ -8314,8 +8416,11 @@
       "commissioni": 0.88,
       "numero": 35,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841128019.5195,
@@ -8329,8 +8434,11 @@
       "commissioni": 0,
       "numero": 36,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841211337.8848,
@@ -8344,10 +8452,13 @@
       "commissioni": 4.58,
       "numero": 37,
       "anno": 2025,
-      "note": "quota semestrale ",
+      "note": "Quota Corso - Quota Semestrale + Tesseramento Federale",
       "quota": 210,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "semestrale",
+      "pacchetto_nome": "Quota Semestrale",
+      "rateale": false
     },
     {
       "id": 1787841258664.6365,
@@ -8361,10 +8472,13 @@
       "commissioni": 0,
       "numero": 38,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841287779.31,
@@ -8378,10 +8492,13 @@
       "commissioni": 0,
       "numero": 39,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841325267.8167,
@@ -8395,8 +8512,11 @@
       "commissioni": 0.88,
       "numero": 40,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841401378.1992,
@@ -8410,10 +8530,13 @@
       "commissioni": 0,
       "numero": 41,
       "anno": 2025,
-      "note": "riduzione family",
+      "note": "Quota Corso - Family 2 - 1 Mese + Tesseramento Federale [riduzione family]",
       "quota": 35,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "family_1m",
+      "pacchetto_nome": "Family 2 - 1 Mese",
+      "rateale": false
     },
     {
       "id": 1787841424593.463,
@@ -8427,8 +8550,11 @@
       "commissioni": 0,
       "numero": 42,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841453747.7996,
@@ -8442,10 +8568,13 @@
       "commissioni": 1.37,
       "numero": 43,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788446087856.539,
@@ -8459,8 +8588,11 @@
       "commissioni": 0,
       "numero": 44,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841640732.342,
@@ -8474,8 +8606,11 @@
       "commissioni": 0,
       "numero": 45,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841736955.7627,
@@ -8489,8 +8624,11 @@
       "commissioni": 0,
       "numero": 46,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841832710.8232,
@@ -8504,8 +8642,11 @@
       "commissioni": 0,
       "numero": 47,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787841963960.679,
@@ -8519,10 +8660,13 @@
       "commissioni": 0,
       "numero": 48,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842008754.944,
@@ -8536,8 +8680,11 @@
       "commissioni": 0.88,
       "numero": 49,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842089576.705,
@@ -8551,10 +8698,13 @@
       "commissioni": 0,
       "numero": 50,
       "anno": 2025,
-      "note": "tesseramento pagato in ritardo",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale [tesseramento pagato in ritardo]",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842156297.2798,
@@ -8568,10 +8718,13 @@
       "commissioni": 0,
       "numero": 51,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842241792.6687,
@@ -8585,8 +8738,11 @@
       "commissioni": 0.88,
       "numero": 52,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842294081.241,
@@ -8600,10 +8756,13 @@
       "commissioni": 0,
       "numero": 53,
       "anno": 2025,
-      "note": "riduzione family 2",
+      "note": "Quota Corso - Family 2 - 1 Mese + Tesseramento Federale [riduzione family 2]",
       "quota": 35,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "family_1m",
+      "pacchetto_nome": "Family 2 - 1 Mese",
+      "rateale": false
     },
     {
       "id": 1787842332567.7517,
@@ -8617,8 +8776,11 @@
       "commissioni": 0,
       "numero": 54,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842366408.9397,
@@ -8632,8 +8794,11 @@
       "commissioni": 0,
       "numero": 55,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842444964.4229,
@@ -8647,8 +8812,11 @@
       "commissioni": 0,
       "numero": 56,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842472571.5498,
@@ -8662,8 +8830,11 @@
       "commissioni": 0,
       "numero": 57,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842487241.392,
@@ -8677,8 +8848,11 @@
       "commissioni": 0,
       "numero": 58,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842506140.1392,
@@ -8692,8 +8866,11 @@
       "commissioni": 0,
       "numero": 59,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842541652.87,
@@ -8707,9 +8884,12 @@
       "commissioni": 0,
       "numero": 60,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "cartacea": true,
-      "annullata": true
+      "annullata": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842747331.0557,
@@ -8723,9 +8903,12 @@
       "commissioni": 0,
       "numero": 61,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "cartacea": true,
-      "annullata": true
+      "annullata": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842817070.2705,
@@ -8739,8 +8922,11 @@
       "commissioni": 0,
       "numero": 62,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842836177.5151,
@@ -8754,8 +8940,11 @@
       "commissioni": 0,
       "numero": 63,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842854656.1792,
@@ -8769,8 +8958,11 @@
       "commissioni": 0,
       "numero": 64,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842890211.9568,
@@ -8784,10 +8976,13 @@
       "commissioni": 0,
       "numero": 65,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842933614.4739,
@@ -8801,10 +8996,13 @@
       "commissioni": 1.37,
       "numero": 66,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842962730.4326,
@@ -8818,8 +9016,11 @@
       "commissioni": 0,
       "numero": 67,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787842991961.4573,
@@ -8833,8 +9034,11 @@
       "commissioni": 0,
       "numero": 68,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843012226.0542,
@@ -8848,8 +9052,11 @@
       "commissioni": 0,
       "numero": 69,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843040290.3542,
@@ -8863,10 +9070,13 @@
       "commissioni": 0,
       "numero": 70,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843062887.7083,
@@ -8880,8 +9090,11 @@
       "commissioni": 0.88,
       "numero": 71,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843084514.7559,
@@ -8895,8 +9108,11 @@
       "commissioni": 0,
       "numero": 72,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843114831.6511,
@@ -8910,8 +9126,11 @@
       "commissioni": 0,
       "numero": 73,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843136846.6145,
@@ -8925,8 +9144,11 @@
       "commissioni": 0,
       "numero": 74,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843155854.874,
@@ -8940,8 +9162,11 @@
       "commissioni": 0,
       "numero": 75,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843186426.3833,
@@ -8955,8 +9180,11 @@
       "commissioni": 0,
       "numero": 76,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843202107.0151,
@@ -8970,8 +9198,11 @@
       "commissioni": 0,
       "numero": 77,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843226516.6643,
@@ -8985,8 +9216,11 @@
       "commissioni": 0,
       "numero": 78,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843252712.2446,
@@ -9000,10 +9234,13 @@
       "commissioni": 0,
       "numero": 79,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843273408.149,
@@ -9017,8 +9254,11 @@
       "commissioni": 0,
       "numero": 80,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843299584.651,
@@ -9032,8 +9272,11 @@
       "commissioni": 0,
       "numero": 81,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843323526.8882,
@@ -9047,8 +9290,11 @@
       "commissioni": 0,
       "numero": 82,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843393833.454,
@@ -9062,8 +9308,11 @@
       "commissioni": 0,
       "numero": 83,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843439383.6877,
@@ -9077,10 +9326,13 @@
       "commissioni": 0,
       "numero": 84,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843467562.7175,
@@ -9094,10 +9346,13 @@
       "commissioni": 0,
       "numero": 85,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843516890.1733,
@@ -9111,10 +9366,13 @@
       "commissioni": 0,
       "numero": 86,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843581885.6125,
@@ -9128,10 +9386,13 @@
       "commissioni": 0,
       "numero": 87,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843808556.7239,
@@ -9145,10 +9406,13 @@
       "commissioni": 0,
       "numero": 88,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843844663.2878,
@@ -9162,10 +9426,13 @@
       "commissioni": 0,
       "numero": 89,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843876136.5435,
@@ -9179,10 +9446,13 @@
       "commissioni": 0,
       "numero": 90,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843915139.298,
@@ -9196,10 +9466,13 @@
       "commissioni": 0,
       "numero": 91,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843970801.9211,
@@ -9213,8 +9486,11 @@
       "commissioni": 0.88,
       "numero": 92,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787843995771.0015,
@@ -9228,8 +9504,11 @@
       "commissioni": 0,
       "numero": 93,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787844015211.73,
@@ -9243,8 +9522,11 @@
       "commissioni": 0,
       "numero": 94,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787844060736.424,
@@ -9258,8 +9540,11 @@
       "commissioni": 0,
       "numero": 95,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787844090644.2046,
@@ -9273,8 +9558,11 @@
       "commissioni": 0,
       "numero": 96,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787844130307.4028,
@@ -9288,10 +9576,13 @@
       "commissioni": 1.37,
       "numero": 97,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787844260904.4604,
@@ -9305,8 +9596,11 @@
       "commissioni": 0,
       "numero": 98,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787844284053.1968,
@@ -9320,8 +9614,11 @@
       "commissioni": 0,
       "numero": 99,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787984282469.555,
@@ -9335,8 +9632,11 @@
       "commissioni": 0,
       "numero": 100,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787984332070.0867,
@@ -9350,8 +9650,11 @@
       "commissioni": 0,
       "numero": 101,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985126625.6292,
@@ -9365,8 +9668,11 @@
       "commissioni": 0,
       "numero": 102,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985246425.3962,
@@ -9380,8 +9686,11 @@
       "commissioni": 0,
       "numero": 103,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985345509.773,
@@ -9395,8 +9704,11 @@
       "commissioni": 0,
       "numero": 104,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985368668.8408,
@@ -9410,8 +9722,11 @@
       "commissioni": 0,
       "numero": 105,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985387104.8877,
@@ -9425,8 +9740,11 @@
       "commissioni": 0,
       "numero": 106,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985453863.1746,
@@ -9440,8 +9758,11 @@
       "commissioni": 0,
       "numero": 107,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985485167.3762,
@@ -9455,8 +9776,11 @@
       "commissioni": 0,
       "numero": 108,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985520745.6174,
@@ -9470,10 +9794,13 @@
       "commissioni": 0,
       "numero": 109,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985543992.0203,
@@ -9487,8 +9814,11 @@
       "commissioni": 0,
       "numero": 110,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985576436.8843,
@@ -9502,8 +9832,11 @@
       "commissioni": 0,
       "numero": 111,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985609158.7065,
@@ -9517,8 +9850,11 @@
       "commissioni": 0,
       "numero": 112,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985668435.6106,
@@ -9532,9 +9868,12 @@
       "commissioni": 0.88,
       "numero": 113,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "cartacea": true,
-      "annullata": true
+      "annullata": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985702864.3416,
@@ -9548,8 +9887,11 @@
       "commissioni": 0,
       "numero": 114,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985730600.092,
@@ -9563,8 +9905,11 @@
       "commissioni": 0,
       "numero": 115,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985750710.103,
@@ -9578,8 +9923,11 @@
       "commissioni": 0,
       "numero": 116,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985782618.0583,
@@ -9593,8 +9941,11 @@
       "commissioni": 0,
       "numero": 117,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985801880.1694,
@@ -9608,8 +9959,11 @@
       "commissioni": 0,
       "numero": 118,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985852913.3818,
@@ -9623,8 +9977,11 @@
       "commissioni": 2.34,
       "numero": 119,
       "anno": 2025,
-      "note": "quota trimestrale",
-      "cartacea": true
+      "note": "Quota Corso - Quota Trimestrale",
+      "cartacea": true,
+      "pacchetto_key": "trimestrale",
+      "pacchetto_nome": "Quota Trimestrale",
+      "rateale": false
     },
     {
       "id": 1787985886916.515,
@@ -9638,8 +9995,11 @@
       "commissioni": 0,
       "numero": 120,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985917889.3818,
@@ -9653,10 +10013,13 @@
       "commissioni": 0,
       "numero": 121,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787985978131.3503,
@@ -9670,10 +10033,13 @@
       "commissioni": 0,
       "numero": 122,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986006372.6868,
@@ -9687,8 +10053,11 @@
       "commissioni": 0,
       "numero": 123,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986030331.3064,
@@ -9702,8 +10071,11 @@
       "commissioni": 0,
       "numero": 124,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986053213.7224,
@@ -9717,8 +10089,11 @@
       "commissioni": 0,
       "numero": 125,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986078065.9607,
@@ -9732,8 +10107,11 @@
       "commissioni": 0,
       "numero": 126,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986113924.6853,
@@ -9747,8 +10125,11 @@
       "commissioni": 0,
       "numero": 127,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986133665.6968,
@@ -9762,8 +10143,11 @@
       "commissioni": 0,
       "numero": 128,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986177320.9053,
@@ -9777,8 +10161,11 @@
       "commissioni": 0.88,
       "numero": 129,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986233958.1372,
@@ -9792,8 +10179,11 @@
       "commissioni": 0,
       "numero": 130,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986249104.369,
@@ -9807,8 +10197,11 @@
       "commissioni": 0,
       "numero": 131,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986265941.4763,
@@ -9822,8 +10215,11 @@
       "commissioni": 0,
       "numero": 132,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986288808.8013,
@@ -9837,8 +10233,11 @@
       "commissioni": 0.88,
       "numero": 133,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986314240.3857,
@@ -9852,8 +10251,11 @@
       "commissioni": 0,
       "numero": 134,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986335836.7288,
@@ -9867,8 +10269,11 @@
       "commissioni": 0,
       "numero": 135,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986353911.2278,
@@ -9882,8 +10287,11 @@
       "commissioni": 0,
       "numero": 136,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986368514.861,
@@ -9897,8 +10305,11 @@
       "commissioni": 0,
       "numero": 137,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986383642.7454,
@@ -9912,8 +10323,11 @@
       "commissioni": 0,
       "numero": 138,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986415343.4385,
@@ -9927,8 +10341,11 @@
       "commissioni": 0,
       "numero": 139,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986478202.0518,
@@ -9942,8 +10359,11 @@
       "commissioni": 0,
       "numero": 140,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986500560.9265,
@@ -9957,8 +10377,11 @@
       "commissioni": 0,
       "numero": 141,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986545751.2095,
@@ -9972,8 +10395,11 @@
       "commissioni": 0.88,
       "numero": 142,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986568242.0854,
@@ -9987,8 +10413,11 @@
       "commissioni": 0,
       "numero": 143,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986592095.1277,
@@ -10002,8 +10431,11 @@
       "commissioni": 0.88,
       "numero": 144,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986621074.2485,
@@ -10017,8 +10449,11 @@
       "commissioni": 0,
       "numero": 145,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986668824.2236,
@@ -10032,10 +10467,13 @@
       "commissioni": 0,
       "numero": 146,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986696025.5354,
@@ -10049,10 +10487,13 @@
       "commissioni": 0,
       "numero": 147,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986714032.7698,
@@ -10066,8 +10507,11 @@
       "commissioni": 0,
       "numero": 148,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787986742569.6638,
@@ -10081,8 +10525,11 @@
       "commissioni": 0,
       "numero": 149,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987056558.8284,
@@ -10096,8 +10543,11 @@
       "commissioni": 0,
       "numero": 150,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987099936.3083,
@@ -10111,8 +10561,11 @@
       "commissioni": 0,
       "numero": 151,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987161558.9175,
@@ -10126,8 +10579,11 @@
       "commissioni": 0,
       "numero": 152,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987179682.4622,
@@ -10141,8 +10597,11 @@
       "commissioni": 0,
       "numero": 153,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987194554.304,
@@ -10156,8 +10615,11 @@
       "commissioni": 0,
       "numero": 154,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987225444.6106,
@@ -10171,8 +10633,11 @@
       "commissioni": 0,
       "numero": 155,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987269735.6448,
@@ -10186,10 +10651,13 @@
       "commissioni": 1.37,
       "numero": 156,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987299126.2473,
@@ -10203,8 +10671,11 @@
       "commissioni": 0,
       "numero": 157,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987316270.35,
@@ -10218,8 +10689,11 @@
       "commissioni": 0,
       "numero": 158,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987330497.9216,
@@ -10233,8 +10707,11 @@
       "commissioni": 0,
       "numero": 159,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987349482.739,
@@ -10248,8 +10725,11 @@
       "commissioni": 0,
       "numero": 160,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987363729.6123,
@@ -10263,8 +10743,11 @@
       "commissioni": 0,
       "numero": 161,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987379720.6262,
@@ -10278,8 +10761,11 @@
       "commissioni": 0,
       "numero": 162,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987397988.1792,
@@ -10293,8 +10779,11 @@
       "commissioni": 0,
       "numero": 163,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987430333.6055,
@@ -10308,8 +10797,11 @@
       "commissioni": 0,
       "numero": 164,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987450826.94,
@@ -10323,8 +10815,11 @@
       "commissioni": 0,
       "numero": 165,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987472696.4517,
@@ -10338,8 +10833,11 @@
       "commissioni": 0,
       "numero": 166,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987490136.251,
@@ -10353,8 +10851,11 @@
       "commissioni": 0,
       "numero": 167,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987516456.7507,
@@ -10368,8 +10869,11 @@
       "commissioni": 0.88,
       "numero": 168,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987544311.838,
@@ -10383,8 +10887,11 @@
       "commissioni": 0,
       "numero": 169,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987559504.8794,
@@ -10398,8 +10905,11 @@
       "commissioni": 0,
       "numero": 170,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987579361.0073,
@@ -10413,8 +10923,11 @@
       "commissioni": 0,
       "numero": 171,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987609046.9639,
@@ -10428,8 +10941,11 @@
       "commissioni": 0.88,
       "numero": 172,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987657321.1814,
@@ -10443,8 +10959,11 @@
       "commissioni": 0,
       "numero": 173,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987677997.9932,
@@ -10458,8 +10977,11 @@
       "commissioni": 0.88,
       "numero": 174,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987716965.1367,
@@ -10473,8 +10995,11 @@
       "commissioni": 0.88,
       "numero": 175,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987740655.256,
@@ -10488,8 +11013,11 @@
       "commissioni": 0.88,
       "numero": 176,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987760662.0928,
@@ -10503,8 +11031,11 @@
       "commissioni": 0,
       "numero": 177,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987789650.867,
@@ -10518,8 +11049,11 @@
       "commissioni": 0.88,
       "numero": 178,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987815245.285,
@@ -10533,8 +11067,11 @@
       "commissioni": 0,
       "numero": 179,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987861072.7366,
@@ -10548,10 +11085,13 @@
       "commissioni": 1.37,
       "numero": 180,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987879751.3503,
@@ -10565,8 +11105,11 @@
       "commissioni": 0,
       "numero": 181,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987897606.5557,
@@ -10580,8 +11123,11 @@
       "commissioni": 0.88,
       "numero": 182,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987915549.9685,
@@ -10595,8 +11141,11 @@
       "commissioni": 0,
       "numero": 183,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787987936009.8235,
@@ -10610,8 +11159,11 @@
       "commissioni": 0,
       "numero": 184,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988042718.3723,
@@ -10625,10 +11177,15 @@
       "commissioni": 2.05,
       "numero": 185,
       "anno": 2025,
-      "note": "90 euro rata 1 di 4 + 15 euro tesseramento annuale",
+      "note": "Quota Corso - Quota Annuale a Rate (fino al 31 Ottobre) (Rata 1 di 4) + Tesseramento Federale [90 euro rata 1 di 4 + 15 euro tesseramento annuale]",
       "quota": 90,
       "tess": 15,
-      "cartacea": true
+      "cartacea": true,
+      "pacchetto_key": "rateale_promo_90",
+      "pacchetto_nome": "Quota Annuale a Rate (fino al 31 Ottobre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1787988072665.8508,
@@ -10642,8 +11199,11 @@
       "commissioni": 0,
       "numero": 186,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988089808.2344,
@@ -10657,8 +11217,11 @@
       "commissioni": 0,
       "numero": 187,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988112295.5586,
@@ -10672,8 +11235,11 @@
       "commissioni": 0.88,
       "numero": 188,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988155919.7053,
@@ -10687,8 +11253,11 @@
       "commissioni": 0,
       "numero": 189,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988205113.6392,
@@ -10702,8 +11271,11 @@
       "commissioni": 0,
       "numero": 190,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988225385.3342,
@@ -10717,8 +11289,11 @@
       "commissioni": 0,
       "numero": 191,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988244167.241,
@@ -10732,8 +11307,11 @@
       "commissioni": 0,
       "numero": 192,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988259107.432,
@@ -10747,8 +11325,11 @@
       "commissioni": 0,
       "numero": 193,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988288156.309,
@@ -10762,8 +11343,11 @@
       "commissioni": 0,
       "numero": 194,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988495353.016,
@@ -10777,8 +11361,11 @@
       "commissioni": 0,
       "numero": 195,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988513327.1846,
@@ -10792,8 +11379,11 @@
       "commissioni": 0,
       "numero": 196,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988553417.743,
@@ -10807,8 +11397,11 @@
       "commissioni": 0.88,
       "numero": 197,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988572287.3745,
@@ -10822,8 +11415,11 @@
       "commissioni": 0,
       "numero": 198,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988647302.3413,
@@ -10837,8 +11433,11 @@
       "commissioni": 0,
       "numero": 199,
       "anno": 2025,
-      "note": "",
-      "cartacea": true
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": true,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988664793.416,
@@ -10852,8 +11451,11 @@
       "commissioni": 0,
       "numero": 1,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988685785.0205,
@@ -10867,8 +11469,11 @@
       "commissioni": 0,
       "numero": 2,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988711777.9023,
@@ -10882,8 +11487,11 @@
       "commissioni": 0,
       "numero": 3,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988751280.6187,
@@ -10897,8 +11505,11 @@
       "commissioni": 1.76,
       "numero": 4,
       "anno": 2025,
-      "note": "Quota Bimestrale",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard [Quota Bimestrale]",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988793369.5283,
@@ -10912,8 +11523,11 @@
       "commissioni": 0,
       "numero": 5,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988854472.2139,
@@ -10927,8 +11541,11 @@
       "commissioni": 0.88,
       "numero": 6,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988887070.077,
@@ -10942,8 +11559,11 @@
       "commissioni": 0,
       "numero": 7,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988930032.2837,
@@ -10957,8 +11577,11 @@
       "commissioni": 1.76,
       "numero": 8,
       "anno": 2025,
-      "note": "quota bimestrale",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard [quota bimestrale]",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989024231.7346,
@@ -10972,8 +11595,11 @@
       "commissioni": 1.76,
       "numero": 9,
       "anno": 2025,
-      "note": "quota mensile per Garau Andrea e Caboni Leonardo",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard [quota mensile per Garau Andrea e Caboni Leonardo]",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989066561.942,
@@ -10987,11 +11613,14 @@
       "commissioni": 0,
       "numero": 10,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
       "annullata": true,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988952598.2153,
@@ -11005,8 +11634,11 @@
       "commissioni": 0.88,
       "numero": 11,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787988986094.864,
@@ -11020,10 +11652,13 @@
       "commissioni": 0,
       "numero": 12,
       "anno": 2025,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989083300.5386,
@@ -11037,8 +11672,11 @@
       "commissioni": 0,
       "numero": 13,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989100643.896,
@@ -11052,8 +11690,11 @@
       "commissioni": 0,
       "numero": 14,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989149130.5215,
@@ -11067,8 +11708,11 @@
       "commissioni": 0.88,
       "numero": 15,
       "anno": 2025,
-      "note": "pagamento effettuato con carta di pelinga fabio",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard [pagamento effettuato con carta di pelinga fabio]",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989178989.798,
@@ -11082,8 +11726,11 @@
       "commissioni": 0,
       "numero": 16,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989208785.148,
@@ -11097,8 +11744,11 @@
       "commissioni": 0.88,
       "numero": 17,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989233015.3997,
@@ -11112,8 +11762,11 @@
       "commissioni": 0,
       "numero": 18,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989256641.9902,
@@ -11127,8 +11780,11 @@
       "commissioni": 0,
       "numero": 19,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989279240.6428,
@@ -11142,8 +11798,11 @@
       "commissioni": 0,
       "numero": 20,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989298766.1846,
@@ -11157,8 +11816,11 @@
       "commissioni": 0,
       "numero": 21,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989319180.7734,
@@ -11172,8 +11834,11 @@
       "commissioni": 0.88,
       "numero": 22,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989356900.13,
@@ -11187,8 +11852,11 @@
       "commissioni": 0,
       "numero": 23,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989383118.0674,
@@ -11202,8 +11870,11 @@
       "commissioni": 0,
       "numero": 24,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989398114.839,
@@ -11217,8 +11888,11 @@
       "commissioni": 0,
       "numero": 25,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989424281.4417,
@@ -11232,8 +11906,11 @@
       "commissioni": 0,
       "numero": 26,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989451072.1304,
@@ -11247,8 +11924,11 @@
       "commissioni": 0,
       "numero": 27,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989478120.5127,
@@ -11262,8 +11942,11 @@
       "commissioni": 0,
       "numero": 28,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989494193.3896,
@@ -11277,8 +11960,11 @@
       "commissioni": 0,
       "numero": 29,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989510906.475,
@@ -11292,8 +11978,11 @@
       "commissioni": 0,
       "numero": 30,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989521953.457,
@@ -11307,8 +11996,11 @@
       "commissioni": 0,
       "numero": 31,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989548441.0876,
@@ -11322,8 +12014,11 @@
       "commissioni": 0,
       "numero": 32,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989568924.294,
@@ -11337,8 +12032,11 @@
       "commissioni": 0,
       "numero": 33,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989584464.529,
@@ -11352,8 +12050,11 @@
       "commissioni": 0,
       "numero": 34,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989603367.8152,
@@ -11367,8 +12068,11 @@
       "commissioni": 0,
       "numero": 35,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1787989621349.9636,
@@ -11382,8 +12086,11 @@
       "commissioni": 0,
       "numero": 36,
       "anno": 2025,
-      "note": "",
-      "cartacea": false
+      "note": "Quota Corso - Quota Mensile Standard",
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788184834097.0088,
@@ -11395,11 +12102,16 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 1.76,
-      "note": " Pagamento rateale 2 di 4 per annuale",
+      "note": "Quota Corso - Quota Annuale a Rate (fino al 31 Ottobre) (Rata 2 di 4) [Pagamento rateale 2 di 4 per annuale]",
       "quota": 90,
       "numero": 37,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_promo_90",
+      "pacchetto_nome": "Quota Annuale a Rate (fino al 31 Ottobre)",
+      "rateale": true,
+      "rata": 2,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.4597,
@@ -11411,11 +12123,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 38,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788184876173.4817,
@@ -11427,12 +12144,15 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 1.37,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
       "numero": 39,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788184896147.4712,
@@ -11444,12 +12164,15 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 1.37,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
       "numero": 40,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788185091482.5708,
@@ -11461,11 +12184,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 41,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.419,
@@ -11477,11 +12205,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 42,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.1497,
@@ -11493,11 +12226,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 43,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.5173,
@@ -11509,11 +12247,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 44,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.8513,
@@ -11525,11 +12268,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 45,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.0088,
@@ -11541,11 +12289,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 46,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788184985003.3796,
@@ -11557,11 +12310,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0.88,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "quota": 45,
       "numero": 47,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788185091482.1812,
@@ -11573,11 +12329,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 48,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.5005,
@@ -11589,11 +12350,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 49,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.5479,
@@ -11605,11 +12371,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 50,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.9514,
@@ -11621,11 +12392,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 51,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.514,
@@ -11637,11 +12413,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 52,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.832,
@@ -11653,11 +12434,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 53,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.6238,
@@ -11669,11 +12455,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 54,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.892,
@@ -11685,11 +12476,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 55,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788195578214.8474,
@@ -11703,8 +12499,13 @@
       "commissioni": 1.76,
       "numero": 56,
       "anno": 2025,
-      "note": " Pagamento rateale 3 di 4 per annuale",
-      "cartacea": false
+      "note": "Quota Corso - Quota Annuale a Rate (fino al 31 Ottobre) (Rata 3 di 4) [Pagamento rateale 3 di 4 per annuale]",
+      "cartacea": false,
+      "pacchetto_key": "rateale_promo_90",
+      "pacchetto_nome": "Quota Annuale a Rate (fino al 31 Ottobre)",
+      "rateale": true,
+      "rata": 3,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.2932,
@@ -11716,11 +12517,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 57,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.1814,
@@ -11732,11 +12538,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 58,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185048409.7249,
@@ -11748,11 +12559,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0.88,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "quota": 45,
       "numero": 59,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788185091482.3328,
@@ -11764,11 +12578,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 60,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788185091482.4707,
@@ -11780,11 +12599,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 1 di 4)",
       "quota": 45,
       "numero": 61,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 1,
+      "rate_totali": 4
     },
     {
       "id": 1788192697140.7876,
@@ -11796,12 +12620,15 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0,
-      "note": "Pagato da Angelo Parodo",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale [Pagato da Angelo Parodo]",
       "quota": 45,
       "tess": 25,
       "numero": 62,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788192742274.4092,
@@ -11813,11 +12640,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "quota": 45,
       "numero": 63,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788192808918.4116,
@@ -11829,11 +12659,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0,
-      "note": "pagata da Pintus Graziano",
+      "note": "Quota Corso - Quota Mensile Standard [pagata da Pintus Graziano]",
       "quota": 45,
       "numero": 64,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788193147124.1565,
@@ -11845,11 +12678,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 2 di 4)",
       "quota": 45,
       "numero": 65,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 2,
+      "rate_totali": 4
     },
     {
       "id": 1788193147124.23,
@@ -11861,11 +12699,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 2 di 4)",
       "quota": 45,
       "numero": 66,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 2,
+      "rate_totali": 4
     },
     {
       "id": 1788192910868.3035,
@@ -11877,11 +12720,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "quota": 40,
       "numero": 67,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788193147124.8987,
@@ -11893,11 +12739,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 2 di 4)",
       "quota": 45,
       "numero": 68,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 2,
+      "rate_totali": 4
     },
     {
       "id": 1788193147124.9304,
@@ -11909,11 +12760,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 2 di 4)",
       "quota": 45,
       "numero": 69,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 2,
+      "rate_totali": 4
     },
     {
       "id": 1788193147124.366,
@@ -11925,11 +12781,16 @@
       "pagamento": "Contanti",
       "metodo_pagamento": "Contanti",
       "commissioni": 0,
-      "note": "Quota Mensile / Corso Sportivo (Autogenerata)",
+      "note": "Quota Corso - Quota Annuale a Rate (dal 1 Novembre) (Rata 2 di 4)",
       "quota": 45,
       "numero": 70,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_nov_102",
+      "pacchetto_nome": "Quota Annuale a Rate (dal 1 Novembre)",
+      "rateale": true,
+      "rata": 2,
+      "rate_totali": 4
     },
     {
       "id": 1788193656947.7166,
@@ -11941,11 +12802,16 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 1.76,
-      "note": "Pagamento ratelae 4 di 4  quota annuale",
+      "note": "Quota Corso - Quota Annuale a Rate (fino al 31 Ottobre) (Rata 4 di 4) [Pagamento ratelae 4 di 4  quota annuale]",
       "quota": 90,
       "numero": 71,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "rateale_promo_90",
+      "pacchetto_nome": "Quota Annuale a Rate (fino al 31 Ottobre)",
+      "rateale": true,
+      "rata": 4,
+      "rate_totali": 4
     },
     {
       "id": 1788193696792.8933,
@@ -11957,11 +12823,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "quota": 45,
       "numero": 72,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788193746966.2144,
@@ -11973,11 +12842,14 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 0,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard",
       "quota": 45,
       "numero": 73,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     },
     {
       "id": 1788193802060.5454,
@@ -11989,12 +12861,15 @@
       "pagamento": "SumUp",
       "metodo_pagamento": "SumUp",
       "commissioni": 1.37,
-      "note": "",
+      "note": "Quota Corso - Quota Mensile Standard + Tesseramento Federale",
       "quota": 45,
       "tess": 25,
       "numero": 74,
       "anno": 2025,
-      "cartacea": false
+      "cartacea": false,
+      "pacchetto_key": "mensile",
+      "pacchetto_nome": "Quota Mensile Standard",
+      "rateale": false
     }
   ],
   "corsi": [
