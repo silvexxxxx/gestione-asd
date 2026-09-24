@@ -23,6 +23,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/codice-fiscale-js/dist/codice.fiscale.umd.js"></script>
 
+    <!-- Offline QR Code & Scanner Engine Libraries (100% Client-Side) -->
+    <script src="./lib/qrcode.min.js"></script>
+    <script src="./lib/pdf-lib.min.js"></script>
+    <script src="./lib/pdf.min.js"></script>
+    <script src="./lib/jsqr.min.js"></script>
+    <script src="./acquisizione_scansioni.js"></script>
+
     <style>
         :root {
             color-scheme: dark;
@@ -2609,6 +2616,7 @@
                         <div class="nav-item" data-page="magazzino" onclick="app.showPage('magazzino')" data-guide="Apri Magazzino e Materiali. Effetto: Controlla scorte, giacenze e dotazioni di attrezzature e abbigliamento dell'associazione.">Magazzino</div>
                         <div class="nav-item" data-page="rimborsi" onclick="app.showPage('rimborsi')" data-guide="Apri Rimborsi Spese Documentati. Effetto: Registra note spese e pezze giustificative per trasferte e acquisti anticipati dallo staff.">Rimborsi</div>
                         <div class="nav-item" data-page="verbali" onclick="app.showPage('verbali')" data-guide="Apri Assemblee e Verbali. Effetto: Redige, numera e stampa i verbali formali del Consiglio Direttivo e delle Assemblee dei Soci.">Assemblee e Verbali</div>
+                        <div class="nav-item" data-page="acquisizione-scansioni" onclick="app.showPage('acquisizione-scansioni')" data-guide="Apri Acquisizione Documenti &amp; Scansioni. Effetto: Inghiottitoio batch con riconoscimento QR code, fusione fogli multipagina, archiviazione documenti firmati e smistamento rapido certificati medici.">📥 Acquisizione Documenti &amp; Scansioni</div>
                     </div>
                 </div>
 
@@ -2757,7 +2765,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.6.8"; // Formato unico standard scheda socio 700px & visualizzazione integrale messaggi cronologia
+        const APP_VERSION = "2.7.0"; // Acquisizione Documenti & Scansioni con QR Code Univoco e Inghiottitoio batch
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -8533,6 +8541,11 @@
                             }
                             this.renderVerbali();
                             break;
+                        case 'acquisizione-scansioni':
+                            if (this.renderAcquisizioneScansioni) {
+                                this.renderAcquisizioneScansioni();
+                            }
+                            break;
                         case 'dati-organizzazione': this.renderDatiOrganizzazione(); break;
                         case 'database': this.renderDatabase(); break;
                         case 'guida': this.renderGuida(); break;
@@ -9322,7 +9335,7 @@
                                     ? `<button type="button" class="btn btn-outline" style="padding: 4px 7px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" data-guide="Modifica o leggi nota del socio. Effetto: Apre il popup delle note interne per consultare o aggiornare le annotazioni riservate." title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">📝</button>` 
                                     : `<button type="button" class="btn btn-outline" style="padding: 4px 7px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" data-guide="Aggiungi una nota interna. Effetto: Apre la finestra per inserire una nota riservata su questo socio." title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗒️</button>`
                                 }
-                                ${isMinore ? `<button type="button" class="btn btn-outline" style="padding: 4px 6px; font-size:0.72rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria minori." title="Liberatoria Minori" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
+                                <button type="button" class="btn btn-outline" style="padding: 4px 6px; font-size:0.72rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria e moduli con QR Code." title="${isMinore ? 'Liberatoria Minori' : 'Liberatoria & Manleva Adulti'}" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>
                                 <button type="button" class="btn btn-outline" style="padding: 4px 7px; border-color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--border)'};" data-guide="Modifica scheda socio. Effetto: Apre il modulo completo per aggiornare anagrafica, recapiti, visite mediche e quote associative." title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
                                 <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" style="padding: 4px 8px !important; height: 28px;" onclick="app.toggleRowActionsMenu(this, event)" title="Menu contatti e comunicazioni socio (WhatsApp, Email, Messaggio libero)..." data-guide="Menu contatti e messaggi socio. Effetto: Invia avvisi WhatsApp o Email per quote e certificati, oppure scrivi un messaggio personalizzato per ogni evenienza.">⋮</button>
@@ -9347,6 +9360,14 @@
                                         <button type="button" class="row-actions-item ${!s.email ? 'disabled' : ''}" onclick="${s.email ? `app.sendReminder('${s.email}', '${(s.nome || '').replace(/'/g, "\\'")}', 'Quota Associativa', ${s.id})` : ''}" title="${s.email ? 'Invia Email Quota a ' + s.email : 'Email non registrata'}">
                                             <span class="row-actions-icon">📧</span>
                                             <span>Email Quota</span>
+                                        </button>
+
+                                        <div class="row-actions-divider"></div>
+
+                                        <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">📑 Modulo &amp; Liberatoria QR</div>
+                                        <button type="button" class="row-actions-item" onclick="app.gestisciLiberatoria(${s.id})" title="Stampa o gestisci liberatoria con QR Code">
+                                            <span class="row-actions-icon">🖨️</span>
+                                            <span>Stampa Liberatoria QR</span>
                                         </button>
 
                                         <div class="row-actions-divider"></div>
@@ -14059,6 +14080,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             } else {
                 doc.setTextColor(150, 150, 150);
                 doc.text("Documento non fiscale emesso in conformità alle norme vigenti per le ASD.", 20, 280);
+            }
+
+            // Stampa QR Code compatto in alto a destra su ogni pagina
+            if (this.stampQrOnJsPdf) {
+                const cleanAnnoFmt = app.formatAnno(r.anno).replace(/[/_\\]/g, '_');
+                const receiptRef = `RIC_${r.numero}_${cleanAnnoFmt}`;
+                const yr = (r.anno || this.getSportsYear(r.data)).toString().slice(0, 4);
+                await this.stampQrOnJsPdf(doc, 'RIC', receiptRef, yr);
             }
 
             const sportsYear = this.getSportsYear(r.anno || r.data);
@@ -26996,30 +27025,41 @@ ${r.annullata ? `
         gestisciLiberatoria(id) {
             const s = this.state.soci.find(x => x.id === id);
             if(!s) return;
+            const eta = this.calcolaEta(s.data_nascita);
+            const isMin = eta < 18;
+            const title = isMin ? 'Liberatoria per Minori' : 'Liberatoria & Manleva Adulto';
             const html = `
-                <div style="text-align:center; padding:20px 0;">
-                    <h3 style="margin-top:0; color:var(--primary);">Liberatoria per Minori</h3>
-                    <p>Socio: <strong>${s.cognome} ${s.nome}</strong> (Età: ${this.calcolaEta(s.data_nascita)})</p>
+                <div style="text-align:center; padding:15px 0;">
+                    <h3 style="margin-top:0; color:var(--primary); font-size:1.25rem;">${title}</h3>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">Socio: <strong style="color:var(--text-main);">${s.cognome} ${s.nome}</strong> (Età: ${eta} anni)</p>
                     
-                    <div style="margin: 30px 0; display:flex; flex-direction:column; gap:15px; align-items:center;">
-                        <button class="btn btn-outline" style="width:80%; font-size:1.1rem; padding:12px;" data-guide="Effetto: Genera e apre il modulo di liberatoria e autorizzazione per minori da stampare." onclick="app.stampaLiberatoriaMinore(${id})">
-                            🖨️ Stampa Modulo (PDF)
-                        </button>
-                        
-                        ${!s.liberatoria_consegnata ? `
-                            <button class="btn btn-primary" style="width:80%; font-size:1.1rem; padding:12px; background:var(--success);" data-guide="Effetto: Registra l'avvenuta acquisizione della liberatoria firmata dai genitori del minore." onclick="app.toggleLiberatoria(${id})">
-                                ✅ Segna come Acquisita/Consegnata
+                    <div style="margin: 25px 0; display:flex; flex-direction:column; gap:12px; align-items:center;">
+                        ${isMin ? `
+                            <button class="btn btn-outline" style="width:85%; font-size:1rem; padding:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa la liberatoria minori con QR Code univoco." onclick="app.stampaLiberatoriaMinore(${id})">
+                                <span>🖨️ Stampa Liberatoria Minori (con QR Code)</span>
                             </button>
                         ` : `
-                            <div style="color:var(--success); font-weight:bold; font-size:1.1rem;">✅ Liberatoria Acquisita in archivio</div>
-                            <button class="btn btn-outline" style="width:80%; font-size:0.9rem; padding:8px; margin-top:10px; color:var(--danger); border-color:var(--danger);" data-guide="Effetto: Revoca lo stato di acquisizione della liberatoria per questo minore." onclick="app.toggleLiberatoria(${id})">
+                            <button class="btn btn-outline" style="width:85%; font-size:1rem; padding:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa il modulo liberatoria e manleva per maggiorenni con QR Code univoco." onclick="app.stampaLiberatoriaAdulto(${id})">
+                                <span>🖨️ Stampa Liberatoria Adulti (con QR Code)</span>
+                            </button>
+                        `}
+                        
+                        ${!s.liberatoria_consegnata ? `
+                            <button class="btn btn-primary" style="width:85%; font-size:1rem; padding:10px; background:var(--success); border-color:var(--success);" data-guide="Registra l'avvenuta acquisizione della liberatoria firmata." onclick="app.toggleLiberatoria(${id})">
+                                ✅ Segna come Acquisita / Consegnata
+                            </button>
+                        ` : `
+                            <div style="color:var(--success); font-weight:bold; font-size:1.05rem;">
+                                ✅ Liberatoria Acquisita in archivio ${s.liberatoria_file ? `<div style="font-size:0.8rem; font-weight:normal; color:#cbd5e1; margin-top:3px;">(${s.liberatoria_file})</div>` : ''}
+                            </div>
+                            <button class="btn btn-outline" style="width:85%; font-size:0.85rem; padding:6px; color:var(--danger); border-color:var(--danger);" data-guide="Revoca lo stato di acquisizione della liberatoria." onclick="app.toggleLiberatoria(${id})">
                                 ❌ Revoca Acquisizione
                             </button>
                         `}
                     </div>
                 </div>
             `;
-            this.openModal('Gestione Liberatoria', html);
+            this.openModal('Gestione Liberatoria & Moduli', html);
         },
         toggleLiberatoria(id) {
             const s = this.state.soci.find(x => x.id === id);
@@ -27031,7 +27071,7 @@ ${r.annullata ? `
             this.closeModal();
             this.toast(s.liberatoria_consegnata ? 'Liberatoria acquisita con successo!' : 'Liberatoria revocata.');
         },
-        stampaLiberatoriaMinore(id) {
+        async stampaLiberatoriaMinore(id) {
             const s = this.state.soci.find(x => x.id === id);
             if(!s) return;
             const { jsPDF } = window.jspdf;
@@ -27104,10 +27144,16 @@ ${r.annullata ? `
             doc.text("Firma 1 ________________________________", 20, y);
             doc.text("Firma 2 ________________________________", 110, y);
             
+            // Stampa QR Code compatto in alto a destra su ogni pagina
+            if (this.stampQrOnJsPdf) {
+                const yr = new Date().getFullYear();
+                await this.stampQrOnJsPdf(doc, 'LIB', `SOCIO_${s.id}`, yr);
+            }
+
             const fileName = `Liberatoria_Minori_${s.cognome}_${s.nome}.pdf`;
             const yearStr = this.getSportsYear(new Date());
             const blob = doc.output('blob');
-            this.saveDocumentFS(fileName, blob, 'liberatorie', yearStr);
+            await this.saveDocumentFS(fileName, blob, 'liberatorie', yearStr, true);
             const blobUrl = URL.createObjectURL(blob);
             window.open(blobUrl, '_blank');
         },
@@ -32297,6 +32343,12 @@ ${r.annullata ? `
                         }
                         y += 18;
                     }
+                }
+
+                // Stampa QR Code compatto in alto a destra su ogni pagina
+                if (this.stampQrOnJsPdf) {
+                    const verbId = d.id || ('VERB_' + (d.numero || '1'));
+                    await this.stampQrOnJsPdf(doc, 'VER', verbId, sportsYearFS);
                 }
 
                 const blob = doc.output('blob');

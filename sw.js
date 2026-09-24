@@ -1,9 +1,15 @@
-const CACHE_NAME = "gestione-asd-v2.9.11";
+const CACHE_NAME = "gestione-asd-v2.9.12";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./icon.svg"
+  "./icon.svg",
+  "./acquisizione_scansioni.js",
+  "./lib/qrcode.min.js",
+  "./lib/pdf-lib.min.js",
+  "./lib/pdf.min.js",
+  "./lib/pdf.worker.min.js",
+  "./lib/jsqr.min.js"
 ];
 
 // Install: pre-cache asset essenziali e skipWaiting immediato
