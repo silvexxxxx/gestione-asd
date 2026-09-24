@@ -55,7 +55,9 @@ self.addEventListener("fetch", (e) => {
                        e.request.url.endsWith("index.html") ||
                        e.request.url.endsWith("/");
 
-  if (isNavigation) {
+  const isAppScript = e.request.url.includes("acquisizione_scansioni.js");
+
+  if (isNavigation || isAppScript) {
     e.respondWith(
       fetch(e.request)
         .then((networkResponse) => {
@@ -68,7 +70,7 @@ self.addEventListener("fetch", (e) => {
           return networkResponse;
         })
         .catch(() => {
-          return caches.match(e.request).then((cached) => cached || caches.match("./index.html"));
+          return caches.match(e.request, { ignoreSearch: true }).then((cached) => cached || (isNavigation ? caches.match("./index.html") : null));
         })
     );
   } else {
