@@ -2765,7 +2765,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.7.0"; // Acquisizione Documenti & Scansioni con QR Code Univoco e Inghiottitoio batch
+        const APP_VERSION = "2.7.1"; // Singolo pulsante esportazione Excel soci a lato del selettore condizione / caption
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -9176,7 +9176,6 @@
                                 <span class="header-subtitle">Gestisci l'elenco dei soci iscritti alla tua associazione.</span>
                             </div>
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <button class="btn btn-outline" style="border-color: #10b981; color: #34d399; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="app.exportSociFiltratiExcel()" title="Esporta in Excel l'elenco soci filtrato (.xlsx)" data-guide="Esporta in un file Excel l'elenco dei soci corrispondente al filtro selezionato (es. Soci Anno Sportivo Corrente, Attivi, Morosi, ecc.). Il file verrà salvato automaticamente nella cartella dedicata alle esportazioni soci.">📊 Esporta Excel</button>
                                 <button class="btn btn-primary" onclick="app.openAddSocioModal()" data-guide="Aggiungi un nuovo socio o atleta. Effetto: Apre la scheda anagrafica per inserire i dati personali, calcolare in automatico il Codice Fiscale e assegnare quote o scadenze.">+ Aggiungi Socio</button>
                             </div>
                         </div>
@@ -9194,7 +9193,7 @@
                                         <option value="CESSATO">🚫 Cessati</option>
                                         <option value="QUOTA_SCADUTA">⌛ Quote Scadute</option>
                                     </select>
-                                    <button class="btn btn-outline" style="border-color: #10b981; color: #34d399; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;" onclick="app.exportSociFiltratiExcel()" title="Esporta l'elenco soci con il filtro attivo in Excel (.xlsx)" data-guide="Esporta l'elenco dei soci visualizzati con il filtro selezionato in un file Excel (.xlsx) salvato nella cartella dedicata.">📊 Esporta Excel</button>
+                                    <button id="btn-export-soci-filtrati" class="btn btn-outline" style="border-color: #10b981; color: #34d399; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;" onclick="app.exportSociFiltratiExcel()" title="Esporta in Excel la selezione corrente (.xlsx)" data-guide="Esporta l'elenco dei soci visualizzati con il filtro selezionato in un file Excel (.xlsx) salvato nella cartella dedicata.">📊 Esporta Excel</button>
                                 </div>
                             </div>
 
@@ -9220,6 +9219,16 @@
                 `;
                 this.state.sociVisibleCount = 200;
                 this.filterSoci();
+                this.updateSociExportButton();
+            },
+
+            updateSociExportButton() {
+                const btn = document.getElementById('btn-export-soci-filtrati');
+                const statusSelect = document.getElementById('socio-filter-status');
+                if (!btn || !statusSelect) return;
+                const optText = statusSelect.selectedOptions && statusSelect.selectedOptions[0] ? statusSelect.selectedOptions[0].text.trim() : '';
+                const cleanLabel = optText.replace(/^⭐\s*|^📁\s*|^🟢\s*|^⚠️\s*|^💤\s*|^🚫\s*|^⌛\s*/, '').replace(/\s*\(\d+\)$/, '').trim();
+                btn.title = `Esporta in Excel: ${cleanLabel} (.xlsx)`;
             },
 
             onSocioFilterChange() {
@@ -9227,6 +9236,7 @@
                 const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
                 this.state.sociVisibleCount = (status === 'ANNO_CORRENTE') ? 200 : 50;
                 this.filterSoci();
+                this.updateSociExportButton();
             },
 
             onSocioSearchInput() {
@@ -9236,6 +9246,7 @@
                     this.state.sociVisibleCount = 50;
                 }
                 this.filterSoci();
+                this.updateSociExportButton();
             },
 
             renderSociRows(soci) {
