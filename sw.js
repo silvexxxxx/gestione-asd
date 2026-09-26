@@ -1,4 +1,4 @@
-const CACHE_NAME = "gestione-asd-v2.9.22";
+const CACHE_NAME = "gestione-asd-v2.9.23";
 const ASSETS = [
   "./",
   "./index.html",
