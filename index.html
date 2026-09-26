@@ -29,7 +29,7 @@
     <script src="./lib/pdf.min.js"></script>
     <script src="./lib/jsqr.min.js"></script>
     <script src="./lib/jszip.min.js"></script>
-    <script src="./acquisizione_scansioni.js?v=2.9.19"></script>
+    <script src="./acquisizione_scansioni.js?v=2.9.20"></script>
 
     <style>
         :root {
@@ -652,7 +652,7 @@
             font-size: 0.74rem !important;
             font-weight: 700 !important;
             border-radius: 6px !important;
-            cursor: pointer !important;
+            cursor: pointer;
             white-space: nowrap !important;
             transition: all 0.2s ease !important;
             user-select: none !important;
@@ -662,12 +662,15 @@
             outline: none !important;
             flex-shrink: 0 !important;
         }
+        span.badge-doc-status, .badge-doc-status.locked, .badge-doc-status.emessa:not(button) {
+            cursor: default !important;
+        }
         .badge-doc-status.bozza {
             background: rgba(239, 68, 68, 0.16) !important;
             color: #ef4444 !important;
             border-color: rgba(239, 68, 68, 0.5) !important;
         }
-        .badge-doc-status.bozza:hover {
+        button.badge-doc-status.bozza:hover {
             background: rgba(239, 68, 68, 0.28) !important;
             border-color: #ef4444 !important;
             box-shadow: 0 0 8px rgba(239, 68, 68, 0.3) !important;
@@ -677,7 +680,7 @@
             color: #10b981 !important;
             border-color: rgba(16, 185, 129, 0.5) !important;
         }
-        .badge-doc-status.emessa:hover {
+        button.badge-doc-status.emessa:hover {
             background: rgba(16, 185, 129, 0.28) !important;
             border-color: #10b981 !important;
             box-shadow: 0 0 8px rgba(16, 185, 129, 0.3) !important;
@@ -4474,7 +4477,7 @@
         },
 
         warnReceiptReadOnly(id) {
-            this.toast("Questo documento è in stato 'Emessa' (definitivo / sola lettura). Clicca sul badge '🟢 Emessa' per riportarlo in bozza se desideri modificarlo.", "warning");
+            this.toast("Questo documento è già emesso in via definitiva e non può essere modificato. In caso di errore deve essere annullato (oppure attiva la Modalità Debug).", "warning");
         },
 
         toggleRowActionsMenu(btn, event) {
@@ -8788,10 +8791,10 @@
                                     <li><strong>🟢 Stato Emessa (Badge Verde):</strong> Certifica la quietanza fiscale come definitiva a tutti gli effetti di legge.
                                         <ul>
                                             <li>La filigrana scompare e il documento PDF ufficiale conforme viene archiviato automaticamente nella cartella <em>anno [stagione]/ricevute</em>.</li>
-                                            <li>Per tutelare la progressività contabile ed evitare sanzioni in sede di verifica fiscale, le modifiche sono bloccate (icona del lucchetto 🔒).</li>
+                                            <li>Per tutelare la progressività contabile ed evitare violazioni fiscali, le modifiche sono bloccate (icona del lucchetto 🔒). Una volta emessa, la ricevuta non è modificabile e può esclusivamente essere annullata.</li>
                                         </ul>
                                     </li>
-                                    <li><strong>Toggle Rapido dello Stato & Protezione Contabile:</strong> Facendo clic sul badge di stato è possibile commutare la ricevuta da Bozza a Emessa e viceversa. Per riportare una ricevuta già emessa in bozza, il sistema richiede una conferma esplicita di sicurezza per evitare alterazioni contabili accidentali (bypassata istantaneamente quando la <em>Modalità Debug</em> è attiva).</li>
+                                    <li><strong>Emissione Definitiva & Rigore Fiscale:</strong> Facendo clic sul badge 🔴 Bozza è possibile emettere la quietanza in via definitiva. Una volta emessa (badge 🟢 Emessa), la ricevuta è sigillata a norma di legge: non è modificabile e non può essere riportata in bozza, ma può unicamente essere annullata (stornandone gli effetti contabili dal menu azioni ⋮). Soltanto attivando la <em>Modalità Debug</em> rimane eccezionalmente modificabile per interventi tecnici.</li>
                                 </ul>
 
                                 <h3>⋮ Layout Compatto Ibrido & Menu Azioni a Cascata (Nuova Funzionalità):</h3>
@@ -10786,22 +10789,35 @@
                         <td style="white-space: nowrap;">
                             ${r.annullata ? `
                                 <span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullata</span>
-                            ` : `
-                                <button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
+                            ` : (isBozza ? `
+                                <button type="button" class="badge-doc-status bozza" 
                                         onclick="app.toggleRicevutaStato('${r.id}', event)" 
-                                        title="${isBozza ? 'Documento in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Documento Emesso (bloccato in sola lettura). Clicca per riportare in bozza.'}"
-                                        data-guide="${isBozza ? 'Emetti ricevuta in via definitiva. Effetto: Rende la quietanza fiscale definitiva, rimuove la filigrana di bozza e ne blocca le modifiche contabili accidentali.' : 'Riporta ricevuta in Bozza. Effetto: Sblocca la modifica dei campi di questa ricevuta con conferma di sicurezza per preservare la correttezza contabile.'}">
-                                    ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
+                                        title="Documento in Bozza (modificabile). Clicca per emettere in via definitiva." 
+                                        data-guide="Emetti ricevuta in via definitiva. Effetto: Rende la quietanza fiscale definitiva, rimuove la filigrana di bozza e ne blocca le modifiche contabili accidentali.">
+                                    🔴 Bozza
                                 </button>
-                            `}
+                            ` : (this.state.debugMode ? `
+                                <button type="button" class="badge-doc-status emessa" 
+                                        onclick="app.toggleRicevutaStato('${r.id}', event)" 
+                                        title="Documento Emesso (Debug Mode: clicca per riportare in bozza)" 
+                                        data-guide="[DEBUG] Riporta ricevuta in Bozza. Effetto: Sblocca la modifica dei campi di questa ricevuta.">
+                                    🟢 Emessa
+                                </button>
+                            ` : `
+                                <span class="badge-doc-status emessa" 
+                                      title="Ricevuta emessa definitiva (non modificabile, solo annullabile)" 
+                                      data-guide="Ricevuta emessa definitiva. Effetto: Documento fiscale definitivo. Non può essere modificato né riportato in bozza, ma solo annullato dal menu altre azioni (⋮).">
+                                    🟢 Emessa
+                                </span>
+                            `))}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
                             <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
                                 <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}" data-guide="Scarica o archivia PDF ricevuta. Effetto: Genera il documento PDF della quietanza e lo archivia nella cartella documenti cartacei.">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
                                 ${(isBozza || this.state.debugMode) && !r.annullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px;" title="${this.state.debugMode ? 'Modifica dati ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" onclick="app.openEditRicevutaModal('${r.id}')" data-guide="Modifica ricevuta. Effetto: Apre la finestra di modifica per aggiornare intestatario, importo, date o note di questa bozza.">✏️</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px;" title="${this.state.debugMode ? 'Modifica dati ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" onclick="app.openEditRicevutaModal('${r.id}')" data-guide="Modifica ricevuta. Effetto: Apre la finestra di modifica per aggiornare intestatario, importo, date o note.">✏️</button>
                                 ` : (!r.annullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza e modificare." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Ricevuta emessa bloccata. Effetto: Documento definitivo in sola lettura. Clicca sul badge '🟢 Emessa' per riportarlo in bozza se devi correggerlo.">🔒</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; opacity:0.6; cursor:not-allowed;" title="Ricevuta emessa definitiva (non modificabile). In caso di errore la ricevuta può essere solo annullata." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Ricevuta emessa definitiva. Effetto: Documento definitivo in sola lettura. Non è modificabile ma solo annullabile dal menu altre azioni (⋮).">🔒</button>
                                 ` : '')}
                                 <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni (Stampa, Email, WhatsApp, Annulla, Debug)..." data-guide="Menu altre azioni riga. Effetto: Apre il menu a tendina compatto con opzioni di stampa, invio promemoria email o WhatsApp, annullamento fiscale e strumenti debug.">⋮</button>
@@ -13477,10 +13493,17 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                 return;
             }
 
-            const nuovoStato = (r.stato === 'bozza') ? 'emessa' : 'bozza';
+            const isBozza = (r.stato === 'bozza');
+
+            if (!isBozza && !this.state.debugMode) {
+                this.toast("Una ricevuta già emessa non può essere modificata né riportata in bozza. Può essere soltanto annullata (oppure attiva la Modalità Debug).", "warning");
+                return;
+            }
+
+            const nuovoStato = isBozza ? 'emessa' : 'bozza';
 
             if (nuovoStato === 'bozza') {
-                if (!confirm(`Vuoi riportare la Ricevuta n. ${r.numero}/${app.formatAnno(r.anno)} in stato BOZZA?\nTornerà ad essere modificabile.`)) {
+                if (!confirm(`[MODALITÀ DEBUG]\nVuoi riportare la Ricevuta n. ${r.numero}/${app.formatAnno(r.anno)} in stato BOZZA?\nTornerà ad essere modificabile.`)) {
                     return;
                 }
             }
@@ -27205,9 +27228,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 return;
             }
 
-            const nuovoStato = (r.stato === 'bozza') ? 'emessa' : 'bozza';
+            const isBozza = (r.stato === 'bozza');
+
+            if (!isBozza && !this.state.debugMode) {
+                this.toast("Un compenso già emesso non può essere modificato né riportato in bozza. Può essere soltanto annullato (oppure attiva la Modalità Debug).", "warning");
+                return;
+            }
+
+            const nuovoStato = isBozza ? 'emessa' : 'bozza';
             if (nuovoStato === 'bozza') {
-                if (!confirm(`Vuoi riportare la Ricevuta Compenso N. C${String(r.numero).padStart(3, '0')}/${r.anno} in stato BOZZA?\nTornerà ad essere modificabile.`)) {
+                if (!confirm(`[MODALITÀ DEBUG]\nVuoi riportare la Ricevuta Compenso N. C${String(r.numero).padStart(3, '0')}/${r.anno} in stato BOZZA?\nTornerà ad essere modificabile.`)) {
                     return;
                 }
             }
@@ -27645,12 +27675,27 @@ ${r.annullata ? `
                         <td style="white-space: nowrap;">
                             ${isAnnullata 
                                 ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullata</span>` 
-                                : `<button type="button" class="badge-doc-status ${r.stato === 'bozza' ? 'bozza' : 'emessa'}" 
-                                        onclick="app.toggleCompensoStato('${r.id}', event)" 
-                                        title="${r.stato === 'bozza' ? 'Compenso in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Compenso Emesso (definitivo). Clicca per riportare in bozza.'}"
-                                        data-guide="${r.stato === 'bozza' ? 'Emetti compenso in via definitiva. Effetto: Rende definitivo il compenso sportivo, rimuove la filigrana di bozza e ne blocca le modifiche contabili.' : 'Riporta compenso in Bozza. Effetto: Sblocca la modifica dei dati di questo compenso con richiesta di conferma.'}">
-                                    ${r.stato === 'bozza' ? '🔴 Bozza' : '🟢 Emessa'}
-                                </button>`}
+                                : (r.stato === 'bozza' ? `
+                                    <button type="button" class="badge-doc-status bozza" 
+                                            onclick="app.toggleCompensoStato('${r.id}', event)" 
+                                            title="Compenso in Bozza (modificabile). Clicca per emettere in via definitiva." 
+                                            data-guide="Emetti compenso in via definitiva. Effetto: Rende definitivo il compenso sportivo, rimuove la filigrana di bozza e ne blocca le modifiche contabili.">
+                                        🔴 Bozza
+                                    </button>
+                                ` : (this.state.debugMode ? `
+                                    <button type="button" class="badge-doc-status emessa" 
+                                            onclick="app.toggleCompensoStato('${r.id}', event)" 
+                                            title="Compenso Emesso (Debug Mode: clicca per riportare in bozza)" 
+                                            data-guide="[DEBUG] Riporta compenso in Bozza. Effetto: Sblocca la modifica dei dati di questo compenso.">
+                                        🟢 Emessa
+                                    </button>
+                                ` : `
+                                    <span class="badge-doc-status emessa" 
+                                          title="Compenso emesso definitivo (non modificabile, solo annullabile)" 
+                                          data-guide="Compenso emesso definitivo. Effetto: Documento contabile definitivo non modificabile. Può essere solo annullato dal menu altre azioni (⋮).">
+                                        🟢 Emessa
+                                    </span>
+                                `))}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
                             <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
@@ -27658,7 +27703,7 @@ ${r.annullata ? `
                                 ${(r.stato === 'bozza' || this.state.debugMode) && !isAnnullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem;" title="${this.state.debugMode ? 'Modifica compenso (Debug Mode)' : 'Modifica compenso in bozza'}" onclick="app.openEditCompensoModal('${r.id}')" data-guide="Modifica compenso sportivo. Effetto: Apre la maschera per aggiornare importo, data, prestazione o periodo del compenso.">✏️</button>
                                 ` : (!isAnnullata ? `
-                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Documento emesso definitivo (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Compenso emesso bloccato. Effetto: Documento definitivo in sola lettura. Clicca sul badge '🟢 Emessa' per riportarlo in bozza se devi modificarlo.">🔒</button>
+                                    <button class="btn btn-outline" style="padding: 5px 8px; font-size:0.8rem; opacity:0.6; cursor:not-allowed;" title="Compenso emesso definitivo (non modificabile). In caso di errore può essere solo annullato." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Compenso emesso bloccato. Effetto: Documento definitivo in sola lettura. Non è modificabile ma solo annullabile dal menu altre azioni (⋮).">🔒</button>
                                 ` : '')}
                                 <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni..." data-guide="Menu altre azioni compenso. Effetto: Apre il menu a tendina compatto con opzioni di stampa/PDF, annullamento ed eliminazione debug.">⋮</button>
@@ -28771,12 +28816,27 @@ ${r.annullata ? `
                         <td style="white-space: nowrap;">
                             ${isAnnullato 
                                 ? `<span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; white-space:nowrap;">🚫 Annullato</span>` 
-                                : `<button type="button" class="badge-doc-status ${isBozza ? 'bozza' : 'emessa'}" 
-                                        onclick="app.toggleRimborsoStato('${r.id}', event)" 
-                                        title="${isBozza ? 'Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva.' : 'Nota spesa Emessa (definitiva/sola lettura). Clicca per riportare in bozza.'}"
-                                        data-guide="${isBozza ? 'Emetti nota spesa in via definitiva. Effetto: Rende definitivo il prospetto spese e ne blocca le modifiche contabili accidentali.' : 'Riporta nota spesa in Bozza. Effetto: Sblocca la modifica dei campi della nota spesa con richiesta di conferma di sicurezza.'}">
-                                    ${isBozza ? '🔴 Bozza' : '🟢 Emessa'}
-                                </button>`}
+                                : (isBozza ? `
+                                    <button type="button" class="badge-doc-status bozza" 
+                                            onclick="app.toggleRimborsoStato('${r.id}', event)" 
+                                            title="Nota spesa in Bozza (modificabile). Clicca per emettere in via definitiva." 
+                                            data-guide="Emetti nota spesa in via definitiva. Effetto: Rende definitivo il prospetto spese e ne blocca le modifiche contabili accidentali.">
+                                        🔴 Bozza
+                                    </button>
+                                ` : (this.state.debugMode ? `
+                                    <button type="button" class="badge-doc-status emessa" 
+                                            onclick="app.toggleRimborsoStato('${r.id}', event)" 
+                                            title="Nota spesa Emessa (Debug Mode: clicca per riportare in bozza)" 
+                                            data-guide="[DEBUG] Riporta nota spesa in Bozza. Effetto: Sblocca la modifica dei campi della nota spesa.">
+                                        🟢 Emessa
+                                    </button>
+                                ` : `
+                                    <span class="badge-doc-status emessa" 
+                                          title="Nota spesa emessa definitiva (non modificabile, solo annullabile)" 
+                                          data-guide="Nota spesa emessa definitiva. Effetto: Documento contabile definitivo non modificabile. Può essere solo annullato dal menu altre azioni (⋮).">
+                                        🟢 Emessa
+                                    </span>
+                                `))}
                         </td>
                         <td style="white-space: nowrap;">
                             ${isAnnullato 
@@ -28791,7 +28851,7 @@ ${r.annullata ? `
                                 ${(isBozza || this.state.debugMode) && !isAnnullato ? `
                                     <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" title="${this.state.debugMode ? 'Modifica nota spesa (Debug Mode)' : 'Modifica nota spesa in bozza'}" onclick="app.openEditRimborsoModal('${r.id}')" data-guide="Modifica nota spesa. Effetto: Apre la schermata per modificare importi, voci di costo o giustificativi della spesa.">✏️</button>
                                 ` : (!isAnnullato ? `
-                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (sola lettura). Clicca sul badge '🟢 Emessa' per riportare in bozza." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Nota spesa emessa bloccata. Effetto: Indica che il documento è definitivo e in sola lettura. Clicca sul badge '🟢 Emessa' per riportare in bozza.">🔒</button>
+                                    <button class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem; opacity:0.6; cursor:not-allowed;" title="Nota spesa emessa definitiva (non modificabile). In caso di errore può essere solo annullata." onclick="app.warnReceiptReadOnly('${r.id}')" data-guide="Nota spesa emessa bloccata. Effetto: Indica che il documento è definitivo e non modificabile. Può essere solo annullato dal menu altre azioni (⋮).">🔒</button>
                                 ` : '')}
                                 <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" onclick="app.toggleRowActionsMenu(this, event)" title="Altre azioni..." data-guide="Menu altre azioni nota spesa. Effetto: Apre il menu a tendina con stampa, liquidazione pagamento, annullamento ed eliminazione debug.">⋮</button>
@@ -29190,11 +29250,17 @@ ${r.annullata ? `
             }
 
             const isBozza = (r.stato === 'bozza');
+
+            if (!isBozza && !this.state.debugMode) {
+                this.toast("Una nota spesa già emessa non può essere modificata né riportata in bozza. Può essere soltanto annullata (oppure attiva la Modalità Debug).", "warning");
+                return;
+            }
+
             const nuovoStato = isBozza ? 'emessa' : 'bozza';
 
-            if (nuovoStato === 'bozza' && !this.state.debugMode) {
+            if (nuovoStato === 'bozza') {
                 const proceed = confirm(
-                    `Attenzione: la nota spesa di ${r.richiedente} è attualmente EMESSA (definitiva).\n\nRiportarla in 'Bozza' consentirà nuovamente la modifica dei dati di spesa e del PDF.\n\nVuoi procedere?`
+                    `[MODALITÀ DEBUG]\nAttenzione: la nota spesa di ${r.richiedente} è attualmente EMESSA (definitiva).\n\nVuoi riportarla in 'Bozza'? Consentirà nuovamente la modifica dei dati di spesa e del PDF.\n\nVuoi procedere?`
                 );
                 if (!proceed) return;
             }
