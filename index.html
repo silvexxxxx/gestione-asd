@@ -8766,7 +8766,7 @@
                                     <li><strong>Comunicazioni WhatsApp Ufficiali (Novità):</strong> Icona ufficiale WhatsApp con logo verde per aprire istantaneamente la chat con il socio e inviare promemoria scadenze, quote associative o ricevute con testi formali precompilati.</li>
                                     <li><strong>Taglie & Discipline:</strong> Tracciamento taglie abbigliamento per kit e divise societarie e assegnazione ai corsi della struttura.</li>
                                     <li><strong>Importazione Massiva da Modello Excel Collaudato:</strong> Se possiedi un archivio corposo di soci in un foglio di calcolo, puoi scaricare il <em>Modello Excel ufficiale (.xlsx)</em> da <em>Impostazioni</em> e importare tutti gli iscritti in pochi istanti senza rischi di disallineamento (vedi Capitolo 10 per la guida passo-passo).</li>
-                                    <li><strong>Modulo & Liberatoria con QR Code Univoco (Novità):</strong> Tramite il nuovo pulsante dedicato <code>📝 Lib</code> presente su ogni riga socio e nel menu contestuale, il gestionale genera e stampa all'istante la <em>Liberatoria Minori</em> o la <em>Liberatoria & Manleva Adulti</em> già precompilata con tutti i dati anagrafici e con timbro <strong>QR Code univoco anticontraffazione</strong> in alto a destra per l'acquisizione automatica. Lo stato dell'acquisizione (⏳ In attesa o ✅ Acquisita con data e nome file allegato) è sempre visibile e aggiornabile con un clic.</li>
+                                    <li><strong>Modulo & Liberatoria con QR Code Univoco (Novità):</strong> Tramite il pulsante dedicato <code>📝 Lib</code> presente sulle righe dei soci minorenni e di quelli con dati da completare (es. data di nascita non inserita), il gestionale genera e stampa all'istante la <em>Liberatoria Minori</em> precompilata con QR Code univoco per l'acquisizione automatica. Per i soci maggiorenni, che non necessitano di liberatoria, la riga rimane snella e pulita (con la possibilità di stampare il modulo dal menu rapido). Lo stato dell'acquisizione (⏳ In attesa o ✅ Acquisita con data e nome file allegato) è sempre visibile e aggiornabile con un clic.</li>
                                     <li><strong>Esportazione Excel Dinamica a lato della Condizione (Novità):</strong> Accanto al selettore dello stato socio (in cui leggi la condizione attiva: <em>Soci Anno Sportivo Corrente</em>, <em>Attivi con Quota</em>, <em>Morosi</em>, <em>Archivio</em>, ecc.) è presente un <strong>singolo pulsante compatto di Esportazione Excel</strong>. Cliccandolo, il gestionale esporta esattamente l'elenco filtrato corrispondente alla condizione visualizzata, corredato di intestazioni, date, contatti, stato tesseramento e liberatorie, salvando il file nella cartella dedicata alle esportazioni soci.</li>
                                 </ul>`;
                         break;
@@ -9416,8 +9416,14 @@
                         rowStyle = 'color: var(--warning); font-weight: 500;';
                     }
                     
-                    const eta = s.data_nascita ? (app.calcolaEta ? app.calcolaEta(s.data_nascita) : 99) : 99;
-                    const isMinore = eta < 18;
+                    const hasDataNascita = Boolean(s.data_nascita && String(s.data_nascita).trim());
+                    const calcEtaFn = (typeof this.calcolaEta === 'function') ? this.calcolaEta.bind(this) : (window.app && typeof window.app.calcolaEta === 'function' ? window.app.calcolaEta.bind(window.app) : null);
+                    const eta = (hasDataNascita && calcEtaFn) ? calcEtaFn(s.data_nascita) : null;
+                    const isMinore = eta !== null && eta < 18;
+                    const isMaggiorenne = eta !== null && eta >= 18;
+                    // I soci maggiorenni non necessitano di liberatoria: non visualizzare nella loro riga.
+                    // Mostra la liberatoria solo per i minorenni e per i soci senza data di nascita/dati compilati.
+                    const showLiberatoria = !isMaggiorenne;
                     const hasNote = Boolean(s.note && String(s.note).trim());
 
                     return `
@@ -9466,7 +9472,9 @@
                                     ? `<button type="button" class="btn btn-outline" style="padding: 4px 7px; font-size:0.75rem; border-color: var(--primary); background: rgba(59,130,246,0.1);" data-guide="Modifica o leggi nota del socio. Effetto: Apre il popup delle note interne per consultare o aggiornare le annotazioni riservate." title="${s.note.replace(/"/g, '&quot;')}" onclick="app.openQuickNoteModal(${s.id})">📝</button>` 
                                     : `<button type="button" class="btn btn-outline" style="padding: 4px 7px; font-size:0.75rem; border-color: var(--border); opacity: 0.6;" data-guide="Aggiungi una nota interna. Effetto: Apre la finestra per inserire una nota riservata su questo socio." title="Aggiungi Nota" onclick="app.openQuickNoteModal(${s.id})">🗒️</button>`
                                 }
-                                <button type="button" class="btn btn-outline" style="padding: 4px 6px; font-size:0.72rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria e moduli con QR Code." title="${isMinore ? 'Liberatoria Minori' : 'Liberatoria & Manleva Adulti'}" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>
+                                ${showLiberatoria ? `
+                                    <button type="button" class="btn btn-outline" style="padding: 4px 6px; font-size:0.72rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria minori con QR Code." title="${isMinore ? 'Liberatoria Minori' : 'Liberatoria (Data nascita non compilata)'}" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>
+                                ` : ''}
                                 <button type="button" class="btn btn-outline" style="padding: 4px 7px; border-color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--border)'};" data-guide="Modifica scheda socio. Effetto: Apre il modulo completo per aggiornare anagrafica, recapiti, visite mediche e quote associative." title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
                                 <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" style="padding: 4px 8px !important; height: 28px;" onclick="app.toggleRowActionsMenu(this, event)" title="Menu contatti e comunicazioni socio (WhatsApp, Email, Messaggio libero)..." data-guide="Menu contatti e messaggi socio. Effetto: Invia avvisi WhatsApp o Email per quote e certificati, oppure scrivi un messaggio personalizzato per ogni evenienza.">⋮</button>
@@ -9495,11 +9503,19 @@
 
                                         <div class="row-actions-divider"></div>
 
-                                        <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">📑 Modulo &amp; Liberatoria QR</div>
-                                        <button type="button" class="row-actions-item" onclick="app.gestisciLiberatoria(${s.id})" title="Stampa o gestisci liberatoria con QR Code">
-                                            <span class="row-actions-icon">🖨️</span>
-                                            <span>Stampa Liberatoria QR</span>
-                                        </button>
+                                        ${showLiberatoria ? `
+                                            <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">📑 Liberatoria QR</div>
+                                            <button type="button" class="row-actions-item" onclick="app.gestisciLiberatoria(${s.id})" title="Stampa o gestisci liberatoria con QR Code">
+                                                <span class="row-actions-icon">🖨️</span>
+                                                <span>Stampa Liberatoria QR</span>
+                                            </button>
+                                        ` : `
+                                            <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">📑 Modulo Iscrizione QR</div>
+                                            <button type="button" class="row-actions-item" onclick="typeof app.stampaLiberatoriaAdulto === 'function' ? app.stampaLiberatoriaAdulto(${s.id}) : app.gestisciLiberatoria(${s.id})" title="Stampa domanda di iscrizione socio con QR Code">
+                                                <span class="row-actions-icon">🖨️</span>
+                                                <span>Stampa Domanda Iscrizione QR</span>
+                                            </button>
+                                        `}
 
                                         <div class="row-actions-divider"></div>
 
@@ -25003,8 +25019,12 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             }
 
             const rows = soci.map(s => {
-                const isMinore = s.data_nascita && typeof this.calcolaEta === 'function' && this.calcolaEta(s.data_nascita) < 18;
-                const libMinoriStr = isMinore ? (s.liberatoria_consegnata ? 'Consegnata' : 'In attesa') : 'Non applicabile';
+                const calcEtaExp = (typeof this.calcolaEta === 'function') ? this.calcolaEta.bind(this) : (window.app && typeof window.app.calcolaEta === 'function' ? window.app.calcolaEta.bind(window.app) : null);
+                const hasBirth = Boolean(s.data_nascita && String(s.data_nascita).trim());
+                const etaVal = (hasBirth && calcEtaExp) ? calcEtaExp(s.data_nascita) : null;
+                const isMinore = etaVal !== null && etaVal < 18;
+                const isAdulto = etaVal !== null && etaVal >= 18;
+                const libMinoriStr = isAdulto ? 'Non applicabile' : (s.liberatoria_consegnata ? 'Consegnata' : (isMinore ? 'In attesa' : 'In attesa (Dati mancanti)'));
                 const tessScadStr = typeof this.getTesseramentoScadenza === 'function' ? this.getTesseramentoScadenza(s) : (s.tesseramento_scadenza || '');
                 const displayStato = typeof this.getSocioDisplayStato === 'function' ? this.getSocioDisplayStato(s) : (s.stato || 'ATTIVO');
 
@@ -27986,31 +28006,56 @@ ${r.annullata ? `
 
         // --- LIBERATORIA MINORI ---
         calcolaEta(dataNascitaStr) {
-            if(!dataNascitaStr) return 99;
-            const dob = new Date(dataNascitaStr);
-            const diff_ms = Date.now() - dob.getTime();
-            const age_dt = new Date(diff_ms);
-            return Math.abs(age_dt.getUTCFullYear() - 1970);
+            if (!dataNascitaStr || !String(dataNascitaStr).trim()) return null;
+            let str = String(dataNascitaStr).trim();
+            if (str.includes('/')) {
+                const parts = str.split('/');
+                if (parts.length === 3) {
+                    str = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+            } else if (str.includes('-')) {
+                const parts = str.split('-');
+                if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+                    str = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+            }
+            const dob = new Date(str);
+            if (isNaN(dob.getTime())) return null;
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            return (typeof age === 'number' && !isNaN(age) && age >= 0 && age < 130) ? age : null;
         },
         gestisciLiberatoria(id) {
             const s = this.state.soci.find(x => x.id === id);
             if(!s) return;
             const eta = this.calcolaEta(s.data_nascita);
-            const isMin = eta < 18;
-            const title = isMin ? 'Liberatoria per Minori' : 'Liberatoria & Manleva Adulto';
+            const isMin = eta !== null && eta < 18;
+            const title = isMin ? 'Liberatoria per Minori' : (eta !== null ? 'Liberatoria & Manleva Adulto' : 'Liberatoria & Moduli (Data Nascita mancante)');
+            const etaLabel = eta !== null ? `(Età: ${eta} anni)` : '(Data di nascita non specificata)';
             const html = `
                 <div style="text-align:center; padding:15px 0;">
                     <h3 style="margin-top:0; color:var(--primary); font-size:1.25rem;">${title}</h3>
-                    <p style="color:var(--text-muted); font-size:0.9rem;">Socio: <strong style="color:var(--text-main);">${s.cognome} ${s.nome}</strong> (Età: ${eta} anni)</p>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">Socio: <strong style="color:var(--text-main);">${s.cognome} ${s.nome}</strong> ${etaLabel}</p>
                     
                     <div style="margin: 25px 0; display:flex; flex-direction:column; gap:12px; align-items:center;">
                         ${isMin ? `
                             <button class="btn btn-outline" style="width:85%; font-size:1rem; padding:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa la liberatoria minori con QR Code univoco." onclick="app.stampaLiberatoriaMinore(${id})">
                                 <span>🖨️ Stampa Liberatoria Minori (con QR Code)</span>
                             </button>
+                        ` : eta === null ? `
+                            <button class="btn btn-outline" style="width:85%; font-size:1rem; padding:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa la liberatoria minori con QR Code univoco." onclick="app.stampaLiberatoriaMinore(${id})">
+                                <span>🖨️ Stampa Liberatoria Minori (con QR Code)</span>
+                            </button>
+                            <button class="btn btn-outline" style="width:85%; font-size:0.9rem; padding:8px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa il modulo per maggiorenni con QR Code univoco." onclick="typeof app.stampaLiberatoriaAdulto === 'function' ? app.stampaLiberatoriaAdulto(${id}) : app.stampaLiberatoriaMinore(${id})">
+                                <span>🖨️ Stampa Modulo Iscrizione Adulti (con QR Code)</span>
+                            </button>
                         ` : `
-                            <button class="btn btn-outline" style="width:85%; font-size:1rem; padding:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa il modulo liberatoria e manleva per maggiorenni con QR Code univoco." onclick="app.stampaLiberatoriaAdulto(${id})">
-                                <span>🖨️ Stampa Liberatoria Adulti (con QR Code)</span>
+                            <button class="btn btn-outline" style="width:85%; font-size:1rem; padding:10px; display:inline-flex; align-items:center; justify-content:center; gap:8px;" data-guide="Genera e stampa il modulo liberatoria e manleva per maggiorenni con QR Code univoco." onclick="typeof app.stampaLiberatoriaAdulto === 'function' ? app.stampaLiberatoriaAdulto(${id}) : app.stampaLiberatoriaMinore(${id})">
+                                <span>🖨️ Stampa Modulo Iscrizione Adulti (con QR Code)</span>
                             </button>
                         `}
                         
