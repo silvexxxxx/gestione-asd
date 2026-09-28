@@ -9475,10 +9475,19 @@
                                 ${showLiberatoria ? `
                                     <button type="button" class="btn btn-outline" style="padding: 4px 6px; font-size:0.72rem; border-color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'}; color:${s.liberatoria_consegnata ? 'var(--success)' : '#ca8a04'};" data-guide="Gestione liberatoria minori con QR Code." title="${isMinore ? 'Liberatoria Minori' : 'Liberatoria (Data nascita non compilata)'}" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>
                                 ` : ''}
+                                <button type="button" class="btn btn-outline" style="padding: 4px 7px; border-color: #10b981; color: #10b981;" data-guide="Emetti nuova ricevuta per questo socio. Effetto: Apre la maschera di emissione ricevuta con anagrafica socio precompilata." title="Emetti Ricevuta" onclick="app.openAddRicevutaModal(null, null, null, ${s.id})">💳</button>
                                 <button type="button" class="btn btn-outline" style="padding: 4px 7px; border-color: ${isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--border)'};" data-guide="Modifica scheda socio. Effetto: Apre il modulo completo per aggiornare anagrafica, recapiti, visite mediche e quote associative." title="Modifica" onclick="app.openEditSocioModal(${s.id})">✏️</button>
                                 <div class="row-actions-dropdown">
                                     <button type="button" class="btn btn-outline row-actions-btn" style="padding: 4px 8px !important; height: 28px;" onclick="app.toggleRowActionsMenu(this, event)" title="Menu contatti e comunicazioni socio (WhatsApp, Email, Messaggio libero)..." data-guide="Menu contatti e messaggi socio. Effetto: Invia avvisi WhatsApp o Email per quote e certificati, oppure scrivi un messaggio personalizzato per ogni evenienza.">⋮</button>
                                     <div class="row-actions-menu" style="min-width: 235px;">
+                                        <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">🧾 Pagamenti e Ricevute</div>
+                                        <button type="button" class="row-actions-item" onclick="app.openAddRicevutaModal(null, null, null, ${s.id})" title="Emetti Ricevuta per ${(s.nome || '').replace(/'/g, "\\'")}">
+                                            <span class="row-actions-icon">💳</span>
+                                            <span style="font-weight: 600; color: #10b981;">Emetti Ricevuta</span>
+                                        </button>
+
+                                        <div class="row-actions-divider"></div>
+
                                         <div style="padding: 5px 12px 2px; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">🩺 Certificato Medico</div>
                                         <button type="button" class="row-actions-item ${!s.tel ? 'disabled' : ''}" onclick="${s.tel ? `app.sendWhatsAppReminder('${s.tel}', '${(s.nome || '').replace(/'/g, "\\'")}', 'Certificato Medico', ${s.id})` : ''}" title="${s.tel ? 'Invia WhatsApp Certificato a ' + s.tel : 'Telefono non registrato'}">
                                             <span class="row-actions-icon" style="color:#25D366;">${app.getWhatsAppIcon(14)}</span>
@@ -9956,6 +9965,26 @@
                     if (cancelBtn) {
                         cancelBtn.onclick = () => app.openCronologiaMessaggiModal(id);
                     }
+                }
+
+                // Predisponi pulsante Emetti Ricevuta direttamente nella scheda di modifica
+                const btnContainerEdit = form.querySelector('div[style*="justify-content: flex-end"]');
+                if (btnContainerEdit && !btnContainerEdit.querySelector('.btn-emetti-ricevuta-socio')) {
+                    const emettiBtn = document.createElement('button');
+                    emettiBtn.type = 'button';
+                    emettiBtn.className = 'btn btn-outline btn-emetti-ricevuta-socio';
+                    emettiBtn.style.borderColor = '#10b981';
+                    emettiBtn.style.color = '#10b981';
+                    emettiBtn.style.fontWeight = '600';
+                    emettiBtn.style.fontSize = '0.82rem';
+                    emettiBtn.innerHTML = '💳 Emetti Ricevuta';
+                    emettiBtn.title = 'Emetti una nuova ricevuta per questo socio';
+                    emettiBtn.onclick = () => {
+                        app.closeModal();
+                        app.openAddRicevutaModal(null, null, null, id);
+                    };
+                    const submitBtn = btnContainerEdit.querySelector('button[type="submit"]');
+                    btnContainerEdit.insertBefore(emettiBtn, submitBtn || btnContainerEdit.lastChild);
                 }
 
                 // Fill form
@@ -10595,6 +10624,8 @@
                                 </div>
                             </div>
 
+                            <div id="receipts-soci-search-results" style="display:none; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border);"></div>
+
                             <div class="table-container" onscroll="app.onRicevuteTableScroll(this)">
                                 <table>
                                     <thead>
@@ -10657,7 +10688,59 @@
             },
 
             renderRicevuteRows(receipts) {
-                if (receipts.length === 0) return `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
+                if (receipts.length === 0) {
+                    const searchEl = document.getElementById('receipt-search');
+                    const search = (searchEl ? searchEl.value : '').toLowerCase().trim();
+                    const searchWords = search ? search.split(/\s+/).filter(Boolean) : [];
+                    let matchingSoci = [];
+                    if (searchWords.length > 0) {
+                        matchingSoci = (this.state.soci || []).filter(s => {
+                            const c = (s.cognome || '').toLowerCase();
+                            const n = (s.nome || '').toLowerCase();
+                            const cf = (s.cf || '').toLowerCase();
+                            return searchWords.every(w => c.includes(w) || n.includes(w) || cf.includes(w));
+                        });
+                    }
+
+                    if (matchingSoci.length > 0) {
+                        return `
+                            <tr>
+                                <td colspan="9" style="text-align: center; padding: 2rem 1.5rem; background: rgba(59, 130, 246, 0.04);">
+                                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+                                        Nessuna ricevuta emessa per "${search}" nella stagione selezionata
+                                    </div>
+                                    <p style="color: var(--text-muted); font-size: 0.86rem; margin-bottom: 16px;">
+                                        ${matchingSoci.length === 1 ? 'È presente 1 socio registrato in Anagrafica Soci' : `Sono presenti ${matchingSoci.length} soci registrati in Anagrafica Soci`}:
+                                    </p>
+                                    <div style="display: flex; flex-direction: column; gap: 10px; max-width: 640px; margin: 0 auto; text-align: left;">
+                                        ${matchingSoci.slice(0, 8).map(s => {
+                                            const isTess = this.isTesseramentoAttivo(s);
+                                            const qScad = s.quota_scadenza ? this.formatDate(s.quota_scadenza) : 'Nessuna';
+                                            return `
+                                                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+                                                    <div>
+                                                        <div style="font-weight: 700; color: var(--text-main); font-size: 0.98rem;">${s.cognome} ${s.nome}</div>
+                                                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                                            <span style="padding: 2px 7px; border-radius: 4px; font-weight: 600; font-size: 0.72rem; ${isTess ? 'background:rgba(16,185,129,0.15); color:var(--success);' : 'background:rgba(239,68,68,0.12); color:var(--danger);'}">${isTess ? 'TESSERATO' : 'NON TESSERATO'}</span>
+                                                            <span>Scad. Quota: <strong>${qScad}</strong></span>
+                                                            ${s.tel ? `<span>• Tel: ${s.tel}</span>` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-primary" style="font-size: 0.84rem; padding: 7px 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;" onclick="app.openAddRicevutaModal(null, null, null, ${s.id})" data-guide="Emetti nuova ricevuta per questo socio">
+                                                        ➕ Emetti Ricevuta
+                                                    </button>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                        ${matchingSoci.length > 8 ? `<div style="font-size: 0.78rem; color: var(--text-muted); text-align: center;">...e altri ${matchingSoci.length - 8} soci (affina la ricerca per isolare il socio)</div>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    return `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
+                }
 
                 let sorted = [...receipts];
                 
@@ -10954,8 +11037,10 @@
             filterRicevute() {
                 const startEl = document.getElementById('receipt-date-start');
                 const endEl = document.getElementById('receipt-date-end');
+                const searchEl = document.getElementById('receipt-search');
                 const clearBtn = document.getElementById('receipt-date-clear-btn');
                 const tbody = document.getElementById('receipts-tbody');
+                const sociSuggestionsEl = document.getElementById('receipts-soci-search-results');
                 if (!tbody) return;
 
                 const start = startEl ? startEl.value : '';
@@ -10967,6 +11052,65 @@
 
                 const filtered = this.getFilteredRicevute();
                 tbody.innerHTML = this.renderRicevuteRows(filtered);
+
+                // Se sono visualizzate già ricevute ma l'utente cerca per nome, mostra anche i soci dell'anagrafica senza ricevuta in questa stagione
+                if (sociSuggestionsEl) {
+                    const search = (searchEl ? searchEl.value : '').toLowerCase().trim();
+                    const searchWords = search ? search.split(/\s+/).filter(Boolean) : [];
+                    if (searchWords.length > 0 && filtered.length > 0) {
+                        const matchingSoci = (this.state.soci || []).filter(s => {
+                            const c = (s.cognome || '').toLowerCase();
+                            const n = (s.nome || '').toLowerCase();
+                            const cf = (s.cf || '').toLowerCase();
+                            return searchWords.every(w => c.includes(w) || n.includes(w) || cf.includes(w));
+                        });
+
+                        const matchingSociWithoutReceipt = matchingSoci.filter(s => 
+                            !filtered.some(r => r.socio_id == s.id || (r.socio_nome && r.socio_nome.toLowerCase().includes((s.cognome + ' ' + s.nome).toLowerCase())))
+                        );
+
+                        if (matchingSociWithoutReceipt.length > 0) {
+                            sociSuggestionsEl.style.display = 'block';
+                            sociSuggestionsEl.innerHTML = `
+                                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 10px 14px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                                        <span style="font-size:0.85rem; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                                            <span>👤</span> Altri soci in anagrafica senza ricevute in questa stagione (${matchingSociWithoutReceipt.length}):
+                                        </span>
+                                        <span style="font-size:0.75rem; color:var(--text-muted);">Clicca su "Emetti Ricevuta" per tesserare o rinnovare nell'anno in corso</span>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; gap:6px;">
+                                        ${matchingSociWithoutReceipt.slice(0, 4).map(s => {
+                                            const isTess = this.isTesseramentoAttivo(s);
+                                            const qScad = s.quota_scadenza ? this.formatDate(s.quota_scadenza) : 'Nessuna';
+                                            return `
+                                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:7px 12px; border-radius:6px; border:1px solid var(--border); gap:10px; flex-wrap:wrap;">
+                                                    <div style="font-size:0.86rem;">
+                                                        <strong>${s.cognome} ${s.nome}</strong>
+                                                        <span style="margin-left:8px; font-size:0.72rem; padding:1px 6px; border-radius:4px; font-weight:600; ${isTess ? 'background:rgba(16,185,129,0.15); color:var(--success);' : 'background:rgba(239,68,68,0.12); color:var(--danger);'}">
+                                                            ${isTess ? 'TESSERATO' : 'NON TESSERATO'}
+                                                        </span>
+                                                        <span style="margin-left:8px; font-size:0.76rem; color:var(--text-muted);">Scad. Quota: ${qScad}</span>
+                                                    </div>
+                                                    <button type="button" class="btn btn-primary" style="font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:4px;" onclick="app.openAddRicevutaModal(null, null, null, ${s.id})">
+                                                        ➕ Emetti Ricevuta
+                                                    </button>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                        ${matchingSociWithoutReceipt.length > 4 ? `<div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">...e altri ${matchingSociWithoutReceipt.length - 4} soci in anagrafica</div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            sociSuggestionsEl.style.display = 'none';
+                            sociSuggestionsEl.innerHTML = '';
+                        }
+                    } else {
+                        sociSuggestionsEl.style.display = 'none';
+                        sociSuggestionsEl.innerHTML = '';
+                    }
+                }
             },
 
             highlightReceiptRow(id, shouldScroll = false) {
@@ -11054,7 +11198,7 @@
             if (!list) return;
             
             list.style.display = 'block';
-            const soci = this.state.soci;
+            const soci = this.state.soci || [];
             
             const filtered = soci.filter(s => {
                 if (!val) return true;
@@ -11063,16 +11207,29 @@
                 const nome = (s.nome || '').toLowerCase();
                 return queryParts.every(part => cognome.includes(part) || nome.includes(part));
             });
+
+            filtered.sort((a, b) => {
+                const nameA = `${a.cognome || ''} ${a.nome || ''}`.toLowerCase();
+                const nameB = `${b.cognome || ''} ${b.nome || ''}`.toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
             
             list.innerHTML = filtered.map(s => {
                 const safeName = (s.cognome + ' ' + s.nome).replace(/'/g, "\\'");
                 const hasNote = Boolean(s.note && s.note.trim());
                 const noteBadge = hasNote ? `<span title="Ha note riservate: ${s.note.replace(/"/g, '&quot;')}" style="font-size:0.9rem; filter:drop-shadow(0 0 6px rgba(255,23,68,0.9));">📌</span>` : '';
-                return `<div class="autocomplete-item" style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main); display:flex; align-items:center; justify-content:space-between;" 
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+                const isTess = (typeof this.isTesseramentoAttivo === 'function') ? this.isTesseramentoAttivo(s) : (s.tesserato === 'SI');
+                const statusBadge = `<span style="font-size:0.68rem; padding:1px 6px; border-radius:4px; font-weight:600; ${isTess ? 'background:rgba(16,185,129,0.15); color:var(--success);' : 'background:rgba(239,68,68,0.12); color:var(--danger);'}">${isTess ? 'TESSERATO' : 'NON TESSERATO'}</span>`;
+                const birthStr = s.data_nascita ? `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:4px;">(${this.formatDate(s.data_nascita)})</span>` : '';
+                return `<div class="autocomplete-item" style="padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-main); display:flex; align-items:center; justify-content:space-between;" 
+                        onmouseover="this.style.background='rgba(255,255,255,0.08)'" 
                         onmouseout="this.style.background='transparent'" 
                         onclick="document.getElementById('${searchId}').value='${safeName}'; document.getElementById('${hiddenId}').value='${s.id}'; if('${previewId}' && '${previewId}' !== 'null' && '${previewId}' !== 'undefined') { app.updateReceiptSocioInfo('${s.id}', '${previewId}'); } document.getElementById('${listId}').style.display='none';">
-                        <span>${s.cognome} ${s.nome}</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span><strong>${s.cognome}</strong> ${s.nome}</span>
+                            ${birthStr}
+                            ${statusBadge}
+                        </div>
                         ${noteBadge}
                         </div>`;
             }).join('');
@@ -11081,7 +11238,7 @@
                 list.innerHTML = `<div style="padding:10px; color:var(--text-muted);">Nessun socio trovato</div>`;
             }
         },
-openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
+openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, preselectedSocioId = null) {
             const today = new Date();
             const currentYear = forcedAnno ? parseInt(forcedAnno) : (today.getMonth() >= 8 ? today.getFullYear() : today.getFullYear() - 1);
             const lastNum = this.state.ricevute.filter(r => r.tipo !== 'Compenso Sportivo' && r.anno === currentYear).reduce((max, r) => Math.max(max, r.numero), 0);
@@ -11127,10 +11284,10 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
                                         oninput="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
                                         onfocus="app.filterSociDropdown(this.value, 'receipt-socio-search', 'soci-autocomplete-list', 'receipt-socio-id')" 
                                         onkeydown="app.handleAutocompleteKeydown(event, 'soci-autocomplete-list', 'receipt-socio-search', 'receipt-socio-id')" 
-                                        onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 200)" required
+                                        onblur="setTimeout(()=> { const l = document.getElementById('soci-autocomplete-list'); if(l) l.style.display='none'; }, 250)" required
                                         data-guide="Selezione socio intestatario. Effetto: Digita il cognome o nome per selezionare il socio da anagrafica e importarne automaticamente i dati fiscali.">
                                     <input type="hidden" name="socio_id" id="receipt-socio-id" required>
-                                    <div id="soci-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:200px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                                    <div id="soci-autocomplete-list" style="display:none; position:absolute; background:var(--bg-card); border:1px solid var(--border); backdrop-filter:blur(8px); max-height:280px; overflow-y:auto; width:100%; z-index:100; border-radius:4px; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
                                 </div>
                                 <div id="receipt-socio-preview" style="display:none; margin-top:8px; font-size:0.85rem; padding:8px; background:rgba(59, 130, 246, 0.1); border-radius:4px; border-left:3px solid #3b82f6; color:var(--text-main);"></div>
                             </div>
@@ -11275,6 +11432,18 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null) {
             document.getElementById('modal-content').classList.add('modal-wide');
             const dateEl = document.getElementById('receipt-data');
             if (dateEl) dateEl.value = this.formatItDate(defaultDate);
+
+            if (preselectedSocioId) {
+                const s = (this.state.soci || []).find(x => x.id == preselectedSocioId);
+                if (s) {
+                    const searchInput = document.getElementById('receipt-socio-search');
+                    const hiddenIdInput = document.getElementById('receipt-socio-id');
+                    const safeName = `${s.cognome} ${s.nome}`;
+                    if (searchInput) searchInput.value = safeName;
+                    if (hiddenIdInput) hiddenIdInput.value = s.id;
+                    this.updateReceiptSocioInfo(s.id, 'receipt-socio-preview');
+                }
+            }
         },
 
         openInsertRicevutaModal(insertNum, anno, dataDefault) {
