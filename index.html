@@ -22787,8 +22787,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     <div id="cronologia-stats-bar" style="display: flex; gap: 12px; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap;">
                     </div>
 
-                    <!-- Tabella Cronologia -->
-                    <div class="table-container" style="max-height: 60vh; overflow-x: auto; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; width: 100%; -webkit-overflow-scrolling: touch;">
+                    <!-- Tabella Cronologia (Desktop) -->
+                    <div class="table-container db-desktop-table" style="max-height: 60vh; overflow-x: auto; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; width: 100%; -webkit-overflow-scrolling: touch;">
                         <table style="font-size: 0.8rem; width: 100%; min-width: 860px; border-collapse: collapse;">
                             <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                                 <tr>
@@ -22803,6 +22803,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             <tbody id="cronologia-table-body">
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Card Cronologia (Mobile) -->
+                    <div class="db-mobile-cards" id="cronologia-mobile-cards" style="max-height: 65vh; overflow-y: auto;">
                     </div>
                 </div>
             `;
@@ -22819,8 +22823,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
         filterCronologiaTable(socioId = null) {
             const tbody = document.getElementById('cronologia-table-body');
+            const mobileContainer = document.getElementById('cronologia-mobile-cards');
             const statsBar = document.getElementById('cronologia-stats-bar');
-            if (!tbody) return;
+            if (!tbody && !mobileContainer) return;
 
             const queryInput = document.getElementById('cronologia-search');
             const channelInput = document.getElementById('cronologia-channel-filter');
@@ -22857,7 +22862,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             }
 
             if (list.length === 0) {
-                tbody.innerHTML = `
+                const emptyHtml = `
                     <tr>
                         <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
                             <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📭</div>
@@ -22866,19 +22871,35 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         </td>
                     </tr>
                 `;
+                const emptyCardHtml = `
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+                        <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📭</div>
+                        <div>Nessun messaggio trovato.</div>
+                    </div>
+                `;
+                if (tbody) tbody.innerHTML = emptyHtml;
+                if (mobileContainer) mobileContainer.innerHTML = emptyCardHtml;
                 return;
             }
 
-            tbody.innerHTML = list.map(m => {
+            const rowsHtml = [];
+            const cardsHtml = [];
+
+            list.forEach(m => {
                 const isWA = m.canale === 'whatsapp';
                 const channelBadge = isWA
                     ? `<span class="badge" style="background: rgba(37, 211, 102, 0.15); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;">${this.getWhatsAppIcon(12)} WhatsApp</span>`
                     : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;">📧 Email</span>`;
+                
+                const channelIconOnly = isWA 
+                    ? `<span style="background: rgba(37, 211, 102, 0.15); color: #25D366; padding: 4px 6px; border-radius: 4px; display: inline-flex;">${this.getWhatsAppIcon(14)}</span>`
+                    : `<span style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; padding: 4px 6px; border-radius: 4px; display: inline-flex; font-size: 0.9rem;">📧</span>`;
 
                 const fullMsg = this.getMessageFullText(m);
                 const safeMsg = (fullMsg || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 
-                return `
+                // Desktop Row
+                rowsHtml.push(`
                     <tr style="border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));">
                         <td style="padding: 10px 12px; white-space: nowrap; font-weight: 500; font-size: 0.75rem; color: var(--text-muted); vertical-align: top;">${m.data_ora || this.formatDateTime(m.timestamp)}</td>
                         <td style="padding: 10px 12px; vertical-align: top;">
@@ -22915,8 +22936,37 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                             ` : '-'}
                         </td>
                     </tr>
-                `;
-            }).join('');
+                `);
+                
+                // Mobile Card (Nuovo layout in 2 colonne come richiesto)
+                cardsHtml.push(`
+                    <div class="socio-card flex-row" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(30,41,59,0.5); border-left: 3px solid ${isWA ? '#25D366' : '#3b82f6'}; margin-bottom: 8px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1;" onclick="app.openMessageDetailModal('${m.id}', 'cronologia')">
+                            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${m.socio_nome || '-'} ${m.socio_id ? this.renderSocioPostitBadge(m.socio_id) : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">
+                                <span style="font-weight: 600;">${m.data_ora ? m.data_ora.substring(0, 10) : this.formatDateTime(m.timestamp).substring(0, 10)}</span>
+                                <span style="font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 4px;">${m.tipo || 'Sollecito'}</span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                                ${m.anteprima || (fullMsg ? fullMsg.substring(0, 40) + '...' : '')}
+                            </div>
+                        </div>
+                        <div class="actions-container" style="display: flex; gap: 8px; margin-left: 12px;">
+                            ${channelIconOnly}
+                            ${m.socio_id ? `
+                                <button class="btn btn-outline" style="width: 28px !important; height: 28px !important; padding: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important;" onclick="event.stopPropagation(); app.openEditSocioModal(${m.socio_id}, true)" title="Apri scheda socio">
+                                    👤
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `);
+            });
+            
+            if (tbody) tbody.innerHTML = rowsHtml.join('');
+            if (mobileContainer) mobileContainer.innerHTML = cardsHtml.join('');
         },
 
         injectSocioCronologiaMessaggi(form, socioId) {
@@ -22943,9 +22993,10 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const messagesListHtml = messages.length === 0
                 ? `<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; padding: 4px 0;">Nessun messaggio inviato registrato finora. I promemoria inviati via WhatsApp ed Email compariranno qui e rimarranno sincronizzati su tutti i tuoi PC.</div>`
                 : `
-                    <div style="max-height: 180px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card, #fff);">
+                    <!-- Tabella Desktop -->
+                    <div class="db-desktop-table" style="max-height: 180px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card, #fff);">
                         <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
-                            <thead>
+                            <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 1;">
                                 <tr style="background: rgba(0,0,0,0.03); border-bottom: 1px solid var(--border-color); text-align: left;">
                                     <th style="padding: 6px 8px; font-weight: 600; width: 110px;">Data/Ora</th>
                                     <th style="padding: 6px 8px; font-weight: 600; width: 90px;">Canale</th>
@@ -22978,8 +23029,36 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </tr>
                                     `;
                                 }).join('')}
+                                ${messages.length > 25 ? `<tr><td colspan="4" style="text-align:center; padding:8px; font-size:0.75rem; font-style:italic;">Mostrati i 25 più recenti. Espandi Registro per vederli tutti.</td></tr>` : ''}
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Card Mobile (Nuovo layout compatto) -->
+                    <div class="db-mobile-cards" style="max-height: 250px; overflow-y: auto; margin-top: 6px;">
+                        ${messages.slice(0, 25).map(m => {
+                            const isWA = m.canale === 'whatsapp';
+                            const fullText = this.getMessageFullText(m);
+                            return `
+                                <div class="socio-card flex-row" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(30,41,59,0.5); border-left: 3px solid ${isWA ? '#25D366' : '#3b82f6'}; margin-bottom: 8px;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1;" onclick="app.openMessageDetailModal('${m.id}', 'socio')">
+                                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">
+                                            <span style="font-weight: 600;">${m.data_ora ? m.data_ora.substring(0, 10) : this.formatDateTime(m.timestamp).substring(0, 10)}</span>
+                                            <span style="font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 4px;">${m.tipo || 'Sollecito'}</span>
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                                            ${m.anteprima || (fullText ? fullText.substring(0, 45) + '...' : '')}
+                                        </div>
+                                    </div>
+                                    <div class="actions-container" style="display: flex; gap: 8px; margin-left: 12px;">
+                                        ${isWA 
+                                            ? `<span style="background: rgba(37, 211, 102, 0.15); color: #25D366; padding: 4px 6px; border-radius: 4px; display: inline-flex;">${this.getWhatsAppIcon(14)}</span>`
+                                            : `<span style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; padding: 4px 6px; border-radius: 4px; display: inline-flex; font-size: 0.9rem;">📧</span>`}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${messages.length > 25 ? `<div style="text-align:center; padding:8px; font-size:0.75rem; font-style:italic;">Mostrati i 25 più recenti. Espandi Registro per vederli tutti.</div>` : ''}
                     </div>
                 `;
 
