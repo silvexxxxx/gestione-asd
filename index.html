@@ -21548,21 +21548,21 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </td>
                                 </tr>`;
                                 
+                const mobileActions = actions.replace(/<button /g, '<button style="width:38px !important; height:38px !important; padding:0 !important; border-radius:8px !important; display:inline-flex !important; justify-content:center !important; align-items:center !important; flex-shrink:0; font-size: 1.1rem !important;" ');
+
                 const card = `
-                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid var(--warning); margin-bottom: 0;">
+                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid var(--warning); margin-bottom: 0;">
                         <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
                             <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${s.cognome || ''} ${s.nome || ''} ${this.renderSocioPostitBadge(s.id)}
                             </div>
-                            <div style="font-size: 0.72rem; color: var(--text-muted);">
-                                Scad. <span class="${this.getCertColor(s.certificato_scadenza)}" style="font-weight: 600;">${this.formatDate(s.certificato_scadenza)}</span>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                                <span>Scad. <span class="${this.getCertColor(s.certificato_scadenza)}" style="font-weight: 600;">${this.formatDate(s.certificato_scadenza)}</span></span>
+                                <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem; padding: 1px 4px;">${s.tesserato === 'SI' ? 'Tess. SI' : 'Tess. NO'}</span>
                             </div>
                         </div>
-                        <div style="margin: 0 8px; flex-shrink: 0;">
-                            <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem; padding: 2px 4px;">${s.tesserato === 'SI' ? 'TESS.' : 'NO TESS.'}</span>
-                        </div>
-                        <div style="flex-shrink: 0;">
-                            ${actions}
+                        <div style="flex-shrink: 0; display: flex; gap: 6px;">
+                            ${mobileActions}
                         </div>
                     </div>`;
 
@@ -21628,8 +21628,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     statusColorClass = "text-warning";
                 }
                 
-                const removeBtn = diffDays < 0 ? `<button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.65rem;" onclick="app.dismissQuoteAlert(${s.id})">Rimuovi</button>` : '';
-                const actions = removeBtn + this.renderReminderButtons(s, 'Quota Associativa');
+                const removeBtnDesktop = diffDays < 0 ? `<button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.65rem;" onclick="app.dismissQuoteAlert(${s.id})">Rimuovi</button>` : '';
+                const actionsDesktop = removeBtnDesktop + this.renderReminderButtons(s, 'Quota Associativa');
 
                 const tr = `
                                 <tr>
@@ -21650,26 +21650,32 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </td>
                                     <td>
                                         <div style="display: flex; gap: 4px;">
-                                            ${actions}
+                                            ${actionsDesktop}
                                         </div>
                                     </td>
                                 </tr>`;
                                 
+                const removeBtnMobile = diffDays < 0 ? `<button class="btn btn-outline text-danger" style="width:38px !important; height:38px !important; padding:0 !important; border-radius:8px !important; display:inline-flex !important; justify-content:center !important; align-items:center !important; flex-shrink:0; font-size:1.1rem !important;" onclick="app.dismissQuoteAlert(${s.id})">✖️</button>` : '';
+                const baseReminderBtns = this.renderReminderButtons(s, 'Quota Associativa');
+                const mobileReminderBtns = baseReminderBtns.replace(/<button /g, '<button style="width:38px !important; height:38px !important; padding:0 !important; border-radius:8px !important; display:inline-flex !important; justify-content:center !important; align-items:center !important; flex-shrink:0; font-size: 1.1rem !important;" ');
+                const mobileActions = removeBtnMobile + mobileReminderBtns;
+
                 const card = `
-                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid ${diffDays < 0 ? 'var(--danger)' : 'var(--warning)'}; margin-bottom: 0;">
+                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid ${diffDays < 0 ? 'var(--danger)' : 'var(--warning)'}; margin-bottom: 0;">
                         <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
-                            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${s.cognome || ''} ${s.nome || ''} ${this.renderSocioPostitBadge(s.id)}
                             </div>
-                            <div style="font-size: 0.72rem; color: var(--text-muted);">
-                                <span class="${colorClass}" style="font-weight: 600;">${this.formatDate(s.quota_scadenza)}</span>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                                ${s.tel || 'No Tel.'} 
                             </div>
                         </div>
-                        <div style="margin: 0 8px; flex-shrink: 0; text-align: center;">
-                            <span class="${statusColorClass}" style="font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 4px;">${statusText}</span>
+                        <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; margin: 0 8px; flex-shrink: 0;">
+                            <span class="${colorClass}" style="font-weight: 600; font-size: 0.75rem;">${this.formatDate(s.quota_scadenza)}</span>
+                            <span class="${statusColorClass}" style="font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 4px;">${statusText}</span>
                         </div>
-                        <div style="flex-shrink: 0; display: flex; gap: 4px;">
-                            ${actions}
+                        <div style="flex-shrink: 0; display: flex; gap: 6px;">
+                            ${mobileActions}
                         </div>
                     </div>`;
                     
@@ -21716,16 +21722,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </tr>`;
                                 
                 const card = `
-                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid var(--success); margin-bottom: 0;">
+                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid var(--success); margin-bottom: 0;">
                         <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
-                            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${r.socio_nome} ${this.renderSocioPostitBadge(r.socio_id)}
                             </div>
-                            <div style="font-size: 0.72rem; color: var(--text-muted);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">
                                 N. ${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<span style="color:#ca8a04;">(Cart)</span>' : ''}
                             </div>
                         </div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--success); flex-shrink: 0; margin-left: 8px;">
+                        <div style="font-size: 1.1rem; font-weight: 800; color: var(--success); flex-shrink: 0; margin-left: 8px; display: flex; align-items: center;">
                             € ${parseFloat(r.importo).toFixed(2)}
                         </div>
                     </div>`;
