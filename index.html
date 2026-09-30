@@ -3088,6 +3088,39 @@
                 white-space: nowrap;
                 font-family: monospace;
             }
+
+            /* ============================================================
+               MOBILE PRIMA NOTA CARDS — Visibili SOLO su mobile (≤768px)
+               Desktop: la tabella classica rimane invariata al 100%.
+               ============================================================ */
+            #pn-cards-container { display: none; }
+            #main-content .table-container:has(#pn-tbody) { display: none !important; }
+            /* Fallback per browser senza :has() */
+            #pn-tbody { pointer-events: none; }
+            
+            #pn-cards-container { display: block !important; padding: 8px 0 4px; }
+
+            .pn-amount {
+                font-size: 1.05rem;
+                font-weight: 800;
+            }
+            .pn-amount.entrata { color: var(--success); }
+            .pn-amount.uscita { color: var(--danger); }
+            .pn-amount.giroconto { color: var(--text-main); }
+
+            .pn-type-badge {
+                font-size: .68rem;
+                font-weight: 700;
+                padding: 2px 7px;
+                border-radius: 6px;
+                white-space: nowrap;
+                display: inline-block;
+            }
+            .pn-type-badge.entrata { background: rgba(16,185,129,.15); color: var(--success); border: 1px solid rgba(16,185,129,.3); }
+            .pn-type-badge.uscita { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+            .pn-type-badge.giroconto { background: rgba(167,139,250,.15); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
+            .pn-type-badge.tecnico { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+            .pn-type-badge.riporto { background: rgba(99,102,241,.15); color: #818cf8; border: 1px solid rgba(99,102,241,.3); }
         }
     </style>
 </head>
@@ -16926,6 +16959,8 @@ ${annullataBanner}
                                     </tbody>
                                 </table>
                             </div>
+                            <!-- MOBILE CARD VIEW: visibile solo su mobile via CSS @media (max-width:768px) -->
+                            <div id="pn-cards-container"></div>
                         </div>
                     </div>
                 `;
@@ -17460,9 +17495,157 @@ ${annullataBanner}
                 }).join('');
             },
 
+            // -------------------------------------------------------
+            // MOBILE CARD RENDERER — Prima Nota
+            // Genera card accordion per la vista mobile (≤768px).
+            // NON altera renderPrimaNotaRows() usata dal desktop.
+            // -------------------------------------------------------
+            renderPrimaNotaCards(txns) {
+                const container = document.getElementById('pn-cards-container');
+                if (!container) return;
+
+                if (txns.length === 0) {
+                    container.innerHTML = `<div class="sc-empty">Nessun movimento trovato con i filtri attuali.</div>`;
+                    return;
+                }
+
+                const cards = txns.map(t => {
+                    const isSaldoIniziale = t.is_saldo_iniziale || (t.riferimento && (t.riferimento.startsWith('SALDO_INIZIALE_') || t.riferimento.startsWith('CHIUSURA_')));
+                    const saldoInizialeId = t.saldo_iniziale_id || (t.riferimento && t.riferimento.startsWith('SALDO_INIZIALE_') ? t.riferimento.replace('SALDO_INIZIALE_', '') : null);
+                    const isChiusuraRiporto = t.riferimento && t.riferimento.startsWith('CHIUSURA_');
+                    const isRiconciliazione = t.is_riconciliazione || (t.riferimento && t.riferimento.startsWith('RICONCILIAZIONE_')) || t.metodo === 'Rettifica E/C';
+
+                    let badgeDisplay = '';
+                    let colorAmtClass = '';
+                    
+                    if (isSaldoIniziale) {
+                        badgeDisplay = isChiusuraRiporto ? `<span class="pn-type-badge riporto">🏁 Riporto</span>` : `<span class="pn-type-badge riporto">🏁 Saldo Iniz.</span>`;
+                        colorAmtClass = 'giroconto';
+                    } else if (isRiconciliazione) {
+                        badgeDisplay = `<span class="pn-type-badge tecnico">⚖️ RETTIFICA</span>`;
+                        colorAmtClass = 'giroconto';
+                    } else {
+                        const typeCls = t.tipo === 'Entrata' ? 'entrata' : (t.tipo === 'Uscita' ? 'uscita' : 'giroconto');
+                        badgeDisplay = `<span class="pn-type-badge ${typeCls}">${t.tipo}</span>`;
+                        colorAmtClass = typeCls;
+                    }
+
+                    let sign = t.tipo === 'Uscita' ? '-' : (t.tipo === 'Entrata' ? '+' : '');
+                    
+                    const metodo = t.metodo || '-';
+                    let metodoIcon = '💵';
+                    const ml = metodo.toLowerCase();
+                    if (ml.includes('bonifico') || ml.includes('banca') || ml.includes('conto')) metodoIcon = '🏦';
+                    else if (ml.includes('pos') || ml.includes('carta')) metodoIcon = '💳';
+                    else if (ml.includes('satispay') || ml.includes('app')) metodoIcon = '📱';
+                    else if (isRiconciliazione) metodoIcon = '⚖️';
+                    
+                    const cardId = `pn-${t.id}`;
+                    const amtStr = `${sign}€ ${parseFloat(t.importo).toFixed(2)}`;
+
+                    let printBtn = '';
+                    let rimborsoId = null;
+                    if (t.riferimento && t.riferimento.startsWith('RIMBORSO_')) {
+                        rimborsoId = parseInt(t.riferimento.replace('RIMBORSO_', ''), 10);
+                    } else if (t.categoria === 'Rimborsi Spese' || (t.descrizione && t.descrizione.toLowerCase().includes('rimborso spese'))) {
+                        const rMatch = (this.state.rimborsi || []).find(r => 
+                            (r.id && t.riferimento === 'RIMBORSO_' + r.id) ||
+                            (Math.abs(parseFloat(r.importo) - parseFloat(t.importo)) < 0.01 && t.descrizione.includes(r.richiedente))
+                        );
+                        if (rMatch) rimborsoId = rMatch.id;
+                    }
+
+                    let receiptId = null;
+                    if (t.riferimento && t.riferimento.startsWith('RICEVUTA_')) {
+                        receiptId = t.riferimento.replace('RICEVUTA_', '');
+                    }
+
+                    if (rimborsoId) {
+                        printBtn = `<button class="sc-action-btn primary" onclick="app.stampaModuloRimborso(${rimborsoId}, true)">🖨️ Modulo</button>`;
+                    } else if (receiptId) {
+                        printBtn = `<button class="sc-action-btn primary" onclick="app.printReceipt('${receiptId}')">🖨️ Ricevuta</button>`;
+                    } else {
+                        printBtn = `<button class="sc-action-btn" onclick="app.stampaGiustificativoMovimento('${t.id}')">🖨️ Giustificativo</button>`;
+                    }
+
+                    let actionsHtml = '';
+                    if (isSaldoIniziale && saldoInizialeId) {
+                        actionsHtml = `
+                            ${printBtn}
+                            <button class="sc-action-btn warning" onclick="app.openSaldoInizialeModal('${saldoInizialeId}')">✏️ Modifica</button>
+                            <button class="sc-action-btn danger" onclick="app.deleteSaldoIniziale('${saldoInizialeId}')">🗑️ Elimina</button>
+                        `;
+                    } else if (!t.riferimento || !t.riferimento.startsWith('RICEVUTA_')) {
+                        actionsHtml = `
+                            ${printBtn}
+                            <button class="sc-action-btn warning" onclick="app.showPrimaNotaForm('${t.id}')">✏️ Modifica</button>
+                            <button class="sc-action-btn danger" onclick="app.deletePrimaNota('${t.id}')">🗑️ Elimina</button>
+                        `;
+                    } else {
+                        actionsHtml = `
+                            ${printBtn}
+                            <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 4px;">Da Ricevuta</span>
+                        `;
+                    }
+
+                    return `
+                    <div class="socio-card" id="${cardId}" style="${isRiconciliazione ? 'border-left: 3px solid #f59e0b;' : ''}">
+                        <div class="sc-header" onclick="app._togglePnCard('${cardId}')">
+                            <div class="sc-avatar" style="border-radius:10px; font-size:.75rem;">${metodoIcon}</div>
+                            <div class="sc-main-info" style="flex:1;">
+                                <div class="sc-name" style="font-size:0.95rem;">${t.categoria || '—'}</div>
+                                <div class="sc-subtitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${t.descrizione || '—'}</div>
+                            </div>
+                            <div class="rc-header-right">
+                                <span class="pn-amount ${colorAmtClass}">${amtStr}</span>
+                                ${badgeDisplay}
+                            </div>
+                            <span class="sc-chevron">▼</span>
+                        </div>
+                        <div class="sc-details">
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">📅</span>
+                                <span class="sc-detail-label">Data</span>
+                                <span class="sc-detail-value">${this.formatDate(t.data)}</span>
+                            </div>
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">${metodoIcon}</span>
+                                <span class="sc-detail-label">Metodo</span>
+                                <span class="sc-detail-value">${metodo}</span>
+                            </div>
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">📝</span>
+                                <span class="sc-detail-label">Causale</span>
+                                <span class="sc-detail-value" style="white-space: normal;">${t.descrizione}</span>
+                            </div>
+                            <div class="sc-detail-divider"></div>
+                            <div class="sc-actions">
+                                ${actionsHtml}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                container.innerHTML = cards;
+            },
+
+            _togglePnCard(cardId) {
+                const card = document.getElementById(cardId);
+                if (!card) return;
+                card.classList.toggle('sc-open');
+            },
+
             filterPrimaNota() {
-                const tbody = document.querySelector('#pn-tbody');
-                if(tbody) tbody.innerHTML = this.renderPrimaNotaRows(this.getFilteredPrimaNota());
+                const filtered = this.getFilteredPrimaNota();
+
+                // === MOBILE: card accordion ===
+                if (window.innerWidth <= 768) {
+                    this.renderPrimaNotaCards(filtered);
+                } else {
+                    // === DESKTOP: tabella classica (invariata) ===
+                    const tbody = document.querySelector('#pn-tbody');
+                    if(tbody) tbody.innerHTML = this.renderPrimaNotaRows(filtered);
+                }
 
                 const yearSelect = document.getElementById('pn-year');
                 const rendicontoLabel = document.getElementById('pn-card-rendiconto-label');
