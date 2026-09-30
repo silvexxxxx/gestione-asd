@@ -3125,11 +3125,14 @@
             /* ============================================================
                MOBILE DASHBOARD CARDS
                ============================================================ */
+            #main-content .dashboard-grid .db-desktop-table,
             .db-desktop-table { display: none !important; }
-            .db-mobile-cards { display: flex !important; flex-direction: column; gap: 8px; }
+            #main-content .dashboard-grid .db-mobile-cards,
+            .db-mobile-cards { display: flex !important; flex-direction: column; gap: 6px; }
         }
         
         @media (min-width: 769px) {
+            #main-content .dashboard-grid .db-mobile-cards,
             .db-mobile-cards { display: none !important; }
         }
     </style>
@@ -21546,18 +21549,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </tr>`;
                                 
                 const card = `
-                    <div class="socio-card sc-open" style="border-left: 3px solid var(--warning); padding: 12px; margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: flex-start;">
-                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
+                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid var(--warning); margin-bottom: 0;">
+                        <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
+                            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${s.cognome || ''} ${s.nome || ''} ${this.renderSocioPostitBadge(s.id)}
                             </div>
-                            <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem;">${s.tesserato || 'NO'}</span>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">
+                                Scad. <span class="${this.getCertColor(s.certificato_scadenza)}" style="font-weight: 600;">${this.formatDate(s.certificato_scadenza)}</span>
+                            </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-bottom: 12px;">
-                            <div><div style="color: var(--text-muted); font-size: 0.75rem;">Certificato</div><div class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</div></div>
-                            <div><div style="color: var(--text-muted); font-size: 0.75rem;">Scad. Tessera</div><div>${tessHtml}</div></div>
+                        <div style="margin: 0 8px; flex-shrink: 0;">
+                            <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem; padding: 2px 4px;">${s.tesserato === 'SI' ? 'TESS.' : 'NO TESS.'}</span>
                         </div>
-                        <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                        <div style="flex-shrink: 0;">
                             ${actions}
                         </div>
                     </div>`;
@@ -21652,19 +21656,19 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </tr>`;
                                 
                 const card = `
-                    <div class="socio-card sc-open" style="border-left: 3px solid ${diffDays < 0 ? 'var(--danger)' : 'var(--warning)'}; padding: 12px; margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: flex-start;">
-                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
+                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid ${diffDays < 0 ? 'var(--danger)' : 'var(--warning)'}; margin-bottom: 0;">
+                        <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
+                            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 ${s.cognome || ''} ${s.nome || ''} ${this.renderSocioPostitBadge(s.id)}
-                                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal; margin-top: 2px;">${s.tel || 'No Tel.'}</div>
                             </div>
-                            <span class="${statusColorClass}" style="font-weight: 700; font-size: 0.75rem;">${statusText}</span>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">
+                                <span class="${colorClass}" style="font-weight: 600;">${this.formatDate(s.quota_scadenza)}</span>
+                            </div>
                         </div>
-                        <div style="font-size: 0.85rem; margin-bottom: 12px;">
-                            <span style="color: var(--text-muted);">Scadenza Quota:</span> 
-                            <span class="${colorClass}" style="font-weight:600;">${this.formatDate(s.quota_scadenza)}</span>
+                        <div style="margin: 0 8px; flex-shrink: 0; text-align: center;">
+                            <span class="${statusColorClass}" style="font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 4px;">${statusText}</span>
                         </div>
-                        <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                        <div style="flex-shrink: 0; display: flex; gap: 4px;">
                             ${actions}
                         </div>
                     </div>`;
@@ -21712,19 +21716,17 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 </tr>`;
                                 
                 const card = `
-                    <div class="socio-card sc-open" style="border-left: 3px solid var(--success); padding: 12px; margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">
-                                    ${r.socio_nome} ${this.renderSocioPostitBadge(r.socio_id)}
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">
-                                    Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<span style="color:#ca8a04;">(Cartacea)</span>' : ''}
-                                </div>
+                    <div class="socio-card sc-open" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(30,41,59,0.5); border-left: 3px solid var(--success); margin-bottom: 0;">
+                        <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
+                            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${r.socio_nome} ${this.renderSocioPostitBadge(r.socio_id)}
                             </div>
-                            <div style="font-size: 1.1rem; font-weight: 800; color: var(--success);">
-                                € ${parseFloat(r.importo).toFixed(2)}
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">
+                                N. ${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<span style="color:#ca8a04;">(Cart)</span>' : ''}
                             </div>
+                        </div>
+                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--success); flex-shrink: 0; margin-left: 8px;">
+                            € ${parseFloat(r.importo).toFixed(2)}
                         </div>
                     </div>`;
                     
