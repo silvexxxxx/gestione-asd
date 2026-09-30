@@ -2897,6 +2897,92 @@
                 background: rgba(255, 51, 68, 0.08);
             }
         }
+
+        /* ============================================================
+           MOBILE SOCI CARDS — Visibili SOLO su mobile (≤768px)
+           Desktop: la tabella classica rimane invariata al 100%.
+           ============================================================ */
+        #soci-cards-container { display: none; }
+
+        @media (max-width: 768px) {
+            #soci-table { display: none !important; }
+            #soci-cards-container { display: block !important; padding: 8px 0 4px; }
+
+            .socio-card {
+                background: rgba(30,41,59,0.6);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 14px;
+                margin: 0 12px 10px;
+                overflow: hidden;
+                transition: border-color 0.2s;
+            }
+            .socio-card.sc-expired { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.04); }
+            .socio-card.sc-warning { border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.04); }
+
+            .sc-header {
+                display: flex; align-items: center; gap: 10px;
+                padding: 13px 14px; cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation; user-select: none;
+            }
+
+            .sc-avatar {
+                width: 40px; height: 40px; border-radius: 50%;
+                background: linear-gradient(135deg,rgba(59,130,246,.2),rgba(139,92,246,.2));
+                border: 1px solid rgba(59,130,246,.25);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 1rem; font-weight: 700; color: var(--primary); flex-shrink: 0;
+            }
+            .socio-card.sc-expired .sc-avatar { background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(239,68,68,.1)); border-color:rgba(239,68,68,.3); color:var(--danger); }
+            .socio-card.sc-warning .sc-avatar { background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.1)); border-color:rgba(245,158,11,.3); color:var(--warning); }
+
+            .sc-main-info { flex: 1; min-width: 0; }
+            .sc-name { font-size:.95rem; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .socio-card.sc-expired .sc-name { color:var(--danger); }
+            .socio-card.sc-warning .sc-name { color:var(--warning); }
+            .sc-subtitle { font-size:.75rem; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+            .sc-badge-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+
+            .sc-chevron { font-size:.7rem; color:var(--text-muted); transition:transform .25s; flex-shrink:0; margin-left:2px; }
+            .socio-card.sc-open .sc-chevron { transform:rotate(180deg); }
+
+            .sc-details { display:none; border-top:1px solid rgba(255,255,255,.07); padding:12px 14px; gap:8px; flex-direction:column; }
+            .socio-card.sc-open .sc-details { display:flex; }
+
+            .sc-detail-row { display:flex; align-items:flex-start; gap:8px; font-size:.82rem; }
+            .sc-detail-icon { font-size:.85rem; width:18px; flex-shrink:0; margin-top:1px; text-align:center; }
+            .sc-detail-label { color:var(--text-muted); font-size:.74rem; min-width:72px; flex-shrink:0; padding-top:1px; }
+            .sc-detail-value { color:var(--text-main); font-weight:500; word-break:break-word; flex:1; }
+            .sc-detail-value a { color:var(--primary); text-decoration:none; }
+            .sc-detail-divider { height:1px; background:rgba(255,255,255,.06); margin:2px 0; }
+
+            .sc-actions { display:flex; flex-wrap:wrap; gap:6px; padding-top:8px; border-top:1px solid rgba(255,255,255,.06); margin-top:2px; }
+            .sc-action-btn {
+                display:inline-flex; align-items:center; gap:5px; padding:8px 12px;
+                border-radius:8px; border:1px solid rgba(255,255,255,.12);
+                background:rgba(255,255,255,.05); color:var(--text-main);
+                font-size:.8rem; font-weight:600; cursor:pointer; font-family:inherit;
+                -webkit-tap-highlight-color:transparent; touch-action:manipulation; transition:background .15s;
+            }
+            .sc-action-btn:active { background:rgba(255,255,255,.12); }
+            .sc-action-btn.primary { border-color:rgba(59,130,246,.3); color:var(--primary); background:rgba(59,130,246,.08); }
+            .sc-action-btn.success { border-color:rgba(16,185,129,.35); color:var(--success); background:rgba(16,185,129,.08); }
+            .sc-action-btn.danger  { border-color:rgba(239,68,68,.25);  color:var(--danger);  background:rgba(239,68,68,.06); }
+            .sc-action-btn.warning { border-color:rgba(245,158,11,.3);  color:var(--warning); background:rgba(245,158,11,.06); }
+            .sc-action-btn.full-row { flex:1 1 100%; justify-content:center; }
+
+            .sc-empty { text-align:center; color:var(--text-muted); padding:2.5rem 1rem; font-size:.9rem; }
+
+            .sc-load-more {
+                display:block; width:calc(100% - 24px); margin:4px 12px 12px;
+                padding:12px; border-radius:10px; border:1px dashed rgba(255,255,255,.15);
+                background:transparent; color:var(--text-muted); font-size:.85rem; font-weight:600;
+                cursor:pointer; font-family:inherit; transition:background .15s;
+                -webkit-tap-highlight-color:transparent;
+            }
+            .sc-load-more:active { background:rgba(255,255,255,.05); }
+        }
     </style>
 </head>
 
@@ -9909,9 +9995,11 @@
                                             <th style="text-align: right; padding-right: 1.5rem; width: 15%; min-width: 175px;" data-guide="Pulsanti azione socio. Effetto: Permette di inviare comunicazioni WhatsApp/Email, gestire note interne, modificare la scheda anagrafica o eliminare l'iscritto.">Azioni</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="soci-tbody"></tbody>
+                                     <tbody id="soci-tbody"></tbody>
                                 </table>
                             </div>
+                            <!-- MOBILE CARD VIEW: visibile solo su mobile via CSS @media (max-width:768px) -->
+                            <div id="soci-cards-container"></div>
                         </div>
                     </div>
                 `;
@@ -10120,6 +10208,125 @@
                 }).join('');
             },
 
+            // -------------------------------------------------------
+            // MOBILE CARD RENDERER — Soci
+            // Genera card accordion per la vista mobile (≤768px).
+            // NON altera renderSociRows() usata dal desktop.
+            // -------------------------------------------------------
+            renderSociCards(soci, filtered, visibleLimit) {
+                const container = document.getElementById('soci-cards-container');
+                if (!container) return;
+
+                if (soci.length === 0) {
+                    const searchInput = document.getElementById('socio-search');
+                    const search = searchInput ? searchInput.value.trim() : '';
+                    const statusSelect = document.getElementById('socio-filter-status');
+                    const status = statusSelect ? statusSelect.value : 'ANNO_CORRENTE';
+                    if (search && status === 'ANNO_CORRENTE') {
+                        container.innerHTML = `<div class="sc-empty">
+                            <div style="margin-bottom:.8rem;">Nessun socio attivo trovato per <strong>"${search}"</strong></div>
+                            <button class="sc-load-more" onclick="document.getElementById('socio-filter-status').value='ALL'; app.state.sociVisibleCount=50; app.filterSoci();">🔍 Cerca in tutto l'archivio (${this.state.soci.length} soci)</button>
+                        </div>`;
+                    } else {
+                        container.innerHTML = `<div class="sc-empty">Nessun socio trovato con i filtri attuali.</div>`;
+                    }
+                    return;
+                }
+
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+
+                const cards = soci.map((s, idx) => {
+                    const qScad = s.quota_scadenza ? new Date(s.quota_scadenza) : null;
+                    if (qScad) qScad.setHours(0, 0, 0, 0);
+                    const tessScadStr   = this.getTesseramentoScadenza(s);
+                    const isTessActive  = this.isTesseramentoAttivo(s);
+                    const displayStato  = this.getSocioDisplayStato(s);
+                    const hasExpiredQ   = qScad && qScad < now;
+                    const hasExpiredT   = tessScadStr && !isTessActive;
+                    const isExpired     = (displayStato === 'MOROSO' || displayStato === 'NON ATTIVO' || hasExpiredQ || hasExpiredT) && displayStato !== 'CESSATO';
+                    let isWarning = false;
+                    if (!isExpired && displayStato !== 'CESSATO') {
+                        if (qScad) {
+                            const d = Math.ceil((qScad - now) / 86400000);
+                            if (d >= 0 && d <= 5) isWarning = true;
+                        }
+                    }
+
+                    const cardClass  = isExpired ? 'sc-expired' : isWarning ? 'sc-warning' : '';
+                    const initial    = ((s.cognome || s.nome || '?')[0]).toUpperCase();
+                    const fullName   = `${s.cognome || ''} ${s.nome || ''}`.trim();
+                    const eta        = (typeof this.calcolaEta === 'function' && s.data_nascita) ? this.calcolaEta(s.data_nascita) : null;
+                    const isMinore   = eta !== null && eta < 18;
+                    const showLib    = eta === null || isMinore;
+
+                    // Badge stato
+                    const badgeClass  = displayStato === 'ATTIVO' ? 'badge-active' : displayStato === 'CESSATO' ? 'badge-cessato' : 'badge-moroso';
+                    const badgeHtml   = `<span class="badge ${badgeClass}" style="font-size:.7rem;padding:3px 8px;">${displayStato}</span>`;
+
+                    // Tesseramento badge
+                    const tessHtml = isTessActive
+                        ? `<span class="badge badge-active" style="font-size:.62rem;padding:2px 5px;">TESS: ATTIVO</span>`
+                        : (tessScadStr
+                            ? `<span class="badge badge-moroso" style="font-size:.62rem;padding:2px 5px;">TESS: SCADUTO</span>`
+                            : `<span class="badge badge-moroso" style="font-size:.62rem;padding:2px 5px;">TESS: NO</span>`);
+
+                    // Colori date
+                    const qColor  = isExpired ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--text-main)';
+                    const cardId  = `sc-${s.id}`;
+
+                    return `
+                    <div class="socio-card ${cardClass}" id="${cardId}">
+                        <div class="sc-header" onclick="app._toggleSocioCard('${cardId}')">
+                            <div class="sc-avatar">${initial}</div>
+                            <div class="sc-main-info">
+                                <div class="sc-name">${fullName}${isMinore ? ' <span style="font-size:.6rem;background:rgba(59,130,246,.1);color:var(--primary);padding:1px 4px;border-radius:3px;">U18</span>' : ''}</div>
+                                <div class="sc-subtitle">${s.tel || s.email || s.residenza || 'Nessun contatto'}</div>
+                            </div>
+                            <div class="sc-badge-wrap">
+                                ${badgeHtml}
+                                ${s.note ? '<span style="font-size:.8rem;" title="Ha note interne">📝</span>' : ''}
+                            </div>
+                            <span class="sc-chevron">▼</span>
+                        </div>
+                        <div class="sc-details">
+                            ${s.residenza ? `<div class="sc-detail-row"><span class="sc-detail-icon">📍</span><span class="sc-detail-label">Residenza</span><span class="sc-detail-value">${s.residenza}</span></div>` : ''}
+                            ${s.tel ? `<div class="sc-detail-row"><span class="sc-detail-icon">📞</span><span class="sc-detail-label">Telefono</span><span class="sc-detail-value"><a href="tel:${s.tel}">${s.tel}</a></span></div>` : ''}
+                            ${s.email ? `<div class="sc-detail-row"><span class="sc-detail-icon">✉️</span><span class="sc-detail-label">Email</span><span class="sc-detail-value"><a href="mailto:${s.email}">${s.email}</a></span></div>` : ''}
+                            ${s.cf ? `<div class="sc-detail-row"><span class="sc-detail-icon">🪪</span><span class="sc-detail-label">Cod. Fiscale</span><span class="sc-detail-value" style="font-family:monospace;font-size:.82rem;">${s.cf}</span></div>` : ''}
+                            <div class="sc-detail-divider"></div>
+                            <div class="sc-detail-row"><span class="sc-detail-icon">💳</span><span class="sc-detail-label">Scad. Quota</span><span class="sc-detail-value" style="color:${qColor};font-weight:700;">${this.formatDate(s.quota_scadenza) || '—'}</span></div>
+                            <div class="sc-detail-row"><span class="sc-detail-icon">🩺</span><span class="sc-detail-label">Certificato</span><span class="sc-detail-value ${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza) || '—'}</span></div>
+                            <div class="sc-detail-row"><span class="sc-detail-icon">🏅</span><span class="sc-detail-label">Tesseramento</span><span class="sc-detail-value">${tessHtml} ${s.tesseramento_data ? `Dal: ${this.formatDate(s.tesseramento_data)}` : ''}</span></div>
+                            ${s.note ? `<div class="sc-detail-divider"></div><div class="sc-detail-row"><span class="sc-detail-icon">📝</span><span class="sc-detail-label">Note</span><span class="sc-detail-value" style="font-style:italic;color:var(--text-muted);">${s.note}</span></div>` : ''}
+                            <div class="sc-detail-divider"></div>
+                            <div class="sc-actions">
+                                <button class="sc-action-btn success" onclick="app.openAddRicevutaModal(null,null,null,${s.id})">💳 Ricevuta</button>
+                                <button class="sc-action-btn primary" onclick="app.openEditSocioModal(${s.id})">✏️ Modifica</button>
+                                <button class="sc-action-btn" onclick="app.openQuickNoteModal(${s.id})">${s.note ? '📝 Nota' : '🗒️ Nota'}</button>
+                                ${showLib ? `<button class="sc-action-btn warning" onclick="app.gestisciLiberatoria(${s.id})">📝 Lib ${s.liberatoria_consegnata ? '✅' : '⏳'}</button>` : ''}
+                                ${s.tel ? `<button class="sc-action-btn" onclick="app.openContactSocioModal(${s.id})">💬 Messaggio</button>` : ''}
+                                <button class="sc-action-btn danger" onclick="app.deleteSocio(${s.id})">🗑️ Elimina</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                container.innerHTML = cards;
+
+                // "Carica altri" se ci sono più risultati del limite
+                if (filtered.length > visibleLimit) {
+                    container.innerHTML += `<button class="sc-load-more" onclick="app.state.sociVisibleCount+=50; app.filterSoci();">👇 Carica altri (mostrati ${soci.length} su ${filtered.length})</button>`;
+                }
+            },
+
+            /** Espande/collassa una card socio (mobile) */
+            _toggleSocioCard(cardId) {
+                const card = document.getElementById(cardId);
+                if (!card) return;
+                card.classList.toggle('sc-open');
+            },
+
             getCertColor(date) {
                 if (!date) return 'text-muted';
                 const now = new Date();
@@ -10253,6 +10460,16 @@
 
                 const filtered = this.getFilteredSoci();
 
+                const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
+                const toRender = filtered.slice(0, visibleLimit);
+
+                // === MOBILE: card accordion ===
+                if (window.innerWidth <= 768) {
+                    this.renderSociCards(toRender, filtered, visibleLimit);
+                    return;
+                }
+
+                // === DESKTOP: tabella classica (invariata) ===
                 const tbody = document.getElementById('soci-tbody');
                 if (tbody) {
                     if (filtered.length === 0) {
@@ -10266,9 +10483,6 @@
                         }
                         return;
                     }
-
-                    const visibleLimit = (status === 'ANNO_CORRENTE' || status === 'TESS_ATTIVO') ? Math.max(200, this.state.sociVisibleCount) : this.state.sociVisibleCount;
-                    const toRender = filtered.slice(0, visibleLimit);
                     tbody.innerHTML = this.renderSociRows(toRender);
                     if (filtered.length > visibleLimit) {
                         tbody.innerHTML += `<tr><td colspan="8" style="text-align:center; padding: 2rem;"><button class="btn btn-outline" style="width:100%; font-weight:bold; max-width:320px;" data-guide="Carica altri 50 soci nell'elenco. Effetto: Visualizza il blocco successivo di soci nella tabella senza ricaricare la pagina." onclick="app.state.sociVisibleCount += 50; app.filterSoci();">👇 Carica altri (mostrati ${toRender.length} su ${filtered.length})</button></td></tr>`;
