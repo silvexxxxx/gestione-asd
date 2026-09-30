@@ -1502,6 +1502,33 @@
                 justify-content: center !important;
                 box-sizing: border-box !important;
             }
+            
+            /* FIX: Salva layout orizzontale dei container flex essenziali */
+            .glass-card .actions-container,
+            .glass-card div.actions-container[style*="display"] {
+                flex-direction: row !important;
+                justify-content: flex-end !important;
+                align-items: center !important;
+                width: auto !important;
+                flex-wrap: nowrap !important;
+            }
+            .glass-card .actions-container button,
+            .glass-card .actions-container a {
+                width: 32px !important;
+                justify-content: center !important;
+                flex: 0 0 32px !important;
+            }
+            
+            /* FIX: Proteggi socio-card dal flex-direction: column */
+            .glass-card .socio-card[style*="display"],
+            .glass-card div.socio-card[style*="display: flex"],
+            .glass-card div.socio-card[style*="display:flex"] {
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                width: 100% !important;
+            }
+
 
             /* Intestazioni riquadri su mobile */
             .card-header-flex {
@@ -21583,7 +21610,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem; padding: 1px 4px;">${s.tesserato === 'SI' ? 'TESS. SÌ' : 'TESS. NO'}</span>
                             </div>
                         </div>
-                        <div class="actions-container" style="margin-left: 12px;">
+                        <div class="actions-container" style="display: flex; gap: 8px; margin-left: 12px;">
                             ${actions}
                         </div>
                     </div>`;
@@ -21691,7 +21718,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                 <span class="${statusColorClass}" style="font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 4px;">${statusText}</span>
                             </div>
                         </div>
-                        <div class="actions-container" style="margin-left: 12px;">
+                        <div class="actions-container" style="display: flex; gap: 8px; margin-left: 12px;">
                             ${baseReminderBtns}
                             ${removeBtnMobile}
                         </div>
