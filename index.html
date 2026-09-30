@@ -3121,6 +3121,16 @@
             .pn-type-badge.giroconto { background: rgba(167,139,250,.15); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
             .pn-type-badge.tecnico { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
             .pn-type-badge.riporto { background: rgba(99,102,241,.15); color: #818cf8; border: 1px solid rgba(99,102,241,.3); }
+
+            /* ============================================================
+               MOBILE DASHBOARD CARDS
+               ============================================================ */
+            .db-desktop-table { display: none !important; }
+            .db-mobile-cards { display: flex !important; flex-direction: column; gap: 8px; }
+        }
+        
+        @media (min-width: 769px) {
+            .db-mobile-cards { display: none !important; }
         }
     </style>
 </head>
@@ -11585,6 +11595,8 @@
 
                 if (prevSearch || prevStart || prevEnd || prevRegistro !== 'all' || (prevAnno && prevAnno !== 'all')) {
                     this.filterRicevute();
+                } else if (window.innerWidth <= 768) {
+                    this.filterRicevute();
                 }
 
                 if (prevScroll > 0) {
@@ -16984,6 +16996,8 @@ ${annullataBanner}
 
                 if (prevSearch || prevSearchImporto || prevYear !== currentAS || prevQuarter !== 'all' || prevTipo !== 'all') {
                     this.filterPrimaNota();
+                } else if (window.innerWidth <= 768) {
+                    this.filterPrimaNota();
                 }
 
                 if (prevScroll > 0) {
@@ -21494,23 +21508,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const alerts = this.getCertificateAlerts();
             if (alerts.length === 0) return `<p style="color: var(--text-muted); font-size: 0.85rem;">Nessuna scadenza imminente.</p>`;
 
-            return `
-                    <div class="table-container">
-                    <table style="font-size: 0.8rem;">
-                        <thead>
-                            <tr>
-                                <th>Socio</th>
-                                <th>Tesserato</th>
-                                <th>Certificato</th>
-                                <th>Scad. Tess.</th>
-                                <th>Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${alerts.slice(0, 8).map(s => {
-                // tesseramento display: only show if tesserato=SI
-                // La scadenza tessera federale è sempre il 31/08 dell'anno sportivo corrente
-                // Anno sportivo: se siamo dopo il 01/09 -> anno corrente+1, altrimenti anno corrente
+            const rows = alerts.slice(0, 8).map(s => {
                 let tessHtml = '';
                 if (s.tesserato === 'SI') {
                     const tessScad = this.getTesseramentoScadenza(s);
@@ -21521,7 +21519,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 } else {
                     tessHtml = `<span class="badge badge-moroso" style="font-size:0.6rem;">NON TESS.</span>`;
                 }
-                return `
+                const actions = this.renderReminderButtons(s, 'Certificato Medico');
+
+                const tr = `
                                 <tr>
                                     <td>
                                         <div style="font-weight: 600;">
@@ -21540,13 +21540,50 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     <td>${tessHtml}</td>
                                     <td>
                                         <div style="display: flex; gap: 4px;">
-                                            ${this.renderReminderButtons(s, 'Certificato Medico')}
+                                            ${actions}
                                         </div>
                                     </td>
-                                </tr>
-                            `}).join('')}
+                                </tr>`;
+                                
+                const card = `
+                    <div class="socio-card sc-open" style="border-left: 3px solid var(--warning); padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: flex-start;">
+                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
+                                ${s.cognome || ''} ${s.nome || ''} ${this.renderSocioPostitBadge(s.id)}
+                            </div>
+                            <span class="badge ${s.tesserato === 'SI' ? 'badge-active' : 'badge-moroso'}" style="font-size:0.6rem;">${s.tesserato || 'NO'}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-bottom: 12px;">
+                            <div><div style="color: var(--text-muted); font-size: 0.75rem;">Certificato</div><div class="${this.getCertColor(s.certificato_scadenza)}">${this.formatDate(s.certificato_scadenza)}</div></div>
+                            <div><div style="color: var(--text-muted); font-size: 0.75rem;">Scad. Tessera</div><div>${tessHtml}</div></div>
+                        </div>
+                        <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                            ${actions}
+                        </div>
+                    </div>`;
+
+                return { tr, card };
+            });
+
+            return `
+                    <div class="table-container db-desktop-table">
+                    <table style="font-size: 0.8rem;">
+                        <thead>
+                            <tr>
+                                <th>Socio</th>
+                                <th>Tesserato</th>
+                                <th>Certificato</th>
+                                <th>Scad. Tess.</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(r => r.tr).join('')}
                         </tbody>
                     </table>
+                    </div>
+                    <div class="db-mobile-cards">
+                        ${rows.map(r => r.card).join('')}
                     </div>
                 `;
         },
@@ -21569,19 +21606,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 return d;
             };
 
-            return `
-                    <div class="table-container">
-                    <table style="font-size: 0.8rem;">
-                        <thead>
-                            <tr>
-                                <th>Socio</th>
-                                <th>Scadenza Quota</th>
-                                <th>Stato</th>
-                                <th>Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${alerts.slice(0, 10).map(s => {
+            const rows = alerts.slice(0, 10).map(s => {
                 const qDate = parseDateOnly(s.quota_scadenza);
                 const diffDays = qDate ? Math.round((qDate - now) / (1000 * 60 * 60 * 24)) : 0;
                 const colorClass = this.getQuoteColor(s.quota_scadenza);
@@ -21598,8 +21623,11 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 } else if (diffDays <= 5) {
                     statusColorClass = "text-warning";
                 }
+                
+                const removeBtn = diffDays < 0 ? `<button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.65rem;" onclick="app.dismissQuoteAlert(${s.id})">Rimuovi</button>` : '';
+                const actions = removeBtn + this.renderReminderButtons(s, 'Quota Associativa');
 
-                return `
+                const tr = `
                                 <tr>
                                     <td>
                                         <div style="font-weight: 600;">
@@ -21618,15 +21646,50 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </td>
                                     <td>
                                         <div style="display: flex; gap: 4px;">
-                                            ${diffDays < 0 ? `<button class="btn btn-outline" style="padding: 2px 6px; font-size: 0.65rem;" data-guide="Effetto: Rimuove e ignora l'avviso di scadenza quota per questo socio." onclick="app.dismissQuoteAlert(${s.id})">Rimuovi</button>` : ''}
-                                            ${this.renderReminderButtons(s, 'Quota Associativa')}
+                                            ${actions}
                                         </div>
                                     </td>
-                                </tr>
-                                `;
-            }).join('')}
+                                </tr>`;
+                                
+                const card = `
+                    <div class="socio-card sc-open" style="border-left: 3px solid ${diffDays < 0 ? 'var(--danger)' : 'var(--warning)'}; padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: flex-start;">
+                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">
+                                ${s.cognome || ''} ${s.nome || ''} ${this.renderSocioPostitBadge(s.id)}
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal; margin-top: 2px;">${s.tel || 'No Tel.'}</div>
+                            </div>
+                            <span class="${statusColorClass}" style="font-weight: 700; font-size: 0.75rem;">${statusText}</span>
+                        </div>
+                        <div style="font-size: 0.85rem; margin-bottom: 12px;">
+                            <span style="color: var(--text-muted);">Scadenza Quota:</span> 
+                            <span class="${colorClass}" style="font-weight:600;">${this.formatDate(s.quota_scadenza)}</span>
+                        </div>
+                        <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                            ${actions}
+                        </div>
+                    </div>`;
+                    
+                return { tr, card };
+            });
+
+            return `
+                    <div class="table-container db-desktop-table">
+                    <table style="font-size: 0.8rem;">
+                        <thead>
+                            <tr>
+                                <th>Socio</th>
+                                <th>Scadenza Quota</th>
+                                <th>Stato</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(r => r.tr).join('')}
                         </tbody>
                     </table>
+                    </div>
+                    <div class="db-mobile-cards">
+                        ${rows.map(r => r.card).join('')}
                     </div>
                 `;
         },
@@ -21635,12 +21698,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const receipts = this.state.ricevute.filter(r => r.socio_id !== 0).slice(-5).reverse();
             if (receipts.length === 0) return `<p style="color: var(--text-muted); font-size: 0.85rem;">Nessuna ricevuta emessa.</p>`;
 
-            return `
-                    <div class="table-container">
-                    <table>
-                        <thead><tr><th>N.</th><th>Socio</th><th>Importo</th></tr></thead>
-                        <tbody>
-                            ${receipts.map(r => `
+            const rows = receipts.map(r => {
+                const tr = `
                                 <tr>
                                     <td>${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<small style="color:#ca8a04; display:block; font-size:0.75rem;">(Da Cartaceo)</small>' : ''}</td>
                                     <td style="font-weight: 600; white-space: nowrap;">
@@ -21650,10 +21709,39 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                         </span>
                                     </td>
                                     <td class="text-success">€ ${parseFloat(r.importo).toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
+                                </tr>`;
+                                
+                const card = `
+                    <div class="socio-card sc-open" style="border-left: 3px solid var(--success); padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">
+                                    ${r.socio_nome} ${this.renderSocioPostitBadge(r.socio_id)}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                    Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} ${r.cartacea ? '<span style="color:#ca8a04;">(Cartacea)</span>' : ''}
+                                </div>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: var(--success);">
+                                € ${parseFloat(r.importo).toFixed(2)}
+                            </div>
+                        </div>
+                    </div>`;
+                    
+                return { tr, card };
+            });
+
+            return `
+                    <div class="table-container db-desktop-table">
+                    <table>
+                        <thead><tr><th>N.</th><th>Socio</th><th>Importo</th></tr></thead>
+                        <tbody>
+                            ${rows.map(r => r.tr).join('')}
                         </tbody>
                     </table>
+                    </div>
+                    <div class="db-mobile-cards">
+                        ${rows.map(r => r.card).join('')}
                     </div>
                 `;
         },
