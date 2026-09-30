@@ -2547,6 +2547,356 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* ============================================================
+           MOBILE BOTTOM NAVIGATION BAR + DRAWER
+           Visibile SOLO su mobile (≤768px). Desktop: display:none sempre.
+           ============================================================ */
+
+        /* Bottom nav: nascosto di default (desktop) */
+        #mobile-bottom-nav {
+            display: none;
+        }
+        #mobile-nav-drawer,
+        #mobile-nav-backdrop {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+
+            /* --- ASIDE: riga singola su mobile (logo + azioni essenziali) --- */
+            aside {
+                grid-template-areas: "logo actions" !important;
+                grid-template-rows: auto !important;
+                padding: 6px 12px !important;
+            }
+
+            /* Nascondi la riga navigazione nell'aside su mobile (rimpiazzata dalla bottom bar) */
+            aside .nav-links,
+            aside nav#main-nav {
+                display: none !important;
+            }
+
+            /* Nascondi nella topbar: post-it, device role, cartella docs (sono nel drawer) */
+            #postit-topbar-container,
+            #device-role-btn,
+            #btn-sidebar-cartella-docs,
+            #btn-topbar-esci {
+                display: none !important;
+            }
+
+            /* Cloud indicator: solo icona su mobile */
+            #cloud-indicator-btn span#cloud-indicator-label {
+                display: none !important;
+            }
+            #cloud-indicator-btn {
+                padding: 5px 7px !important;
+                font-size: 1rem !important;
+            }
+
+            /* Padding bottom content per non coprire con la bottom bar */
+            main, #main-content {
+                padding-bottom: calc(68px + env(safe-area-inset-bottom)) !important;
+            }
+
+            /* --- BOTTOM NAV BAR --- */
+            #mobile-bottom-nav {
+                display: flex !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 60px;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                background: rgba(15, 23, 42, 0.97);
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+                z-index: 8000;
+                align-items: stretch;
+                justify-content: space-around;
+            }
+
+            .mbn-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                flex: 1;
+                gap: 3px;
+                padding: 6px 4px;
+                background: transparent;
+                border: none;
+                color: var(--text-muted);
+                cursor: pointer;
+                transition: color 0.2s ease, background 0.2s ease;
+                position: relative;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                min-width: 0;
+            }
+
+            .mbn-item:active {
+                background: rgba(59, 130, 246, 0.08);
+            }
+
+            .mbn-item.active {
+                color: var(--primary);
+            }
+
+            /* Indicatore barra attiva */
+            .mbn-item.active::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 20%;
+                right: 20%;
+                height: 2px;
+                background: var(--primary);
+                border-radius: 0 0 2px 2px;
+            }
+
+            .mbn-icon {
+                font-size: 1.25rem;
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Icone SVG nella bottom bar */
+            .mbn-icon svg {
+                width: 22px;
+                height: 22px;
+                stroke: currentColor;
+            }
+
+            .mbn-label {
+                font-size: 0.62rem;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+            }
+
+            /* Badge notifica sulla bottom bar */
+            .mbn-badge {
+                position: absolute;
+                top: 4px;
+                right: calc(50% - 18px);
+                background: var(--danger);
+                color: #fff;
+                font-size: 0.55rem;
+                font-weight: 800;
+                border-radius: 10px;
+                padding: 1px 4px;
+                min-width: 14px;
+                text-align: center;
+                line-height: 1.4;
+            }
+
+            /* --- MOBILE NAV BACKDROP --- */
+            #mobile-nav-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.55);
+                backdrop-filter: blur(3px);
+                z-index: 8900;
+                opacity: 0;
+                transition: opacity 0.28s ease;
+                pointer-events: none;
+            }
+            #mobile-nav-backdrop.open {
+                display: block !important;
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            /* --- MOBILE NAV DRAWER (sale dal basso) --- */
+            #mobile-nav-drawer {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                max-height: 82dvh;
+                background: #0f172a;
+                border-top: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 20px 20px 0 0;
+                z-index: 9000;
+                transform: translateY(100%);
+                transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+                display: flex !important;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6);
+            }
+            #mobile-nav-drawer.open {
+                transform: translateY(0);
+            }
+
+            /* Handle drag visivo */
+            .mnd-handle {
+                width: 40px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 2px;
+                margin: 10px auto 0;
+                flex-shrink: 0;
+            }
+
+            /* Header drawer */
+            .mnd-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px 18px 12px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                flex-shrink: 0;
+            }
+
+            .mnd-title {
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+
+            .mnd-close-btn {
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: var(--text-muted);
+                border-radius: 50%;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 0.9rem;
+                transition: all 0.15s;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mnd-close-btn:active { background: rgba(255,255,255,0.14); }
+
+            /* Scrollable body del drawer */
+            .mnd-body {
+                flex: 1;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding: 8px 0 calc(12px + env(safe-area-inset-bottom));
+            }
+
+            /* Sezione etichetta nel drawer */
+            .mnd-section-label {
+                font-size: 0.68rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: var(--text-muted);
+                padding: 12px 18px 5px;
+                opacity: 0.6;
+            }
+
+            /* Voce navigazione nel drawer */
+            .mnd-nav-item {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                width: 100%;
+                padding: 13px 18px;
+                background: transparent;
+                border: none;
+                color: var(--text-main);
+                font-size: 0.92rem;
+                font-weight: 500;
+                text-align: left;
+                cursor: pointer;
+                transition: background 0.15s ease, color 0.15s ease;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                font-family: inherit;
+            }
+            .mnd-nav-item:active,
+            .mnd-nav-item.active {
+                background: rgba(59, 130, 246, 0.1);
+                color: var(--primary);
+            }
+
+            .mnd-nav-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+                flex-shrink: 0;
+                background: rgba(255, 255, 255, 0.06);
+            }
+            .mnd-nav-item.active .mnd-nav-icon {
+                background: rgba(59, 130, 246, 0.15);
+            }
+
+            .mnd-nav-chevron {
+                margin-left: auto;
+                color: var(--text-muted);
+                font-size: 0.75rem;
+                opacity: 0.5;
+            }
+
+            /* Divisore nel drawer */
+            .mnd-divider {
+                height: 1px;
+                background: rgba(255, 255, 255, 0.07);
+                margin: 6px 18px;
+            }
+
+            /* Voci azione nel drawer (cloud, esci, ecc.) */
+            .mnd-action-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 18px;
+            }
+
+            .mnd-action-btn {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex: 1;
+                padding: 10px 14px;
+                border-radius: 10px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--text-muted);
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.15s;
+                justify-content: center;
+                font-family: inherit;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mnd-action-btn:active {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            .mnd-action-btn.danger {
+                border-color: rgba(239, 68, 68, 0.3);
+                color: #f87171;
+                background: rgba(239, 68, 68, 0.08);
+            }
+            .mnd-action-btn.danger:active {
+                background: rgba(239, 68, 68, 0.2);
+            }
+            .mnd-action-btn.cloud-btn {
+                border-color: rgba(255, 51, 68, 0.35);
+                color: #ff5566;
+                background: rgba(255, 51, 68, 0.08);
+            }
+        }
     </style>
 </head>
 
@@ -2813,6 +3163,234 @@
             <!-- Content will be injected here by JS -->
         </main>
     </div>
+
+    <!-- ============================================================
+         MOBILE BOTTOM NAVIGATION BAR
+         Visibile solo su mobile (gestito via CSS @media max-width:768px)
+         ============================================================ -->
+    <nav id="mobile-bottom-nav" role="navigation" aria-label="Navigazione principale">
+
+        <!-- Tab 1: Dashboard -->
+        <button class="mbn-item active" data-page="dashboard"
+                onclick="mobileBottomNav.navigate('dashboard')"
+                aria-label="Dashboard">
+            <span class="mbn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+            </span>
+            <span class="mbn-label">Dashboard</span>
+        </button>
+
+        <!-- Tab 2: Soci -->
+        <button class="mbn-item" data-page="soci"
+                onclick="mobileBottomNav.navigate('soci')"
+                aria-label="Soci">
+            <span class="mbn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </span>
+            <span class="mbn-label">Soci</span>
+        </button>
+
+        <!-- Tab 3: Ricevute -->
+        <button class="mbn-item" data-page="ricevute"
+                onclick="mobileBottomNav.navigate('ricevute')"
+                aria-label="Ricevute">
+            <span class="mbn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </span>
+            <span class="mbn-label">Ricevute</span>
+        </button>
+
+        <!-- Tab 4: Prima Nota -->
+        <button class="mbn-item" data-page="primanota"
+                onclick="mobileBottomNav.navigate('primanota')"
+                aria-label="Prima Nota">
+            <span class="mbn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+            </span>
+            <span class="mbn-label">Prima Nota</span>
+        </button>
+
+        <!-- Tab 5: Menu (Drawer) -->
+        <button class="mbn-item" id="mbn-menu-btn"
+                onclick="mobileBottomNav.toggleMenu()"
+                aria-label="Menu completo" aria-expanded="false">
+            <span class="mbn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </span>
+            <span class="mbn-label">Menu</span>
+        </button>
+
+    </nav>
+
+    <!-- ============================================================
+         MOBILE NAV BACKDROP
+         ============================================================ -->
+    <div id="mobile-nav-backdrop" onclick="mobileBottomNav.closeMenu()" aria-hidden="true"></div>
+
+    <!-- ============================================================
+         MOBILE NAV DRAWER (slide-up dal basso)
+         ============================================================ -->
+    <div id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Menu navigazione">
+
+        <!-- Handle visivo drag -->
+        <div class="mnd-handle"></div>
+
+        <!-- Header drawer -->
+        <div class="mnd-header">
+            <span class="mnd-title">Menu</span>
+            <button class="mnd-close-btn" onclick="mobileBottomNav.closeMenu()" aria-label="Chiudi menu">✕</button>
+        </div>
+
+        <!-- Corpo scrollabile -->
+        <div class="mnd-body">
+
+            <!-- Sezione Attività -->
+            <div class="mnd-section-label">Attività</div>
+
+            <button class="mnd-nav-item" data-page="sala-pesi"
+                    onclick="mobileBottomNav.navigate('sala-pesi')">
+                <span class="mnd-nav-icon">📅</span>
+                <span>Calendario</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="corsi"
+                    onclick="mobileBottomNav.navigate('corsi')">
+                <span class="mnd-nav-icon">🎽</span>
+                <span>Corsi</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="eventi"
+                    onclick="mobileBottomNav.navigate('eventi')">
+                <span class="mnd-nav-icon">🏆</span>
+                <span>Manifestazioni ed Eventi</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="istruttori"
+                    onclick="mobileBottomNav.navigate('istruttori')">
+                <span class="mnd-nav-icon">👨‍🏫</span>
+                <span>Istruttori</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+
+            <div class="mnd-divider"></div>
+
+            <!-- Sezione Segreteria -->
+            <div class="mnd-section-label">Segreteria</div>
+
+            <button class="mnd-nav-item" data-page="dati-organizzazione"
+                    onclick="mobileBottomNav.navigate('dati-organizzazione')">
+                <span class="mnd-nav-icon">🏢</span>
+                <span>Dati ed Organizzazione ASD</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="ricevute-collaboratori"
+                    onclick="mobileBottomNav.navigate('ricevute-collaboratori')">
+                <span class="mnd-nav-icon">📋</span>
+                <span>Ricevute Collaboratori</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="magazzino"
+                    onclick="mobileBottomNav.navigate('magazzino')">
+                <span class="mnd-nav-icon">📦</span>
+                <span>Magazzino</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="rimborsi"
+                    onclick="mobileBottomNav.navigate('rimborsi')">
+                <span class="mnd-nav-icon">💸</span>
+                <span>Rimborsi</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="verbali"
+                    onclick="mobileBottomNav.navigate('verbali')">
+                <span class="mnd-nav-icon">📝</span>
+                <span>Assemblee e Verbali</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="acquisizione-scansioni"
+                    onclick="mobileBottomNav.navigate('acquisizione-scansioni')">
+                <span class="mnd-nav-icon">📥</span>
+                <span>Acquisizione Documenti</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+
+            <div class="mnd-divider"></div>
+
+            <!-- Sezione Plus & Tools -->
+            <div class="mnd-section-label">Plus!</div>
+
+            <button class="mnd-nav-item" data-page="schede-atleti"
+                    onclick="mobileBottomNav.navigate('schede-atleti')">
+                <span class="mnd-nav-icon">💪</span>
+                <span>Schede Atleti</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+            <button class="mnd-nav-item" data-page="database"
+                    onclick="mobileBottomNav.navigate('database')">
+                <span class="mnd-nav-icon">⚙️</span>
+                <span>Impostazioni</span>
+                <span class="mnd-nav-chevron">›</span>
+            </button>
+
+            <div class="mnd-divider"></div>
+
+            <!-- Sezione azioni rapide -->
+            <div class="mnd-section-label">Azioni Rapide</div>
+
+            <div class="mnd-action-row">
+                <!-- Post-it -->
+                <button class="mnd-action-btn" onclick="mobileBottomNav.closeMenu(); app.togglePostitVisibility();"
+                        title="Note Post-it">
+                    <span>📌</span> Post-it
+                </button>
+                <!-- Cartella Documenti -->
+                <button class="mnd-action-btn" onclick="mobileBottomNav.closeMenu(); app.openArchivioDocumentiModal();"
+                        title="Cartella Documenti">
+                    <span>📁</span> Documenti
+                </button>
+            </div>
+
+            <div class="mnd-action-row">
+                <!-- Cloud Sync -->
+                <button class="mnd-action-btn cloud-btn" id="mnd-cloud-btn"
+                        onclick="mobileBottomNav.closeMenu(); app.cloudSync.toggleOnlineOffline();"
+                        title="Sincronizzazione Cloud">
+                    <span id="mnd-cloud-icon">☁️</span>
+                    <span id="mnd-cloud-label">Offline</span>
+                </button>
+                <!-- Esci -->
+                <button class="mnd-action-btn danger" onclick="mobileBottomNav.closeMenu(); app.exitAppPrompt();"
+                        title="Esci dal gestionale">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Esci
+                </button>
+            </div>
+
+        </div><!-- /mnd-body -->
+    </div><!-- /mobile-nav-drawer -->
 
     <!-- Modals -->
     <div id="modal-overlay" class="modal-overlay">
@@ -34280,6 +34858,155 @@ window.addEventListener('focus', () => {
     if (typeof app !== 'undefined' && app.state && app.state.currentPage === 'ricevute') {
         app.syncReceiptsFolderStatus();
     }
+});
+
+// ============================================================
+// MOBILE BOTTOM NAVIGATION BAR — Controller
+// ============================================================
+const mobileBottomNav = {
+
+    // --- Stato ---
+    _drawerOpen: false,
+    _observer: null,
+
+    /** Inizializza il controller (chiamato dopo il caricamento dell'app) */
+    init() {
+        // Sincronizza lo stato attivo all'avvio
+        this.syncActiveState();
+
+        // Osserva i cambi di classe .active nel nav desktop per rifletterli nella bottom bar
+        const mainNav = document.getElementById('main-nav');
+        if (mainNav) {
+            this._observer = new MutationObserver(() => this.syncActiveState());
+            this._observer.observe(mainNav, { attributes: true, subtree: true, attributeFilter: ['class'] });
+        }
+
+        // Osserva il cloud indicator per tenere sincronizzato il cloud nel drawer
+        const cloudBtn = document.getElementById('cloud-indicator-btn');
+        if (cloudBtn) {
+            new MutationObserver(() => this._syncCloudState()).observe(cloudBtn, { attributes: true, childList: true, subtree: true });
+            this._syncCloudState();
+        }
+
+        // Chiudi il drawer con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this._drawerOpen) this.closeMenu();
+        });
+
+        // Swipe verso il basso per chiudere il drawer
+        this._initSwipeClose();
+    },
+
+    /** Aggiorna le classi .active nella bottom bar specchiando il nav desktop */
+    syncActiveState() {
+        const activeItem = document.querySelector('#main-nav .nav-item.active[data-page]');
+        const activePage = activeItem ? activeItem.dataset.page : null;
+
+        document.querySelectorAll('#mobile-bottom-nav .mbn-item[data-page]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.page === activePage);
+        });
+
+        // Se la pagina attiva è nel drawer, non evidenziare nulla nella bar principale
+        // ma mantieni il tab "Menu" non attivo (è già gestito da navigate())
+    },
+
+    /** Naviga verso una pagina, chiude il drawer e aggiorna la UI */
+    navigate(page) {
+        this.closeMenu();
+        if (typeof app !== 'undefined' && typeof app.showPage === 'function') {
+            app.showPage(page);
+        }
+        // Aggiornamento immediato dell'active state nella bottom bar
+        requestAnimationFrame(() => this.syncActiveState());
+    },
+
+    /** Apre/chiude il drawer */
+    toggleMenu() {
+        if (this._drawerOpen) {
+            this.closeMenu();
+        } else {
+            this.openMenu();
+        }
+    },
+
+    /** Apre il drawer */
+    openMenu() {
+        const drawer   = document.getElementById('mobile-nav-drawer');
+        const backdrop = document.getElementById('mobile-nav-backdrop');
+        const menuBtn  = document.getElementById('mbn-menu-btn');
+        if (!drawer) return;
+
+        this._drawerOpen = true;
+        drawer.classList.add('open');
+        if (backdrop) {
+            backdrop.style.display = 'block';
+            requestAnimationFrame(() => backdrop.classList.add('open'));
+        }
+        if (menuBtn) {
+            menuBtn.classList.add('active');
+            menuBtn.setAttribute('aria-expanded', 'true');
+        }
+        document.body.style.overflow = 'hidden'; // previeni scroll body mentre drawer è aperto
+        this._syncCloudState();
+
+        // Evidenzia la voce attiva nel drawer
+        const activePage = document.querySelector('#main-nav .nav-item.active[data-page]')?.dataset?.page;
+        document.querySelectorAll('#mobile-nav-drawer .mnd-nav-item[data-page]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.page === activePage);
+        });
+    },
+
+    /** Chiude il drawer */
+    closeMenu() {
+        const drawer   = document.getElementById('mobile-nav-drawer');
+        const backdrop = document.getElementById('mobile-nav-backdrop');
+        const menuBtn  = document.getElementById('mbn-menu-btn');
+
+        this._drawerOpen = false;
+        if (drawer) drawer.classList.remove('open');
+        if (backdrop) {
+            backdrop.classList.remove('open');
+            setTimeout(() => { if (!this._drawerOpen) backdrop.style.display = 'none'; }, 300);
+        }
+        if (menuBtn) {
+            menuBtn.classList.remove('active');
+            menuBtn.setAttribute('aria-expanded', 'false');
+        }
+        document.body.style.overflow = '';
+    },
+
+    /** Sincronizza icona/testo cloud nel drawer con lo stato reale */
+    _syncCloudState() {
+        const srcIcon  = document.getElementById('cloud-indicator-icon');
+        const srcLabel = document.getElementById('cloud-indicator-label');
+        const dstIcon  = document.getElementById('mnd-cloud-icon');
+        const dstLabel = document.getElementById('mnd-cloud-label');
+        if (srcIcon && dstIcon)   dstIcon.textContent  = srcIcon.textContent;
+        if (srcLabel && dstLabel) dstLabel.textContent = srcLabel.textContent || 'Cloud';
+    },
+
+    /** Swipe verso il basso per chiudere il drawer */
+    _initSwipeClose() {
+        const drawer = document.getElementById('mobile-nav-drawer');
+        if (!drawer) return;
+        let startY = 0, startTime = 0;
+        drawer.addEventListener('touchstart', (e) => {
+            startY    = e.touches[0].clientY;
+            startTime = Date.now();
+        }, { passive: true });
+        drawer.addEventListener('touchend', (e) => {
+            const deltaY = e.changedTouches[0].clientY - startY;
+            const deltaT = Date.now() - startTime;
+            // Swipe down: spostamento >60px in <400ms
+            if (deltaY > 60 && deltaT < 400) this.closeMenu();
+        }, { passive: true });
+    }
+};
+
+// Inizializza la bottom nav dopo il caricamento del DOM e dell'app
+document.addEventListener('DOMContentLoaded', () => {
+    // Piccolo ritardo per assicurarsi che `app` sia disponibile
+    setTimeout(() => mobileBottomNav.init(), 250);
 });
 
 // ============================================================
