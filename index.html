@@ -2983,6 +2983,112 @@
             }
             .sc-load-more:active { background:rgba(255,255,255,.05); }
         }
+
+        /* ============================================================
+           MOBILE RICEVUTE CARDS — Visibili SOLO su mobile (≤768px)
+           Desktop: la tabella classica rimane invariata al 100%.
+           ============================================================ */
+        #ricevute-cards-container { display: none; }
+
+        @media (max-width: 768px) {
+            /* Nascondi tabella ricevute su mobile */
+            #main-content .table-container:has(#receipts-tbody) { display: none !important; }
+            /* Fallback per browser senza :has() */
+            #receipts-tbody { pointer-events: none; }
+            #ricevute-cards-container { display: block !important; padding: 8px 0 4px; }
+
+            /* Card ricevuta: variante colore importo */
+            .rc-amount {
+                font-size: 1.05rem;
+                font-weight: 800;
+                color: var(--success);
+            }
+            .rc-amount.annullata {
+                color: var(--danger);
+                text-decoration: line-through;
+                opacity: 0.7;
+            }
+
+            /* Badge origine (cartacea/digitale) */
+            .rc-origin-badge {
+                font-size: .68rem;
+                font-weight: 700;
+                padding: 2px 7px;
+                border-radius: 6px;
+                white-space: nowrap;
+            }
+            .rc-origin-badge.cartacea {
+                background: rgba(245,158,11,.12);
+                color: var(--warning);
+                border: 1px solid rgba(245,158,11,.25);
+            }
+            .rc-origin-badge.digitale {
+                background: rgba(59,130,246,.1);
+                color: var(--primary);
+                border: 1px solid rgba(59,130,246,.2);
+            }
+
+            /* Badge stato ricevuta */
+            .rc-stato-badge {
+                font-size: .68rem;
+                font-weight: 700;
+                padding: 2px 7px;
+                border-radius: 6px;
+                white-space: nowrap;
+            }
+            .rc-stato-badge.emessa {
+                background: rgba(16,185,129,.12);
+                color: var(--success);
+                border: 1px solid rgba(16,185,129,.25);
+            }
+            .rc-stato-badge.bozza {
+                background: rgba(239,68,68,.12);
+                color: var(--danger);
+                border: 1px solid rgba(239,68,68,.25);
+            }
+            .rc-stato-badge.annullata {
+                background: rgba(239,68,68,.08);
+                color: var(--danger);
+                border: 1px solid rgba(239,68,68,.15);
+                text-decoration: line-through;
+            }
+
+            /* Metodo pagamento pill */
+            .rc-metodo-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: .76rem;
+                font-weight: 600;
+                padding: 2px 8px;
+                border-radius: 6px;
+                background: rgba(255,255,255,.06);
+                border: 1px solid rgba(255,255,255,.1);
+                color: var(--text-muted);
+            }
+
+            /* Header della card ricevuta */
+            .rc-header-right {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 5px;
+                flex-shrink: 0;
+            }
+
+            /* Numero ricevuta pill */
+            .rc-num-pill {
+                font-size: .72rem;
+                font-weight: 800;
+                padding: 2px 8px;
+                border-radius: 6px;
+                background: rgba(139,92,246,.12);
+                color: #a78bfa;
+                border: 1px solid rgba(139,92,246,.2);
+                white-space: nowrap;
+                font-family: monospace;
+            }
+        }
     </style>
 </head>
 
@@ -11438,6 +11544,8 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <!-- MOBILE CARD VIEW: visibile solo su mobile via CSS @media (max-width:768px) -->
+                            <div id="ricevute-cards-container"></div>
                         </div>
                     </div>
                 `;
@@ -11826,6 +11934,123 @@
                 });
             },
 
+            // -------------------------------------------------------
+            // MOBILE CARD RENDERER — Ricevute
+            // Genera card accordion per la vista mobile (≤768px).
+            // NON altera renderRicevuteRows() usata dal desktop.
+            // -------------------------------------------------------
+            renderRicevuteCards(receipts) {
+                const container = document.getElementById('ricevute-cards-container');
+                if (!container) return;
+
+                if (receipts.length === 0) {
+                    container.innerHTML = `<div class="sc-empty">Nessuna ricevuta trovata con i filtri attuali.</div>`;
+                    return;
+                }
+
+                // Riusa la logica di ordinamento esistente
+                const sorted = receipts; // già ordinati da renderRicevuteRows sorting logic
+
+                const cards = sorted.map(r => {
+                    const isCartacea  = (r.cartacea === true || String(r.cartacea) === 'true');
+                    const isBozza     = r.stato === 'bozza';
+                    const isAnnullata = Boolean(r.annullata);
+                    const isSalvata   = Boolean(r.salvata_in_cartella);
+                    const isRateale   = this.isReceiptRateale(r);
+
+                    // Metodo pagamento
+                    const metodo = r.metodo_pagamento || r.pagamento || 'Contanti';
+                    let metodoIcon = '💵';
+                    const ml = metodo.toLowerCase();
+                    if (ml.includes('bonifico'))  metodoIcon = '🏦';
+                    else if (ml.includes('pos') || ml.includes('carta')) metodoIcon = '💳';
+                    else if (ml.includes('satispay') || ml.includes('app')) metodoIcon = '📱';
+
+                    // Card class (scuro se annullata)
+                    const cardCls = isAnnullata ? 'sc-expired' : isBozza ? 'sc-warning' : '';
+
+                    // Stato badge
+                    let statoBadge = '';
+                    if (isAnnullata) {
+                        statoBadge = `<span class="rc-stato-badge annullata">🚫 Annullata</span>`;
+                    } else if (isBozza) {
+                        statoBadge = `<span class="rc-stato-badge bozza">🔴 Bozza</span>`;
+                    } else {
+                        statoBadge = `<span class="rc-stato-badge emessa">🟢 Emessa</span>`;
+                    }
+
+                    // Origine badge
+                    const originBadge = isCartacea
+                        ? `<span class="rc-origin-badge cartacea">📋 Cartaceo</span>`
+                        : `<span class="rc-origin-badge digitale">💻 Digitale</span>`;
+
+                    // PDF warning
+                    const pdfWarning = (!isCartacea && !isSalvata && !isAnnullata);
+
+                    // Causale / tipo
+                    const causale = r.pacchetto_nome
+                        ? r.pacchetto_nome + (r.tess && parseFloat(r.tess) > 0 && !r.pacchetto_nome.includes('Tesseramento') ? ' + Tess.' : '')
+                        : (r.tipo || '—');
+
+                    const cardId = `rc-${r.id}`;
+
+                    return `
+                    <div class="socio-card ${cardCls}" id="${cardId}">
+                        <div class="sc-header" onclick="app._toggleRicevutaCard('${cardId}')">
+                            <div class="sc-avatar" style="border-radius:10px; font-size:.75rem;">${isCartacea ? '📋' : '💻'}</div>
+                            <div class="sc-main-info">
+                                <div class="sc-name">${r.socio_nome || '—'}</div>
+                                <div class="sc-subtitle">${causale}${isRateale ? ` · Rata ${r.rata||1}/${r.rate_totali||4}` : ''}</div>
+                            </div>
+                            <div class="rc-header-right">
+                                <span class="rc-amount ${isAnnullata ? 'annullata' : ''}">€ ${parseFloat(r.importo||0).toFixed(2)}</span>
+                                <span class="rc-num-pill">#${r.numero}/${app.formatAnno(r.anno)}</span>
+                            </div>
+                            <span class="sc-chevron">▼</span>
+                        </div>
+                        <div class="sc-details">
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">📅</span>
+                                <span class="sc-detail-label">Data</span>
+                                <span class="sc-detail-value">${this.formatDate(r.data)}${r.ora ? ` 🕒 ${r.ora}` : ''}</span>
+                            </div>
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">${metodoIcon}</span>
+                                <span class="sc-detail-label">Metodo</span>
+                                <span class="sc-detail-value"><span class="rc-metodo-pill">${metodoIcon} ${metodo}</span></span>
+                            </div>
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">🏷️</span>
+                                <span class="sc-detail-label">Origine</span>
+                                <span class="sc-detail-value">${originBadge}</span>
+                            </div>
+                            <div class="sc-detail-row">
+                                <span class="sc-detail-icon">📄</span>
+                                <span class="sc-detail-label">Stato</span>
+                                <span class="sc-detail-value">${statoBadge}</span>
+                            </div>
+                            ${r.note ? `<div class="sc-detail-row"><span class="sc-detail-icon">📝</span><span class="sc-detail-label">Note</span><span class="sc-detail-value" style="font-style:italic;color:var(--text-muted);">${r.note}</span></div>` : ''}
+                            <div class="sc-detail-divider"></div>
+                            <div class="sc-actions">
+                                <button class="sc-action-btn primary" onclick="app.generatePDF('${r.id}')">💾 PDF${pdfWarning ? ' ⚠️' : ''}</button>
+                                <button class="sc-action-btn" onclick="app.printReceipt('${r.id}')">🖨️ Stampa</button>
+                                ${(isBozza && !isAnnullata) ? `<button class="sc-action-btn warning" onclick="app.openEditRicevutaModal('${r.id}')">✏️ Modifica</button>` : ''}
+                                ${(!isAnnullata) ? `<button class="sc-action-btn danger" onclick="app.annullaRicevuta('${r.id}')">🚫 Annulla</button>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                container.innerHTML = cards;
+            },
+
+            /** Espande/collassa una card ricevuta (mobile) */
+            _toggleRicevutaCard(cardId) {
+                const card = document.getElementById(cardId);
+                if (!card) return;
+                card.classList.toggle('sc-open');
+            },
+
             filterRicevute() {
                 const startEl = document.getElementById('receipt-date-start');
                 const endEl = document.getElementById('receipt-date-end');
@@ -11843,6 +12068,15 @@
                 }
 
                 const filtered = this.getFilteredRicevute();
+
+                // === MOBILE: card accordion ===
+                if (window.innerWidth <= 768) {
+                    this.renderRicevuteCards(filtered);
+                    if (sociSuggestionsEl) { sociSuggestionsEl.style.display = 'none'; sociSuggestionsEl.innerHTML = ''; }
+                    return;
+                }
+
+                // === DESKTOP: tabella classica (invariata) ===
                 tbody.innerHTML = this.renderRicevuteRows(filtered);
 
                 // Se sono visualizzate già ricevute ma l'utente cerca per nome, mostra anche i soci dell'anagrafica senza ricevuta in questa stagione
