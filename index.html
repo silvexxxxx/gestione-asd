@@ -16844,6 +16844,7 @@ ${annullataBanner}
 
             toggleHideRiconciliazione(val) {
                 this.hideRiconciliazione = !!val;
+                this.saveAll();
                 this.filterPrimaNota();
             },
 
@@ -28206,7 +28207,6 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
     this.saveAll();
     const tbody = document.getElementById('istruttori-tbody');
     if(tbody) tbody.innerHTML = this.renderIstruttoriRows(this.getSortedIstruttori());
-}
         },
 
         renderIstruttoriRows(istruttori) {
