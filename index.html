@@ -15654,7 +15654,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 }
 
                 if (isPastSportYear && dataInput) {
-                    dataInput.value = now.toISOString().split('T')[0];
+                    dataInput.value = this.formatItDate(now.toISOString().split('T')[0]);
                 }
                 if (dataInput) this.autoSetTessExpiry(dataInput);
             }
