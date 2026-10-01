@@ -6236,6 +6236,7 @@
                     const idbState = await this.idbGet('main_state');
                     if (idbState) {
                         this.state = { ...this.state, ...idbState };
+                        this.state.isDirty = false;
                         if (!Array.isArray(this.state.calendario_note)) this.state.calendario_note = [];
                         if (!Array.isArray(this.state.cronologia_messaggi)) this.state.cronologia_messaggi = [];
                         // Ripristino stato transitorio verbali: all'avvio mostra sempre l'Hub pulito e azzera bozze orfane
@@ -6427,6 +6428,7 @@
                 }
                 this.migrateIstruttori();
                 this.migrateCorsiNames();
+                this.state.isDirty = false;
             },
 
             migrateCorsiNames() {
@@ -35446,10 +35448,8 @@ ${r.annullata ? `
             // Se l'uscita è guidata dai pulsanti interni della modale "Esci" o apertura mail, non bloccare
             if (window._suppressBeforeUnload || (window.app && app._isExiting)) return;
 
-            // Salva lo stato locale istantaneo di sicurezza
-            if (window.app && app.saveAll) {
-                try { app.saveAll(); } catch(err) {}
-            }
+            // Eliminato salvataggio automatico incondizionato per non sfalsare le date
+
 
             if (app.state && app.state.isDirty) {
                 app.createSnapshot('auto-exit');
