@@ -4424,7 +4424,8 @@
                     this.saveAll();
                     this.toast(`🖥️ Server: Generati e archiviati ${generatedCount} PDF ricevute emesse da Client!`, 'success');
                     if (this.state.currentPage === 'ricevute') {
-                        this.filterRicevute();
+                        this.saveAll();
+                this.filterRicevute();
                     }
                 }
             } catch(e) {
@@ -11569,9 +11570,9 @@
                     ? tableContainer.scrollTop
                     : (this.state.lastRicevuteScroll || savedScroll || 0);
 
-                if (!this.ricevuteSortKey) {
-                    this.ricevuteSortKey = 'numero';
-                    this.ricevuteSortDir = 'asc';
+                if (!this.state.ricevuteSortKey) {
+                    this.state.ricevuteSortKey = 'numero';
+                    this.state.ricevuteSortDir = 'desc';
                 }
 
                 main.innerHTML = `
@@ -11665,28 +11666,26 @@
             },
 
             getRicevuteSortIcon(key) {
-                const k = this.ricevuteSortKey || 'numero';
-                const dir = this.ricevuteSortDir || 'asc';
+                const k = this.state.ricevuteSortKey || 'numero';
+                const dir = this.state.ricevuteSortDir || 'desc';
                 if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
                 return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
             },
 
             sortRicevute(key) {
-                if (this.ricevuteSortKey === key) {
-                    this.ricevuteSortDir = this.ricevuteSortDir === 'asc' ? 'desc' : 'asc';
-                } else {
-                    this.ricevuteSortKey = key;
-                    this.ricevuteSortDir = 'asc';
-                }
-                
-                // Update headers UI
-                ['numero', 'socio_nome', 'data', 'tipo', 'importo', 'metodo', 'cartacea', 'stato'].forEach(k => {
-                    const el = document.getElementById('sort-ricevute-' + k);
-                    if (el) el.innerHTML = this.getRicevuteSortIcon(k);
-                });
-                
-                this.filterRicevute();
-            },
+    if (this.state.ricevuteSortKey === key) {
+        this.state.ricevuteSortDir = this.state.ricevuteSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        this.state.ricevuteSortKey = key;
+        this.state.ricevuteSortDir = (key === 'numero' || key === 'data' || key === 'importo') ? 'desc' : 'asc';
+    }
+    ['numero', 'socio_nome', 'data', 'tipo', 'importo', 'metodo', 'cartacea', 'stato'].forEach(k => {
+        const el = document.getElementById('sort-ricevute-' + k);
+        if (el) el.innerHTML = this.getRicevuteSortIcon(k);
+    });
+    this.saveAll();
+    this.filterRicevute();
+},
 
             renderRicevuteRows(receipts) {
                 if (receipts.length === 0) {
@@ -11745,8 +11744,8 @@
 
                 let sorted = [...receipts];
                 
-                const k = this.ricevuteSortKey || 'numero';
-                const dir = (this.ricevuteSortDir || 'asc') === 'asc' ? 1 : -1;
+                const k = this.state.ricevuteSortKey || 'numero';
+                const dir = (this.state.ricevuteSortDir || 'desc') === 'asc' ? 1 : -1;
                 
                 const compareReceiptsCascade = (a, b, d = 1) => {
                     // 1. Data
@@ -17105,21 +17104,21 @@ ${annullataBanner}
             },
 
             getPnSortIcon(key) {
-                const k = this.pnSortKey || 'data';
-                const dir = this.pnSortDir || 'desc';
+                const k = this.state.pnSortKey || 'data';
+                const dir = this.state.pnSortDir || 'desc';
                 if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
                 return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
             },
 
             sortPrimaNota(key) {
-                if (!this.pnSortKey) this.pnSortKey = 'data';
-                if (!this.pnSortDir) this.pnSortDir = 'desc';
+                if (!this.state.pnSortKey) this.state.pnSortKey = 'data';
+                if (!this.state.pnSortDir) this.state.pnSortDir = 'desc';
 
-                if (this.pnSortKey === key) {
-                    this.pnSortDir = this.pnSortDir === 'asc' ? 'desc' : 'asc';
+                if (this.state.pnSortKey === key) {
+                    this.state.pnSortDir = this.state.pnSortDir === 'asc' ? 'desc' : 'asc';
                 } else {
-                    this.pnSortKey = key;
-                    this.pnSortDir = (key === 'data' || key === 'importo') ? 'desc' : 'asc';
+                    this.state.pnSortKey = key;
+                    this.state.pnSortDir = (key === 'data' || key === 'importo') ? 'desc' : 'asc';
                 }
 
                 ['data', 'tipo', 'metodo', 'categoria', 'descrizione', 'importo'].forEach(k => {
@@ -17386,8 +17385,8 @@ ${annullataBanner}
                     return true;
                 });
 
-                const key = this.pnSortKey || 'data';
-                const dir = this.pnSortDir || 'desc';
+                const key = this.state.pnSortKey || 'data';
+                const dir = this.state.pnSortDir || 'desc';
 
                 filtered.sort((a, b) => {
                     // Mantieni la commissione collegata immediatamente dopo il rispettivo padre
@@ -28166,16 +28165,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         // =========================================================
 
         getIstruttoriSortIcon(key) {
-            const k = this.istruttoriSortKey || 'nome';
-            const dir = this.istruttoriSortDir || 'asc';
+            const k = this.state.istruttoriSortKey || 'nome';
+            const dir = this.state.istruttoriSortDir || 'asc';
             if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
             return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
         },
 
         getSortedIstruttori() {
             let list = [...(this.state.istruttori || [])];
-            const k = this.istruttoriSortKey || 'nome';
-            const dir = (this.istruttoriSortDir || 'asc') === 'asc' ? 1 : -1;
+            const k = this.state.istruttoriSortKey || 'nome';
+            const dir = (this.state.istruttoriSortDir || 'asc') === 'asc' ? 1 : -1;
             list.sort((a, b) => {
                 if (k === 'nome') {
                     return (a.nome || '').localeCompare(b.nome || '') * dir;
@@ -28192,23 +28191,22 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
         },
 
         sortIstruttori(key) {
-            if (!this.istruttoriSortKey) this.istruttoriSortKey = 'nome';
-            if (!this.istruttoriSortDir) this.istruttoriSortDir = 'asc';
-
-            if (this.istruttoriSortKey === key) {
-                this.istruttoriSortDir = this.istruttoriSortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                this.istruttoriSortKey = key;
-                this.istruttoriSortDir = (key === 'ore_settimanali' || key === 'compenso_mensile') ? 'desc' : 'asc';
-            }
-            ['nome', 'ruolo', 'ore_settimanali', 'compenso_mensile'].forEach(k => {
-                const el = document.getElementById('sort-istruttori-' + k);
-                if (el) el.innerHTML = this.getIstruttoriSortIcon(k);
-            });
-            const tbody = document.getElementById('istruttori-tbody');
-            if (tbody) {
-                tbody.innerHTML = this.renderIstruttoriRows(this.getSortedIstruttori());
-            }
+    if (!this.state.istruttoriSortKey) this.state.istruttoriSortKey = 'nome';
+    if (!this.state.istruttoriSortDir) this.state.istruttoriSortDir = 'asc';
+    if (this.state.istruttoriSortKey === key) {
+        this.state.istruttoriSortDir = this.state.istruttoriSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        this.state.istruttoriSortKey = key;
+        this.state.istruttoriSortDir = (key === 'ore_settimanali' || key === 'compenso_mensile') ? 'desc' : 'asc';
+    }
+    ['nome', 'ruolo', 'ore_settimanali', 'compenso_mensile'].forEach(k => {
+        const el = document.getElementById('sort-istruttori-' + k);
+        if (el) el.innerHTML = this.getIstruttoriSortIcon(k);
+    });
+    this.saveAll();
+    const tbody = document.getElementById('istruttori-tbody');
+    if(tbody) tbody.innerHTML = this.renderIstruttoriRows(this.getSortedIstruttori());
+}
         },
 
         renderIstruttoriRows(istruttori) {
@@ -28477,8 +28475,9 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                 `;
 
             if (prevCompSearch || prevCompStart || prevCompEnd || prevCompInstr !== 'all' || (prevCompAnno && prevCompAnno !== 'all')) {
-                this.filterCompensi();
-            }
+                this.saveAll();
+            this.filterCompensi();
+        }
         },
 
         openAddIstruttoreModal() {
@@ -29212,18 +29211,18 @@ ${r.annullata ? `
         },
 
         getCompensiSortIcon(key) {
-            const k = this.compensiSortKey || 'data';
-            const dir = this.compensiSortDir || 'desc';
+            const k = this.state.compensiSortKey || 'data';
+            const dir = this.state.compensiSortDir || 'desc';
             if (k !== key) return '<span style="opacity: 0.3; font-size: 0.9rem;">↕</span>';
             return dir === 'asc' ? '<span style="font-size: 0.9rem;">▲</span>' : '<span style="font-size: 0.9rem;">▼</span>';
         },
 
         sortCompensi(key) {
-            if (this.compensiSortKey === key) {
-                this.compensiSortDir = this.compensiSortDir === 'asc' ? 'desc' : 'asc';
+            if (this.state.compensiSortKey === key) {
+                this.state.compensiSortDir = this.state.compensiSortDir === 'asc' ? 'desc' : 'asc';
             } else {
-                this.compensiSortKey = key;
-                this.compensiSortDir = (key === 'data' || key === 'numero') ? 'desc' : 'asc';
+                this.state.compensiSortKey = key;
+                this.state.compensiSortDir = (key === 'data' || key === 'numero') ? 'desc' : 'asc';
             }
             ['numero', 'data', 'nome', 'importo', 'stato'].forEach(k => {
                 const el = document.getElementById('sort-compensi-' + k);
@@ -29299,6 +29298,7 @@ ${r.annullata ? `
             }
 
             const filtered = this.getFilteredCompensi();
+            this.saveAll();
             tbody.innerHTML = this.renderCompensiRows(filtered);
 
             // Aggiorna KPI cards con i dati filtrati
@@ -29321,8 +29321,8 @@ ${r.annullata ? `
             }
 
             let sorted = [...compensi];
-            const k = this.compensiSortKey || 'data';
-            const dir = (this.compensiSortDir || 'desc') === 'asc' ? 1 : -1;
+            const k = this.state.compensiSortKey || 'data';
+            const dir = (this.state.compensiSortDir || 'desc') === 'asc' ? 1 : -1;
 
             sorted.sort((a, b) => {
                 if (k === 'data') {
