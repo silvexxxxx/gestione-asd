@@ -4080,7 +4080,7 @@
                 try {
                     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&spaces=drive&fields=files(id,name,modifiedTime,size)&orderBy=${encodeURIComponent(orderBy)}`;
                     const res = await fetch(url, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                     });
                     if (!res.ok) {
                         console.error('Google Drive search failed HTTP', res.status);
@@ -4135,7 +4135,7 @@
                     if (fId) {
                         try {
                             const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?fields=id,name,modifiedTime,size`, {
-                                headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                                headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                             });
                             if (metaRes.ok) {
                                 const meta = await metaRes.json();
@@ -4150,7 +4150,7 @@
                             }
 
                             const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?alt=media`, {
-                                headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                                headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                             });
                             if (fileRes.ok) {
                                 cloudData = await fileRes.json();
@@ -4404,12 +4404,12 @@
                 app.toast('Lettura dati da Google Drive in corso...', 'info');
                 try {
                     const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?fields=id,name,modifiedTime,size`, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                     });
                     const meta = await metaRes.json();
 
                     const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fId}?alt=media`, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                     });
                     if (!fileRes.ok) throw new Error("Impossibile scaricare il file dal Cloud (HTTP " + fileRes.status + ")");
                     const cloudData = await fileRes.json();
@@ -4960,7 +4960,7 @@
                 if (!silent) app.toast('Fusione dati in corso...', 'info');
                 try {
                     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                     });
                     const cloudData = await res.json();
                     
@@ -5155,7 +5155,7 @@
                 this.isSyncing = true;
                 try {
                     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
-                        headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                     });
                     if (!res.ok) throw new Error("Errore HTTP " + res.status);
                     const data = await res.json();
@@ -5241,7 +5241,7 @@
                 if (shouldRotateBackup && !isCreate && this.fileId) {
                     try {
                         const oldRes = await fetch(`https://www.googleapis.com/drive/v3/files/${this.fileId}?alt=media`, {
-                            headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                            headers: { 'Authorization': `Bearer ${this.accessToken}` }, cache: 'no-store'
                         });
                         if (oldRes.ok) {
                             const prevContent = await oldRes.text();
