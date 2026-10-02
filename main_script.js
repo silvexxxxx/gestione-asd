@@ -8798,12 +8798,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                                             <span style="font-size:0.82rem; font-weight:700; color:#047857;">💳 Seleziona Numero Rata:</span>
                                             <span id="receipt-rate-detected-hint" style="font-size:0.75rem; color:#065f46; font-style:italic;"></span>
                                         </div>
-                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(1, 4)" data-rata="1" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 1/4</button>
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(2, 4)" data-rata="2" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 2/4</button>
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(3, 4)" data-rata="3" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 3/4</button>
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(4, 4)" data-rata="4" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 4/4</button>
-                                        </div>
+                                        <div id="receipt-rate-pills-container" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
                                     </div>
                                 </div>
 
@@ -9572,6 +9567,26 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
             }
         },
 
+        
+        updateReceiptRatePills(rateTotali = 4) {
+            const rTotEl = document.getElementById('receipt-rate-totali');
+            if (rTotEl) rTotEl.value = rateTotali;
+
+            const container = document.getElementById('receipt-rate-pills-container');
+            if (!container) return;
+            let html = '';
+            for (let i = 1; i <= rateTotali; i++) {
+                html += `<button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(${i}, ${rateTotali})" data-rata="${i}" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata ${i}/${rateTotali}</button>`;
+            }
+            container.innerHTML = html;
+            
+            // Re-bind current selection if any
+            const rataNumEl = document.getElementById('receipt-rata-num');
+            if (rataNumEl && rataNumEl.value) {
+                this.setReceiptRata(parseInt(rataNumEl.value), rateTotali);
+            }
+        },
+        
         setReceiptRata(num, total = 4) {
             const rataNumEl = document.getElementById('receipt-rata-num');
             const rateTotaliEl = document.getElementById('receipt-rate-totali');

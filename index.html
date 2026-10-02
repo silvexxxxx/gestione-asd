@@ -12492,11 +12492,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                                             <span style="font-size:0.82rem; font-weight:700; color:#047857;">💳 Seleziona Numero Rata:</span>
                                             <span id="receipt-rate-detected-hint" style="font-size:0.75rem; color:#065f46; font-style:italic;"></span>
                                         </div>
-                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(1, 4)" data-rata="1" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 1/4</button>
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(2, 4)" data-rata="2" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 2/4</button>
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(3, 4)" data-rata="3" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 3/4</button>
-                                            <button type="button" class="btn btn-outline rate-pill-btn" onclick="app.setReceiptRata(4, 4)" data-rata="4" style="flex:1; min-width:65px; padding:5px 6px; font-size:0.8rem; font-weight:700;">Rata 4/4</button>
+                                        <div id="receipt-rate-pills-container" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <!-- Pills generate dinamicamente in JS -->
                                         </div>
                                     </div>
                                 </div>
@@ -25810,6 +25807,21 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <div class="form-group"><label>Nome Pacchetto</label><input type="text" name="nome" class="form-control" required placeholder="Es: Quota Mensile, Tesseramento Annuale..." data-guide="Nome del pacchetto o tipo di quota. Effetto: Definisce la voce selezionabile nella maschera delle ricevute."></div>
                         <div class="form-group"><label>Importo (€)</label><input type="number" name="importo" class="form-control" step="0.01" required min="0" placeholder="0.00" data-guide="Importo della quota o del tesseramento. Effetto: Precompila in automatico il totale della ricevuta alla selezione del pacchetto."></div>
                         <div class="form-group"><label>Note</label><input type="text" name="note" class="form-control" placeholder="Descrizione opzionale" data-guide="Note o descrizione della quota. Effetto: Compila la causale o annotazione predefinita sulla ricevuta emessa."></div>
+                        
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 10px 12px; margin-top: 4px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:var(--text-main); margin-bottom: 8px;">
+                                <input type="checkbox" name="isRateale" id="add-preset-rateale" style="width:18px; height:18px;" onchange="document.getElementById('add-preset-rate-container').style.display = this.checked ? 'block' : 'none'">
+                                💳 Pagamento a Rate
+                            </label>
+                            <div id="add-preset-rate-container" style="display:none; padding-left: 26px;">
+                                <label style="font-size: 0.85rem;">Numero totale di rate:</label>
+                                <input type="number" name="rateTotali" class="form-control" min="2" max="24" value="4" style="width: 100px; display: inline-block; margin-left: 8px;">
+                                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; line-height: 1.3;">
+                                    💡 <em>Sviluppando un pacchetto a rate, in fase di emissione ricevuta appariranno automaticamente i pulsanti di selezione (Rata 1, Rata 2, ecc.). Il gestionale calcolerà in automatico quale rata deve pagare il socio.</em>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px; padding: 10px 12px; font-size: 0.83rem; color: var(--text-main); display: flex; gap: 10px; align-items: flex-start; margin-top: 4px;">
                             <span style="font-size: 1.25rem; line-height: 1;">ℹ️</span>
                             <div style="line-height: 1.35;">
@@ -25832,6 +25844,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             data.nome = data.nome.trim();
             data.importo = parseFloat(data.importo) || 0;
             data.note = data.note ? data.note.trim() : '';
+            data.rateale = e.target.elements.isRateale ? e.target.elements.isRateale.checked : false;
+            data.rateTotali = data.rateale ? (parseInt(data.rateTotali) || 4) : undefined;
 
             const msg = `Confermi l'inserimento del nuovo pacchetto "${data.nome}" (€ ${data.importo.toFixed(2)})?\n\nNota: Sarà subito selezionabile nel menu delle nuove ricevute e non modificherà le ricevute già emesse.`;
             if (!confirm(msg)) {
@@ -25873,6 +25887,21 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                         <label>Note</label>
                         <input type="text" name="note" class="form-control" value="${safeNote}" placeholder="Descrizione opzionale" data-guide="Note o descrizione della quota. Effetto: Compila la causale o annotazione predefinita sulla ricevuta emessa.">
                     </div>
+
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 10px 12px; margin-top: 4px;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:var(--text-main); margin-bottom: 8px;">
+                            <input type="checkbox" name="isRateale" id="edit-preset-rateale" style="width:18px; height:18px;" onchange="document.getElementById('edit-preset-rate-container').style.display = this.checked ? 'block' : 'none'" ${p.rateale ? 'checked' : ''}>
+                            💳 Pagamento a Rate
+                        </label>
+                        <div id="edit-preset-rate-container" style="display:${p.rateale ? 'block' : 'none'}; padding-left: 26px;">
+                            <label style="font-size: 0.85rem;">Numero totale di rate:</label>
+                            <input type="number" name="rateTotali" class="form-control" min="2" max="24" value="${p.rateTotali || 4}" style="width: 100px; display: inline-block; margin-left: 8px;">
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; line-height: 1.3;">
+                                💡 <em>Sviluppando un pacchetto a rate, in fase di emissione ricevuta appariranno automaticamente i pulsanti di selezione (Rata 1, Rata 2, ecc.). Il gestionale calcolerà in automatico quale rata deve pagare il socio.</em>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px; padding: 10px 12px; font-size: 0.83rem; color: var(--text-main); display: flex; gap: 10px; align-items: flex-start; margin-top: 4px;">
                         <span style="font-size: 1.25rem; line-height: 1;">ℹ️</span>
                         <div style="line-height: 1.35;">
@@ -25896,6 +25925,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             const newNome = data.nome.trim();
             const newImporto = parseFloat(data.importo) || 0;
             const newNote = data.note ? data.note.trim() : '';
+            const newRateale = e.target.elements.isRateale ? e.target.elements.isRateale.checked : false;
+            const newRateTotali = newRateale ? (parseInt(data.rateTotali) || 4) : undefined;
 
             const msg = `Confermi il salvataggio del pacchetto "${newNome}" con importo € ${newImporto.toFixed(2)}?\n\nNota: La tariffa aggiornata verrà applicata alle nuove ricevute emesse e NON modificherà in alcun modo le ricevute già emesse in precedenza.`;
             if (!confirm(msg)) {
@@ -25905,6 +25936,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             p.nome = newNome;
             p.importo = newImporto;
             p.note = newNote;
+            p.rateale = newRateale;
+            p.rateTotali = newRateTotali;
             this.saveAll();
             this.closeModal();
             this.toast('Pacchetto modificato! Menu emissione ricevute aggiornato.');
