@@ -7993,6 +7993,78 @@
     this.filterRicevute();
 },
 
+
+            sortRicevuteArray(receipts) {
+                let sorted = [...receipts];
+                const k = this.state.ricevuteSortKey || 'numero';
+                const dir = (this.state.ricevuteSortDir || 'desc') === 'asc' ? 1 : -1;
+                
+                const compareReceiptsCascade = (a, b, d = 1) => {
+                    const dateA = new Date(a.data).getTime() || 0;
+                    const dateB = new Date(b.data).getTime() || 0;
+                    if (dateA !== dateB) return (dateA - dateB) * d;
+
+                    const timeA = (a.ora && a.ora.trim()) ? a.ora.trim() : '23:59';
+                    const timeB = (b.ora && b.ora.trim()) ? b.ora.trim() : '23:59';
+                    const timeCmp = timeA.localeCompare(timeB);
+                    if (timeCmp !== 0) return timeCmp * d;
+
+                    const origA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
+                    const origB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
+                    if (origA !== origB) return (origA - origB) * d;
+
+                    const numA = parseInt(a.numero) || 0;
+                    const numB = parseInt(b.numero) || 0;
+                    return (numA - numB) * d;
+                };
+
+                sorted.sort((a, b) => {
+                    let diff = 0;
+                    if (k === 'data') {
+                        diff = compareReceiptsCascade(a, b, dir);
+                    } else if (k === 'numero') {
+                        const regEl = document.getElementById('receipt-filter-registro');
+                        const isAll = !regEl || regEl.value === 'all';
+                        if (isAll) {
+                            const origA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
+                            const origB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
+                            if (origA !== origB) return (origA - origB);
+                        }
+                        const numA = parseInt(a.numero) || 0;
+                        const numB = parseInt(b.numero) || 0;
+                        diff = (numA - numB) * dir;
+                        if (diff === 0) diff = compareReceiptsCascade(a, b, dir);
+                    } else if (k === 'socio_nome') {
+                        const valA = (a.socio_nome || '').toLowerCase();
+                        const valB = (b.socio_nome || '').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    } else if (k === 'tipo') {
+                        const valA = (a.tipo || '').toLowerCase();
+                        const valB = (b.tipo || '').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    } else if (k === 'importo') {
+                        const valA = parseFloat(a.importo) || 0;
+                        const valB = parseFloat(b.importo) || 0;
+                        diff = (valA - valB) * dir;
+                    } else if (k === 'metodo') {
+                        const valA = (a.metodo_pagamento || a.pagamento || 'Contanti').toLowerCase();
+                        const valB = (b.metodo_pagamento || b.pagamento || 'Contanti').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    } else if (k === 'cartacea') {
+                        const valA = a.cartacea ? 1 : 0;
+                        const valB = b.cartacea ? 1 : 0;
+                        diff = (valA - valB) * dir;
+                    } else if (k === 'stato') {
+                        const valA = (a.stato || 'emessa').toLowerCase();
+                        const valB = (b.stato || 'emessa').toLowerCase();
+                        diff = valA.localeCompare(valB) * dir;
+                    }
+                    if (diff === 0) diff = compareReceiptsCascade(a, b, dir);
+                    return diff;
+                });
+                return sorted;
+            },
+
             renderRicevuteRows(receipts) {
                 if (receipts.length === 0) {
                     const searchEl = document.getElementById('receipt-search');
@@ -8048,90 +8120,7 @@
                     return `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nessuna ricevuta trovata.</td></tr>`;
                 }
 
-                let sorted = [...receipts];
-                
-                const k = this.state.ricevuteSortKey || 'numero';
-                const dir = (this.state.ricevuteSortDir || 'desc') === 'asc' ? 1 : -1;
-                
-                const compareReceiptsCascade = (a, b, d = 1) => {
-                    // 1. Data
-                    const dateA = new Date(a.data).getTime() || 0;
-                    const dateB = new Date(b.data).getTime() || 0;
-                    if (dateA !== dateB) return (dateA - dateB) * d;
-
-                    // 2. Ora (con fallback a fine giornata '23:59')
-                    const timeA = (a.ora && a.ora.trim()) ? a.ora.trim() : '23:59';
-                    const timeB = (b.ora && b.ora.trim()) ? b.ora.trim() : '23:59';
-                    const timeCmp = timeA.localeCompare(timeB);
-                    if (timeCmp !== 0) return timeCmp * d;
-
-                    // 3. Registro / Origine (Cartaceo prima 0, Digitale dopo 1)
-                    const origA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
-                    const origB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
-                    if (origA !== origB) return (origA - origB) * d;
-
-                    // 4. Numero progressivo (CAST ad intero)
-                    const numA = parseInt(a.numero) || 0;
-                    const numB = parseInt(b.numero) || 0;
-                    return (numA - numB) * d;
-                };
-
-                sorted.sort((a, b) => {
-                    let diff = 0;
-                    
-                    if (k === 'data') {
-                        // Gerarchia multi-livello a cascata: Data -> Ora -> Origine -> Numero
-                        diff = compareReceiptsCascade(a, b, dir);
-                    } else if (k === 'numero') {
-                        const regEl = document.getElementById('receipt-filter-registro');
-                        const isAll = !regEl || regEl.value === 'all';
-                        if (isAll) {
-                            const origA = (a.cartacea === true || String(a.cartacea) === 'true') ? 0 : 1;
-                            const origB = (b.cartacea === true || String(b.cartacea) === 'true') ? 0 : 1;
-                            if (origA !== origB) {
-                                return (origA - origB);
-                            }
-                        }
-                        const numA = parseInt(a.numero) || 0;
-                        const numB = parseInt(b.numero) || 0;
-                        diff = (numA - numB) * dir;
-                        
-                        if (diff === 0) {
-                            diff = compareReceiptsCascade(a, b, dir);
-                        }
-                    } else if (k === 'socio_nome') {
-                        const valA = (a.socio_nome || '').toLowerCase();
-                        const valB = (b.socio_nome || '').toLowerCase();
-                        diff = valA.localeCompare(valB) * dir;
-                    } else if (k === 'tipo') {
-                        const valA = (a.tipo || '').toLowerCase();
-                        const valB = (b.tipo || '').toLowerCase();
-                        diff = valA.localeCompare(valB) * dir;
-                    } else if (k === 'importo') {
-                        const valA = parseFloat(a.importo) || 0;
-                        const valB = parseFloat(b.importo) || 0;
-                        diff = (valA - valB) * dir;
-                    } else if (k === 'metodo') {
-                        const valA = (a.metodo_pagamento || a.pagamento || 'Contanti').toLowerCase();
-                        const valB = (b.metodo_pagamento || b.pagamento || 'Contanti').toLowerCase();
-                        diff = valA.localeCompare(valB) * dir;
-                    } else if (k === 'cartacea') {
-                        const valA = a.cartacea ? 1 : 0;
-                        const valB = b.cartacea ? 1 : 0;
-                        diff = (valA - valB) * dir;
-                    } else if (k === 'stato') {
-                        const valA = (a.stato || 'emessa').toLowerCase();
-                        const valB = (b.stato || 'emessa').toLowerCase();
-                        diff = valA.localeCompare(valB) * dir;
-                    }
-                    
-                    // Spareggio a cascata se c'è parità sulla colonna primaria
-                    if (diff === 0) {
-                        diff = compareReceiptsCascade(a, b, dir);
-                    }
-                    
-                    return diff;
-                });
+                let sorted = this.sortRicevuteArray(receipts);
 
                 return sorted.map(r => {
                     let iconaMetodo = '';
@@ -8355,7 +8344,7 @@
                 }
 
                 // Riusa la logica di ordinamento esistente
-                const sorted = receipts; // già ordinati da renderRicevuteRows sorting logic
+                const sorted = this.sortRicevuteArray(receipts);
 
                 const cards = sorted.map(r => {
                     const isCartacea  = (r.cartacea === true || String(r.cartacea) === 'true');
