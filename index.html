@@ -3694,7 +3694,7 @@
 
     <script>
         // --- Versione Applicazione & Cache-Busting ---
-        const APP_VERSION = "2.8.0"; // Trasferimento Archivio Completo .ZIP (Database + Scansioni Fisiche) e Guida Online Aggiornata
+        const APP_VERSION = "2.8.1"; // Salvataggio Google Drive potenziato con Fusione (Merge) collaborativa continua
 
         // Controllo versione e pulizia trasparente della cache degli asset all'avvio
         async function checkAppVersionAndCache() {
@@ -7422,12 +7422,12 @@
                 
                 if (saveToCloud) {
                     if (this.cloudSync.syncEnabled && this.cloudSync.accessToken) {
-                        this.toast('☁️ Salvataggio su Google Drive in corso prima della chiusura...', 'info');
-                        const uploadOk = await this.cloudSync.uploadBackup(false, true);
+                        this.toast('☁️ Fusione e salvataggio su Google Drive in corso prima della chiusura...', 'info');
+                        const uploadOk = await this.cloudSync.uploadBackup(false, false);
                         if (!uploadOk) {
                             this.toast('⚠️ Salvataggio su Google Drive non riuscito, ma i dati locali sono al sicuro.', 'warning');
                         } else {
-                            this.toast('✅ Salvataggio su Google Drive completato!', 'success');
+                            this.toast('✅ Fusione e salvataggio su Google Drive completati con successo!', 'success');
                         }
                     } else {
                         const proceed = confirm("Attualmente il gestionale è in modalità Offline (Google Drive non connesso).\n\nVuoi accedere al tuo account Google per salvare e sincronizzare sul Cloud prima di chiudere?");
@@ -7520,55 +7520,23 @@
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         ${statusHtml}
 
-                        <!-- TASTO 1: EREDITA DAL CLOUD (SCARICA) -->
-                        <div onclick="app.closeModal(); app.cloudSync.promptInheritFromCloudModal()" 
-                             style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
-                             onmouseover="this.style.background='rgba(245, 158, 11, 0.18)'; this.style.borderColor='var(--warning)';" 
-                             onmouseout="this.style.background='rgba(245, 158, 11, 0.08)'; this.style.borderColor='rgba(245, 158, 11, 0.45)';"
-                             data-guide="Eredita dati dal Cloud Google Drive. Effetto: Scarica l'archivio cloud e sostituisce i dati di ${app.getThisDeviceLabel()} dopo una verifica di sicurezza a specchio, salvando automaticamente uno snapshot preventivo PRE-DOWNLOAD-CLOUD.">
-                            <span style="font-size: 1.6rem; flex-shrink: 0;">📥</span>
-                            <div style="flex-grow: 1;">
-                                <div style="font-weight: 700; font-size: 0.98rem; color: #fbbf24;">Eredita dal Cloud (Scarica ${app.getThisDeviceNameWithPrep()})</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                    Sostituisce i dati locali di ${app.getThisDeviceLabel()} con la copia online di Google Drive (con verifica a specchio).
-                                </div>
-                            </div>
-                            <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.2); color: #fde68a; font-weight: 700; white-space: nowrap;">SCARICA</span>
-                        </div>
-
-                        <!-- TASTO 2: SOVRASCRIVI CLOUD (INVIA) -->
-                        <div onclick="app.closeModal(); app.cloudSync.forceUploadToCloud()" 
-                             style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
-                             onmouseover="this.style.background='rgba(16, 185, 129, 0.18)'; this.style.borderColor='#10b981';" 
-                             onmouseout="this.style.background='rgba(16, 185, 129, 0.08)'; this.style.borderColor='rgba(16, 185, 129, 0.45)';"
-                             data-guide="Sovrascrivi copia Cloud con i dati di ${app.getThisDeviceLabel()}. Effetto: Carica immediatamente l'archivio attuale su Google Drive, archiviando la versione precedente in GestioneASD_Backup_Precedente.json e allineando gli altri dispositivi.">
-                            <span style="font-size: 1.6rem; flex-shrink: 0;">⬆️</span>
-                            <div style="flex-grow: 1;">
-                                <div style="font-weight: 700; font-size: 0.98rem; color: #34d399;">Sovrascrivi Cloud con Dati Locali</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                    Invia i dati attuali di ${app.getThisDeviceLabel()} su Google Drive, aggiornando la copia online per gli altri dispositivi.
-                                </div>
-                            </div>
-                            <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0; font-weight: 700; white-space: nowrap;">CARICA</span>
-                        </div>
-
-                        <!-- TASTO 3: UNISCI I DATI (MERGE) -->
+                        <!-- TASTO 1: UNISCI I DATI (MERGE) - OPERAZIONE CARDINE -->
                         <div onclick="app.closeModal(); app.cloudSync.syncNow()" 
-                             style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.45); padding: 12px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
-                             onmouseover="this.style.background='rgba(59, 130, 246, 0.18)'; this.style.borderColor='var(--primary)';" 
-                             onmouseout="this.style.background='rgba(59, 130, 246, 0.08)'; this.style.borderColor='rgba(59, 130, 246, 0.45)';"
+                             style="background: rgba(59, 130, 246, 0.12); border: 2px solid #3b82f6; padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);"
+                             onmouseover="this.style.background='rgba(59, 130, 246, 0.22)'; this.style.borderColor='#60a5fa';" 
+                             onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'; this.style.borderColor='#3b82f6';"
                              data-guide="Sincronizza e unisci i dati con Google Drive (Merge). Effetto: Combina i record di ${app.getThisDeviceLabel()} con quelli del Cloud senza cancellare elementi su entrambi i lati, applicando la regola del timestamp più recente.">
-                            <span style="font-size: 1.6rem; flex-shrink: 0;">🔄</span>
+                            <span style="font-size: 1.8rem; flex-shrink: 0;">🔄</span>
                             <div style="flex-grow: 1;">
-                                <div style="font-weight: 700; font-size: 0.98rem; color: #60a5fa;">Sincronizza / Unisci i Dati (Merge)</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                                    Combina i dati di ${app.getThisDeviceLabel()} con quelli su Drive senza cancellare nulla su entrambi i lati.
+                                <div style="font-weight: 700; font-size: 1.05rem; color: #60a5fa;">Sincronizza / Unisci i Dati (Merge)</div>
+                                <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 2px;">
+                                    Combina i dati di ${app.getThisDeviceLabel()} con quelli su Drive. <strong>Nessun dato viene mai cancellato o sovrascritto.</strong>
                                 </div>
                             </div>
-                            <span style="font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-weight: 700; white-space: nowrap;">FUSIONE</span>
+                            <span style="font-size: 0.74rem; padding: 4px 10px; border-radius: 6px; background: rgba(59, 130, 246, 0.3); color: #93c5fd; font-weight: 700; border: 1px solid rgba(59, 130, 246, 0.5); white-space: nowrap;">FUSIONE</span>
                         </div>
 
-                        <!-- TASTO 4: VERSIONI & STORICO -->
+                        <!-- TASTO 2: VERSIONI & STORICO -->
                         <div onclick="app.closeModal(); app.cloudSync.openCloudVersionsModal()" 
                              style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.35); padding: 10px 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;"
                              onmouseover="this.style.background='rgba(99, 102, 241, 0.18)';" 
@@ -7580,8 +7548,38 @@
                             </div>
                         </div>
 
+                        <!-- SEZIONE OPZIONI AVANZATE COLLASSABILE -->
+                        <details style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 8px 12px;">
+                            <summary style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; font-weight: 600;">
+                                ⚙️ Opzioni Avanzate di Emergenza (Sovrascrivi / Eredita) ▾
+                            </summary>
+                            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                                <!-- EREDITA DAL CLOUD -->
+                                <div onclick="app.closeModal(); app.cloudSync.promptInheritFromCloudModal()" 
+                                     style="background: rgba(245, 158, 11, 0.06); border: 1px dashed rgba(245, 158, 11, 0.4); padding: 9px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px;"
+                                     data-guide="Eredita dati dal Cloud Google Drive. Effetto: Scarica l'archivio cloud e sostituisce i dati di ${app.getThisDeviceLabel()} dopo una verifica di sicurezza a specchio, salvando automaticamente uno snapshot preventivo PRE-DOWNLOAD-CLOUD.">
+                                    <span style="font-size: 1.2rem;">📥</span>
+                                    <div style="flex-grow: 1;">
+                                        <div style="font-weight: 600; font-size: 0.86rem; color: #fbbf24;">Eredita dal Cloud (Sostituisci Dati Locali)</div>
+                                    </div>
+                                    <span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.2); color: #fde68a;">SCARICA</span>
+                                </div>
+
+                                <!-- SOVRASCRIVI CLOUD -->
+                                <div onclick="app.closeModal(); app.cloudSync.forceUploadToCloud()" 
+                                     style="background: rgba(16, 185, 129, 0.06); border: 1px dashed rgba(16, 185, 129, 0.4); padding: 9px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px;"
+                                     data-guide="Sovrascrivi copia Cloud con i dati di ${app.getThisDeviceLabel()}. Effetto: Carica immediatamente l'archivio attuale su Google Drive, archiviando la versione precedente in GestioneASD_Backup_Precedente.json e allineando gli altri dispositivi.">
+                                    <span style="font-size: 1.2rem;">⬆️</span>
+                                    <div style="flex-grow: 1;">
+                                        <div style="font-weight: 600; font-size: 0.86rem; color: #34d399;">Sovrascrivi Cloud con Dati Locali</div>
+                                    </div>
+                                    <span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #a7f3d0;">CARICA</span>
+                                </div>
+                            </div>
+                        </details>
+
                         <!-- TASTO 5: DISCONNETTI -->
-                        <div style="display:flex; justify-content:flex-end; margin-top: 6px;">
+                        <div style="display:flex; justify-content:flex-end; margin-top: 4px;">
                             <button class="btn btn-outline text-danger" style="font-size: 0.8rem; padding: 6px 12px;" 
                                     onclick="app.closeModal(); app.cloudSync.logout(false);"
                                     data-guide="Disconnetti da Google Drive. Effetto: Chiude la sessione cloud e riporta il gestionale in modalità Offline Locale pura senza alterare i dati memorizzati sul dispositivo.">
@@ -7686,8 +7684,8 @@
 
             async logout(silent = false) {
                 if (this.syncEnabled && this.accessToken && !silent) {
-                    app.toast('Salvataggio dati prima della disconnessione...', 'info');
-                    await this.uploadBackup(false, true);
+                    app.toast('Fusione dati prima della disconnessione...', 'info');
+                    await this.uploadBackup(false, false);
                 }
                 this.accessToken = null;
                 // NOTA: NON cancellare this.fileId e asd_gdrive_file_id!
@@ -8606,23 +8604,9 @@
                         
                         const hasLocalData = (app.state.soci && app.state.soci.length > 0) || (app.state.ricevute && app.state.ricevute.length > 0);
                         if (hasLocalData) {
-                            const choice = await this.promptSyncConflictModal(mainFile);
-                            if (choice === 'overwrite') {
-                                app.toast('Caricamento su Google Drive in corso...', 'info');
-                                const ok = await this.uploadBackup(false, true);
-                                if (ok) {
-                                    app.toast('✅ Google Drive sovrascritto con successo con i dati locali!', 'success');
-                                } else {
-                                    app.toast('❌ Caricamento su Google Drive FALLITO! Riprova.', 'danger');
-                                }
-                            } else if (choice === 'inherit') {
-                                await this.promptInheritFromCloudModal();
-                            } else if (choice === 'merge') {
-                                app.toast('Fusione dati con Google Drive in corso...', 'info');
-                                await this.mergeBackup(false);
-                            } else {
-                                app.toast('Sincronizzazione rimandata. I dati locali sono rimasti invariati.', 'info');
-                            }
+                            // FUSIONE AUTOMATICA (MERGE) IMMEDIATA E NON DISTRUTTIVA
+                            app.toast('Fusione automatica dati con Google Drive in corso...', 'info');
+                            await this.mergeBackup(false);
                         } else {
                             await this.downloadBackup();
                         }
@@ -26196,7 +26180,7 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                     <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">Scegli la modalità di salvataggio prima di chiudere il gestionale.</p>
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         <button id="btn-save-exit" class="btn" style="background:#2563eb; color:white; justify-content:center; padding: 10px 14px; font-weight: 600;" data-guide="Effetto: Salva i dati nella memoria locale di questo PC ed esce.">💾 Salva ed Esci (in locale)</button>
-                        <button id="btn-save-cloud-exit" class="btn" style="background: linear-gradient(135deg, #059669, #0d9488); color:white; justify-content:center; padding: 10px 14px; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.4);" data-guide="Effetto: Salva in locale e carica l'archivio aggiornato su Google Drive per sincronizzare tutti i tuoi dispositivi.">☁️ Salva anche su Google Drive ed Esci</button>
+                        <button id="btn-save-cloud-exit" class="btn" style="background: linear-gradient(135deg, #059669, #0d9488); color:white; justify-content:center; padding: 10px 14px; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.4);" data-guide="Effetto: Salva in locale ed effettua la fusione (merge) sicura su Google Drive senza cancellare o sovrascrivere mai i dati salvati dagli altri dispositivi.">☁️ Salva anche su Google Drive ed Esci (Unisci dati)</button>
                         <button id="btn-exit" class="btn" style="background:#dc2626; color:white; justify-content:center; padding: 9px 14px;" data-guide="Effetto: Chiude l'applicazione senza effettuare un salvataggio preventivo.">🚪 Esci senza salvare</button>
                         <button id="btn-cancel" class="btn btn-outline" style="justify-content:center; padding: 8px 14px;" data-guide="Effetto: Annulla la richiesta di chiusura e torna al gestionale.">Annulla</button>
                     </div>
