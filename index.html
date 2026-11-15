@@ -4400,7 +4400,8 @@
 
                 const list = (this.state.ricevute || []).filter(r => 
                     r.tipo !== 'Compenso Sportivo' && 
-                    !(r.cartacea === true || String(r.cartacea) === 'true')
+                    !(r.cartacea === true || String(r.cartacea) === 'true') &&
+                    r.stato !== 'bozza'
                 );
 
                 let generatedCount = 0;
@@ -11828,7 +11829,8 @@
                     const hasTel = Boolean(socioTel && String(socioTel).trim() !== '');
                     
                     const isCartacea = (r.cartacea === true || String(r.cartacea) === 'true');
-                    const isSalvataInCartella = Boolean(r.salvata_in_cartella);
+                    const isBozza = (r.stato === 'bozza');
+                    const isSalvataInCartella = !isBozza && Boolean(r.salvata_in_cartella);
 
                     let pdfBtnTitle = '';
                     let printBtnTitle = '';
@@ -11837,6 +11839,10 @@
                     if (isCartacea) {
                         pdfBtnTitle = r.annullata ? "Ricevuta cartacea ANNULLATA (registro fisico conservato)" : "Ricevuta da blocco cartaceo (registro fisico conservato)";
                         printBtnTitle = r.annullata ? "Stampa ricevuta cartacea ANNULLATA" : "Ricevuta cartacea emessa da blocco manuale";
+                    } else if (isBozza) {
+                        pdfBtnTitle = r.annullata ? "Ricevuta ANNULLATA in stato di Bozza: nessun PDF archiviato" : "Ricevuta in Bozza: emetti la ricevuta in via definitiva per produrre il PDF";
+                        printBtnTitle = r.annullata ? "Ricevuta ANNULLATA" : "Ricevuta in Bozza (nessun PDF prodotto)";
+                        pdfBtnStyle = "padding: 5px 10px; opacity: 0.55;";
                     } else if (isSalvataInCartella) {
                         pdfBtnTitle = r.annullata ? "Già in cartella ricevute (PDF Ricevuta Annullata)" : "Già in cartella ricevute (PDF generato ed archiviato)";
                         printBtnTitle = r.annullata ? "Stampa ricevuta ANNULLATA per l'archivio" : "Già in cartella ricevute (Già salvata in PDF e pronta alla stampa)";
@@ -11847,7 +11853,6 @@
                     }
                     
                     const isRateale = this.isReceiptRateale(r);
-                    const isBozza = (r.stato === 'bozza');
                     return `
                     <tr id="receipt-row-${r.id}" data-id="${r.id}">
                         <td style="white-space: nowrap;">${r.numero}/${app.formatAnno(r.anno)}</td>
@@ -11894,7 +11899,7 @@
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
                             <div style="display: inline-flex; gap: 4px; justify-content: flex-end; align-items: center;" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}" data-guide="Scarica o archivia PDF ricevuta. Effetto: Genera il documento PDF della quietanza e lo archivia nella cartella documenti cartacei.">💾 PDF${!isCartacea && !isSalvataInCartella ? ' ⚠️' : ''}</button>
+                                <button class="btn btn-outline" style="${pdfBtnStyle}" onclick="app.generatePDF('${r.id}')" title="${pdfBtnTitle}" data-guide="Scarica o archivia PDF ricevuta. Effetto: Genera il documento PDF della quietanza e lo archivia nella cartella documenti cartacei.">💾 PDF${!isCartacea && !isBozza && !isSalvataInCartella ? ' ⚠️' : ''}</button>
                                 ${(isBozza || this.state.debugMode) && !r.annullata ? `
                                     <button class="btn btn-outline" style="padding: 5px 8px;" title="${this.state.debugMode ? 'Modifica dati ricevuta (Debug Mode)' : 'Modifica ricevuta in bozza'}" onclick="app.openEditRicevutaModal('${r.id}')" data-guide="Modifica ricevuta. Effetto: Apre la finestra di modifica per aggiornare intestatario, importo, date o note.">✏️</button>
                                 ` : (!r.annullata ? `
@@ -12063,7 +12068,7 @@
                         : `<span class="rc-origin-badge digitale">💻 Digitale</span>`;
 
                     // PDF warning
-                    const pdfWarning = (!isCartacea && !isSalvata && !isAnnullata);
+                    const pdfWarning = (!isCartacea && !isSalvata && !isAnnullata && !isBozza);
 
                     // Causale / tipo
                     const causale = r.pacchetto_nome
@@ -12110,7 +12115,7 @@
                             ${r.note ? `<div class="sc-detail-row"><span class="sc-detail-icon">📝</span><span class="sc-detail-label">Note</span><span class="sc-detail-value" style="font-style:italic;color:var(--text-muted);">${r.note}</span></div>` : ''}
                             <div class="sc-detail-divider"></div>
                             <div class="sc-actions">
-                                <button class="sc-action-btn primary" onclick="app.generatePDF('${r.id}')">💾 PDF${pdfWarning ? ' ⚠️' : ''}</button>
+                                ${!isBozza ? `<button class="sc-action-btn primary" onclick="app.generatePDF('${r.id}')">💾 PDF${pdfWarning ? ' ⚠️' : ''}</button>` : `<button class="sc-action-btn" style="opacity:0.55;" onclick="app.generatePDF('${r.id}')" title="Ricevuta in Bozza: emetti la ricevuta in via definitiva per produrre il PDF">💾 PDF</button>`}
                                 <button class="sc-action-btn" onclick="app.printReceipt('${r.id}')">🖨️ Stampa</button>
                                 ${(isBozza && !isAnnullata) ? `<button class="sc-action-btn warning" onclick="app.openEditRicevutaModal('${r.id}')">✏️ Modifica</button>` : ''}
                                 ${(!isAnnullata) ? `<button class="sc-action-btn danger" onclick="app.annullaRicevuta('${r.id}')">🚫 Annulla</button>` : ''}
@@ -14765,7 +14770,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
             const wasShifted = (typeof didShift !== 'undefined' && didShift);
             const isServerDevice = this.getDeviceRole() === 'server';
             if (isMultiplo && !editId) {
-                if (!receipt.cartacea && isServerDevice) {
+                if (!receipt.cartacea && receipt.stato !== 'bozza' && isServerDevice) {
                     if (wasShifted) {
                         try { await this.allineaCartellaRicevutePDF(targetAnno, true); } catch(ePdf) { console.error(ePdf); }
                     } else {
@@ -14795,7 +14800,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 const socioSel = form.querySelector('[name="socio_id"]');
                 if (socioSel) socioSel.focus();
             } else {
-                if (!receipt.cartacea && isServerDevice) {
+                if (!receipt.cartacea && receipt.stato !== 'bozza' && isServerDevice) {
                     if (wasShifted) {
                         try { await this.allineaCartellaRicevutePDF(targetAnno, true); } catch(ePdf) { console.error(ePdf); }
                     } else {
@@ -14903,11 +14908,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
             }
 
             r.stato = nuovoStato;
+            if (nuovoStato === 'bozza') {
+                r.salvata_in_cartella = false;
+            }
             this.touchEntity(r);
             this.saveAll();
 
-            // Rigenera PDF per aggiornare indicazione bozza/emessa se server o handle
-            if (!r.cartacea && (this.getDeviceRole() === 'server' || this.directoryHandle)) {
+            // Rigenera PDF solo se emessa (le bozze non devono produrre PDF)
+            if (nuovoStato === 'emessa' && !r.cartacea && (this.getDeviceRole() === 'server' || this.directoryHandle)) {
                 try {
                     await this.generatePDF(r.id);
                 } catch(ePdf) {
@@ -15258,9 +15266,14 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 this.toast("Ricevuta aggiornata!");
                 this.closeModal();
 
-                // Rigenera e sovrascrivi il PDF nella cartella dell'associazione se digitale
+                // Rigenera e sovrascrivi il PDF nella cartella solo se digitale, emessa (non bozza) e su Server
                 const updatedR = this.state.ricevute[idx];
-                if (updatedR && !updatedR.cartacea) {
+                if (updatedR && updatedR.stato === 'bozza') {
+                    if (updatedR.salvata_in_cartella) {
+                        updatedR.salvata_in_cartella = false;
+                        this.saveAll();
+                    }
+                } else if (updatedR && !updatedR.cartacea && this.getDeviceRole() === 'server') {
                     try {
                         if (oldNum !== newNum || oldAnno !== newAnno) {
                             await this.allineaCartellaRicevutePDF(newAnno, true);
@@ -15917,7 +15930,22 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
         async generatePDF(receiptId, silent = false) {
             const r = this.state.ricevute.find(x => x.id == receiptId || String(x.id) === String(receiptId));
             const s = this.state.soci.find(x => x.id == r?.socio_id);
-            if (!r) return;
+            if (!r) return false;
+            if (r.stato === 'bozza') {
+                if (r.salvata_in_cartella) {
+                    r.salvata_in_cartella = false;
+                    if (!silent) {
+                        this.saveAll();
+                        if (this.state.currentPage === 'ricevute' && document.getElementById('receipts-tbody')) {
+                            this.filterRicevute();
+                        }
+                    }
+                }
+                if (!silent) {
+                    this.toast("La ricevuta è ancora in stato di Bozza: il PDF non viene prodotto finché non viene emessa.", "warning");
+                }
+                return false;
+            }
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -16039,16 +16067,19 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 }
             } catch(eClean) {}
 
-            await this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear, silent);
+            const savedToFolder = await this.saveDocumentFS(fileName, doc.output('blob'), 'ricevute', sportsYear, silent);
 
-            r.salvata_in_cartella = true;
+            r.salvata_in_cartella = Boolean(savedToFolder);
             if (!silent) {
                 this.saveAll();
                 if (this.state.currentPage === 'ricevute' && document.getElementById('receipts-tbody')) {
                     this.filterRicevute();
                 }
-                this.toast(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} salvata nella cartella ricevute!`, "success");
+                if (savedToFolder) {
+                    this.toast(`Ricevuta N. ${r.numero}/${app.formatAnno(r.anno)} salvata nella cartella ricevute!`, "success");
+                }
             }
+            return Boolean(savedToFolder);
         },
 
         async syncReceiptsFolderStatus() {
@@ -16062,9 +16093,16 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 if (perm !== 'granted') return;
 
                 let changedCount = 0;
+                (this.state.ricevute || []).forEach(r => {
+                    if (r.stato === 'bozza' && r.salvata_in_cartella) {
+                        r.salvata_in_cartella = false;
+                        changedCount++;
+                    }
+                });
                 const list = (this.state.ricevute || []).filter(r => 
                     r.tipo !== 'Compenso Sportivo' && 
-                    !(r.cartacea === true || String(r.cartacea) === 'true')
+                    !(r.cartacea === true || String(r.cartacea) === 'true') &&
+                    r.stato !== 'bozza'
                 );
 
                 for (const r of list) {
@@ -16157,6 +16195,7 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
             const digitaliUnsaved = (this.state.ricevute || []).filter(r => 
                 r.tipo !== 'Compenso Sportivo' && 
                 !(r.cartacea === true || String(r.cartacea) === 'true') && 
+                r.stato !== 'bozza' &&
                 !r.salvata_in_cartella
             );
 
@@ -16191,7 +16230,8 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 const allSportsYears = new Set();
                 const digitalReceipts = (this.state.ricevute || []).filter(r => 
                     r.tipo !== 'Compenso Sportivo' && 
-                    !(r.cartacea === true || String(r.cartacea) === 'true')
+                    !(r.cartacea === true || String(r.cartacea) === 'true') &&
+                    r.stato !== 'bozza'
                 );
 
                 if (targetAnno) {
@@ -20232,7 +20272,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
             // Calcolo elementi da rigenerare
             const digitalReceipts = (this.state.ricevute || []).filter(r => 
                 r.tipo !== 'Compenso Sportivo' && 
-                !(r.cartacea === true || String(r.cartacea) === 'true')
+                !(r.cartacea === true || String(r.cartacea) === 'true') &&
+                r.stato !== 'bozza'
             );
             const compensi = (this.state.ricevute || []).filter(r => r.tipo === 'Compenso Sportivo');
             const rimborsi = this.state.rimborsi || [];
@@ -20337,7 +20378,8 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
 
             const digitalReceipts = (this.state.ricevute || []).filter(r => 
                 r.tipo !== 'Compenso Sportivo' && 
-                !(r.cartacea === true || String(r.cartacea) === 'true')
+                !(r.cartacea === true || String(r.cartacea) === 'true') &&
+                r.stato !== 'bozza'
             );
             const compensi = (this.state.ricevute || []).filter(r => r.tipo === 'Compenso Sportivo');
             const rimborsi = this.state.rimborsi || [];
