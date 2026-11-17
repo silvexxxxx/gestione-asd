@@ -15237,9 +15237,11 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                 const hasQuota = !isSoloTessEdit && (quota > 0 || (importoVal > tess && (tipoCausale.toLowerCase().includes('quota') || tipoCausale.toLowerCase().includes('corso') || !tipoCausale.toLowerCase().includes('tesseramento'))) || hasExplicitDurata);
 
                 // Aggiorna validità quota in anagrafica socio
+                let socioTouched = false;
                 if (hasQuota && socio && targetScadenza) {
                     socio.quota_scadenza = targetScadenza;
                     socio.stato = 'ATTIVO';
+                    socioTouched = true;
                 }
 
                 // Rinnovo tesseramento se presente
@@ -15258,8 +15260,13 @@ openAddRicevutaModal(insertNum = null, forcedAnno = null, forcedDate = null, pre
                     socio.tesseramento_data = tessDate;
                     socio.tesseramento_scadenza = `${expYear}-08-31`;
                     socio.stato = 'ATTIVO';
+                    socioTouched = true;
                 }
 
+                this.touchEntity(this.state.ricevute[idx]);
+                if (socioTouched && socio) {
+                    this.touchEntity(socio);
+                }
                 this.syncPrimaNotaFromRicevuta(this.state.ricevute[idx]);
                 this.syncSociFromRicevute();
                 this.saveAll();
