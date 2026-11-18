@@ -3,13 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Gestionale ASD - Sistema Professionale</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="color-scheme" content="dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Gestionale ASD">
     <!-- Icona di fallback -->
     <link rel="icon" type="image/svg+xml" href="./icon.svg">
+    <link rel="apple-touch-icon" href="./icon.svg">
+    <link rel="stylesheet" href="./mobile-ux.css?v=2.9.36">
     <!-- Google APIs -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -36124,7 +36129,7 @@ window.addEventListener('resize', () => {
         <button id="pwa-dismiss-btn" onclick="dismissPwaInstall()" title="Nascondi per questa sessione" data-guide="Nascondi invito installazione. Effetto: Chiude il banner di installazione per la sessione corrente.">✕</button>
     </div>
 
-
+<script src="./mobile-ux.js?v=2.9.36"></script>
 </body>
 
 </html>

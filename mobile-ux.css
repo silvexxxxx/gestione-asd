@@ -1,0 +1,879 @@
+/* ============================================================================
+   GESTIONALE ASD — MOBILE UX v2 ("Wow Style", Fluid & Action-First)
+   Attivo SOLO su mobile (<= 768px) quando body ha la classe .mobile-v2.
+   Disattivabile in qualsiasi momento (rollback istantaneo in-app o via Git).
+   ============================================================================ */
+
+/* Elementi v2 nascosti di default su Desktop e in modalità Classica */
+#mobile-fab,
+#mobile-filter-sheet-backdrop,
+#mobile-filter-sheet,
+#mobile-quick-sheet-backdrop,
+#mobile-quick-sheet,
+.m-v2-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+
+    /* ========================================================================
+       1. SHELL, SAFE AREAS & OVERLAY COLLISION FIXES
+       ======================================================================== */
+    body.mobile-v2 {
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior-y: contain;
+    }
+
+    body.mobile-v2 .app-container {
+        height: 100dvh;
+    }
+
+    /* Toast: in alto sotto la topbar invece di collidere con la bottom nav */
+    body.mobile-v2 #toast-container {
+        top: calc(58px + env(safe-area-inset-top, 0px)) !important;
+        bottom: auto !important;
+        left: 12px !important;
+        right: 12px !important;
+        z-index: 10500 !important;
+        pointer-events: none;
+    }
+
+    body.mobile-v2 .toast {
+        pointer-events: auto;
+        border-radius: 14px !important;
+        padding: 11px 14px !important;
+        font-size: 0.85rem !important;
+        background: rgba(15, 23, 42, 0.96) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55) !important;
+        animation: mobileToastDrop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+
+    @keyframes mobileToastDrop {
+        from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Banner installazione PWA: posizionato sopra bottom nav & FAB */
+    body.mobile-v2 #pwa-install-container {
+        bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 14px !important;
+        right: auto !important;
+        z-index: 7800 !important;
+    }
+
+    /* ========================================================================
+       2. TOPBAR MOBILE CONTESTUALE
+       ======================================================================== */
+    body.mobile-v2 aside {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px !important;
+        min-height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+        background: rgba(11, 17, 32, 0.92) !important;
+        backdrop-filter: blur(18px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        z-index: 7500 !important;
+    }
+
+    body.mobile-v2 .logo-area {
+        gap: 8px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Nascondi testo generico "Gestionale ASD" se presente il titolo pagina dinamico */
+    body.mobile-v2 .logo-area.has-page-title {
+        font-size: 0 !important;
+    }
+    body.mobile-v2 .logo-area.has-page-title svg,
+    body.mobile-v2 .logo-area.has-page-title #customAppLogoImg,
+    body.mobile-v2 .logo-area.has-page-title #appLogoPlaceholder {
+        flex-shrink: 0 !important;
+    }
+
+    body.mobile-v2 #mobile-topbar-page-title {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.98rem !important;
+        font-weight: 700 !important;
+        color: #f8fafc !important;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    body.mobile-v2 .m-topbar-quick-actions {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    body.mobile-v2 .m-topbar-icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        color: #cbd5e1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.12s ease, background 0.15s ease;
+    }
+    body.mobile-v2 .m-topbar-icon-btn:active {
+        transform: scale(0.92);
+        background: rgba(59, 130, 246, 0.2);
+    }
+    body.mobile-v2 .m-topbar-dot {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #facc15;
+        box-shadow: 0 0 6px #facc15;
+    }
+
+    body.mobile-v2 #cloud-indicator-btn {
+        min-height: 36px !important;
+        height: 36px !important;
+        padding: 0 10px !important;
+        border-radius: 10px !important;
+    }
+
+    /* ========================================================================
+       3. BOTTOM NAVIGATION BAR & DRAWER RAFFINATI
+       ======================================================================== */
+    body.mobile-v2 #mobile-bottom-nav {
+        height: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+        padding: 4px 6px env(safe-area-inset-bottom, 0px) !important;
+        background: rgba(11, 17, 32, 0.94) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.09) !important;
+        box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.45) !important;
+    }
+
+    body.mobile-v2 .mbn-item {
+        border-radius: 12px;
+        margin: 2px 2px;
+        padding: 4px 2px !important;
+        transition: transform 0.14s ease, color 0.18s ease, background 0.18s ease !important;
+    }
+    body.mobile-v2 .mbn-item:active {
+        transform: scale(0.92);
+    }
+    body.mobile-v2 .mbn-item.active {
+        color: #60a5fa !important;
+        background: rgba(59, 130, 246, 0.12) !important;
+    }
+    body.mobile-v2 .mbn-item.active::before {
+        top: 2px;
+        left: 28%;
+        right: 28%;
+        height: 3px;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+    }
+    body.mobile-v2 .mbn-item.active-drawer-route {
+        color: #a78bfa !important;
+        background: rgba(139, 92, 246, 0.14) !important;
+    }
+    body.mobile-v2 .mbn-item.active-drawer-route::before {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 28%;
+        right: 28%;
+        height: 3px;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+    }
+
+    /* Drawer v2 */
+    body.mobile-v2 #mobile-nav-drawer {
+        background: linear-gradient(180deg, #131c31 0%, #0b1120 100%) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.14) !important;
+        border-radius: 24px 24px 0 0 !important;
+    }
+    body.mobile-v2 .mnd-nav-item {
+        min-height: 48px;
+        border-radius: 12px;
+        margin: 2px 10px;
+        width: calc(100% - 20px);
+        padding: 10px 12px !important;
+    }
+    body.mobile-v2 .mnd-nav-item:active {
+        transform: scale(0.985);
+    }
+
+    /* ========================================================================
+       4. MAIN CONTENT, TRANSIZIONI & PULIZIA ABOVE-THE-FOLD
+       ======================================================================== */
+    body.mobile-v2 main,
+    body.mobile-v2 #main-content {
+        padding: 10px 12px calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+        scroll-behavior: smooth;
+    }
+    body.mobile-v2 main.page-schede-atleti,
+    body.mobile-v2 #main-content.page-schede-atleti {
+        padding: 0 0 calc(62px + env(safe-area-inset-bottom, 0px)) 0 !important;
+    }
+
+    body.mobile-v2 .page-content {
+        animation: mobilePageEnter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        padding-bottom: 18px !important;
+    }
+    @keyframes mobilePageEnter {
+        from { opacity: 0.4; transform: translateY(6px); }
+        to   { opacity: 1;   transform: translateY(0); }
+    }
+
+    /* Intestazione pagina più snella (titolo nascosto se già in topbar, sottotitoli compatti) */
+    body.mobile-v2 .page-header {
+        margin-bottom: 10px !important;
+        gap: 8px !important;
+    }
+    body.mobile-v2 .page-header .header-title h1,
+    body.mobile-v2 .page-header h1 {
+        font-size: 1.15rem !important;
+        letter-spacing: -0.015em;
+    }
+    body.mobile-v2 .page-header .header-subtitle,
+    body.mobile-v2 .page-header p {
+        font-size: 0.78rem !important;
+        line-height: 1.3 !important;
+        margin-top: 2px !important;
+    }
+
+    /* Quando il FAB gestisce l'azione primaria (+), nascondi i bottoni duplicati enormi nell'header
+       mantenendo accessibili Export/azioni secondarie nel Filter Sheet */
+    body.mobile-v2.has-mobile-fab .page-header > button.btn-primary,
+    body.mobile-v2.has-mobile-fab .page-header > div > button.btn-primary,
+    body.mobile-v2.has-mobile-fab .page-header .header-actions {
+        display: none !important;
+    }
+    body.mobile-v2.has-filter-bar .page-header > div:has(> button.btn-outline) {
+        display: none !important;
+    }
+
+    /* ========================================================================
+       5. FAB CONTESTUALE (Thumb Zone)
+       ======================================================================== */
+    body.mobile-v2 #mobile-fab {
+        display: flex;
+        position: fixed;
+        right: 16px;
+        bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+        height: 54px;
+        min-width: 54px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #6366f1 100%);
+        color: #ffffff;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        box-shadow: 0 10px 26px rgba(37, 99, 235, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.25);
+        z-index: 7900;
+        cursor: pointer;
+        transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease, box-shadow 0.2s ease;
+        font-family: inherit;
+    }
+    body.mobile-v2 #mobile-fab.fab-hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(16px) scale(0.85);
+    }
+    body.mobile-v2 #mobile-fab:active {
+        transform: scale(0.92);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
+    }
+    body.mobile-v2 #mobile-fab svg {
+        width: 20px;
+        height: 20px;
+        stroke: currentColor;
+        flex-shrink: 0;
+    }
+
+    /* ========================================================================
+       6. FILTER BAR COMPATTA + FILTER CHIPS ORIZZONTALI + FILTER SHEET
+       ======================================================================== */
+    body.mobile-v2 .m-filter-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        padding: 8px 10px;
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+    }
+
+    body.mobile-v2 .m-filter-search-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    body.mobile-v2 .m-search-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+    }
+    body.mobile-v2 .m-search-wrap svg {
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: #64748b;
+        pointer-events: none;
+    }
+    body.mobile-v2 .m-search-input {
+        width: 100%;
+        height: 42px;
+        padding: 0 32px 0 34px;
+        border-radius: 11px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(30, 41, 59, 0.7);
+        color: #f8fafc;
+        font-size: 0.9rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    body.mobile-v2 .m-search-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+    body.mobile-v2 .m-search-clear {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: #cbd5e1;
+        font-size: 0.75rem;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    body.mobile-v2 .m-search-clear.visible {
+        display: inline-flex;
+    }
+
+    body.mobile-v2 .m-filter-trigger-btn {
+        height: 42px;
+        padding: 0 12px;
+        border-radius: 11px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(30, 41, 59, 0.75);
+        color: #e2e8f0;
+        font-size: 0.82rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-family: inherit;
+    }
+    body.mobile-v2 .m-filter-trigger-btn.has-active {
+        border-color: rgba(59, 130, 246, 0.55);
+        background: rgba(59, 130, 246, 0.16);
+        color: #93c5fd;
+    }
+    body.mobile-v2 .m-filter-count-pill {
+        background: var(--primary);
+        color: #fff;
+        font-size: 0.68rem;
+        font-weight: 800;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 99px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 5px;
+    }
+
+    /* Riga Chips Scorrevole */
+    body.mobile-v2 .m-chips-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 1px 0;
+    }
+    body.mobile-v2 .m-chips-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    body.mobile-v2 .m-chip {
+        flex-shrink: 0;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: #94a3b8;
+        font-size: 0.77rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.15s ease;
+    }
+    body.mobile-v2 .m-chip:active {
+        transform: scale(0.95);
+    }
+    body.mobile-v2 .m-chip.active {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.65);
+        color: #93c5fd;
+        box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
+    }
+    body.mobile-v2 .m-chip.chip-danger.active {
+        background: rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.55);
+        color: #fca5a5;
+    }
+    body.mobile-v2 .m-chip.chip-success.active {
+        background: rgba(16, 185, 129, 0.18);
+        border-color: rgba(16, 185, 129, 0.55);
+        color: #6ee7b7;
+    }
+    body.mobile-v2 .m-chip.chip-warning.active {
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(245, 158, 11, 0.55);
+        color: #fcd34d;
+    }
+
+    /* Nascondi la vecchia .toolbar quando la Filter Bar v2 è attiva sulla card */
+    body.mobile-v2 .member-card.m-toolbar-enhanced > .toolbar {
+        display: none !important;
+    }
+    body.mobile-v2 .member-card.m-toolbar-enhanced {
+        padding: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* ========================================================================
+       7. MODALI -> BOTTOM SHEET NATIVI & FIX GRIGLIE INLINE
+       ======================================================================== */
+    body.mobile-v2 #modal-overlay {
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        z-index: 9500 !important;
+    }
+
+    body.mobile-v2 #modal-content,
+    body.mobile-v2 .modal,
+    body.mobile-v2 .modal-wide,
+    body.mobile-v2 .modal-extra-wide,
+    body.mobile-v2 .modal-socio {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 92dvh !important;
+        border-radius: 24px 24px 0 0 !important;
+        padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        border-bottom: none !important;
+        background: linear-gradient(180deg, #162036 0%, #0f172a 100%) !important;
+        box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.72) !important;
+        animation: mobileSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        overscroll-behavior: contain;
+    }
+
+    @keyframes mobileSheetSlideUp {
+        from { transform: translateY(100%); opacity: 0.5; }
+        to   { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Handle visivo in cima al Bottom Sheet */
+    body.mobile-v2 #modal-content::before {
+        content: '';
+        display: block;
+        width: 42px;
+        height: 4px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.22);
+        margin: 0 auto 12px auto;
+        flex-shrink: 0;
+    }
+
+    body.mobile-v2 #modal-content > div:first-child h2 {
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+        line-height: 1.25 !important;
+    }
+
+    /* Forza tutte le griglie inline nei modali a collassare ordinatamente su schermi stretti */
+    body.mobile-v2 #modal-content div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+    body.mobile-v2 #modal-content .form-control,
+    body.mobile-v2 #modal-content input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    body.mobile-v2 #modal-content select,
+    body.mobile-v2 #modal-content button.btn {
+        min-height: 44px;
+        font-size: 16px; /* Previene zoom automatico su iOS Safari */
+    }
+    body.mobile-v2 #modal-content .form-group {
+        margin-bottom: 0.9rem !important;
+    }
+
+    /* ========================================================================
+       8. FILTER SHEET & QUICK ACTION SHEET
+       ======================================================================== */
+    body.mobile-v2 #mobile-filter-sheet-backdrop,
+    body.mobile-v2 #mobile-quick-sheet-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9100;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.22s ease;
+    }
+    body.mobile-v2 #mobile-filter-sheet-backdrop.open,
+    body.mobile-v2 #mobile-quick-sheet-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    body.mobile-v2 #mobile-filter-sheet,
+    body.mobile-v2 #mobile-quick-sheet {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 85dvh;
+        background: linear-gradient(180deg, #162036 0%, #0f172a 100%);
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 24px 24px 0 0;
+        z-index: 9200;
+        transform: translateY(100%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.65);
+        overflow-y: auto;
+    }
+    body.mobile-v2 #mobile-filter-sheet.open,
+    body.mobile-v2 #mobile-quick-sheet.open {
+        transform: translateY(0);
+    }
+
+    body.mobile-v2 .m-sheet-handle {
+        width: 40px;
+        height: 4px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.22);
+        margin: 0 auto 12px;
+        flex-shrink: 0;
+    }
+    body.mobile-v2 .m-sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    body.mobile-v2 .m-sheet-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+
+    /* ========================================================================
+       9. DASHBOARD "WOW STYLE" & KPI HORIZONTAL STRIPS
+       ======================================================================== */
+    body.mobile-v2 .m-hero-card {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
+        border: 1px solid rgba(59, 130, 246, 0.28);
+        border-radius: 18px;
+        padding: 14px 15px;
+        margin-bottom: 12px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    body.mobile-v2 .m-hero-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    body.mobile-v2 .m-hero-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #f8fafc;
+        letter-spacing: -0.01em;
+    }
+    body.mobile-v2 .m-hero-season {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #93c5fd;
+        background: rgba(59, 130, 246, 0.16);
+        border: 1px solid rgba(59, 130, 246, 0.32);
+        padding: 3px 9px;
+        border-radius: 99px;
+        white-space: nowrap;
+    }
+    body.mobile-v2 .m-health-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.76rem;
+        color: #94a3b8;
+        margin-bottom: 6px;
+    }
+    body.mobile-v2 .m-health-bar {
+        height: 8px;
+        width: 100%;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+    }
+    body.mobile-v2 .m-health-fill {
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+        transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Quick Actions Strip (Dashboard) */
+    body.mobile-v2 .m-quick-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    body.mobile-v2 .m-qa-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 4px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        background: rgba(30, 41, 59, 0.65);
+        color: #e2e8f0;
+        font-size: 0.72rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.14s ease, background 0.15s ease;
+    }
+    body.mobile-v2 .m-qa-tile:active {
+        transform: scale(0.94);
+    }
+    body.mobile-v2 .m-qa-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* KPI Grid 2x2 migliorata */
+    body.mobile-v2 .stats-row {
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+    }
+    body.mobile-v2 .stats-row .stat-card {
+        border-radius: 16px !important;
+        padding: 12px 10px !important;
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.9)) !important;
+        border: 1px solid rgba(255, 255, 255, 0.09) !important;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+    }
+    body.mobile-v2 .stats-row .stat-card .value {
+        font-variant-numeric: tabular-nums;
+        font-size: 1.28rem !important;
+    }
+
+    /* KPI strips orizzontali su Rimborsi / Compensi / Istruttori */
+    body.mobile-v2 .m-kpi-scroll-grid {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        scroll-snap-type: x mandatory;
+        gap: 10px !important;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+    }
+    body.mobile-v2 .m-kpi-scroll-grid::-webkit-scrollbar {
+        display: none;
+    }
+    body.mobile-v2 .m-kpi-scroll-grid > div {
+        flex: 0 0 74% !important;
+        scroll-snap-align: start;
+        border-radius: 14px !important;
+        padding: 12px 14px !important;
+    }
+
+    /* ========================================================================
+       10. CARD DESIGN RAFFINATO + QUICK ACTIONS + NUOVI MODULI
+       ======================================================================== */
+    body.mobile-v2 #soci-cards-container,
+    body.mobile-v2 #ricevute-cards-container,
+    body.mobile-v2 #pn-cards-container {
+        padding: 4px 0 !important;
+    }
+
+    body.mobile-v2 .socio-card,
+    body.mobile-v2 .m-entity-card {
+        margin: 0 0 10px 0 !important;
+        border-radius: 16px !important;
+        background: rgba(30, 41, 59, 0.72) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        transition: transform 0.12s ease, border-color 0.2s ease;
+    }
+    body.mobile-v2 .socio-card.sc-expired,
+    body.mobile-v2 .m-entity-card.sc-expired {
+        border-color: rgba(239, 68, 68, 0.35) !important;
+        background: linear-gradient(145deg, rgba(239, 68, 68, 0.09), rgba(30, 41, 59, 0.75)) !important;
+    }
+    body.mobile-v2 .socio-card.sc-warning,
+    body.mobile-v2 .m-entity-card.sc-warning {
+        border-color: rgba(245, 158, 11, 0.35) !important;
+        background: linear-gradient(145deg, rgba(245, 158, 11, 0.09), rgba(30, 41, 59, 0.75)) !important;
+    }
+    body.mobile-v2 .sc-header {
+        padding: 12px 12px !important;
+        gap: 10px !important;
+    }
+    body.mobile-v2 .sc-header:active {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* Micro-azione 1-tap visibile direttamente sulla card chiusa */
+    body.mobile-v2 .m-card-quick-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: transform 0.12s ease, background 0.15s ease;
+    }
+    body.mobile-v2 .m-card-quick-btn:active {
+        transform: scale(0.9);
+    }
+    body.mobile-v2 .m-card-quick-btn.btn-wa {
+        border-color: rgba(16, 185, 129, 0.35);
+        background: rgba(16, 185, 129, 0.12);
+        color: #34d399;
+    }
+    body.mobile-v2 .m-card-quick-btn.btn-pay {
+        border-color: rgba(59, 130, 246, 0.35);
+        background: rgba(59, 130, 246, 0.12);
+        color: #60a5fa;
+    }
+
+    body.mobile-v2 .sc-action-btn {
+        min-height: 40px;
+        border-radius: 10px !important;
+        padding: 8px 12px !important;
+    }
+
+    /* Nascondi tabelle desktop sui moduli potenziati con card mobile v2 */
+    body.mobile-v2 .m-cards-replaced-table {
+        display: none !important;
+    }
+
+    /* Magazzino Stepper Ergonomico */
+    body.mobile-v2 .m-qty-stepper {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 3px;
+    }
+    body.mobile-v2 .m-qty-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        border: none;
+        background: rgba(255, 255, 255, 0.08);
+        color: #f8fafc;
+        font-size: 1.15rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    body.mobile-v2 .m-qty-btn:active {
+        background: rgba(59, 130, 246, 0.3);
+        transform: scale(0.92);
+    }
+    body.mobile-v2 .m-qty-val {
+        min-width: 32px;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Nascondi post-it flottanti desktop su mobile quando v2 è attivo (gestiti via Sheet) */
+    body.mobile-v2 .postit-note {
+        max-width: calc(100vw - 24px) !important;
+    }
+}

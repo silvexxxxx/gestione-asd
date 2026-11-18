@@ -1,9 +1,11 @@
-const CACHE_NAME = "gestione-asd-v2.9.35";
+const CACHE_NAME = "gestione-asd-v2.9.36";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon.svg",
+  "./mobile-ux.css",
+  "./mobile-ux.js",
   "./acquisizione_scansioni.js",
   "./lib/qrcode.min.js",
   "./lib/pdf-lib.min.js",
@@ -55,7 +57,9 @@ self.addEventListener("fetch", (e) => {
                        e.request.url.endsWith("index.html") ||
                        e.request.url.endsWith("/");
 
-  const isAppScript = e.request.url.includes("acquisizione_scansioni.js");
+  const isAppScript = e.request.url.includes("acquisizione_scansioni.js") ||
+                      e.request.url.includes("mobile-ux.js") ||
+                      e.request.url.includes("mobile-ux.css");
 
   if (isNavigation || isAppScript) {
     e.respondWith(
