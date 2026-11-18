@@ -689,6 +689,7 @@
                     <div class="m-health-bar">
                         <div class="m-health-fill" style="width:${pct}%;"></div>
                     </div>
+                    <div id="m-sync-strip" class="m-sync-strip"></div>
                 `;
 
                 const qaGrid = document.createElement('div');
@@ -719,6 +720,43 @@
 
                 statsRow.parentNode.insertBefore(hero, statsRow);
                 statsRow.parentNode.insertBefore(qaGrid, statsRow);
+            }
+            this.syncSyncStrip();
+        },
+
+        syncSyncStrip() {
+            const strip = document.getElementById('m-sync-strip');
+            if (!strip || typeof app === 'undefined' || !app.cloudSync) return;
+
+            const cs = app.cloudSync;
+            const isOnline = !!(cs.syncEnabled && cs.accessToken);
+            const hasDirty = typeof cs.hasUnsyncedLocalChanges === 'function' ? cs.hasUnsyncedLocalChanges() : false;
+            const lastCloudStr = localStorage.getItem('asd_last_cloud_sync_at');
+            const lastLocalStr = (app.state && app.state.last_saved_at) || localStorage.getItem('asd_last_local_save');
+
+            const fmtTime = (iso) => {
+                if (!iso) return 'mai';
+                const d = new Date(iso);
+                if (isNaN(d.getTime())) return 'n/d';
+                return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' ' +
+                       d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            };
+
+            if (isOnline) {
+                strip.className = 'm-sync-strip is-online';
+                strip.innerHTML = `
+                    <span class="m-sync-text">☁️ Cloud attivo · Sync: <strong>${lastCloudStr ? fmtTime(lastCloudStr) : 'ora'}</strong></span>
+                    <button type="button" class="m-sync-btn online" onclick="app.cloudSync.syncNow()">🔄 Aggiorna</button>
+                `;
+            } else {
+                const subLabel = lastCloudStr
+                    ? `Ultimo sync: ${fmtTime(lastCloudStr)}`
+                    : (lastLocalStr ? `Dati locali del ${fmtTime(lastLocalStr)}` : 'Solo memoria locale');
+                strip.className = 'm-sync-strip is-offline';
+                strip.innerHTML = `
+                    <span class="m-sync-text">${hasDirty ? '⚠️' : '🔒'} <strong>Offline</strong> · ${subLabel}</span>
+                    <button type="button" class="m-sync-btn" onclick="app.cloudSync.toggleOnlineOffline()">🔄 Sincronizza</button>
+                `;
             }
         },
 

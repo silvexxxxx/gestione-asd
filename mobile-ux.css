@@ -686,6 +686,51 @@
         transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
+    body.mobile-v2 .m-sync-strip {
+        margin-top: 10px;
+        padding-top: 9px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    body.mobile-v2 .m-sync-text {
+        font-size: 0.72rem;
+        color: #cbd5e1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    body.mobile-v2 .m-sync-strip.is-offline .m-sync-text strong {
+        color: #fca5a5;
+    }
+    body.mobile-v2 .m-sync-strip.is-online .m-sync-text strong {
+        color: #6ee7b7;
+    }
+    body.mobile-v2 .m-sync-btn {
+        flex-shrink: 0;
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 99px;
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        background: rgba(59, 130, 246, 0.18);
+        color: #93c5fd;
+        font-size: 0.73rem;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+    }
+    body.mobile-v2 .m-sync-btn.online {
+        border-color: rgba(16, 185, 129, 0.45);
+        background: rgba(16, 185, 129, 0.16);
+        color: #6ee7b7;
+    }
+    body.mobile-v2 .m-sync-btn:active {
+        transform: scale(0.95);
+    }
+
     /* Quick Actions Strip (Dashboard) */
     body.mobile-v2 .m-quick-actions-grid {
         display: grid;

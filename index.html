@@ -14,7 +14,7 @@
     <!-- Icona di fallback -->
     <link rel="icon" type="image/svg+xml" href="./icon.svg">
     <link rel="apple-touch-icon" href="./icon.svg">
-    <link rel="stylesheet" href="./mobile-ux.css?v=2.9.36">
+    <link rel="stylesheet" href="./mobile-ux.css?v=2.9.37">
     <!-- Google APIs -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
@@ -7391,6 +7391,9 @@
                 
                 // Salvataggio automatico su Google Drive (se attivo)
                 this.cloudSync.triggerAutoSave();
+                if (!this.cloudSync.syncEnabled || !this.cloudSync.accessToken) {
+                    this.cloudSync.updateUIStatus();
+                }
                 
                 // Salvataggio impostazioni UI leggere in localStorage
                 localStorage.setItem('asd_current_page', this.state.currentPage || 'dashboard');
@@ -7467,17 +7470,48 @@
             accessToken: null,
             fileId: localStorage.getItem('asd_gdrive_file_id') || null,
             isSyncing: false,
-            syncEnabled: false, // All'avvio dell'app si parte sempre in Modalità Offline Pura
+            syncEnabled: false,
             clientId: '961700483511-vg2k314pthheku37adm3vlniothabuae.apps.googleusercontent.com',
 
+            getAutoConnectPref() {
+                return localStorage.getItem('asd_auto_cloud_connect') !== 'false';
+            },
+
+            setAutoConnectPref(enabled) {
+                localStorage.setItem('asd_auto_cloud_connect', enabled ? 'true' : 'false');
+                if (enabled) sessionStorage.removeItem('asd_manual_offline');
+            },
+
+            markCloudSynced() {
+                try {
+                    localStorage.setItem('asd_last_cloud_sync_at', new Date().toISOString());
+                    if (app && app.state) app.state.isDirty = false;
+                } catch (e) {}
+                this.updateUIStatus();
+            },
+
+            hasUnsyncedLocalChanges() {
+                const lastLocalStr = (app && app.state && app.state.last_saved_at) || localStorage.getItem('asd_last_local_save');
+                const lastCloudStr = localStorage.getItem('asd_last_cloud_sync_at');
+                if (!lastLocalStr) return false;
+                const localTs = new Date(lastLocalStr).getTime() || 0;
+                if (!lastCloudStr) {
+                    return ((app?.state?.soci?.length || 0) > 0 || (app?.state?.ricevute?.length || 0) > 0);
+                }
+                const cloudTs = new Date(lastCloudStr).getTime() || 0;
+                return (localTs - cloudTs) > 5000;
+            },
+
             getStartupMode() {
-                return 'offline';
+                return (this.getAutoConnectPref() && localStorage.getItem('asd_gdrive_ever_connected') === 'true') ? 'auto' : 'offline';
             },
 
             setStartupMode(mode) {
                 if (mode === 'offline') {
+                    this.setAutoConnectPref(false);
                     this.logout(false);
                 } else {
+                    this.setAutoConnectPref(true);
                     this.login();
                 }
                 this.updateUIStatus();
@@ -7618,8 +7652,10 @@
                         }
                         this.accessToken = tokenResponse.access_token;
                         localStorage.setItem('asd_cloud_sync', 'true');
+                        localStorage.setItem('asd_gdrive_ever_connected', 'true');
                         localStorage.setItem('asd_gdrive_token', this.accessToken);
                         localStorage.setItem('asd_gdrive_token_expiry', Date.now() + 3500 * 1000); // Scade tra circa 1 ora
+                        sessionStorage.removeItem('asd_manual_offline');
                         this.syncEnabled = true;
                         this.updateUIStatus();
                         if (app.state && app.state.currentPage === 'database') {
@@ -7650,15 +7686,66 @@
                 });
 
                 this._pendingAction = null;
-                // All'avvio l'applicazione parte SEMPRE in Modalità Offline (Locale)
-                this.syncEnabled = false;
-                this.accessToken = null;
-                localStorage.setItem('asd_cloud_sync', 'false');
                 localStorage.removeItem('asd_startup_cloud_mode');
-                this.updateUIStatus();
+
+                // Ripristina sessione Cloud se token ancora valido e auto-connect abilitato
+                const savedToken = localStorage.getItem('asd_gdrive_token');
+                const savedExpiry = parseInt(localStorage.getItem('asd_gdrive_token_expiry') || '0', 10);
+                const manualOffline = sessionStorage.getItem('asd_manual_offline') === 'true';
+
+                if (!manualOffline && this.getAutoConnectPref() && savedToken && savedExpiry > (Date.now() + 60000)) {
+                    this.accessToken = savedToken;
+                    this.syncEnabled = true;
+                    localStorage.setItem('asd_cloud_sync', 'true');
+                    this.updateUIStatus();
+                    if (navigator.onLine) {
+                        setTimeout(() => this.syncNowSilent(), 900);
+                    }
+                } else {
+                    this.syncEnabled = (localStorage.getItem('asd_gdrive_ever_connected') === 'true' && this.getAutoConnectPref() && !manualOffline);
+                    this.accessToken = null;
+                    localStorage.setItem('asd_cloud_sync', 'false');
+                    this.updateUIStatus();
+                }
+
+                // Auto-check al rientro in primo piano (es. apertura PWA mobile da background)
+                if (!this._visibilityListenerBound) {
+                    this._visibilityListenerBound = true;
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState !== 'visible') return;
+                        const exp = parseInt(localStorage.getItem('asd_gdrive_token_expiry') || '0', 10);
+                        if (this.syncEnabled && this.accessToken && exp <= Date.now() + 60000) {
+                            this.accessToken = null;
+                            this.updateUIStatus();
+                        } else if (this.syncEnabled && this.accessToken && navigator.onLine) {
+                            const lastSync = new Date(localStorage.getItem('asd_last_cloud_sync_at') || 0).getTime() || 0;
+                            if (Date.now() - lastSync > 120000 && !this.isSyncing) {
+                                this.syncNowSilent();
+                            }
+                        }
+                    });
+                }
             },
 
-            login() {
+            async syncNowSilent() {
+                if (!this.accessToken || this.isSyncing || !navigator.onLine) return;
+                try {
+                    if (!this.fileId) {
+                        const mainFile = await this.findFileByName('GestioneASD_CloudSync.json');
+                        if (mainFile) {
+                            this.fileId = mainFile.id;
+                            localStorage.setItem('asd_gdrive_file_id', this.fileId);
+                        }
+                    }
+                    if (this.fileId) {
+                        await this.mergeBackup(true);
+                    }
+                } catch (e) {
+                    console.warn('[CloudSync] syncNowSilent errore:', e);
+                }
+            },
+
+            login(forceConsent = false) {
                 if (this.clientId === 'INSERISCI_QUI_IL_TUO_CLIENT_ID.apps.googleusercontent.com') {
                     app.toast('Devi prima inserire il tuo Google Client ID nel codice!', 'warning');
                     return;
@@ -7672,10 +7759,12 @@
                     }
                     return;
                 }
+                sessionStorage.removeItem('asd_manual_offline');
                 this.isExplicitLogin = true;
                 app.toast('Apertura accesso Google Drive... Se non compare la finestra, controlla i popup bloccati nella barra degli indirizzi.', 'info');
                 try {
-                    this.tokenClient.requestAccessToken({prompt: 'consent'});
+                    const everConnected = localStorage.getItem('asd_gdrive_ever_connected') === 'true';
+                    this.tokenClient.requestAccessToken({ prompt: (forceConsent || !everConnected) ? 'consent' : '' });
                 } catch(err) {
                     console.error('Errore richiesta token Google:', err);
                     app.toast('Impossibile aprire la finestra Google: ' + (err.message || err), 'danger');
@@ -7688,6 +7777,7 @@
                     await this.uploadBackup(false, false);
                 }
                 this.accessToken = null;
+                sessionStorage.setItem('asd_manual_offline', 'true');
                 // NOTA: NON cancellare this.fileId e asd_gdrive_file_id!
                 // Il fileId identifica il file su Drive e deve sopravvivere al logout
                 // per evitare la creazione di file duplicati al prossimo login.
@@ -7746,25 +7836,31 @@
                     }
                     if (modeButtonsContainer) modeButtonsContainer.innerHTML = '';
                 } else {
-                    if (statusEl) statusEl.innerHTML = 'Stato attuale: <span style="color:#ff3344; font-weight:700; text-shadow:0 0 8px rgba(255,51,68,0.35);">Offline (Modalità Locale)</span>';
+                    const hasDirty = this.hasUnsyncedLocalChanges();
+                    if (statusEl) statusEl.innerHTML = hasDirty
+                        ? 'Stato attuale: <span style="color:#f59e0b; font-weight:700;">Offline (Modifiche locali non ancora inviate al Cloud)</span>'
+                        : 'Stato attuale: <span style="color:#ff3344; font-weight:700; text-shadow:0 0 8px rgba(255,51,68,0.35);">Offline (Modalità Locale)</span>';
                     if (indicatorBtn) {
-                        indicatorBtn.style.borderColor = '#ff3344';
-                        indicatorBtn.style.color = '#ff3344';
-                        indicatorBtn.style.background = 'rgba(255, 51, 68, 0.12)';
-                        indicatorBtn.style.boxShadow = '0 0 12px rgba(255, 51, 68, 0.4)';
-                        indicatorBtn.title = 'Clicca per connetterti a Google Drive e sincronizzare';
+                        indicatorBtn.style.borderColor = hasDirty ? '#f59e0b' : '#ff3344';
+                        indicatorBtn.style.color = hasDirty ? '#fbbf24' : '#ff3344';
+                        indicatorBtn.style.background = hasDirty ? 'rgba(245, 158, 11, 0.14)' : 'rgba(255, 51, 68, 0.12)';
+                        indicatorBtn.style.boxShadow = hasDirty ? '0 0 12px rgba(245, 158, 11, 0.4)' : '0 0 12px rgba(255, 51, 68, 0.4)';
+                        indicatorBtn.title = hasDirty ? 'Hai modifiche locali non ancora inviate su Google Drive! Clicca per sincronizzare.' : 'Clicca per connetterti a Google Drive e sincronizzare';
                     }
-                    if (indicatorIcon) indicatorIcon.textContent = '☁️';
-                    if (indicatorLabel) indicatorLabel.textContent = 'Offline';
-                    if (balloonText) balloonText.textContent = 'Clicca per connetterti a Google Drive e sincronizzare';
+                    if (indicatorIcon) indicatorIcon.textContent = hasDirty ? '⚠️' : '☁️';
+                    if (indicatorLabel) indicatorLabel.textContent = hasDirty ? 'Da inviare' : 'Offline';
+                    if (balloonText) balloonText.textContent = hasDirty ? 'Modifiche locali non sincronizzate: clicca per inviare/unire su Drive' : 'Clicca per connetterti a Google Drive e sincronizzare';
                     if (balloonEl) {
-                        balloonEl.style.borderColor = 'rgba(255, 51, 68, 0.45)';
-                        balloonEl.style.color = '#ff6677';
+                        balloonEl.style.borderColor = hasDirty ? 'rgba(245, 158, 11, 0.5)' : 'rgba(255, 51, 68, 0.45)';
+                        balloonEl.style.color = hasDirty ? '#fbbf24' : '#ff6677';
                     }
                     if (modeButtonsContainer) modeButtonsContainer.innerHTML = '';
                 }
-                // Sincronizza la mobile action bar
+                // Sincronizza la mobile action bar & MobileUX v2
                 if (typeof syncMobileActionBar === 'function') syncMobileActionBar();
+                if (window.MobileUX && typeof window.MobileUX.syncSyncStrip === 'function') {
+                    window.MobileUX.syncSyncStrip();
+                }
             },
 
             async searchDriveFiles(q, orderBy = 'modifiedTime desc') {
@@ -8343,6 +8439,7 @@
                     await app.idbSet('main_state', app.state);
 
                     this._pendingCloudData = null;
+                    this.markCloudSynced();
 
                     app.closeModal();
 
@@ -8763,8 +8860,12 @@
                         const myDeviceRole = app.getDeviceRole();
                         const mySplashPref = localStorage.getItem('asd_show_splashscreen');
                         
-                        // FUSIONE INTELLIGENTE DEI SETTINGS:
-                        const mergedSettings = { ...(cloudData.settings || {}), ...(app.state.settings || {}) };
+                        // FUSIONE INTELLIGENTE DEI SETTINGS (rispetta il timestamp più recente):
+                        const localSavedTs = new Date((app.state && app.state.last_saved_at) || localStorage.getItem('asd_last_local_save') || 0).getTime() || 0;
+                        const cloudSavedTs = new Date((cloudData && cloudData.last_saved_at) || 0).getTime() || 0;
+                        const mergedSettings = (cloudSavedTs > localSavedTs)
+                            ? { ...(app.state.settings || {}), ...(cloudData.settings || {}) }
+                            : { ...(cloudData.settings || {}), ...(app.state.settings || {}) };
                         
                         // Saldi Iniziali: non devono mai essere cancellati da un client che non li aveva!
                         const localSaldi = (app.state.settings && Array.isArray(app.state.settings.saldi_iniziali)) ? app.state.settings.saldi_iniziali : [];
@@ -8806,6 +8907,7 @@
                         app.migrateCorsiNames();
                         
                         await app.idbSet('main_state', app.state);
+                        this.markCloudSynced();
                         
                         // Se il dispositivo è Server, genera automaticamente i PDF delle ricevute mancanti emesse da Client
                         if (app.getDeviceRole() === 'server') {
@@ -8860,6 +8962,7 @@
                             if (data._localStorageBackup.asd_esercizi_images) localStorage.setItem('asd_esercizi_images', data._localStorageBackup.asd_esercizi_images);
                         }
                         await app.idbSet('main_state', app.state);
+                        this.markCloudSynced();
                         
                         // Se il dispositivo è Server, auto-genera PDF ricevute mancanti
                         if (app.getDeviceRole() === 'server') {
@@ -8983,6 +9086,7 @@
                     
                     if (res && res.ok) {
                         console.log('[CloudSync] ✅ Upload completato con successo! fileId=' + this.fileId);
+                        this.markCloudSynced();
                         app.toast('Cloud: Salvataggio aggiornato.', 'success');
                         this.isSyncing = false;
                         return true;
@@ -24761,12 +24865,16 @@ In questo modo il gestionale potrà abbinare automaticamente l'immagine all'eser
                                     </div>
                                 </div>
                                 
-                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
                                     <div id="cloud-status-text" style="font-size:0.88rem; font-weight:bold;"></div>
-                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #93c5fd; font-weight: 600;" onclick="app.cloudSync.login()" data-guide="Ricollega o cambia l'account Google Drive collegato. Effetto: Permette di eseguire una migrazione o associare una diversa casella Google al gestionale.">
+                                    <button class="btn btn-outline" style="border-color: #3b82f6; color: #93c5fd; font-weight: 600;" onclick="app.cloudSync.login(true)" data-guide="Ricollega o cambia l'account Google Drive collegato. Effetto: Permette di eseguire una migrazione o associare una diversa casella Google al gestionale.">
                                         🔄 Cambia Account Google
                                     </button>
                                 </div>
+                                <label style="display:flex; align-items:center; gap:8px; font-size:0.83rem; color:var(--text-main); cursor:pointer; user-select:none; padding:8px 12px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px;">
+                                    <input type="checkbox" ${this.cloudSync.getAutoConnectPref() ? 'checked' : ''} onchange="app.cloudSync.setAutoConnectPref(this.checked); app.toast(this.checked ? 'Auto-sync al riavvio abilitato (se sessione Google attiva)' : 'Avvio sempre Offline forzato abilitato', 'info');" style="width:17px; height:17px; accent-color:#3b82f6; cursor:pointer;">
+                                    <span>Mantieni sessione Cloud e riallinea automaticamente al rientro (quando il token Google è attivo)</span>
+                                </label>
 
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08);">
                                     <button class="btn btn-outline" style="border-color:#f59e0b; color:#fbbf24; font-weight:600;" onclick="app.cloudSync.promptInheritFromCloudModal()" title="Scarica e sostituisce i dati di ${this.getThisDeviceLabel()} con la copia online di Google Drive (con doppia sicurezza)" data-guide="Eredita i dati presenti su Google Drive per allineare ${this.getThisDeviceLabel()}. Include confronto a specchio, alert di sicurezza e creazione automatica dello snapshot 'PRE-DOWNLOAD-CLOUD'.">📥 Eredita dal Cloud (Sovrascrivi Dati Locali)</button>
@@ -36129,7 +36237,7 @@ window.addEventListener('resize', () => {
         <button id="pwa-dismiss-btn" onclick="dismissPwaInstall()" title="Nascondi per questa sessione" data-guide="Nascondi invito installazione. Effetto: Chiude il banner di installazione per la sessione corrente.">✕</button>
     </div>
 
-<script src="./mobile-ux.js?v=2.9.36"></script>
+<script src="./mobile-ux.js?v=2.9.37"></script>
 </body>
 
 </html>
